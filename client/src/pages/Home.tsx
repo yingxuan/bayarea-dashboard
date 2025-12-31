@@ -16,13 +16,7 @@ import DealsGrid from "@/components/DealsGrid";
 import GossipList from "@/components/GossipList";
 import ShowsCard from "@/components/ShowsCard";
 import JobMarketTemperature from "@/components/JobMarketTemperature";
-import {
-  mockChineseRestaurants,
-  mockBubbleTeaShops,
-  mockShows,
-  mockGossip,
-  mockDeals,
-} from "@/lib/mockData";
+// Mock data removed - all sections now use real APIs
 import { config } from "@/config";
 
 export default function Home() {
@@ -34,32 +28,80 @@ export default function Home() {
   const [deals, setDeals] = useState<any>(null);
 
   useEffect(() => {
-    // Load mock data for non-API sections
-    setChineseRestaurants(mockChineseRestaurants);
-    setBubbleTeaShops(mockBubbleTeaShops);
-    setShows(mockShows);
-    setGossip(mockGossip);
-    setDeals(mockDeals);
-    
-    // Fetch real AI news from serverless API
-    async function loadAINews() {
+    // Fetch all real data from APIs
+    async function loadAllData() {
+      // AI News
       try {
         const response = await fetch(`${config.apiBaseUrl}/api/ai-news`);
         if (response.ok) {
           const result = await response.json();
-          console.log('[Home] AI news loaded:', result.news.length, 'items');
-          setIndustryNews({ news: result.news });
-        } else {
-          console.error('[Home] AI news API error:', response.statusText);
+          console.log('[Home] AI news loaded:', result.news?.length || 0, 'items');
+          setIndustryNews({ news: result.news || [] });
         }
       } catch (error) {
         console.error("[Home] Failed to fetch AI news:", error);
+        setIndustryNews({ news: [] });
       }
+
+      // Restaurants
+      try {
+        const response = await fetch(`${config.apiBaseUrl}/api/restaurants`);
+        if (response.ok) {
+          const result = await response.json();
+          console.log('[Home] Restaurants loaded:', result.restaurants?.length || 0, 'items');
+          setChineseRestaurants(result.restaurants || []);
+        }
+      } catch (error) {
+        console.error("[Home] Failed to fetch restaurants:", error);
+        setChineseRestaurants([]);
+      }
+
+      // TV Shows
+      try {
+        const response = await fetch(`${config.apiBaseUrl}/api/shows`);
+        if (response.ok) {
+          const result = await response.json();
+          console.log('[Home] Shows loaded:', result.shows?.length || 0, 'items');
+          setShows(result.shows || []);
+        }
+      } catch (error) {
+        console.error("[Home] Failed to fetch shows:", error);
+        setShows([]);
+      }
+
+      // Gossip (Hacker News)
+      try {
+        const response = await fetch(`${config.apiBaseUrl}/api/gossip`);
+        if (response.ok) {
+          const result = await response.json();
+          console.log('[Home] Gossip loaded:', result.gossip?.length || 0, 'items');
+          setGossip(result.gossip || []);
+        }
+      } catch (error) {
+        console.error("[Home] Failed to fetch gossip:", error);
+        setGossip([]);
+      }
+
+      // Deals (Reddit)
+      try {
+        const response = await fetch(`${config.apiBaseUrl}/api/deals`);
+        if (response.ok) {
+          const result = await response.json();
+          console.log('[Home] Deals loaded:', result.deals?.length || 0, 'items');
+          setDeals(result.deals || []);
+        }
+      } catch (error) {
+        console.error("[Home] Failed to fetch deals:", error);
+        setDeals([]);
+      }
+
+      // Bubble tea shops - keeping as empty for now (can add later)
+      setBubbleTeaShops([]);
     }
     
-    loadAINews();
+    loadAllData();
     // Refresh every 30 minutes
-    const interval = setInterval(loadAINews, 30 * 60 * 1000);
+    const interval = setInterval(loadAllData, 30 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
