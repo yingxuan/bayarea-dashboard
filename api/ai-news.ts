@@ -142,13 +142,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     // Fetch fresh news from Google CSE
-    // Prioritize authoritative tech news sources
+    // Use simpler queries to ensure results
     const queries = [
-      'AI artificial intelligence news today site:techcrunch.com OR site:theverge.com OR site:arstechnica.com',
-      'OpenAI ChatGPT news site:techcrunch.com OR site:venturebeat.com',
-      'NVIDIA GPU AI news site:theverge.com OR site:arstechnica.com',
-      'tech layoffs hiring AI site:techcrunch.com OR site:theverge.com',
-      'Meta Google Microsoft AI news site:venturebeat.com OR site:arstechnica.com',
+      'AI artificial intelligence news',
+      'OpenAI ChatGPT news',
+      'NVIDIA GPU AI news',
+      'tech layoffs hiring news',
+      'Google Meta Microsoft AI news',
     ];
     
     // Search with multiple queries and combine results
@@ -160,11 +160,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const seen = new Set<string>();
     const uniqueResults: any[] = [];
     
+    // Preferred tech news sources
+    const preferredSources = [
+      'techcrunch.com', 'theverge.com', 'arstechnica.com',
+      'venturebeat.com', 'wired.com', 'engadget.com',
+      'reuters.com', 'bloomberg.com', 'cnbc.com'
+    ];
+    
     for (const results of allResults) {
       for (const result of results) {
         if (!seen.has(result.link)) {
           seen.add(result.link);
-          uniqueResults.push(result);
+          // Prioritize preferred sources
+          const isPreferred = preferredSources.some(source => 
+            result.link?.toLowerCase().includes(source)
+          );
+          if (isPreferred) {
+            uniqueResults.unshift(result); // Add to front
+          } else {
+            uniqueResults.push(result); // Add to back
+          }
         }
       }
     }
