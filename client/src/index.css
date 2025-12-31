@@ -42,84 +42,99 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* Data Punk Theme - Cyberpunk inspired dark theme with neon accents */
 :root {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-600);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --radius: 0.65rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.235 0.015 65);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.235 0.015 65);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.235 0.015 65);
-  --secondary: oklch(0.98 0.001 286.375);
-  --secondary-foreground: oklch(0.4 0.015 65);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.141 0.005 285.823);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.623 0.214 259.815);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.235 0.015 65);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.623 0.214 259.815);
-}
-
-.dark {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-500);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.85 0.005 65);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.85 0.005 65);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.85 0.005 65);
-  --secondary: oklch(0.24 0.006 286.033);
-  --secondary-foreground: oklch(0.7 0.005 65);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground:  oklch(0.92 0.005 65);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.488 0.243 264.376);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.85 0.005 65);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground:  oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.488 0.243 264.376);
+  /* Base colors - Deep space background */
+  --background: oklch(0.12 0.02 265);
+  --foreground: oklch(0.95 0.01 265);
+  
+  /* Card colors - Slightly lighter than background */
+  --card: oklch(0.16 0.02 265);
+  --card-foreground: oklch(0.95 0.01 265);
+  
+  /* Popover colors */
+  --popover: oklch(0.14 0.02 265);
+  --popover-foreground: oklch(0.95 0.01 265);
+  
+  /* Primary - Neon cyan/blue for interactive elements */
+  --primary: oklch(0.65 0.25 230);
+  --primary-foreground: oklch(0.12 0.02 265);
+  
+  /* Secondary - Darker variant */
+  --secondary: oklch(0.20 0.02 265);
+  --secondary-foreground: oklch(0.85 0.01 265);
+  
+  /* Muted - For less important text */
+  --muted: oklch(0.22 0.02 265);
+  --muted-foreground: oklch(0.60 0.01 265);
+  
+  /* Accent - Electric blue for highlights */
+  --accent: oklch(0.55 0.28 240);
+  --accent-foreground: oklch(0.95 0.01 265);
+  
+  /* Destructive - Neon red for losses/warnings */
+  --destructive: oklch(0.60 0.28 25);
+  --destructive-foreground: oklch(0.95 0.01 265);
+  
+  /* Success - Neon green for gains */
+  --success: oklch(0.70 0.25 145);
+  --success-foreground: oklch(0.12 0.02 265);
+  
+  /* Border and input */
+  --border: oklch(0.25 0.02 265);
+  --input: oklch(0.22 0.02 265);
+  --ring: oklch(0.65 0.25 230);
+  
+  /* Chart colors - Gradient from cyan to magenta */
+  --chart-1: oklch(0.65 0.25 230);
+  --chart-2: oklch(0.60 0.25 260);
+  --chart-3: oklch(0.55 0.25 290);
+  --chart-4: oklch(0.60 0.25 320);
+  --chart-5: oklch(0.65 0.25 350);
+  
+  /* Sidebar colors */
+  --sidebar: oklch(0.14 0.02 265);
+  --sidebar-foreground: oklch(0.95 0.01 265);
+  --sidebar-primary: oklch(0.65 0.25 230);
+  --sidebar-primary-foreground: oklch(0.12 0.02 265);
+  --sidebar-accent: oklch(0.20 0.02 265);
+  --sidebar-accent-foreground: oklch(0.95 0.01 265);
+  --sidebar-border: oklch(0.25 0.02 265);
+  --sidebar-ring: oklch(0.65 0.25 230);
+  
+  /* Border radius - Sharp edges for tech feel */
+  --radius: 0.25rem;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
+  
+  /* Scrollbar styling for cyberpunk feel */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: oklch(0.14 0.02 265);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.30 0.02 265);
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.40 0.02 265);
+  }
+  
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   [type="button"]:not(:disabled),
@@ -136,22 +151,12 @@
 @layer components {
   /**
    * Custom container utility that centers content and adds responsive padding.
-   *
-   * This overrides Tailwind's default container behavior to:
-   * - Auto-center content (mx-auto)
-   * - Add responsive horizontal padding
-   * - Set max-width for large screens
-   *
-   * Usage: <div className="container">...</div>
-   *
-   * For custom widths, use max-w-* utilities directly:
-   * <div className="max-w-6xl mx-auto px-4">...</div>
    */
   .container {
     width: 100%;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 1rem; /* 16px - mobile padding */
+    padding-left: 1rem;
     padding-right: 1rem;
   }
 
@@ -162,16 +167,95 @@
 
   @media (min-width: 640px) {
     .container {
-      padding-left: 1.5rem; /* 24px - tablet padding */
+      padding-left: 1.5rem;
       padding-right: 1.5rem;
     }
   }
 
   @media (min-width: 1024px) {
     .container {
-      padding-left: 2rem; /* 32px - desktop padding */
+      padding-left: 2rem;
       padding-right: 2rem;
-      max-width: 1280px; /* Standard content width */
+      max-width: 1400px;
     }
+  }
+  
+  /* Data Punk specific components */
+  .glow-border {
+    border: 1px solid oklch(0.65 0.25 230 / 0.3);
+    box-shadow: 0 0 10px oklch(0.65 0.25 230 / 0.2);
+  }
+  
+  .glow-border:hover {
+    border-color: oklch(0.65 0.25 230 / 0.6);
+    box-shadow: 0 0 15px oklch(0.65 0.25 230 / 0.4);
+  }
+  
+  .neon-text-green {
+    color: oklch(0.70 0.25 145);
+    text-shadow: 0 0 10px oklch(0.70 0.25 145 / 0.5);
+  }
+  
+  .neon-text-red {
+    color: oklch(0.60 0.28 25);
+    text-shadow: 0 0 10px oklch(0.60 0.28 25 / 0.5);
+  }
+  
+  .neon-text-blue {
+    color: oklch(0.65 0.25 230);
+    text-shadow: 0 0 10px oklch(0.65 0.25 230 / 0.5);
+  }
+  
+  /* Grid background pattern */
+  .grid-bg {
+    background-image: 
+      linear-gradient(oklch(0.25 0.02 265 / 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(0.25 0.02 265 / 0.3) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  
+  /* Pulse animation for data updates */
+  @keyframes pulse-glow {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+  
+  .pulse-glow {
+    animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  /* Number flash animation for updates */
+  @keyframes flash-green {
+    0%, 100% {
+      color: oklch(0.70 0.25 145);
+      text-shadow: 0 0 10px oklch(0.70 0.25 145 / 0.5);
+    }
+    50% {
+      color: oklch(0.80 0.25 145);
+      text-shadow: 0 0 20px oklch(0.70 0.25 145 / 0.8);
+    }
+  }
+  
+  @keyframes flash-red {
+    0%, 100% {
+      color: oklch(0.60 0.28 25);
+      text-shadow: 0 0 10px oklch(0.60 0.28 25 / 0.5);
+    }
+    50% {
+      color: oklch(0.70 0.28 25);
+      text-shadow: 0 0 20px oklch(0.60 0.28 25 / 0.8);
+    }
+  }
+  
+  .flash-green {
+    animation: flash-green 0.3s ease-in-out;
+  }
+  
+  .flash-red {
+    animation: flash-red 0.3s ease-in-out;
   }
 }
