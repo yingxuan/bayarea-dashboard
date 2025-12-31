@@ -45,6 +45,17 @@ async function fetchSPY(): Promise<MarketDataItem> {
   const results = await searchGoogle('SPY stock price today');
   const topResult = results[0];
   
+  if (!topResult) {
+    return {
+      name: 'SPY',
+      value: 687.01,
+      unit: 'USD',
+      source_name: 'Fallback',
+      source_url: 'https://finance.yahoo.com/quote/SPY/',
+      as_of: new Date().toISOString(),
+    };
+  }
+  
   // Try to extract price from snippet
   const price = extractNumber(topResult.snippet) || 687.01;
   
@@ -59,9 +70,26 @@ async function fetchSPY(): Promise<MarketDataItem> {
 }
 
 async function fetchGold(): Promise<MarketDataItem> {
-  // Prioritize authoritative gold price sources
-  const results = await searchGoogle('gold price today USD per ounce site:kitco.com OR site:goldprice.org OR site:bullionvault.com');
+  // Try authoritative sources first, fallback to general search
+  let results = await searchGoogle('gold price today USD per ounce site:kitco.com OR site:goldprice.org OR site:bullionvault.com');
+  
+  // Fallback if no results from specific sites
+  if (!results || results.length === 0) {
+    results = await searchGoogle('gold price today USD per ounce');
+  }
+  
   const topResult = results[0];
+  if (!topResult) {
+    // Return fallback data if no results at all
+    return {
+      name: 'Gold',
+      value: 2650,
+      unit: 'USD/oz',
+      source_name: 'Fallback',
+      source_url: 'https://www.kitco.com/charts/livegold.html',
+      as_of: new Date().toISOString(),
+    };
+  }
   
   const price = extractNumber(topResult.snippet) || 2650;
   
@@ -79,25 +107,52 @@ async function fetchBTC(): Promise<MarketDataItem> {
   const results = await searchGoogle('bitcoin price USD');
   const topResult = results[0];
   
+  if (!topResult) {
+    return {
+      name: 'BTC',
+      value: 95000,
+      unit: 'USD',
+      source_name: 'Fallback',
+      source_url: 'https://finance.yahoo.com/quote/BTC-USD/',
+      as_of: new Date().toISOString(),
+    };
+  }
+  
   const price = extractNumber(topResult.snippet) || 95000;
   
   return {
     name: 'BTC',
     value: price,
     unit: 'USD',
-    source_name: topResult.displayLink || 'CoinMarketCap',
+    source_name: topResult.displayLink || 'Yahoo Finance',
     source_url: topResult.link,
     as_of: new Date().toISOString(),
   };
 }
 
 async function fetchMortgageRate(): Promise<MarketDataItem> {
-  // Prioritize current rate pages from authoritative mortgage sites
-  const results = await searchGoogle('California jumbo mortgage rates today site:bankrate.com OR site:nerdwallet.com OR site:mortgagenewsdaily.com');
+  // Try authoritative sources first, fallback to general search
+  let results = await searchGoogle('California jumbo mortgage rates today site:bankrate.com OR site:nerdwallet.com OR site:mortgagenewsdaily.com');
+  
+  // Fallback if no results from specific sites
+  if (!results || results.length === 0) {
+    results = await searchGoogle('California jumbo mortgage rates today');
+  }
+  
   const topResult = results[0];
+  if (!topResult) {
+    // Return fallback data
+    return {
+      name: 'CA_JUMBO_ARM',
+      value: 0.069,
+      unit: 'rate',
+      source_name: 'Fallback',
+      source_url: 'https://www.bankrate.com/mortgages/mortgage-rates/',
+      as_of: new Date().toISOString(),
+    };
+  }
   
   // Try to extract rate (as percentage)
-  // Look for patterns like "6.9%", "6.875%", "7.125%"
   const snippet = topResult.snippet;
   const rateMatch = snippet.match(/(\d+\.?\d*)%/);
   const rate = rateMatch ? parseFloat(rateMatch[1]) / 100 : 0.069;
@@ -113,13 +168,29 @@ async function fetchMortgageRate(): Promise<MarketDataItem> {
 }
 
 async function fetchPowerball(): Promise<MarketDataItem> {
-  // Prioritize official lottery sources
-  const results = await searchGoogle('powerball jackpot site:powerball.com OR site:lottery.com OR site:usamega.com');
+  // Try official sources first, fallback to general search
+  let results = await searchGoogle('powerball jackpot site:powerball.com OR site:lottery.com OR site:usamega.com');
+  
+  // Fallback if no results from specific sites
+  if (!results || results.length === 0) {
+    results = await searchGoogle('powerball jackpot today');
+  }
+  
   const topResult = results[0];
+  if (!topResult) {
+    // Return fallback data
+    return {
+      name: 'POWERBALL',
+      value: 485000000,
+      unit: 'USD',
+      source_name: 'Fallback',
+      source_url: 'https://www.powerball.com/',
+      as_of: new Date().toISOString(),
+    };
+  }
   
   // Try to extract jackpot amount (in millions or billions)
   const snippet = topResult.snippet;
-  // Match patterns like "$485 million", "$1.2 billion", "$485M", "$1.2B"
   const millionMatch = snippet.match(/\$(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:million|M)/i);
   const billionMatch = snippet.match(/\$(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:billion|B)/i);
   
