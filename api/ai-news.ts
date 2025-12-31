@@ -171,18 +171,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       for (const result of results) {
         if (!seen.has(result.link)) {
           seen.add(result.link);
-          // Prioritize preferred sources
-          const isPreferred = preferredSources.some(source => 
-            result.link?.toLowerCase().includes(source)
-          );
-          if (isPreferred) {
-            uniqueResults.unshift(result); // Add to front
-          } else {
-            uniqueResults.push(result); // Add to back
-          }
+          uniqueResults.push(result);
         }
       }
     }
+    
+    // Sort by: 1) Preferred sources first, 2) Most recent date
+    uniqueResults.sort((a, b) => {
+      const aIsPreferred = preferredSources.some(source => 
+        a.link?.toLowerCase().includes(source)
+      );
+      const bIsPreferred = preferredSources.some(source => 
+        b.link?.toLowerCase().includes(source)
+      );
+      
+      // If one is preferred and the other isn't, preferred comes first
+      if (aIsPreferred && !bIsPreferred) return -1;
+      if (!aIsPreferred && bIsPreferred) return 1;
+      
+      // If both are same preference level, sort by date (most recent first)
+      const aDate = a.pagemap?.metatags?.[0]?.['article:published_time'] || 
+                    a.pagemap?.metatags?.[0]?.['og:updated_time'] ||
+                    '1970-01-01';
+      const bDate = b.pagemap?.metatags?.[0]?.['article:published_time'] || 
+                    b.pagemap?.metatags?.[0]?.['og:updated_time'] ||
+                    '1970-01-01';
+      
+      return new Date(bDate).getTime() - new Date(aDate).getTime();
+    });
     
     // Take top 5 and enhance with Chinese summaries
     const news = uniqueResults.slice(0, 5).map(enhanceNewsItem);
