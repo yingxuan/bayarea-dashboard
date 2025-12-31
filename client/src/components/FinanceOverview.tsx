@@ -27,7 +27,10 @@ interface FinanceData {
     value: number;
     change: number;
     changePercent: number;
+    source?: string;
+    note?: string;
   }>;
+  lastUpdated: string;
 }
 
 export default function FinanceOverview() {
@@ -104,6 +107,8 @@ export default function FinanceOverview() {
               value: Number(mortgageRate.toFixed(3)),
               change: -0.125,
               changePercent: -1.79,
+              source: "基于10年期国债利率估算",
+              note: "10年期国债 + 2.375% spread",
             },
             {
               code: "POWERBALL",
@@ -111,8 +116,18 @@ export default function FinanceOverview() {
               value: 485000000,
               change: 0,
               changePercent: 0,
+              source: "参考值",
+              note: "请访问 powerball.com 查看最新奖金",
             },
           ],
+          lastUpdated: new Date().toLocaleString('en-US', {
+            timeZone: 'America/Los_Angeles',
+            month: 'numeric',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+          }),
         };
 
         console.log("Real-time data loaded successfully:", result);
@@ -299,8 +314,23 @@ export default function FinanceOverview() {
               {index.change} ({index.changePercent >= 0 ? "+" : ""}
               {index.changePercent}%)
             </div>
+            {index.source && (
+              <div className="text-xs text-muted-foreground mt-2 italic">
+                {index.source}
+              </div>
+            )}
+            {index.note && (
+              <div className="text-xs text-muted-foreground/70 mt-1">
+                {index.note}
+              </div>
+            )}
           </div>
         ))}
+      </div>
+      
+      {/* Last Updated Timestamp */}
+      <div className="text-xs text-muted-foreground text-right mt-2">
+        数据更新于: {data.lastUpdated} PT
       </div>
     </div>
   );
