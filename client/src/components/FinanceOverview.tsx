@@ -14,6 +14,7 @@ import {
   getCryptoQuote,
   type PortfolioHolding,
 } from "@/lib/yahooFinance";
+import { generateMarketJudgment, type MarketJudgment } from "@/lib/judgment";
 
 interface FinanceData {
   stockMarketValue: { value: number; currency: string };
@@ -31,6 +32,7 @@ interface FinanceData {
 
 export default function FinanceOverview() {
   const [data, setData] = useState<FinanceData | null>(null);
+  const [judgment, setJudgment] = useState<MarketJudgment | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -115,6 +117,16 @@ export default function FinanceOverview() {
 
         console.log("Real-time data loaded successfully:", result);
         setData(result);
+        
+        // Generate market judgment
+        const marketJudgment = generateMarketJudgment({
+          spyChangePercent: indices["SPY"]?.changePercent || 0,
+          portfolioChangePercent: portfolioSummary.dayChangePercent,
+          btcChangePercent: btc?.changePercent || 0,
+          goldChangePercent: indices["GC=F"]?.changePercent || 0,
+        });
+        console.log("Market judgment:", marketJudgment);
+        setJudgment(marketJudgment);
       } catch (error) {
         console.error("Failed to fetch finance overview:", error);
       } finally {
@@ -151,10 +163,35 @@ export default function FinanceOverview() {
     <div className="space-y-6">
       {/* Main Overview Card */}
       <div className="glow-border rounded-sm p-6 bg-card">
-        <h2 className="text-2xl font-bold text-primary mb-6 flex items-center gap-2">
+        <h2 className="text-2xl font-bold text-primary mb-4 flex items-center gap-2">
           <span className="text-primary">票子</span>
           <span className="text-muted-foreground text-base">| 早日财富自由</span>
         </h2>
+        
+        {/* Judgment Layer */}
+        {judgment && (
+          <div className={`mb-6 p-4 rounded-sm border-l-4 ${
+            judgment.status === 'positive' ? 'border-green-400 bg-green-400/10' :
+            judgment.status === 'negative' ? 'border-red-400 bg-red-400/10' :
+            'border-blue-400 bg-blue-400/10'
+          }`}>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">{judgment.icon}</span>
+              <div className="flex-1">
+                <div className={`text-base font-medium ${
+                  judgment.status === 'positive' ? 'text-green-400' :
+                  judgment.status === 'negative' ? 'text-red-400' :
+                  'text-blue-400'
+                }`}>
+                  今日判断
+                </div>
+                <div className="text-foreground mt-1">
+                  {judgment.message}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {/* Stock Market Value */}

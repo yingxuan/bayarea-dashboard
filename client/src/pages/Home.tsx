@@ -15,6 +15,7 @@ import FoodGrid from "@/components/FoodGrid";
 import DealsGrid from "@/components/DealsGrid";
 import GossipList from "@/components/GossipList";
 import ShowsCard from "@/components/ShowsCard";
+import JobMarketTemperature from "@/components/JobMarketTemperature";
 import {
   mockFinanceVideos,
   mockBreakingNews,
@@ -93,10 +94,10 @@ export default function Home() {
             <h2 className="text-lg font-bold font-mono mb-4 flex items-center gap-2">
               <span className="neon-text-blue">行业新闻</span>
               <span className="text-muted-foreground text-sm">
-                | 今天影响钱和工作的事
+                | 今日必须知道的事
               </span>
             </h2>
-            <NewsList news={industryNews.news} maxItems={5} showTags={true} />
+            <NewsList news={industryNews.news} maxItems={4} showTags={true} />
           </section>
         )}
 
@@ -112,6 +113,15 @@ export default function Home() {
             <VideoGrid videos={industryVideos.videos} maxItems={4} />
           </section>
         )}
+
+        {/* Job Market Temperature */}
+        <section className="mb-12">
+          <JobMarketTemperature 
+            layoffCount={2}
+            hiringCount={5}
+            spyChangePercent={0.26}
+          />
+        </section>
 
         {/* Food Section */}
         <section className="mb-12">
