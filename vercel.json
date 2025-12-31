@@ -1,19 +1,42 @@
 {
   "version": 2,
-  "builds": [
+  "buildCommand": "cd client && pnpm install && pnpm run build",
+  "outputDirectory": "client/dist",
+  "installCommand": "pnpm install",
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "nodejs20.x",
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
     {
-      "src": "api/**/*.ts",
-      "use": "@vercel/node"
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
-  "routes": [
+  "headers": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type"
+        }
+      ]
     }
-  ],
-  "env": {
-    "GOOGLE_CSE_API_KEY": "@google-cse-api-key",
-    "GOOGLE_CSE_ID": "@google-cse-id"
-  }
+  ]
 }
