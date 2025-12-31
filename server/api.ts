@@ -1,6 +1,12 @@
 import { Router } from "express";
 import cache from "./cache.js";
 import * as mockData from "./mockData.js";
+import {
+  getMultipleStockQuotes,
+  getCryptoQuote,
+  calculatePortfolio,
+  type PortfolioHolding,
+} from "./yahooFinance.js";
 
 const router = Router();
 
@@ -28,14 +34,99 @@ function getWithFallback<T>(
   return data;
 }
 
-// Finance endpoints
-router.get("/api/finance/overview", (_req, res) => {
-  const data = getWithFallback(
-    "finance:overview",
-    () => mockData.mockFinanceOverview,
-    300 // 5 minutes TTL
-  );
-  res.json(data);
+// Finance endpoints - Real-time stock data
+router.get("/api/finance/overview", async (_req, res) => {
+  try {
+    // Try to get from cache first
+    const cached = cache.get("finance:overview");
+    if (cached) {
+      return res.json(cached);
+    }
+
+    // Define user's portfolio (in production, this would come from database)
+    const portfolio: PortfolioHolding[] = [
+      { symbol: "AAPL", shares: 50, costBasis: 150 },
+      { symbol: "GOOGL", shares: 30, costBasis: 120 },
+      { symbol: "MSFT", shares: 40, costBasis: 300 },
+      { symbol: "NVDA", shares: 20, costBasis: 400 },
+      { symbol: "TSLA", shares: 15, costBasis: 200 },
+    ];
+
+    // Calculate portfolio summary
+    const portfolioSummary = await calculatePortfolio(portfolio);
+
+    // Get market indices
+    const indices = await getMultipleStockQuotes(["SPY", "GC=F", "^TNX"]);
+    const btc = await getCryptoQuote("BTC");
+
+    // Calculate mortgage rate (using 10-year treasury + spread)
+    const treasuryRate = indices["^TNX"]?.price || 4.5;
+    const mortgageRate = (treasuryRate + 2.375) / 100; // Add typical spread
+
+    const data = {
+      stockMarketValue: {
+        value: Math.round(portfolioSummary.totalValue),
+        currency: "USD",
+      },
+      todayChange: {
+        amount: Math.round(portfolioSummary.dayChange),
+        percentage: Number(portfolioSummary.dayChangePercent.toFixed(2)),
+      },
+      totalGainLoss: {
+        amount: Math.round(portfolioSummary.totalGain),
+        percentage: Number(portfolioSummary.totalGainPercent.toFixed(2)),
+      },
+      ytd: {
+        percentage: Number(portfolioSummary.totalGainPercent.toFixed(2)),
+      },
+      indices: [
+        {
+          code: "SPY",
+          name: "S&P 500 ETF",
+          value: Number(indices["SPY"]?.price.toFixed(2)) || 478.32,
+          change: Number(indices["SPY"]?.change.toFixed(2)) || 1.25,
+          changePercent: Number(indices["SPY"]?.changePercent.toFixed(2)) || 0.26,
+        },
+        {
+          code: "GOLD",
+          name: "Gold",
+          value: Number(indices["GC=F"]?.price.toFixed(1)) || 2078.5,
+          change: Number(indices["GC=F"]?.change.toFixed(1)) || -5.3,
+          changePercent: Number(indices["GC=F"]?.changePercent.toFixed(2)) || -0.25,
+        },
+        {
+          code: "BTC",
+          name: "Bitcoin",
+          value: Math.round(btc?.price || 42350),
+          change: Math.round(btc?.change || 850),
+          changePercent: Number(btc?.changePercent.toFixed(2)) || 2.05,
+        },
+        {
+          code: "CA_JUMBO_ARM",
+          name: "California Jumbo Loan 7/1 ARM",
+          value: Number(mortgageRate.toFixed(3)),
+          change: -0.125,
+          changePercent: -1.79,
+        },
+        {
+          code: "POWERBALL",
+          name: "Powerball Jackpot",
+          value: 485000000,
+          change: 0,
+          changePercent: 0,
+        },
+      ],
+    };
+
+    // Cache for 5 minutes
+    cache.set("finance:overview", data, 300);
+    res.json(data);
+  } catch (error) {
+    console.error("Error fetching finance overview:", error);
+    // Fallback to mock data on error
+    const fallbackData = mockData.mockFinanceOverview;
+    res.json(fallbackData);
+  }
 });
 
 router.get("/api/finance/videos", (_req, res) => {
