@@ -1,0 +1,174 @@
+/**
+ * Vercel Serverless Function: /api/ai-news
+ * Fetches real-time AI/Tech news via Google Custom Search Engine
+ */
+
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
+const GOOGLE_CSE_API_KEY = process.env.GOOGLE_CSE_API_KEY!;
+const GOOGLE_CSE_ID = process.env.GOOGLE_CSE_ID!;
+
+// In-memory cache
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+interface NewsItem {
+  title: string;
+  url: string;
+  source_name: string;
+  snippet: string;
+  summary_zh?: string;
+  why_it_matters_zh?: string;
+  published_at?: string;
+}
+
+async function searchGoogle(query: string, num: number = 5): Promise<any[]> {
+  const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_CSE_API_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&num=${num}&sort=date`;
+  
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Google CSE API error: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.items || [];
+}
+
+function enhanceNewsItem(item: any): NewsItem {
+  const title = item.title.toLowerCase();
+  const snippet = item.snippet.toLowerCase();
+  
+  // Generate Chinese summary based on keywords
+  let summary_zh = item.title;
+  let why_it_matters_zh = '可能影响科技行业发展趋势';
+  
+  if (title.includes('nvidia') || title.includes('nvda') || snippet.includes('nvidia')) {
+    summary_zh = `英伟达${title.includes('chip') ? '芯片' : ''}${title.includes('earnings') ? '财报' : ''}最新动态`;
+    why_it_matters_zh = '如果你持有 NVDA 股票或期权，或从事 AI 基础设施相关工作，这条新闻值得关注';
+  } else if (title.includes('openai') || snippet.includes('openai') || title.includes('chatgpt')) {
+    summary_zh = 'OpenAI 最新动态';
+    why_it_matters_zh = 'OpenAI 的产品和战略变化可能影响 AI 工程师的技能需求和薪资水平';
+  } else if (title.includes('meta') || title.includes('facebook')) {
+    summary_zh = 'Meta 最新动态';
+    why_it_matters_zh = 'Meta 的业务调整可能影响湾区就业市场和 AI/VR 岗位需求';
+  } else if (title.includes('google') || title.includes('alphabet') || title.includes('gemini')) {
+    summary_zh = 'Google 最新动态';
+    why_it_matters_zh = 'Google 的产品和组织变化可能影响云计算和 AI 工程师的就业机会';
+  } else if (title.includes('microsoft') || title.includes('azure')) {
+    summary_zh = '微软最新动态';
+    why_it_matters_zh = '微软的云服务和 AI 战略可能影响相关岗位需求和薪资水平';
+  } else if (title.includes('amazon') || title.includes('aws')) {
+    summary_zh = '亚马逊最新动态';
+    why_it_matters_zh = 'AWS 的业务变化可能影响云计算工程师的就业机会和薪资';
+  } else if (title.includes('apple')) {
+    summary_zh = '苹果最新动态';
+    why_it_matters_zh = '苹果的产品和战略变化可能影响iOS开发和硬件工程师的需求';
+  } else if (title.includes('layoff') || title.includes('job cut') || snippet.includes('layoff')) {
+    summary_zh = '科技公司裁员消息';
+    why_it_matters_zh = '裁员信号可能预示就业市场降温，跳槽和谈 offer 需要更谨慎';
+  } else if (title.includes('hiring') || title.includes('job') || snippet.includes('hiring')) {
+    summary_zh = '科技公司招聘动态';
+    why_it_matters_zh = '招聘信号可能预示就业市场升温，是谈 offer 和跳槽的好时机';
+  } else if (title.includes('ai') || snippet.includes('artificial intelligence')) {
+    summary_zh = 'AI 行业最新进展';
+    why_it_matters_zh = 'AI 技术的发展可能创造新的就业机会或改变现有岗位的技能要求';
+  } else if (title.includes('chip') || title.includes('semiconductor')) {
+    summary_zh = '芯片行业动态';
+    why_it_matters_zh = '芯片供应链变化可能影响硬件和系统工程师的就业前景';
+  }
+  
+  return {
+    title: item.title,
+    url: item.link,
+    source_name: item.displayLink,
+    snippet: item.snippet,
+    summary_zh,
+    why_it_matters_zh,
+    published_at: item.pagemap?.metatags?.[0]?.['article:published_time'],
+  };
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  try {
+    // Check cache
+    const cacheKey = 'ai_news';
+    const cached = cache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return res.status(200).json({
+        ...cached.data,
+        cache_hit: true,
+      });
+    }
+    
+    // Fetch fresh news from Google CSE
+    const queries = [
+      'AI artificial intelligence news today',
+      'OpenAI ChatGPT news',
+      'NVIDIA GPU AI news',
+      'tech layoffs hiring news',
+      'Meta Google Microsoft AI news',
+    ];
+    
+    // Search with multiple queries and combine results
+    const allResults = await Promise.all(
+      queries.map(q => searchGoogle(q, 3))
+    );
+    
+    // Flatten and deduplicate by URL
+    const seen = new Set<string>();
+    const uniqueResults: any[] = [];
+    
+    for (const results of allResults) {
+      for (const result of results) {
+        if (!seen.has(result.link)) {
+          seen.add(result.link);
+          uniqueResults.push(result);
+        }
+      }
+    }
+    
+    // Take top 5 and enhance with Chinese summaries
+    const news = uniqueResults.slice(0, 5).map(enhanceNewsItem);
+    
+    const response = {
+      news,
+      updated_at: new Date().toLocaleString('en-US', {
+        timeZone: 'America/Los_Angeles',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      }),
+      cache_hit: false,
+    };
+    
+    // Update cache
+    cache.set(cacheKey, {
+      data: response,
+      timestamp: Date.now(),
+    });
+    
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('[API /api/ai-news] Error:', error);
+    
+    // Try to return stale cache
+    const cacheKey = 'ai_news';
+    const stale = cache.get(cacheKey);
+    
+    if (stale) {
+      return res.status(200).json({
+        ...stale.data,
+        cache_hit: true,
+        stale: true,
+      });
+    }
+    
+    res.status(500).json({
+      error: 'Failed to fetch AI news',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}

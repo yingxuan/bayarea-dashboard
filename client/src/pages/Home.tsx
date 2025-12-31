@@ -19,7 +19,6 @@ import JobMarketTemperature from "@/components/JobMarketTemperature";
 import {
   mockFinanceVideos,
   mockBreakingNews,
-  mockIndustryNews,
   mockIndustryVideos,
   mockChineseRestaurants,
   mockBubbleTeaShops,
@@ -27,6 +26,7 @@ import {
   mockGossip,
   mockDeals,
 } from "@/lib/mockData";
+import { config } from "@/config";
 
 export default function Home() {
   const [financeVideos, setFinanceVideos] = useState<any>(null);
@@ -40,16 +40,33 @@ export default function Home() {
   const [deals, setDeals] = useState<any>(null);
 
   useEffect(() => {
-    // Load mock data (in production, this would be API calls)
+    // Load mock data
     setFinanceVideos(mockFinanceVideos);
     setBreakingNews(mockBreakingNews);
-    setIndustryNews(mockIndustryNews);
     setIndustryVideos(mockIndustryVideos);
     setChineseRestaurants(mockChineseRestaurants);
     setBubbleTeaShops(mockBubbleTeaShops);
     setShows(mockShows);
     setGossip(mockGossip);
     setDeals(mockDeals);
+    
+    // Fetch real AI news from serverless API
+    async function loadAINews() {
+      try {
+        const response = await fetch(`${config.apiBaseUrl}/api/ai-news`);
+        if (response.ok) {
+          const result = await response.json();
+          setIndustryNews({ news: result.news });
+        }
+      } catch (error) {
+        console.error("Failed to fetch AI news:", error);
+      }
+    }
+    
+    loadAINews();
+    // Refresh every 30 minutes
+    const interval = setInterval(loadAINews, 30 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   return (

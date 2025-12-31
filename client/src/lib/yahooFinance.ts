@@ -64,6 +64,13 @@ export async function getStockQuote(symbol: string): Promise<StockQuote | null> 
     const result = response.chart.result[0];
     const meta = result.meta;
     
+    // Debug: Log the full meta data
+    console.log(`[Yahoo Finance] Symbol: ${symbol}`);
+    console.log('[Yahoo Finance] Meta data:', meta);
+    console.log('[Yahoo Finance] regularMarketPrice:', meta.regularMarketPrice);
+    console.log('[Yahoo Finance] previousClose:', meta.previousClose);
+    console.log('[Yahoo Finance] chartPreviousClose:', meta.chartPreviousClose);
+    
     // Calculate change and change percent
     const currentPrice = meta.regularMarketPrice || meta.previousClose || 0;
     const previousClose = meta.chartPreviousClose || meta.previousClose || currentPrice;

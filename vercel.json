@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/**/*.ts",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    }
+  ],
+  "env": {
+    "GOOGLE_CSE_API_KEY": "@google-cse-api-key",
+    "GOOGLE_CSE_ID": "@google-cse-id"
+  }
+}

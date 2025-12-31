@@ -3,6 +3,8 @@ import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 import apiRouter from "./api.js";
+import apiMarket from "./apiMarket.js";
+import apiNews from "./apiNews.js";
 import "./scheduler.js"; // Initialize scheduled tasks
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,6 +29,8 @@ async function startServer() {
   });
 
   // Mount API routes
+  app.use('/api', apiMarket);
+  app.use('/api', apiNews);
   app.use(apiRouter);
 
   // Serve static files from dist/public in production
@@ -42,7 +46,7 @@ async function startServer() {
     res.sendFile(path.join(staticPath, "index.html"));
   });
 
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 3001;
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
