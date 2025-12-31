@@ -81,10 +81,13 @@ Both endpoints:
 - Calculate change/change_percent when available
 - Fallback to cached data if fetch fails
 
-**Caching**:
-- TTL: 5 minutes
-- Stale-while-revalidate: 10 minutes
-- Cache key: `market_data`
+**Caching Strategy**:
+- **Current Implementation**: In-memory cache using JavaScript `Map`
+- **TTL**: 10 minutes (600 seconds)
+- **Cache Key**: `market_data`
+- **Stale-While-Revalidate**: If fresh fetch fails, return stale cache with `stale: true` flag
+- **Limitations**: Cache is per-instance (not shared across serverless function instances), lost on cold starts
+- **Production Upgrade**: Consider Redis (Upstash) or Vercel KV for persistent, shared caching (no Vercel Pro required)
 
 ---
 
@@ -92,27 +95,27 @@ Both endpoints:
 
 **Purpose**: Fetch today's AI/Tech industry news via Google CSE
 
-**Response Format**:
+**Response Format** (structure only, content is fetched from real sources):
 ```json
 {
-  "success": true,
   "news": [
     {
-      "title": "OpenAI releases GPT-5 with breakthrough capabilities",
-      "summary_zh": "OpenAI 发布 GPT-5，性能大幅提升",
-      "why_it_matters_zh": "可能影响 AI 工程师薪资水平和就业市场需求",
-      "url": "https://techcrunch.com/...",
-      "source": "TechCrunch",
-      "published_at": "2025-12-30T10:00:00Z",
-      "tags": ["AI", "OpenAI"],
-      "relevanceScore": 95
+      "title": "[Article title from real source]",
+      "url": "[Real article URL]",
+      "source_name": "[Source domain]",
+      "snippet": "[Article snippet]",
+      "summary_zh": "[Chinese summary generated from title]",
+      "why_it_matters_zh": "[Why it matters in Chinese]",
+      "published_at": "[ISO 8601 timestamp if available]",
+      "as_of": "[ISO 8601 timestamp when data was fetched]"
     }
-    // ... 3-4 more articles
   ],
   "updated_at": "12/30, 10:35 AM PT",
   "cache_hit": false
 }
 ```
+
+**Note**: All content (title, URL, snippet) is fetched from real news sources via Google CSE. The API does not fabricate or generate news content.
 
 **Google CSE Queries**:
 - `"AI news today site:techcrunch.com OR site:theverge.com OR site:reuters.com"`
@@ -127,10 +130,13 @@ Both endpoints:
 - Exclude: politics, war, social news
 - Return top 4-5 articles by relevance score
 
-**Caching**:
-- TTL: 30 minutes
-- Stale-while-revalidate: 60 minutes
-- Cache key: `ai_news`
+**Caching Strategy**:
+- **Current Implementation**: In-memory cache using JavaScript `Map`
+- **TTL**: 30 minutes (1800 seconds)
+- **Cache Key**: `ai_news`
+- **Stale-While-Revalidate**: If fresh fetch fails, return stale cache with `stale: true` flag
+- **Limitations**: Cache is per-instance (not shared across serverless function instances), lost on cold starts
+- **Production Upgrade**: Consider Redis (Upstash) or Vercel KV for persistent, shared caching (no Vercel Pro required)
 
 ---
 
