@@ -23,8 +23,13 @@ interface NewsItem {
   as_of: string; // ISO 8601 timestamp with timezone
 }
 
-async function searchGoogle(query: string, num: number = 5): Promise<any[]> {
-  const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_CSE_API_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&num=${num}&sort=date`;
+async function searchGoogle(query: string, num: number = 5, dateRestrict?: string): Promise<any[]> {
+  // Build URL with optional date restriction (e.g., 'd7' for past week)
+  let url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_CSE_API_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&num=${num}&sort=date`;
+  
+  if (dateRestrict) {
+    url += `&dateRestrict=${dateRestrict}`;
+  }
   
   const response = await fetch(url);
   if (!response.ok) {
@@ -142,54 +147,96 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     // Fetch fresh news from Google CSE
-    // Use simpler queries to ensure results
+    // Use targeted queries with date restrictions to get recent, relevant news
     const queries = [
-      'AI artificial intelligence news',
-      'OpenAI ChatGPT news',
-      'NVIDIA GPU AI news',
-      'tech layoffs hiring news',
-      'Google Meta Microsoft AI news',
+      // AI company news (past 3 days)
+      { query: 'OpenAI OR ChatGPT OR GPT', dateRestrict: 'd3' },
+      { query: 'NVIDIA AI chips OR GPU', dateRestrict: 'd3' },
+      { query: 'Google Gemini OR DeepMind', dateRestrict: 'd3' },
+      { query: 'Meta AI OR Llama', dateRestrict: 'd3' },
+      { query: 'Microsoft Azure AI OR Copilot', dateRestrict: 'd3' },
+      
+      // Job market & tech industry (past week)
+      { query: 'tech layoffs OR hiring 2025', dateRestrict: 'd7' },
+      { query: 'Silicon Valley jobs OR salaries', dateRestrict: 'd7' },
+      
+      // Broader AI/tech news (past 3 days)
+      { query: 'artificial intelligence breakthrough', dateRestrict: 'd3' },
+      { query: 'AI startup funding OR investment', dateRestrict: 'd7' },
     ];
     
     // Search with multiple queries and combine results
     const allResults = await Promise.all(
-      queries.map(q => searchGoogle(q, 3))
+      queries.map(({ query, dateRestrict }) => 
+        searchGoogle(query, 3, dateRestrict).catch(err => {
+          console.error(`[AI News] Query "${query}" failed:`, err.message);
+          return []; // Return empty array on failure
+        })
+      )
     );
     
     // Flatten and deduplicate by URL
     const seen = new Set<string>();
     const uniqueResults: any[] = [];
     
-    // Preferred tech news sources
-    const preferredSources = [
+    // Tier 1: Premium tech news sources (highest priority)
+    const tier1Sources = [
       'techcrunch.com', 'theverge.com', 'arstechnica.com',
+      'reuters.com', 'bloomberg.com', 'theinformation.com'
+    ];
+    
+    // Tier 2: Quality tech news sources
+    const tier2Sources = [
       'venturebeat.com', 'wired.com', 'engadget.com',
-      'reuters.com', 'bloomberg.com', 'cnbc.com'
+      'cnbc.com', 'ft.com', 'wsj.com', 'nytimes.com'
+    ];
+    
+    // Sources to exclude (low quality, aggregators, etc.)
+    const excludedSources = [
+      'youtube.com', 'reddit.com', 'twitter.com', 'x.com',
+      'facebook.com', 'pinterest.com'
     ];
     
     for (const results of allResults) {
       for (const result of results) {
         if (!seen.has(result.link)) {
-          seen.add(result.link);
-          uniqueResults.push(result);
+          // Skip excluded sources
+          const isExcluded = excludedSources.some(source => 
+            result.link?.toLowerCase().includes(source)
+          );
+          
+          if (!isExcluded) {
+            seen.add(result.link);
+            uniqueResults.push(result);
+          }
         }
       }
     }
     
-    // Sort by: 1) Preferred sources first, 2) Most recent date
+    // Sort by: 1) Source tier, 2) Most recent date
     uniqueResults.sort((a, b) => {
-      const aIsPreferred = preferredSources.some(source => 
+      const aIsTier1 = tier1Sources.some(source => 
         a.link?.toLowerCase().includes(source)
       );
-      const bIsPreferred = preferredSources.some(source => 
+      const bIsTier1 = tier1Sources.some(source => 
+        b.link?.toLowerCase().includes(source)
+      );
+      const aIsTier2 = tier2Sources.some(source => 
+        a.link?.toLowerCase().includes(source)
+      );
+      const bIsTier2 = tier2Sources.some(source => 
         b.link?.toLowerCase().includes(source)
       );
       
-      // If one is preferred and the other isn't, preferred comes first
-      if (aIsPreferred && !bIsPreferred) return -1;
-      if (!aIsPreferred && bIsPreferred) return 1;
+      // Tier 1 sources come first
+      if (aIsTier1 && !bIsTier1) return -1;
+      if (!aIsTier1 && bIsTier1) return 1;
       
-      // If both are same preference level, sort by date (most recent first)
+      // Then Tier 2 sources
+      if (aIsTier2 && !bIsTier2) return -1;
+      if (!aIsTier2 && bIsTier2) return 1;
+      
+      // Within same tier, sort by date (most recent first)
       const aDate = a.pagemap?.metatags?.[0]?.['article:published_time'] || 
                     a.pagemap?.metatags?.[0]?.['og:updated_time'] ||
                     '1970-01-01';
