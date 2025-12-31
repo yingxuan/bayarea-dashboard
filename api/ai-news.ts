@@ -40,14 +40,41 @@ function enhanceNewsItem(item: any): NewsItem {
   const snippet = item.snippet.toLowerCase();
   
   // Generate Chinese summary based on keywords
+  // Extract key information from title and snippet for more specific summaries
   let summary_zh = item.title;
   let why_it_matters_zh = '可能影响科技行业发展趋势';
   
+  // Helper function to extract key details
+  const extractDetails = (text: string) => {
+    const lowerText = text.toLowerCase();
+    const details: string[] = [];
+    
+    // Extract product names
+    if (lowerText.includes('gpt-5')) details.push('GPT-5');
+    if (lowerText.includes('gpt-4')) details.push('GPT-4');
+    if (lowerText.includes('gemini')) details.push('Gemini');
+    if (lowerText.includes('claude')) details.push('Claude');
+    
+    // Extract financial info
+    const investmentMatch = text.match(/\$(\d+(?:\.\d+)?\s*(?:billion|million|B|M))/i);
+    if (investmentMatch) details.push(investmentMatch[0]);
+    
+    // Extract percentage changes
+    const percentMatch = text.match(/(\d+(?:\.\d+)?%)/i);
+    if (percentMatch) details.push(percentMatch[0]);
+    
+    return details;
+  };
+  
+  const details = extractDetails(title + ' ' + snippet);
+  
   if (title.includes('nvidia') || title.includes('nvda') || snippet.includes('nvidia')) {
-    summary_zh = `英伟达${title.includes('chip') ? '芯片' : ''}${title.includes('earnings') ? '财报' : ''}最新动态`;
+    const detailsStr = details.length > 0 ? `（${details.join('、')}）` : '';
+    summary_zh = `英伟达${title.includes('chip') ? '芯片' : ''}${title.includes('earnings') ? '财报' : ''}最新动态${detailsStr}`;
     why_it_matters_zh = '如果你持有 NVDA 股票或期权，或从事 AI 基础设施相关工作，这条新闻值得关注';
   } else if (title.includes('openai') || snippet.includes('openai') || title.includes('chatgpt')) {
-    summary_zh = 'OpenAI 最新动态';
+    const detailsStr = details.length > 0 ? `（${details.join('、')}）` : '';
+    summary_zh = `OpenAI 最新动态${detailsStr}`;
     why_it_matters_zh = 'OpenAI 的产品和战略变化可能影响 AI 工程师的技能需求和薪资水平';
   } else if (title.includes('meta') || title.includes('facebook')) {
     summary_zh = 'Meta 最新动态';
@@ -71,7 +98,8 @@ function enhanceNewsItem(item: any): NewsItem {
     summary_zh = '科技公司招聘动态';
     why_it_matters_zh = '招聘信号可能预示就业市场升温，是谈 offer 和跳槽的好时机';
   } else if (title.includes('ai') || snippet.includes('artificial intelligence')) {
-    summary_zh = 'AI 行业最新进展';
+    const detailsStr = details.length > 0 ? `（${details.join('、')}）` : '';
+    summary_zh = `AI 行业最新进展${detailsStr}`;
     why_it_matters_zh = 'AI 技术的发展可能创造新的就业机会或改变现有岗位的技能要求';
   } else if (title.includes('chip') || title.includes('semiconductor')) {
     summary_zh = '芯片行业动态';
@@ -114,12 +142,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     // Fetch fresh news from Google CSE
+    // Prioritize authoritative tech news sources
     const queries = [
-      'AI artificial intelligence news today',
-      'OpenAI ChatGPT news',
-      'NVIDIA GPU AI news',
-      'tech layoffs hiring news',
-      'Meta Google Microsoft AI news',
+      'AI artificial intelligence news today site:techcrunch.com OR site:theverge.com OR site:arstechnica.com',
+      'OpenAI ChatGPT news site:techcrunch.com OR site:venturebeat.com',
+      'NVIDIA GPU AI news site:theverge.com OR site:arstechnica.com',
+      'tech layoffs hiring AI site:techcrunch.com OR site:theverge.com',
+      'Meta Google Microsoft AI news site:venturebeat.com OR site:arstechnica.com',
     ];
     
     // Search with multiple queries and combine results

@@ -59,7 +59,8 @@ async function fetchSPY(): Promise<MarketDataItem> {
 }
 
 async function fetchGold(): Promise<MarketDataItem> {
-  const results = await searchGoogle('gold price today USD per ounce');
+  // Prioritize authoritative gold price sources
+  const results = await searchGoogle('gold price today USD per ounce site:kitco.com OR site:goldprice.org OR site:bullionvault.com');
   const topResult = results[0];
   
   const price = extractNumber(topResult.snippet) || 2650;
@@ -91,10 +92,12 @@ async function fetchBTC(): Promise<MarketDataItem> {
 }
 
 async function fetchMortgageRate(): Promise<MarketDataItem> {
-  const results = await searchGoogle('California jumbo mortgage rate today');
+  // Prioritize current rate pages from authoritative mortgage sites
+  const results = await searchGoogle('California jumbo mortgage rates today site:bankrate.com OR site:nerdwallet.com OR site:mortgagenewsdaily.com');
   const topResult = results[0];
   
   // Try to extract rate (as percentage)
+  // Look for patterns like "6.9%", "6.875%", "7.125%"
   const snippet = topResult.snippet;
   const rateMatch = snippet.match(/(\d+\.?\d*)%/);
   const rate = rateMatch ? parseFloat(rateMatch[1]) / 100 : 0.069;
@@ -110,13 +113,22 @@ async function fetchMortgageRate(): Promise<MarketDataItem> {
 }
 
 async function fetchPowerball(): Promise<MarketDataItem> {
-  const results = await searchGoogle('powerball jackpot today');
+  // Prioritize official lottery sources
+  const results = await searchGoogle('powerball jackpot site:powerball.com OR site:lottery.com OR site:usamega.com');
   const topResult = results[0];
   
-  // Try to extract jackpot amount (in millions)
+  // Try to extract jackpot amount (in millions or billions)
   const snippet = topResult.snippet;
-  const amountMatch = snippet.match(/\$(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:million|M)/i);
-  const amount = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) * 1000000 : 485000000;
+  // Match patterns like "$485 million", "$1.2 billion", "$485M", "$1.2B"
+  const millionMatch = snippet.match(/\$(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:million|M)/i);
+  const billionMatch = snippet.match(/\$(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:billion|B)/i);
+  
+  let amount = 485000000; // Default fallback
+  if (billionMatch) {
+    amount = parseFloat(billionMatch[1].replace(/,/g, '')) * 1000000000;
+  } else if (millionMatch) {
+    amount = parseFloat(millionMatch[1].replace(/,/g, '')) * 1000000;
+  }
   
   return {
     name: 'POWERBALL',
