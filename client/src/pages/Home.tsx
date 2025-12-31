@@ -91,13 +91,18 @@ export default function Home() {
         {/* Industry News */}
         {industryNews && industryNews.news && (
           <section className="mb-12">
-            <h2 className="text-lg font-bold font-mono mb-4 flex items-center gap-2">
-              <span className="neon-text-blue">行业新闻</span>
-              <span className="text-muted-foreground text-sm">
-                | 今日必须知道的事
-              </span>
-            </h2>
-            <NewsList news={industryNews.news} maxItems={4} showTags={true} />
+            <div className="mb-4">
+              <h2 className="text-lg font-bold font-mono flex items-center gap-2 mb-1">
+                <span className="neon-text-blue">行业新闻</span>
+                <span className="text-muted-foreground text-sm">
+                  | 今日必须知道的事
+                </span>
+              </h2>
+              <p className="text-xs text-muted-foreground font-mono">
+                今天影响钱和工作的科技要闻
+              </p>
+            </div>
+            <NewsList news={industryNews.news} maxItems={5} showTags={true} />
           </section>
         )}
 

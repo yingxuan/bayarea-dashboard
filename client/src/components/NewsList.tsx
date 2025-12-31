@@ -1,7 +1,8 @@
 /**
- * Data Punk Design: News list with relevance scores
- * - Monospace font for metadata
- * - Neon accent for high relevance scores
+ * Data Punk Design: Judgment-based news list
+ * - Chinese summary as primary content (friend-reminder tone)
+ * - English title hidden/secondary
+ * - "Why it matters" prominently displayed
  */
 
 import { ExternalLink, Zap } from "lucide-react";
@@ -54,12 +55,14 @@ export default function NewsList({
           rel="noopener noreferrer"
           className="block glow-border rounded-sm p-4 bg-card hover:bg-card/80 transition-all group"
         >
-          <div className="flex items-start justify-between gap-4 mb-2">
-            <h3 className="text-base font-semibold group-hover:text-primary transition-colors flex-1">
-              {item.title}
+          <div className="flex items-start justify-between gap-4 mb-3">
+            {/* Chinese Summary - PRIMARY CONTENT */}
+            <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors flex-1 leading-relaxed">
+              {item.summary_zh}
             </h3>
+            
+            {/* Relevance Score */}
             <div className="flex items-center gap-2 flex-shrink-0">
-              {/* Relevance Score */}
               <div
                 className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-mono ${
                   item.relevanceScore >= 90
@@ -74,36 +77,41 @@ export default function NewsList({
             </div>
           </div>
 
-          {/* Summary */}
-          <p className="text-sm text-foreground/80 mb-2">{item.summary_zh}</p>
-
-          {/* Why it matters */}
-          <div className="bg-muted/30 border-l-2 border-primary/50 pl-3 py-2 mb-3">
-            <p className="text-sm text-primary/90">
-              <span className="font-semibold">为什么重要：</span>
+          {/* Why it matters - PROMINENT */}
+          <div className="bg-primary/5 border-l-2 border-primary pl-3 py-2 mb-3">
+            <p className="text-sm text-foreground/90 leading-relaxed">
+              <span className="font-semibold text-primary">💡 为什么重要：</span>
               {item.why_it_matters_zh}
             </p>
           </div>
 
-          {/* Tags */}
-          {showTags && item.tags && item.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-2">
-              {item.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="px-2 py-1 text-xs font-mono bg-secondary text-secondary-foreground rounded"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
+          {/* Tags and Metadata */}
+          <div className="flex items-center justify-between gap-4">
+            {/* Tags */}
+            {showTags && item.tags && item.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {item.tags.slice(0, 2).map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-2 py-1 text-xs font-mono bg-secondary text-secondary-foreground rounded"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
 
-          {/* Metadata */}
-          <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
-            <span>{item.source}</span>
-            <span>•</span>
-            <span>{formatTimeAgo(item.publishedAt)}</span>
+            {/* Metadata */}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono ml-auto">
+              <span>{item.source}</span>
+              <span>•</span>
+              <span>{formatTimeAgo(item.publishedAt)}</span>
+            </div>
+          </div>
+
+          {/* English Title - HIDDEN by default, shown on hover */}
+          <div className="mt-2 text-xs text-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity">
+            {item.title}
           </div>
         </a>
       ))}
