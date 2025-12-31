@@ -41,6 +41,32 @@ function extractNumber(text: string): number | null {
   return match ? parseFloat(match[0]) : null;
 }
 
+function extractBitcoinPrice(text: string): number | null {
+  // Bitcoin prices are typically 5-6 digits (e.g., 95000, 103000)
+  // Remove commas first
+  const cleaned = text.replace(/,/g, '');
+  
+  // Look for patterns like "$95,000" or "95000" or "$95000.50"
+  const patterns = [
+    /\$([\d]{5,6}(?:\.[\d]{1,2})?)/,  // $95000 or $95000.50
+    /([\d]{5,6}(?:\.[\d]{1,2})?)\s*(?:USD|dollars?)/i,  // 95000 USD
+    /bitcoin.*?([\d]{5,6}(?:\.[\d]{1,2})?)/i,  // bitcoin ... 95000
+  ];
+  
+  for (const pattern of patterns) {
+    const match = cleaned.match(pattern);
+    if (match && match[1]) {
+      const price = parseFloat(match[1]);
+      // Sanity check: Bitcoin price should be between 10,000 and 500,000
+      if (price >= 10000 && price <= 500000) {
+        return price;
+      }
+    }
+  }
+  
+  return null;
+}
+
 async function fetchSPY(): Promise<MarketDataItem> {
   const results = await searchGoogle('SPY stock price today');
   const topResult = results[0];
@@ -70,15 +96,18 @@ async function fetchSPY(): Promise<MarketDataItem> {
 }
 
 async function fetchGold(): Promise<MarketDataItem> {
-  // Try authoritative sources first, fallback to general search
+  // Try authoritative sources first
   let results = await searchGoogle('gold price today USD per ounce site:kitco.com OR site:goldprice.org OR site:bullionvault.com');
   
-  // Fallback if no results from specific sites
+  // Fallback to general search but exclude YouTube
   if (!results || results.length === 0) {
-    results = await searchGoogle('gold price today USD per ounce');
+    results = await searchGoogle('gold price today USD per ounce -site:youtube.com');
   }
   
-  const topResult = results[0];
+  // Filter out YouTube results
+  const filteredResults = results.filter(r => !r.link?.includes('youtube.com'));
+  const topResult = filteredResults[0];
+  
   if (!topResult) {
     // Return fallback data if no results at all
     return {
@@ -118,7 +147,8 @@ async function fetchBTC(): Promise<MarketDataItem> {
     };
   }
   
-  const price = extractNumber(topResult.snippet) || 95000;
+  // Use specialized Bitcoin price extraction
+  const price = extractBitcoinPrice(topResult.snippet) || 95000;
   
   return {
     name: 'BTC',
@@ -168,15 +198,22 @@ async function fetchMortgageRate(): Promise<MarketDataItem> {
 }
 
 async function fetchPowerball(): Promise<MarketDataItem> {
-  // Try official sources first, fallback to general search
-  let results = await searchGoogle('powerball jackpot site:powerball.com OR site:lottery.com OR site:usamega.com');
+  // Try official powerball.com first with specific query
+  let results = await searchGoogle('Powerball jackpot next drawing site:powerball.com');
   
-  // Fallback if no results from specific sites
+  // Fallback to other lottery sites
   if (!results || results.length === 0) {
-    results = await searchGoogle('powerball jackpot today');
+    results = await searchGoogle('powerball jackpot site:lottery.com OR site:usamega.com');
   }
   
-  const topResult = results[0];
+  // Last fallback: general search but exclude YouTube
+  if (!results || results.length === 0) {
+    results = await searchGoogle('powerball jackpot today -site:youtube.com');
+  }
+  
+  // Filter out YouTube results
+  const filteredResults = results.filter(r => !r.link?.includes('youtube.com'));
+  const topResult = filteredResults[0];
   if (!topResult) {
     // Return fallback data
     return {
