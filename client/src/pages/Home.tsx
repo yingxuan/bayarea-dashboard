@@ -17,9 +17,6 @@ import GossipList from "@/components/GossipList";
 import ShowsCard from "@/components/ShowsCard";
 import JobMarketTemperature from "@/components/JobMarketTemperature";
 import {
-  mockFinanceVideos,
-  mockBreakingNews,
-  mockIndustryVideos,
   mockChineseRestaurants,
   mockBubbleTeaShops,
   mockShows,
@@ -29,10 +26,7 @@ import {
 import { config } from "@/config";
 
 export default function Home() {
-  const [financeVideos, setFinanceVideos] = useState<any>(null);
-  const [breakingNews, setBreakingNews] = useState<any>(null);
   const [industryNews, setIndustryNews] = useState<any>(null);
-  const [industryVideos, setIndustryVideos] = useState<any>(null);
   const [chineseRestaurants, setChineseRestaurants] = useState<any>(null);
   const [bubbleTeaShops, setBubbleTeaShops] = useState<any>(null);
   const [shows, setShows] = useState<any>(null);
@@ -40,10 +34,7 @@ export default function Home() {
   const [deals, setDeals] = useState<any>(null);
 
   useEffect(() => {
-    // Load mock data
-    setFinanceVideos(mockFinanceVideos);
-    setBreakingNews(mockBreakingNews);
-    setIndustryVideos(mockIndustryVideos);
+    // Load mock data for non-API sections
     setChineseRestaurants(mockChineseRestaurants);
     setBubbleTeaShops(mockBubbleTeaShops);
     setShows(mockShows);
@@ -56,10 +47,13 @@ export default function Home() {
         const response = await fetch(`${config.apiBaseUrl}/api/ai-news`);
         if (response.ok) {
           const result = await response.json();
+          console.log('[Home] AI news loaded:', result.news.length, 'items');
           setIndustryNews({ news: result.news });
+        } else {
+          console.error('[Home] AI news API error:', response.statusText);
         }
       } catch (error) {
-        console.error("Failed to fetch AI news:", error);
+        console.error("[Home] Failed to fetch AI news:", error);
       }
     }
     
@@ -79,31 +73,7 @@ export default function Home() {
           <FinanceOverview />
         </section>
 
-        {/* Finance Videos */}
-        {financeVideos && financeVideos.videos && (
-          <section className="mb-12">
-            <h2 className="text-lg font-bold font-mono mb-4 flex items-center gap-2">
-              <span className="neon-text-blue">美股财经博主</span>
-              <span className="text-muted-foreground text-sm">
-                | 最新视频
-              </span>
-            </h2>
-            <VideoGrid videos={financeVideos.videos} maxItems={6} />
-          </section>
-        )}
 
-        {/* Breaking News */}
-        {breakingNews && breakingNews.news && (
-          <section className="mb-12">
-            <h2 className="text-lg font-bold font-mono mb-4 flex items-center gap-2">
-              <span className="neon-text-blue">股市突发新闻</span>
-              <span className="text-muted-foreground text-sm">
-                | Breaking News
-              </span>
-            </h2>
-            <NewsList news={breakingNews.news} maxItems={3} />
-          </section>
-        )}
 
         {/* Industry News */}
         {industryNews && industryNews.news && (
@@ -123,18 +93,7 @@ export default function Home() {
           </section>
         )}
 
-        {/* Industry Videos */}
-        {industryVideos && industryVideos.videos && (
-          <section className="mb-12">
-            <h2 className="text-lg font-bold font-mono mb-4 flex items-center gap-2">
-              <span className="neon-text-blue">科技新闻视频</span>
-              <span className="text-muted-foreground text-sm">
-                | 本周总结
-              </span>
-            </h2>
-            <VideoGrid videos={industryVideos.videos} maxItems={4} />
-          </section>
-        )}
+
 
         {/* Job Market Temperature */}
         <section className="mb-12">

@@ -83,7 +83,7 @@ async function fetchSPY(): Promise<MarketDataItem> {
   }
   
   // Try to extract price from snippet
-  const price = extractNumber(topResult.snippet) || 687.01;
+  const price = extractNumber(topResult.snippet || topResult.htmlSnippet || '') || 687.01;
   
   return {
     name: 'SPY',
@@ -183,7 +183,7 @@ async function fetchMortgageRate(): Promise<MarketDataItem> {
   }
   
   // Try to extract rate (as percentage)
-  const snippet = topResult.snippet;
+  const snippet = topResult.snippet || topResult.htmlSnippet || '';
   const rateMatch = snippet.match(/(\d+\.?\d*)%/);
   const rate = rateMatch ? parseFloat(rateMatch[1]) / 100 : 0.069;
   
@@ -227,7 +227,7 @@ async function fetchPowerball(): Promise<MarketDataItem> {
   }
   
   // Try to extract jackpot amount (in millions or billions)
-  const snippet = topResult.snippet;
+  const snippet = topResult.snippet || topResult.htmlSnippet || '';
   const millionMatch = snippet.match(/\$(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:million|M)/i);
   const billionMatch = snippet.match(/\$(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:billion|B)/i);
   
