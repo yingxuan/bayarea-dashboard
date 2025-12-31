@@ -43,21 +43,23 @@ Both endpoints:
   "data": {
     "spy": {
       "name": "SPY",
-      "value": 687.01,
-      "change": 5.23,
-      "change_percent": 0.77,
+      "value": 123.45,
+      "change": 1.23,
+      "change_percent": 1.01,
       "unit": "USD",
       "source_name": "Yahoo Finance",
-      "source_url": "https://finance.yahoo.com/quote/SPY"
+      "source_url": "https://finance.yahoo.com/quote/SPY",
+      "as_of": "2025-12-30T10:35:00-08:00"
     },
     "gold": {
       "name": "Gold",
-      "value": 4375.60,
+      "value": 1234.56,
       "change": 12.30,
-      "change_percent": 0.28,
+      "change_percent": 1.00,
       "unit": "USD",
       "source_name": "Kitco",
-      "source_url": "https://www.kitco.com/..."
+      "source_url": "https://www.kitco.com/...",
+      "as_of": "2025-12-30T10:35:00-08:00"
     },
     // ... btc, mortgage, powerball
   },
@@ -223,12 +225,12 @@ bayarea-dashboard/
 After deployment, verify:
 
 - [ ] `/api/market` returns real data with clickable sources
-- [ ] SPY price matches current market value (~$687)
-- [ ] Gold price matches current market value (~$4375)
-- [ ] All market data items have valid `source_url`
+- [ ] Each market data item includes `as_of` timestamp
+- [ ] Values match the linked source page at request time (manually verify)
+- [ ] All market data items have valid `source_url` that opens successfully
 - [ ] `/api/ai-news` returns 4-5 recent articles
-- [ ] All news articles have clickable URLs
-- [ ] News articles are from last 24 hours
+- [ ] All news articles have clickable URLs that open successfully
+- [ ] News articles are from last 24 hours (check `published_at`)
 - [ ] Frontend displays "数据更新于: [timestamp] PT"
 - [ ] Source links open in new tab with ExternalLink icon
 - [ ] No Google CSE credentials visible in browser DevTools
@@ -245,40 +247,45 @@ After deployment, verify:
   "data": {
     "spy": {
       "name": "SPY",
-      "value": 687.01,
-      "change": 5.23,
-      "change_percent": 0.77,
+      "value": 123.45,
+      "change": 1.23,
+      "change_percent": 1.01,
       "unit": "USD",
       "source_name": "Yahoo Finance",
-      "source_url": "https://finance.yahoo.com/quote/SPY"
+      "source_url": "https://finance.yahoo.com/quote/SPY",
+      "as_of": "2025-12-30T10:35:00-08:00"
     },
     "gold": {
       "name": "Gold",
-      "value": 4375.60,
+      "value": 1234.56,
       "unit": "USD/oz",
       "source_name": "Kitco",
-      "source_url": "https://www.kitco.com/gold-price-today-usa/"
+      "source_url": "https://www.kitco.com/gold-price-today-usa/",
+      "as_of": "2025-12-30T10:35:00-08:00"
     },
     "btc": {
       "name": "Bitcoin",
-      "value": 95234.50,
+      "value": 12345.67,
       "unit": "USD",
       "source_name": "CoinMarketCap",
-      "source_url": "https://coinmarketcap.com/currencies/bitcoin/"
+      "source_url": "https://coinmarketcap.com/currencies/bitcoin/",
+      "as_of": "2025-12-30T10:35:00-08:00"
     },
     "mortgage": {
       "name": "CA Jumbo 7/1 ARM",
       "value": 6.875,
       "unit": "%",
       "source_name": "Bankrate",
-      "source_url": "https://www.bankrate.com/mortgages/mortgage-rates/california/"
+      "source_url": "https://www.bankrate.com/mortgages/mortgage-rates/california/",
+      "as_of": "2025-12-30T10:35:00-08:00"
     },
     "powerball": {
       "name": "Powerball Jackpot",
-      "value": 485000000,
+      "value": 123000000,
       "unit": "USD",
       "source_name": "Powerball Official",
-      "source_url": "https://www.powerball.com/"
+      "source_url": "https://www.powerball.com/",
+      "as_of": "2025-12-30T10:35:00-08:00"
     }
   },
   "updated_at": "12/30, 10:35 AM PT",

@@ -67,10 +67,11 @@ Returns real-time market data for:
   "data": {
     "spy": {
       "name": "SPY",
-      "value": 687.01,
+      "value": 123.45,
       "unit": "USD",
       "source_name": "finance.yahoo.com",
-      "source_url": "https://finance.yahoo.com/quote/SPY"
+      "source_url": "https://finance.yahoo.com/quote/SPY",
+      "as_of": "2025-12-30T18:54:00.000Z"
     },
     "gold": { ... },
     "btc": { ... },
@@ -81,6 +82,8 @@ Returns real-time market data for:
   "cache_hit": false
 }
 ```
+
+**Note**: All data values are fetched in real-time from Google CSE. The `as_of` timestamp indicates when the data was retrieved. To validate accuracy, manually check that values match the linked `source_url` at the time of the request.
 
 ### GET /api/ai-news
 
@@ -96,13 +99,17 @@ Returns 4-5 recent AI/Tech industry news articles.
       "source_name": "techcrunch.com",
       "snippet": "...",
       "summary_zh": "OpenAI 发布 GPT-5",
-      "why_it_matters_zh": "..."
+      "why_it_matters_zh": "...",
+      "published_at": "2025-12-30T10:00:00Z",
+      "as_of": "2025-12-30T18:54:00.000Z"
     }
   ],
   "updated_at": "12/30, 6:54 PM PT",
   "cache_hit": false
 }
 ```
+
+**Note**: The `as_of` timestamp indicates when the news data was retrieved. The `published_at` field (if available) shows when the article was originally published.
 
 ## Caching
 

@@ -20,6 +20,7 @@ interface NewsItem {
   summary_zh?: string;
   why_it_matters_zh?: string;
   published_at?: string;
+  as_of: string; // ISO 8601 timestamp with timezone
 }
 
 async function searchGoogle(query: string, num: number = 5): Promise<any[]> {
@@ -85,6 +86,7 @@ function enhanceNewsItem(item: any): NewsItem {
     summary_zh,
     why_it_matters_zh,
     published_at: item.pagemap?.metatags?.[0]?.['article:published_time'],
+    as_of: new Date().toISOString(),
   };
 }
 

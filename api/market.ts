@@ -20,6 +20,7 @@ interface MarketDataItem {
   unit: string;
   source_name: string;
   source_url: string;
+  as_of: string; // ISO 8601 timestamp with timezone
 }
 
 async function searchGoogle(query: string): Promise<any[]> {
@@ -53,6 +54,7 @@ async function fetchSPY(): Promise<MarketDataItem> {
     unit: 'USD',
     source_name: topResult.displayLink || 'Yahoo Finance',
     source_url: topResult.link,
+    as_of: new Date().toISOString(),
   };
 }
 
@@ -68,6 +70,7 @@ async function fetchGold(): Promise<MarketDataItem> {
     unit: 'USD/oz',
     source_name: topResult.displayLink || 'Kitco',
     source_url: topResult.link,
+    as_of: new Date().toISOString(),
   };
 }
 
@@ -83,6 +86,7 @@ async function fetchBTC(): Promise<MarketDataItem> {
     unit: 'USD',
     source_name: topResult.displayLink || 'CoinMarketCap',
     source_url: topResult.link,
+    as_of: new Date().toISOString(),
   };
 }
 
@@ -101,6 +105,7 @@ async function fetchMortgageRate(): Promise<MarketDataItem> {
     unit: 'rate',
     source_name: topResult.displayLink || 'Bankrate',
     source_url: topResult.link,
+    as_of: new Date().toISOString(),
   };
 }
 
@@ -119,6 +124,7 @@ async function fetchPowerball(): Promise<MarketDataItem> {
     unit: 'USD',
     source_name: topResult.displayLink || 'Powerball.com',
     source_url: topResult.link,
+    as_of: new Date().toISOString(),
   };
 }
 
