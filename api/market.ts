@@ -35,32 +35,132 @@ async function searchGoogle(query: string): Promise<any[]> {
   return data.items || [];
 }
 
-function extractNumber(text: string): number | null {
-  // Remove commas and extract number
-  const match = text.replace(/,/g, '').match(/[\d.]+/);
-  return match ? parseFloat(match[0]) : null;
-}
-
-function extractBitcoinPrice(text: string): number | null {
-  // Bitcoin prices are typically 5-6 digits (e.g., 95000, 103000)
-  // Remove commas first
+/**
+ * Extract SPY price from snippet
+ * SPY prices are typically $400-$800
+ * Avoid matching "500" from "S&P 500"
+ */
+function extractSPYPrice(text: string): number | null {
   const cleaned = text.replace(/,/g, '');
   
-  // Look for patterns like "$95,000" or "95000" or "$95000.50"
-  const patterns = [
-    /\$([\d]{5,6}(?:\.[\d]{1,2})?)/,  // $95000 or $95000.50
-    /([\d]{5,6}(?:\.[\d]{1,2})?)\s*(?:USD|dollars?)/i,  // 95000 USD
-    /bitcoin.*?([\d]{5,6}(?:\.[\d]{1,2})?)/i,  // bitcoin ... 95000
-  ];
+  // Pattern 1: Look for price with $ symbol and 2 decimal places
+  const dollarPattern = /\$([4-8][\d]{2}\.[\d]{2})/;
+  const dollarMatch = cleaned.match(dollarPattern);
+  if (dollarMatch) {
+    const price = parseFloat(dollarMatch[1]);
+    if (price >= 400 && price <= 800) {
+      return price;
+    }
+  }
   
-  for (const pattern of patterns) {
-    const match = cleaned.match(pattern);
-    if (match && match[1]) {
-      const price = parseFloat(match[1]);
-      // Sanity check: Bitcoin price should be between 10,000 and 500,000
-      if (price >= 10000 && price <= 500000) {
-        return price;
-      }
+  // Pattern 2: Look for 3-digit number with decimals (not "500" alone)
+  const pricePattern = /([4-8][\d]{2}\.[\d]{1,2})/;
+  const priceMatch = cleaned.match(pricePattern);
+  if (priceMatch) {
+    const price = parseFloat(priceMatch[1]);
+    if (price >= 400 && price <= 800) {
+      return price;
+    }
+  }
+  
+  // Pattern 3: Look for "SPY" followed by price
+  const spyAfterPattern = /SPY.*?([4-8][\d]{2}\.[\d]{1,2})/i;
+  const spyAfterMatch = cleaned.match(spyAfterPattern);
+  if (spyAfterMatch) {
+    const price = parseFloat(spyAfterMatch[1]);
+    if (price >= 400 && price <= 800) {
+      return price;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Extract Gold price from snippet
+ * Gold prices are typically $2,000-$5,000 per oz
+ * Avoid matching "26" from "Feb 26" or other dates
+ */
+function extractGoldPrice(text: string): number | null {
+  const cleaned = text.replace(/,/g, '');
+  
+  // Pattern 1: Look for 4-digit price in gold range with $ symbol
+  const dollarPattern = /\$([2-5][\d]{3}\.[\d]{1,2})/;
+  const dollarMatch = cleaned.match(dollarPattern);
+  if (dollarMatch) {
+    const price = parseFloat(dollarMatch[1]);
+    if (price >= 2000 && price <= 5000) {
+      return price;
+    }
+  }
+  
+  // Pattern 2: Look for 4-digit number in gold range
+  const pricePattern = /([2-5][\d]{3}\.[\d]{1,2})/;
+  const priceMatch = cleaned.match(pricePattern);
+  if (priceMatch) {
+    const price = parseFloat(priceMatch[1]);
+    if (price >= 2000 && price <= 5000) {
+      return price;
+    }
+  }
+  
+  // Pattern 3: Look for "gold" followed by 4-digit price
+  const goldAfterPattern = /gold.*?([2-5][\d]{3}\.[\d]{1,2})/i;
+  const goldAfterMatch = cleaned.match(goldAfterPattern);
+  if (goldAfterMatch) {
+    const price = parseFloat(goldAfterMatch[1]);
+    if (price >= 2000 && price <= 5000) {
+      return price;
+    }
+  }
+  
+  // Pattern 4: Look for price before "gold"
+  const goldBeforePattern = /([2-5][\d]{3}\.[\d]{1,2}).*?gold/i;
+  const goldBeforeMatch = cleaned.match(goldBeforePattern);
+  if (goldBeforeMatch) {
+    const price = parseFloat(goldBeforeMatch[1]);
+    if (price >= 2000 && price <= 5000) {
+      return price;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Extract Bitcoin price from snippet
+ * Bitcoin prices are typically $10,000-$150,000
+ */
+function extractBitcoinPrice(text: string): number | null {
+  const cleaned = text.replace(/,/g, '');
+  
+  // Pattern 1: Look for 5-6 digit price with $ symbol
+  const dollarPattern = /\$([\d]{5,6}\.[\d]{1,2})/;
+  const dollarMatch = cleaned.match(dollarPattern);
+  if (dollarMatch) {
+    const price = parseFloat(dollarMatch[1]);
+    if (price >= 10000 && price <= 150000) {
+      return price;
+    }
+  }
+  
+  // Pattern 2: Look for 5-6 digit number with decimals
+  const pricePattern = /([\d]{5,6}\.[\d]{1,2})/;
+  const priceMatch = cleaned.match(pricePattern);
+  if (priceMatch) {
+    const price = parseFloat(priceMatch[1]);
+    if (price >= 10000 && price <= 150000) {
+      return price;
+    }
+  }
+  
+  // Pattern 3: Look for "bitcoin" or "BTC" followed by price
+  const btcAfterPattern = /(?:bitcoin|BTC).*?([\d]{5,6}\.[\d]{1,2})/i;
+  const btcAfterMatch = cleaned.match(btcAfterPattern);
+  if (btcAfterMatch) {
+    const price = parseFloat(btcAfterMatch[1]);
+    if (price >= 10000 && price <= 150000) {
+      return price;
     }
   }
   
@@ -98,7 +198,7 @@ async function fetchSPY(): Promise<MarketDataItem> {
       };
     }
     
-    const price = extractNumber(snippet) || 687.01;
+    const price = extractSPYPrice(snippet) || 687.01;
     console.log(`[fetchSPY] Extracted price: ${price} from snippet: ${snippet.substring(0, 100)}`);
     
     return {
@@ -174,7 +274,7 @@ async function fetchGold(): Promise<MarketDataItem> {
       };
     }
     
-    const price = extractNumber(snippet) || 2650;
+    const price = extractGoldPrice(snippet) || 2650;
     console.log(`[fetchGold] Extracted price: ${price} from snippet: ${snippet.substring(0, 100)}`);
     
     return {
@@ -305,8 +405,28 @@ async function fetchMortgageRate(): Promise<MarketDataItem> {
       };
     }
     
-    const rateMatch = snippet.match(/(\d+\.?\d*)%/);
-    const rate = rateMatch ? parseFloat(rateMatch[1]) / 100 : 0.069;
+    // Pattern 1: Look for percentage with % symbol
+    const percentPattern = /([\d]+\.[\d]{1,2})%/;
+    const percentMatch = snippet.match(percentPattern);
+    let rate = 0.069; // Default fallback
+    
+    if (percentMatch) {
+      const extracted = parseFloat(percentMatch[1]) / 100;
+      // Mortgage rates typically 3%-10%
+      if (extracted >= 0.03 && extracted <= 0.10) {
+        rate = extracted;
+      }
+    } else {
+      // Pattern 2: Look for "rate" followed by percentage
+      const ratePattern = /rate.*?([\d]+\.[\d]{1,2})%/i;
+      const rateMatch = snippet.match(ratePattern);
+      if (rateMatch) {
+        const extracted = parseFloat(rateMatch[1]) / 100;
+        if (extracted >= 0.03 && extracted <= 0.10) {
+          rate = extracted;
+        }
+      }
+    }
     console.log(`[fetchMortgageRate] Extracted rate: ${rate} from snippet: ${snippet.substring(0, 100)}`);
     
     return {
@@ -387,14 +507,26 @@ async function fetchPowerball(): Promise<MarketDataItem> {
     }
     
     // Try to extract jackpot amount (in millions or billions)
-    const millionMatch = snippet.match(/\$(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:million|M)/i);
-    const billionMatch = snippet.match(/\$(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:billion|B)/i);
-    
+    // Pattern 1: Billion format
+    const billionPattern = /\$?([\d,]+(?:\.[\d]+)?)\s*(?:billion|B)/i;
+    const billionMatch = snippet.match(billionPattern);
     let amount = 485000000; // Default fallback
+    
     if (billionMatch) {
-      amount = parseFloat(billionMatch[1].replace(/,/g, '')) * 1000000000;
-    } else if (millionMatch) {
-      amount = parseFloat(millionMatch[1].replace(/,/g, '')) * 1000000;
+      const extracted = parseFloat(billionMatch[1].replace(/,/g, '')) * 1000000000;
+      if (extracted >= 100000000 && extracted <= 10000000000) {
+        amount = extracted;
+      }
+    } else {
+      // Pattern 2: Million format
+      const millionPattern = /\$?([\d,]+(?:\.[\d]+)?)\s*(?:million|M)/i;
+      const millionMatch = snippet.match(millionPattern);
+      if (millionMatch) {
+        const extracted = parseFloat(millionMatch[1].replace(/,/g, '')) * 1000000;
+        if (extracted >= 100000000 && extracted <= 10000000000) {
+          amount = extracted;
+        }
+      }
     }
     
     console.log(`[fetchPowerball] Extracted amount: $${amount} from snippet: ${snippet.substring(0, 100)}`);
