@@ -264,16 +264,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Calculate cache metadata
     let cacheAgeSeconds = 0;
-    let cacheExpiresInSeconds = Math.floor(CACHE_TTL / 1000);
+    let cacheExpiresInSeconds = Math.floor(NEWS_CACHE_TTL / 1000);
     
     if (cached) {
       cacheAgeSeconds = Math.floor((now - cached.timestamp) / 1000);
-      const remainingMs = CACHE_TTL - (now - cached.timestamp);
+      const remainingMs = NEWS_CACHE_TTL - (now - cached.timestamp);
       cacheExpiresInSeconds = Math.max(0, Math.floor(remainingMs / 1000));
     }
     
     // Return cached data if valid and not bypassed
-    if (!nocache && cached && now - cached.timestamp < CACHE_TTL) {
+    if (!nocache && cached && now - cached.timestamp < NEWS_CACHE_TTL) {
       const cachedData = cached.data;
       // Ensure cached response has standard structure
       if (!cachedData.status) {
@@ -283,7 +283,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         cachedData.count = cachedData.count ?? cachedData.items.length;
         cachedData.asOf = cachedData.asOf || cachedData.fetched_at || new Date().toISOString();
         cachedData.source = cachedData.source || SOURCE_INFO.NEWSAPI;
-        cachedData.ttlSeconds = cachedData.ttlSeconds || Math.floor(CACHE_TTL / 1000);
+        cachedData.ttlSeconds = cachedData.ttlSeconds || ttlMsToSeconds(NEWS_CACHE_TTL);
       }
       return res.status(200).json({
         ...cachedData,
@@ -309,10 +309,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         items: [],
         count: 0,
         asOf: fetchedAtISO,
-        source: {
-          name: 'NewsAPI.org',
-          ...SOURCE_INFO.NEWSAPI,
-        },
+        source: SOURCE_INFO.NEWSAPI,
         ttlSeconds: 0, // No caching for unavailable
         error: 'NEWS_API_KEY not configured. Get your free API key at https://newsapi.org/register',
         cache_hit: false,

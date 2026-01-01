@@ -485,16 +485,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Calculate cache metadata
     let cacheAgeSeconds = 0;
-    let cacheExpiresInSeconds = Math.floor(CACHE_TTL / 1000);
+    let cacheExpiresInSeconds = Math.floor(MARKET_CACHE_TTL / 1000);
     
     if (cached) {
       cacheAgeSeconds = Math.floor((now - cached.timestamp) / 1000);
-      const remainingMs = CACHE_TTL - (now - cached.timestamp);
+      const remainingMs = MARKET_CACHE_TTL - (now - cached.timestamp);
       cacheExpiresInSeconds = Math.max(0, Math.floor(remainingMs / 1000));
     }
     
     // Return cached data if valid and not bypassed
-    if (!nocache && cached && now - cached.timestamp < CACHE_TTL) {
+    if (!nocache && cached && now - cached.timestamp < MARKET_CACHE_TTL) {
       return res.status(200).json({
         ...cached.data,
         cache_hit: true,

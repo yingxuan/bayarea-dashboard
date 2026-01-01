@@ -22,7 +22,7 @@ interface GossipItem {
 }
 
 async function fetchHNItem(id: number): Promise<any> {
-  const response = await fetch(`${HN_API_BASE}/item/${id}.json`);
+  const response = await fetch(`${API_URLS.HACKER_NEWS}/item/${id}.json`);
   if (!response.ok) {
     throw new Error(`HN API error: ${response.statusText}`);
   }
@@ -99,7 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         cachedData.count = cachedData.count ?? cachedData.items.length;
         cachedData.asOf = cachedData.asOf || cachedData.fetched_at || new Date().toISOString();
         cachedData.source = cachedData.source || SOURCE_INFO.HACKER_NEWS;
-        cachedData.ttlSeconds = cachedData.ttlSeconds || Math.floor(CACHE_TTL / 1000);
+        cachedData.ttlSeconds = cachedData.ttlSeconds || ttlMsToSeconds(GOSSIP_CACHE_TTL);
       }
       return res.status(200).json({
         ...cachedData,
@@ -118,10 +118,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       items: gossip.slice(0, 8), // Top 8 stories
       count: gossip.slice(0, 8).length,
       asOf: fetchedAtISO,
-      source: {
-        name: 'Hacker News',
-        ...SOURCE_INFO.HACKER_NEWS,
-      },
+      source: SOURCE_INFO.HACKER_NEWS,
       ttlSeconds,
       cache_hit: false,
       fetched_at: fetchedAtISO,
@@ -179,10 +176,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       items: [],
       count: 0,
       asOf: errorAtISO,
-      source: {
-        name: 'Hacker News',
-        ...SOURCE_INFO.HACKER_NEWS,
-      },
+      source: SOURCE_INFO.HACKER_NEWS,
       ttlSeconds: 0,
       error: error instanceof Error ? error.message : 'Unknown error',
       cache_hit: false,
