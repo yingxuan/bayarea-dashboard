@@ -6,6 +6,8 @@
  */
 
 import { MessageCircle, Eye, ExternalLink, Flame } from "lucide-react";
+import TimeAgo from "@/components/TimeAgo";
+import SourceLink from "@/components/SourceLink";
 
 interface GossipPost {
   id: string;
@@ -25,19 +27,6 @@ interface GossipListProps {
 
 export default function GossipList({ posts, maxItems = 10 }: GossipListProps) {
   const displayPosts = posts.slice(0, maxItems);
-
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-
-    if (diffHours < 1) return "刚刚";
-    if (diffHours < 24) return `${diffHours}小时前`;
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays}天前`;
-    return `${Math.floor(diffDays / 7)}周前`;
-  };
 
   const formatNumber = (num: number) => {
     if (num >= 1000) {
@@ -96,8 +85,13 @@ export default function GossipList({ posts, maxItems = 10 }: GossipListProps) {
                   <span>{formatNumber(post.viewCount)}</span>
                 </div>
                 <span>•</span>
-                <span>{formatTimeAgo(post.publishedAt)}</span>
-                <ExternalLink className="w-3 h-3 ml-auto" />
+                <TimeAgo isoString={post.publishedAt} />
+                <SourceLink
+                  name=""
+                  url={post.url}
+                  position="title-row"
+                  className="ml-auto"
+                />
               </div>
             </div>
           </div>

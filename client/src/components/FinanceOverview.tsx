@@ -7,9 +7,11 @@
  */
 
 import { useEffect, useState } from "react";
-import { TrendingUp, TrendingDown, ExternalLink, AlertCircle, Clock } from "lucide-react";
+import { TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
 import { generateMarketJudgment, type MarketJudgment } from "@/lib/judgment";
 import { config } from "@/config";
+import DataStateBadge from "@/components/DataStateBadge";
+import SourceLink from "@/components/SourceLink";
 
 interface MarketDataItem {
   name: string;
@@ -60,8 +62,6 @@ export default function FinanceOverview() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        console.log("[FinanceOverview] Fetching market data from serverless API...");
-        
         // Fetch market data from serverless API
         const response = await fetch(`${config.apiBaseUrl}/api/market`);
         
@@ -77,8 +77,6 @@ export default function FinanceOverview() {
           mortgage: MarketDataItem;
           powerball: MarketDataItem;
         } = result.data;
-        
-        console.log("Market data received:", marketData);
         
         // Helper function to extract source info (prefer new fields, fallback to legacy)
         const getSourceInfo = (item: MarketDataItem) => {
@@ -112,7 +110,7 @@ export default function FinanceOverview() {
           return 0;
         };
         
-        // Calculate portfolio value (mock for now)
+        // Calculate portfolio value
         const portfolioValue = 150000;
         const spyStatus = getStatus(marketData.spy);
         const spyChangePercent = spyStatus === "ok" ? (marketData.spy.change_percent || 0) : 0;
@@ -195,7 +193,6 @@ export default function FinanceOverview() {
           lastUpdated: result.updated_at || result.fetched_at || new Date().toLocaleString(),
         };
 
-        console.log("Finance data processed:", result2);
         setData(result2);
         
         // Generate market judgment (only if SPY is available)
@@ -205,7 +202,6 @@ export default function FinanceOverview() {
           btcChangePercent: getStatus(marketData.btc) === "ok" ? (marketData.btc.change_percent || 0) : 0,
           goldChangePercent: getStatus(marketData.gold) === "ok" ? (marketData.gold.change_percent || 0) : 0,
         }) : null;
-        console.log("Market judgment:", marketJudgment);
         setJudgment(marketJudgment);
       } catch (error) {
         console.error("Failed to fetch finance overview:", error);
@@ -367,17 +363,8 @@ export default function FinanceOverview() {
                 <div className="text-xs text-muted-foreground">
                   {index.code}
                 </div>
-                {/* Status indicator */}
-                {isStale && (
-                  <div className="flex items-center gap-1 text-xs text-yellow-400" title="数据可能已过期">
-                    <Clock className="w-3 h-3" />
-                  </div>
-                )}
-                {isUnavailable && (
-                  <div className="flex items-center gap-1 text-xs text-red-400" title="数据不可用">
-                    <AlertCircle className="w-3 h-3" />
-                  </div>
-                )}
+                {/* Status badge */}
+                <DataStateBadge status={index.status} />
               </div>
               <div className="text-sm font-medium text-foreground mb-2">
                 {index.name}
@@ -394,17 +381,11 @@ export default function FinanceOverview() {
                       {index.error}
                     </div>
                   )}
-                  {index.sourceUrl && index.sourceUrl !== "#" && (
-                    <a
-                      href={index.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-2"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      查看来源
-                    </a>
-                  )}
+                  <SourceLink
+                    name="查看来源"
+                    url={index.sourceUrl || "#"}
+                    position="card-bottom"
+                  />
                 </div>
               ) : (
                 <>
@@ -439,17 +420,13 @@ export default function FinanceOverview() {
                 </>
               )}
               
-              {/* Source link - only show for ok/stale, or as "查看来源" for unavailable */}
-              {!isUnavailable && index.source && index.sourceUrl && index.sourceUrl !== "#" && (
-                <a
-                  href={index.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-400 hover:text-blue-300 mt-2 flex items-center gap-1"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  {index.source}
-                </a>
+              {/* Source link - fixed position bottom-right */}
+              {!isUnavailable && (
+                <SourceLink
+                  name={index.source || ""}
+                  url={index.sourceUrl || "#"}
+                  position="card-bottom"
+                />
               )}
               
               {index.note && (

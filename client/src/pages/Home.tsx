@@ -9,23 +9,21 @@
 import { useEffect, useState } from "react";
 import Navigation from "@/components/Navigation";
 import FinanceOverview from "@/components/FinanceOverview";
-import VideoGrid from "@/components/VideoGrid";
 import NewsList from "@/components/NewsList";
 import FoodGrid from "@/components/FoodGrid";
 import DealsGrid from "@/components/DealsGrid";
 import GossipList from "@/components/GossipList";
 import ShowsCard from "@/components/ShowsCard";
-import JobMarketTemperature from "@/components/JobMarketTemperature";
-// Mock data removed - all sections now use real APIs
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { config } from "@/config";
 
 export default function Home() {
   const [industryNews, setIndustryNews] = useState<any>(null);
   const [chineseRestaurants, setChineseRestaurants] = useState<any>(null);
-  const [bubbleTeaShops, setBubbleTeaShops] = useState<any>(null);
   const [shows, setShows] = useState<any>(null);
   const [gossip, setGossip] = useState<any>(null);
   const [deals, setDeals] = useState<any>(null);
+  const [showLifestyle, setShowLifestyle] = useState(false);
 
   useEffect(() => {
     // Fetch all real data from APIs
@@ -35,7 +33,6 @@ export default function Home() {
         const response = await fetch(`${config.apiBaseUrl}/api/ai-news`);
         if (response.ok) {
           const result = await response.json();
-          console.log('[Home] AI news loaded:', result.news?.length || 0, 'items');
           setIndustryNews({ news: result.news || [] });
         }
       } catch (error) {
@@ -48,7 +45,6 @@ export default function Home() {
         const response = await fetch(`${config.apiBaseUrl}/api/restaurants`);
         if (response.ok) {
           const result = await response.json();
-          console.log('[Home] Restaurants loaded:', result.restaurants?.length || 0, 'items');
           setChineseRestaurants(result.restaurants || []);
         }
       } catch (error) {
@@ -61,7 +57,6 @@ export default function Home() {
         const response = await fetch(`${config.apiBaseUrl}/api/shows`);
         if (response.ok) {
           const result = await response.json();
-          console.log('[Home] Shows loaded:', result.shows?.length || 0, 'items');
           setShows(result.shows || []);
         }
       } catch (error) {
@@ -74,12 +69,13 @@ export default function Home() {
         const response = await fetch(`${config.apiBaseUrl}/api/gossip`);
         if (response.ok) {
           const result = await response.json();
-          console.log('[Home] Gossip loaded:', result.gossip?.length || 0, 'items');
-          setGossip(result.gossip || []);
+          // Support both new (items) and legacy (gossip) format
+          const items = result.items || result.gossip || [];
+          setGossip(items.length > 0 ? { posts: items } : null);
         }
       } catch (error) {
         console.error("[Home] Failed to fetch gossip:", error);
-        setGossip([]);
+        setGossip(null);
       }
 
       // Deals (Reddit)
@@ -87,16 +83,15 @@ export default function Home() {
         const response = await fetch(`${config.apiBaseUrl}/api/deals`);
         if (response.ok) {
           const result = await response.json();
-          console.log('[Home] Deals loaded:', result.deals?.length || 0, 'items');
-          setDeals(result.deals || []);
+          // Support both new (items) and legacy (deals) format
+          const items = result.items || result.deals || [];
+          setDeals(items.length > 0 ? { deals: items } : null);
         }
       } catch (error) {
         console.error("[Home] Failed to fetch deals:", error);
-        setDeals([]);
+        setDeals(null);
       }
 
-      // Bubble tea shops - keeping as empty for now (can add later)
-      setBubbleTeaShops([]);
     }
     
     loadAllData();
@@ -105,93 +100,150 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  // Check if any lifestyle modules have data
+  const hasLifestyleData = 
+    (chineseRestaurants && chineseRestaurants.restaurants && chineseRestaurants.restaurants.length > 0) ||
+    (shows && shows.shows && shows.shows.length > 0) ||
+    (gossip && gossip.posts && gossip.posts.length > 0) ||
+    (deals && deals.deals && deals.deals.length > 0);
+
   return (
     <div className="min-h-screen bg-background grid-bg">
       <Navigation />
 
       <main className="container py-6">
-        {/* Finance Section */}
-        <section className="mb-8">
-          <FinanceOverview />
-        </section>
+        {/* First Screen: Core Blocks */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Block 1: Asset Summary (Left, fixed on first screen) */}
+          <div className="lg:col-span-1">
+            <FinanceOverview />
+          </div>
 
-        {/* Industry News */}
-        {industryNews && industryNews.news && industryNews.news.length > 0 && (
-          <section className="mb-8">
+          {/* Block 2: Market-moving News (Center, main area) */}
+          <div className="lg:col-span-1">
+            {industryNews && industryNews.news && industryNews.news.length > 0 ? (
+              <div>
+                <div className="mb-3">
+                  <h2 className="text-lg font-bold font-mono flex items-center gap-2 mb-1">
+                    <span className="neon-text-blue">市场要闻</span>
+                    <span className="text-muted-foreground text-sm">
+                      | Market-moving News
+                    </span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground font-mono">
+                    今天影响钱和工作的科技要闻
+                  </p>
+                </div>
+                <NewsList news={industryNews.news} maxItems={5} showTags={true} />
+              </div>
+            ) : (
+              <div className="glow-border rounded-sm p-4 bg-card">
+                <div className="text-sm text-muted-foreground font-mono">
+                  市场要闻暂不可用
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Block 3: Videos (Right, with Tabs) */}
+          <div className="lg:col-span-1">
             <div className="mb-3">
               <h2 className="text-lg font-bold font-mono flex items-center gap-2 mb-1">
-                <span className="neon-text-blue">行业新闻</span>
+                <span className="neon-text-blue">视频</span>
                 <span className="text-muted-foreground text-sm">
-                  | 今日必须知道的事
+                  | Videos
                 </span>
               </h2>
-              <p className="text-xs text-muted-foreground font-mono">
-                今天影响钱和工作的科技要闻
-              </p>
             </div>
-            <NewsList news={industryNews.news} maxItems={5} showTags={true} />
-          </section>
-        )}
+            <Tabs defaultValue="finance" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="finance">Finance</TabsTrigger>
+                <TabsTrigger value="tech">Tech</TabsTrigger>
+              </TabsList>
+              <TabsContent value="finance" className="mt-0">
+                <div className="glow-border rounded-sm p-4 bg-card">
+                  <div className="text-sm text-muted-foreground font-mono text-center py-8">
+                    Finance videos coming soon
+                  </div>
+                </div>
+              </TabsContent>
+              <TabsContent value="tech" className="mt-0">
+                <div className="glow-border rounded-sm p-4 bg-card">
+                  <div className="text-sm text-muted-foreground font-mono text-center py-8">
+                    Tech videos coming soon
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
 
-        {/* Food Section */}
-        {chineseRestaurants && chineseRestaurants.restaurants && chineseRestaurants.restaurants.length > 0 && (
-          <section className="mb-8">
-            <h2 className="text-lg font-bold font-mono mb-3 flex items-center gap-2">
-              <span className="neon-text-blue">吃喝玩乐</span>
-              <span className="text-muted-foreground text-sm">
-                | 今天去哪吃
+        {/* Second Screen: Lifestyle Modules (Collapsible) */}
+        {hasLifestyleData && (
+          <div className="border-t border-border pt-8">
+            <button
+              onClick={() => setShowLifestyle(!showLifestyle)}
+              className="w-full flex items-center justify-between mb-4 p-3 glow-border rounded-sm bg-card hover:bg-card/80 transition-colors"
+            >
+              <h2 className="text-lg font-bold font-mono flex items-center gap-2">
+                <span className="neon-text-blue">生活</span>
+                <span className="text-muted-foreground text-sm">
+                  | Lifestyle
+                </span>
+              </h2>
+              <span className="text-sm text-muted-foreground font-mono">
+                {showLifestyle ? "收起" : "展开"}
               </span>
-            </h2>
-            <div>
-              <h3 className="text-base font-semibold mb-3 font-mono text-foreground/90">
-                中餐推荐 <span className="text-muted-foreground text-sm">10 miles</span>
-              </h3>
-              <FoodGrid
-                places={chineseRestaurants.restaurants}
-                maxItems={4}
-                showCuisine={true}
-              />
-            </div>
-          </section>
-        )}
+            </button>
 
-        {/* Shows Section */}
-        {shows && shows.shows && shows.shows.length > 0 && (
-          <section className="mb-8">
-            <h2 className="text-lg font-bold font-mono mb-3 flex items-center gap-2">
-              <span className="neon-text-blue">追剧推荐</span>
-              <span className="text-muted-foreground text-sm">
-                | 下班后看什么
-              </span>
-            </h2>
-            <ShowsCard shows={shows.shows} maxItems={3} />
-          </section>
-        )}
+            {showLifestyle && (
+              <div className="space-y-8">
+                {/* Food Section */}
+                {chineseRestaurants && chineseRestaurants.restaurants && chineseRestaurants.restaurants.length > 0 && (
+                  <section>
+                    <h3 className="text-base font-semibold mb-3 font-mono text-foreground/90">
+                      中餐推荐 <span className="text-muted-foreground text-sm">10 miles</span>
+                    </h3>
+                    <FoodGrid
+                      places={chineseRestaurants.restaurants}
+                      maxItems={4}
+                      showCuisine={true}
+                    />
+                  </section>
+                )}
 
-        {/* Gossip Section */}
-        {gossip && gossip.posts && gossip.posts.length > 0 && (
-          <section className="mb-8">
-            <h2 className="text-lg font-bold font-mono mb-3 flex items-center gap-2">
-              <span className="neon-text-blue">吃瓜</span>
-              <span className="text-muted-foreground text-sm">
-                | 华人论坛热帖
-              </span>
-            </h2>
-            <GossipList posts={gossip.posts} maxItems={10} />
-          </section>
-        )}
+                {/* Shows Section */}
+                {shows && shows.shows && shows.shows.length > 0 && (
+                  <section>
+                    <h3 className="text-base font-semibold mb-3 font-mono text-foreground/90">
+                      追剧推荐
+                    </h3>
+                    <ShowsCard shows={shows.shows} maxItems={3} />
+                  </section>
+                )}
 
-        {/* Deals Section */}
-        {deals && deals.deals && deals.deals.length > 0 && (
-          <section className="mb-8">
-            <h2 className="text-lg font-bold font-mono mb-3 flex items-center gap-2">
-              <span className="neon-text-blue">遍地羊毛</span>
-              <span className="text-muted-foreground text-sm">
-                | 今天有什么值得省钱的
-              </span>
-            </h2>
-            <DealsGrid deals={deals.deals} maxItems={12} />
-          </section>
+                {/* Gossip Section */}
+                {gossip && gossip.posts && gossip.posts.length > 0 && (
+                  <section>
+                    <h3 className="text-base font-semibold mb-3 font-mono text-foreground/90">
+                      吃瓜
+                    </h3>
+                    <GossipList posts={gossip.posts} maxItems={10} />
+                  </section>
+                )}
+
+                {/* Deals Section */}
+                {deals && deals.deals && deals.deals.length > 0 && (
+                  <section>
+                    <h3 className="text-base font-semibold mb-3 font-mono text-foreground/90">
+                      遍地羊毛
+                    </h3>
+                    <DealsGrid deals={deals.deals} maxItems={12} />
+                  </section>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </main>
 

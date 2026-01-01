@@ -6,6 +6,7 @@
  */
 
 import { MapPin, Star, ExternalLink } from "lucide-react";
+import SourceLink from "@/components/SourceLink";
 
 interface FoodPlace {
   id: string;
@@ -91,10 +92,15 @@ export default function FoodGrid({
               </div>
             )}
 
-            {/* Address */}
-            <div className="flex items-start gap-1 text-xs text-muted-foreground">
+            {/* Address and Source */}
+            <div className="flex items-start justify-between gap-1 text-xs text-muted-foreground">
               <span className="line-clamp-2 flex-1">{place.address}</span>
-              <ExternalLink className="w-3 h-3 flex-shrink-0 mt-0.5" />
+              <SourceLink
+                name=""
+                url={place.url}
+                position="title-row"
+                className="flex-shrink-0"
+              />
             </div>
           </div>
         </a>

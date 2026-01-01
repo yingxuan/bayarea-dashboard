@@ -6,6 +6,8 @@
  */
 
 import { ExternalLink, Zap } from "lucide-react";
+import TimeAgo from "@/components/TimeAgo";
+import SourceLink from "@/components/SourceLink";
 
 interface NewsItem {
   id: string;
@@ -31,19 +33,6 @@ export default function NewsList({
   showTags = false,
 }: NewsListProps) {
   const displayNews = news.slice(0, maxItems);
-
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-
-    if (diffMinutes < 60) return `${diffMinutes}分钟前`;
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours}小时前`;
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}天前`;
-  };
 
   return (
     <div className="space-y-3">
@@ -103,9 +92,14 @@ export default function NewsList({
 
             {/* Metadata */}
             <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono ml-auto">
-              <span>{item.source}</span>
+              <SourceLink
+                name={item.source}
+                url={item.url}
+                position="title-row"
+                className="text-muted-foreground hover:text-blue-400"
+              />
               <span>•</span>
-              <span>{formatTimeAgo(item.publishedAt)}</span>
+              <TimeAgo isoString={item.publishedAt} />
             </div>
           </div>
 

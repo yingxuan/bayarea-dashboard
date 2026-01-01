@@ -5,6 +5,8 @@
  */
 
 import { Star, ExternalLink } from "lucide-react";
+import TimeAgo from "@/components/TimeAgo";
+import SourceLink from "@/components/SourceLink";
 
 interface Show {
   id: string;
@@ -62,7 +64,12 @@ export default function ShowsCard({ shows, maxItems = 3 }: ShowsCardProps) {
               <span className="text-muted-foreground font-mono">
                 {show.platform}
               </span>
-              <ExternalLink className="w-4 h-4 text-muted-foreground ml-auto" />
+              <SourceLink
+                name=""
+                url={show.url}
+                position="title-row"
+                className="ml-auto"
+              />
             </div>
           </div>
         </a>

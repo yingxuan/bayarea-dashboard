@@ -5,6 +5,8 @@
  */
 
 import { ExternalLink } from "lucide-react";
+import TimeAgo from "@/components/TimeAgo";
+import SourceLink from "@/components/SourceLink";
 
 interface Video {
   id: string;
@@ -22,19 +24,6 @@ interface VideoGridProps {
 
 export default function VideoGrid({ videos, maxItems = 6 }: VideoGridProps) {
   const displayVideos = videos.slice(0, maxItems);
-
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-
-    if (diffHours < 1) return "刚刚";
-    if (diffHours < 24) return `${diffHours}小时前`;
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays}天前`;
-    return `${Math.floor(diffDays / 7)}周前`;
-  };
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -66,8 +55,12 @@ export default function VideoGrid({ videos, maxItems = 6 }: VideoGridProps) {
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span className="font-mono">{video.channel}</span>
               <div className="flex items-center gap-1">
-                <span>{formatTimeAgo(video.publishedAt)}</span>
-                <ExternalLink className="w-3 h-3" />
+                <TimeAgo isoString={video.publishedAt} />
+                <SourceLink
+                  name=""
+                  url={video.url}
+                  position="title-row"
+                />
               </div>
             </div>
           </div>

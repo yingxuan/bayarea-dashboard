@@ -6,6 +6,8 @@
  */
 
 import { ExternalLink, TrendingUp, Clock, Flame } from "lucide-react";
+import TimeAgo from "@/components/TimeAgo";
+import SourceLink from "@/components/SourceLink";
 
 interface Deal {
   id: string;
@@ -150,11 +152,17 @@ export default function DealsGrid({ deals, maxItems = 12 }: DealsGridProps) {
             </div>
           </div>
 
-          {/* Expiry */}
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="w-3 h-3" />
-            <span>{formatTimeRemaining(deal.expiresAt)}</span>
-            <ExternalLink className="w-3 h-3 ml-auto" />
+          {/* Expiry and Source */}
+          <div className="flex items-center justify-between gap-1 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              <span>{formatTimeRemaining(deal.expiresAt)}</span>
+            </div>
+            <SourceLink
+              name=""
+              url={deal.url}
+              position="title-row"
+            />
           </div>
         </a>
       ))}
