@@ -46,7 +46,7 @@ export default function NewsList({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {displayNews.map((item) => (
         <a
           key={item.id}

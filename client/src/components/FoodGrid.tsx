@@ -38,7 +38,7 @@ export default function FoodGrid({
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {displayPlaces.map((place) => (
         <a
           key={place.id}
@@ -61,7 +61,7 @@ export default function FoodGrid({
           </div>
 
           {/* Info */}
-          <div className="p-3">
+          <div className="p-4">
             <h3 className="text-sm font-semibold mb-2 group-hover:text-primary transition-colors line-clamp-1">
               {place.name}
             </h3>

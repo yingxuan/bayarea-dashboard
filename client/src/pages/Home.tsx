@@ -109,18 +109,16 @@ export default function Home() {
     <div className="min-h-screen bg-background grid-bg">
       <Navigation />
 
-      <main className="container py-8">
+      <main className="container py-6">
         {/* Finance Section */}
-        <section className="mb-12">
+        <section className="mb-8">
           <FinanceOverview />
         </section>
 
-
-
         {/* Industry News */}
-        {industryNews && industryNews.news && (
-          <section className="mb-12">
-            <div className="mb-4">
+        {industryNews && industryNews.news && industryNews.news.length > 0 && (
+          <section className="mb-8">
+            <div className="mb-3">
               <h2 className="text-lg font-bold font-mono flex items-center gap-2 mb-1">
                 <span className="neon-text-blue">行业新闻</span>
                 <span className="text-muted-foreground text-sm">
@@ -135,59 +133,32 @@ export default function Home() {
           </section>
         )}
 
-
-
-        {/* Job Market Temperature - Disabled as per constraints (no real data source yet) */}
-        {/* 
-        <section className="mb-12">
-          <JobMarketTemperature 
-            layoffCount={2}
-            hiringCount={5}
-            spyChangePercent={0.26}
-          />
-        </section>
-        */}
-
         {/* Food Section */}
-        <section className="mb-12">
-          <h2 className="text-lg font-bold font-mono mb-6 flex items-center gap-2">
-            <span className="neon-text-blue">吃喝玩乐</span>
-            <span className="text-muted-foreground text-sm">
-              | 今天去哪吃
-            </span>
-          </h2>
-
-          <div className="space-y-8">
-            {/* Chinese Restaurants */}
-            {chineseRestaurants && chineseRestaurants.restaurants && (
-              <div>
-                <h3 className="text-base font-semibold mb-4 font-mono text-foreground/90">
-                  中餐推荐 <span className="text-muted-foreground text-sm">10 miles</span>
-                </h3>
-                <FoodGrid
-                  places={chineseRestaurants.restaurants}
-                  maxItems={4}
-                  showCuisine={true}
-                />
-              </div>
-            )}
-
-            {/* Bubble Tea */}
-            {bubbleTeaShops && bubbleTeaShops.shops && (
-              <div>
-                <h3 className="text-base font-semibold mb-4 font-mono text-foreground/90">
-                  奶茶店 <span className="text-muted-foreground text-sm">5 miles</span>
-                </h3>
-                <FoodGrid places={bubbleTeaShops.shops} maxItems={4} />
-              </div>
-            )}
-          </div>
-        </section>
+        {chineseRestaurants && chineseRestaurants.restaurants && chineseRestaurants.restaurants.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-lg font-bold font-mono mb-3 flex items-center gap-2">
+              <span className="neon-text-blue">吃喝玩乐</span>
+              <span className="text-muted-foreground text-sm">
+                | 今天去哪吃
+              </span>
+            </h2>
+            <div>
+              <h3 className="text-base font-semibold mb-3 font-mono text-foreground/90">
+                中餐推荐 <span className="text-muted-foreground text-sm">10 miles</span>
+              </h3>
+              <FoodGrid
+                places={chineseRestaurants.restaurants}
+                maxItems={4}
+                showCuisine={true}
+              />
+            </div>
+          </section>
+        )}
 
         {/* Shows Section */}
-        {shows && shows.shows && (
-          <section className="mb-12">
-            <h2 className="text-lg font-bold font-mono mb-4 flex items-center gap-2">
+        {shows && shows.shows && shows.shows.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-lg font-bold font-mono mb-3 flex items-center gap-2">
               <span className="neon-text-blue">追剧推荐</span>
               <span className="text-muted-foreground text-sm">
                 | 下班后看什么
@@ -198,9 +169,9 @@ export default function Home() {
         )}
 
         {/* Gossip Section */}
-        {gossip && gossip.posts && (
-          <section className="mb-12">
-            <h2 className="text-lg font-bold font-mono mb-4 flex items-center gap-2">
+        {gossip && gossip.posts && gossip.posts.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-lg font-bold font-mono mb-3 flex items-center gap-2">
               <span className="neon-text-blue">吃瓜</span>
               <span className="text-muted-foreground text-sm">
                 | 华人论坛热帖
@@ -211,9 +182,9 @@ export default function Home() {
         )}
 
         {/* Deals Section */}
-        {deals && deals.deals && (
-          <section className="mb-12">
-            <h2 className="text-lg font-bold font-mono mb-4 flex items-center gap-2">
+        {deals && deals.deals && deals.deals.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-lg font-bold font-mono mb-3 flex items-center gap-2">
               <span className="neon-text-blue">遍地羊毛</span>
               <span className="text-muted-foreground text-sm">
                 | 今天有什么值得省钱的

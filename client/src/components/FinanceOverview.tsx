@@ -242,15 +242,15 @@ export default function FinanceOverview() {
   return (
     <div className="space-y-6">
       {/* Main Overview Card */}
-      <div className="glow-border rounded-sm p-6 bg-card">
-        <h2 className="text-2xl font-bold text-primary mb-4 flex items-center gap-2">
+      <div className="glow-border rounded-sm p-4 bg-card">
+        <h2 className="text-xl font-bold text-primary mb-3 flex items-center gap-2">
           <span className="text-primary">票子</span>
           <span className="text-muted-foreground text-base">| 早日财富自由</span>
         </h2>
         
         {/* Judgment Layer */}
         {judgment && (
-          <div className={`mb-6 p-4 rounded-sm border-l-4 ${
+            <div className={`mb-4 p-3 rounded-sm border-l-4 ${
             judgment.status === 'positive' ? 'border-green-400 bg-green-400/10' :
             judgment.status === 'negative' ? 'border-red-400 bg-red-400/10' :
             'border-blue-400 bg-blue-400/10'
@@ -273,7 +273,7 @@ export default function FinanceOverview() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Stock Market Value */}
           <div className="text-center">
             <div className="text-muted-foreground text-sm mb-1">股票市值</div>
@@ -350,7 +350,7 @@ export default function FinanceOverview() {
       </div>
 
       {/* Indices Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {data.indices.map((index) => {
           const isUnavailable = index.status === "unavailable";
           const isStale = index.status === "stale";

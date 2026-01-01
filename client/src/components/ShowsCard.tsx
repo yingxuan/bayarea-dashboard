@@ -25,7 +25,7 @@ export default function ShowsCard({ shows, maxItems = 3 }: ShowsCardProps) {
   const displayShows = shows.slice(0, maxItems);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {displayShows.map((show) => (
         <a
           key={show.id}
