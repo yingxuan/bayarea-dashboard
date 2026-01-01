@@ -10,7 +10,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const NEWS_API_KEY = process.env.NEWS_API_KEY!;
-const NEWS_API_URL = 'https://newsapi.org/v2/everything';
+const NEWS_API_URL_EVERYTHING = 'https://newsapi.org/v2/everything';
+const NEWS_API_URL_HEADLINES = 'https://newsapi.org/v2/top-headlines';
 
 // In-memory cache
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -28,9 +29,9 @@ interface NewsItem {
 }
 
 /**
- * Fetch news from NewsAPI.org
+ * Fetch news from NewsAPI.org using "everything" endpoint
  */
-async function fetchNewsAPI(query: string, pageSize: number = 10): Promise<any[]> {
+async function fetchNewsAPIEverything(query: string, pageSize: number = 10): Promise<any[]> {
   if (!NEWS_API_KEY) {
     console.warn('[AI News] NEWS_API_KEY not configured, returning empty results');
     return [];
@@ -44,11 +45,44 @@ async function fetchNewsAPI(query: string, pageSize: number = 10): Promise<any[]
     apiKey: NEWS_API_KEY,
   });
 
-  const response = await fetch(`${NEWS_API_URL}?${params}`);
+  const response = await fetch(`${NEWS_API_URL_EVERYTHING}?${params}`);
   
   if (!response.ok) {
     const error = await response.text();
-    console.error(`[AI News] NewsAPI error: ${response.statusText}`, error);
+    console.error(`[AI News] NewsAPI everything endpoint error: ${response.statusText}`, error);
+    throw new Error(`NewsAPI error: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  
+  if (data.status === 'error') {
+    console.error(`[AI News] NewsAPI returned error:`, data.message);
+    throw new Error(`NewsAPI error: ${data.message}`);
+  }
+
+  return data.articles || [];
+}
+
+/**
+ * Fetch news from NewsAPI.org using "top-headlines" endpoint (free tier fallback)
+ */
+async function fetchNewsAPIHeadlines(category: string = 'technology', pageSize: number = 10): Promise<any[]> {
+  if (!NEWS_API_KEY) {
+    return [];
+  }
+
+  const params = new URLSearchParams({
+    category: category,
+    country: 'us',
+    pageSize: pageSize.toString(),
+    apiKey: NEWS_API_KEY,
+  });
+
+  const response = await fetch(`${NEWS_API_URL_HEADLINES}?${params}`);
+  
+  if (!response.ok) {
+    const error = await response.text();
+    console.error(`[AI News] NewsAPI headlines endpoint error: ${response.statusText}`, error);
     throw new Error(`NewsAPI error: ${response.statusText}`);
   }
 
@@ -79,6 +113,11 @@ function isArticleValid(article: any): boolean {
   const url = article.url?.toLowerCase() || '';
   const title = article.title?.toLowerCase() || '';
   
+  // Must have a valid URL
+  if (!url || !url.startsWith('http')) {
+    return false;
+  }
+  
   // Reject stock quote pages
   if (url.includes('/quote/') || url.includes('/symbol/') || url.includes('/stock/')) {
     return false;
@@ -89,9 +128,16 @@ function isArticleValid(article: any): boolean {
     return false;
   }
   
-  // Check allowlist
-  const domain = new URL(url).hostname.replace('www.', '');
-  if (!ALLOWED_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))) {
+  // Check allowlist - safely parse URL
+  try {
+    const urlObj = new URL(url);
+    const domain = urlObj.hostname.replace('www.', '');
+    if (!ALLOWED_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))) {
+      return false;
+    }
+  } catch (error) {
+    // Invalid URL format, reject
+    console.warn(`[AI News] Invalid URL format: ${url}`, error);
     return false;
   }
   
@@ -244,14 +290,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         cache_age_seconds: 0,
         cache_expires_in_seconds: Math.floor(CACHE_TTL / 1000),
         error: 'NEWS_API_KEY not configured. Get your free API key at https://newsapi.org/register',
+        message: 'To enable AI news, add NEWS_API_KEY to Vercel environment variables. See NEWSAPI_SETUP.md for instructions.',
       };
       
-      // Cache empty result to avoid hammering the API
-      cache.set(cacheKey, {
-        data: response,
-        timestamp: Date.now(),
-      });
-      
+      // Don't cache error state - allow retry after key is added
       return res.status(200).json(response);
     }
     
@@ -271,16 +313,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Fetch articles for each query (limit to avoid rate limits)
     const allArticles: any[] = [];
+    const queryErrors: string[] = [];
+    let useHeadlinesFallback = false;
     
+    // Try "everything" endpoint first
     for (const query of queries.slice(0, 5)) { // Limit to 5 queries to stay within rate limits
       try {
-        const articles = await fetchNewsAPI(query, 3);
+        const articles = await fetchNewsAPIEverything(query, 3);
+        console.log(`[AI News] Query "${query}" returned ${articles.length} articles`);
         allArticles.push(...articles);
       } catch (error) {
-        console.error(`[AI News] Query "${query}" failed:`, error instanceof Error ? error.message : 'Unknown error');
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`[AI News] Query "${query}" failed:`, errorMsg);
+        queryErrors.push(`${query}: ${errorMsg}`);
+        
+        // If we get a 426 (Upgrade Required) or similar, switch to headlines fallback
+        if (errorMsg.includes('426') || errorMsg.includes('upgrade') || errorMsg.includes('paid')) {
+          useHeadlinesFallback = true;
+        }
         // Continue with other queries
       }
     }
+    
+    // Fallback to top-headlines if everything endpoint fails (free tier limitation)
+    if (allArticles.length === 0 && useHeadlinesFallback) {
+      console.log('[AI News] Everything endpoint failed, trying top-headlines fallback...');
+      try {
+        const headlines = await fetchNewsAPIHeadlines('technology', 20);
+        console.log(`[AI News] Headlines fallback returned ${headlines.length} articles`);
+        allArticles.push(...headlines);
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`[AI News] Headlines fallback failed:`, errorMsg);
+        queryErrors.push(`headlines_fallback: ${errorMsg}`);
+      }
+    }
+    
+    console.log(`[AI News] Total articles fetched: ${allArticles.length}`);
     
     // Deduplicate by URL
     const seen = new Set<string>();
@@ -303,11 +372,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Filter by allowlist and quality
     const filteredArticles = uniqueArticles.filter(isArticleValid);
     
+    // Log filtering stats for debugging
+    if (uniqueArticles.length > 0 && filteredArticles.length === 0) {
+      const sampleDomains = uniqueArticles.slice(0, 5).map(a => {
+        try {
+          return new URL(a.url).hostname;
+        } catch {
+          return 'invalid-url';
+        }
+      });
+      console.warn(`[AI News] All ${uniqueArticles.length} articles were filtered out. Sample domains:`, sampleDomains);
+    } else {
+      console.log(`[AI News] Filtered ${uniqueArticles.length} articles to ${filteredArticles.length} valid articles`);
+    }
+    
+    // If no articles after filtering, include debug info in response
+    const debugInfo = allArticles.length === 0 && queryErrors.length > 0 
+      ? { query_errors: queryErrors }
+      : uniqueArticles.length > 0 && filteredArticles.length === 0
+      ? { 
+          total_fetched: allArticles.length,
+          unique_after_dedup: uniqueArticles.length,
+          filtered_out: uniqueArticles.length,
+          sample_domains: uniqueArticles.slice(0, 3).map(a => {
+            try {
+              return new URL(a.url).hostname;
+            } catch {
+              return 'invalid-url';
+            }
+          })
+        }
+      : undefined;
+    
     // Take top 5 and enhance with Chinese summaries
     const news = filteredArticles.slice(0, 5).map(enhanceNewsItem);
     
     const fetchedAt = new Date();
-    const response = {
+    const response: any = {
       news,
       updated_at: fetchedAt.toLocaleString('en-US', {
         timeZone: 'America/Los_Angeles',
@@ -325,6 +426,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       age: 0,
       expiry: Math.floor(CACHE_TTL / 1000),
     };
+    
+    // Add debug info if no articles found
+    if (news.length === 0 && debugInfo) {
+      response.debug = debugInfo;
+      response.message = 'No articles found. Check debug info for details.';
+    }
     
     // Update cache
     cache.set(cacheKey, {

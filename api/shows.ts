@@ -114,6 +114,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    // If TMDB_API_KEY is missing, return empty array with helpful message
+    if (error instanceof Error && error.message.includes('TMDB_API_KEY')) {
+      return res.status(200).json({
+        shows: [],
+        updated_at: new Date().toLocaleString('en-US', {
+          timeZone: 'America/Los_Angeles',
+          month: 'numeric',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        }),
+        fetched_at: new Date().toISOString(),
+        cache_hit: false,
+        error: 'TMDB_API_KEY not configured',
+        message: 'To enable TV shows data, add TMDB_API_KEY to Vercel environment variables.',
+      });
+    }
+
     res.status(500).json({
       error: 'Failed to fetch TV shows',
       message: error instanceof Error ? error.message : 'Unknown error',
