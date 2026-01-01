@@ -170,21 +170,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     // Fetch fresh news from Google CSE
-    // Use site: operator to target news sites explicitly
+    // Use broader queries, rely on exclusion filters to remove unwanted sources
     const queries = [
-      // AI company news from tech news sites (past 3 days)
-      { query: 'OpenAI OR ChatGPT site:techcrunch.com OR site:theverge.com OR site:arstechnica.com', dateRestrict: 'd3' },
-      { query: 'NVIDIA AI site:reuters.com OR site:bloomberg.com OR site:cnbc.com', dateRestrict: 'd3' },
-      { query: 'Google AI OR Gemini site:theverge.com OR site:wired.com', dateRestrict: 'd3' },
-      { query: 'Meta AI OR Llama site:techcrunch.com OR site:venturebeat.com', dateRestrict: 'd3' },
+      // AI company news (past month for better coverage)
+      { query: 'OpenAI news', dateRestrict: 'd30' },
+      { query: 'NVIDIA AI chips', dateRestrict: 'd30' },
+      { query: 'Google Gemini AI', dateRestrict: 'd30' },
+      { query: 'Meta AI Llama', dateRestrict: 'd30' },
+      { query: 'Microsoft Copilot AI', dateRestrict: 'd30' },
       
-      // Job market & tech industry (past week)
-      { query: 'tech layoffs OR hiring site:techcrunch.com OR site:theverge.com', dateRestrict: 'd7' },
-      { query: 'Silicon Valley jobs site:reuters.com OR site:bloomberg.com', dateRestrict: 'd7' },
+      // Job market & tech industry (past month)
+      { query: 'tech layoffs 2025', dateRestrict: 'd30' },
+      { query: 'Silicon Valley hiring', dateRestrict: 'd30' },
       
-      // Broader AI/tech news (past 3 days)
-      { query: 'artificial intelligence site:wired.com OR site:arstechnica.com', dateRestrict: 'd3' },
-      { query: 'AI startup funding site:techcrunch.com OR site:venturebeat.com', dateRestrict: 'd7' },
+      // Broader AI/tech news (past month)
+      { query: 'artificial intelligence breakthrough', dateRestrict: 'd30' },
+      { query: 'AI startup funding', dateRestrict: 'd30' },
     ];
     
     // Search with multiple queries and combine results
