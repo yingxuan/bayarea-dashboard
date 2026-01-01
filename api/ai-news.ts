@@ -118,7 +118,9 @@ function enhanceNewsItem(item: any): NewsItem {
     snippet: item.snippet,
     summary_zh,
     why_it_matters_zh,
-    published_at: item.pagemap?.metatags?.[0]?.['article:published_time'],
+    published_at: item.pagemap?.metatags?.[0]?.['article:published_time'] || 
+                  item.pagemap?.metatags?.[0]?.['og:updated_time'] ||
+                  new Date().toISOString(),  // Fallback to current time if no date available
     as_of: new Date().toISOString(),
   };
 }
@@ -191,10 +193,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       'cnbc.com', 'ft.com', 'wsj.com', 'nytimes.com'
     ];
     
-    // Sources to exclude (low quality, aggregators, etc.)
+    // Sources to exclude (low quality, aggregators, interview forums, stock quotes, etc.)
     const excludedSources = [
       'youtube.com', 'reddit.com', 'twitter.com', 'x.com',
-      'facebook.com', 'pinterest.com'
+      'facebook.com', 'pinterest.com',
+      '1point3acres.com', '1p3a.com', 'mitbbs.com',  // Interview forums
+      '/quote/', '/quotes/', '/stock/', '/stocks/',  // Stock quote pages
+      'finance.yahoo.com/quote', 'google.com/finance'
     ];
     
     for (const results of allResults) {

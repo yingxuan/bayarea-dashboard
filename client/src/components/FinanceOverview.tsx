@@ -307,7 +307,9 @@ export default function FinanceOverview() {
               {index.name}
             </div>
             <div className="text-xl font-mono font-bold text-foreground mb-1">
-              {index.value.toLocaleString()}
+              {index.code === 'CA_JUMBO_ARM' 
+                ? `${(index.value * 100).toFixed(2)}%`
+                : index.value.toLocaleString()}
             </div>
             {index.change !== 0 && (
               <div

@@ -68,10 +68,49 @@ function extractBitcoinPrice(text: string): number | null {
 }
 
 async function fetchSPY(): Promise<MarketDataItem> {
-  const results = await searchGoogle('SPY stock price today');
-  const topResult = results[0];
-  
-  if (!topResult) {
+  try {
+    const results = await searchGoogle('SPY stock price today site:finance.yahoo.com');
+    
+    if (!results || results.length === 0) {
+      console.log('[fetchSPY] No results from Google CSE');
+      return {
+        name: 'SPY',
+        value: 687.01,
+        unit: 'USD',
+        source_name: 'Fallback',
+        source_url: 'https://finance.yahoo.com/quote/SPY/',
+        as_of: new Date().toISOString(),
+      };
+    }
+    
+    const topResult = results[0];
+    const snippet = topResult?.snippet || topResult?.htmlSnippet || topResult?.title || '';
+    
+    if (!snippet) {
+      console.log('[fetchSPY] No snippet available');
+      return {
+        name: 'SPY',
+        value: 687.01,
+        unit: 'USD',
+        source_name: 'Fallback',
+        source_url: 'https://finance.yahoo.com/quote/SPY/',
+        as_of: new Date().toISOString(),
+      };
+    }
+    
+    const price = extractNumber(snippet) || 687.01;
+    console.log(`[fetchSPY] Extracted price: ${price} from snippet: ${snippet.substring(0, 100)}`);
+    
+    return {
+      name: 'SPY',
+      value: price,
+      unit: 'USD',
+      source_name: topResult?.displayLink || 'Yahoo Finance',
+      source_url: topResult?.link || 'https://finance.yahoo.com/quote/SPY/',
+      as_of: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('[fetchSPY] Error:', error);
     return {
       name: 'SPY',
       value: 687.01,
@@ -81,35 +120,73 @@ async function fetchSPY(): Promise<MarketDataItem> {
       as_of: new Date().toISOString(),
     };
   }
-  
-  // Try to extract price from snippet
-  const price = extractNumber(topResult.snippet || topResult.htmlSnippet || '') || 687.01;
-  
-  return {
-    name: 'SPY',
-    value: price,
-    unit: 'USD',
-    source_name: topResult.displayLink || 'Yahoo Finance',
-    source_url: topResult.link,
-    as_of: new Date().toISOString(),
-  };
 }
 
 async function fetchGold(): Promise<MarketDataItem> {
-  // Try authoritative sources first
-  let results = await searchGoogle('gold price today USD per ounce site:kitco.com OR site:goldprice.org OR site:bullionvault.com');
-  
-  // Fallback to general search but exclude YouTube
-  if (!results || results.length === 0) {
-    results = await searchGoogle('gold price today USD per ounce -site:youtube.com');
-  }
-  
-  // Filter out YouTube results
-  const filteredResults = results.filter(r => !r.link?.includes('youtube.com'));
-  const topResult = filteredResults[0];
-  
-  if (!topResult) {
-    // Return fallback data if no results at all
+  try {
+    // Try authoritative sources first
+    let results = await searchGoogle('gold price today USD per ounce site:kitco.com');
+    
+    // Fallback to general search but exclude YouTube
+    if (!results || results.length === 0) {
+      results = await searchGoogle('gold price today USD per ounce site:finance.yahoo.com');
+    }
+    
+    if (!results || results.length === 0) {
+      console.log('[fetchGold] No results from Google CSE');
+      return {
+        name: 'Gold',
+        value: 2650,
+        unit: 'USD/oz',
+        source_name: 'Fallback',
+        source_url: 'https://www.kitco.com/charts/livegold.html',
+        as_of: new Date().toISOString(),
+      };
+    }
+    
+    // Filter out YouTube results
+    const filteredResults = results.filter(r => !r?.link?.includes('youtube.com'));
+    const topResult = filteredResults[0];
+    
+    if (!topResult) {
+      console.log('[fetchGold] No valid results after filtering');
+      return {
+        name: 'Gold',
+        value: 2650,
+        unit: 'USD/oz',
+        source_name: 'Fallback',
+        source_url: 'https://www.kitco.com/charts/livegold.html',
+        as_of: new Date().toISOString(),
+      };
+    }
+    
+    const snippet = topResult?.snippet || topResult?.htmlSnippet || topResult?.title || '';
+    
+    if (!snippet) {
+      console.log('[fetchGold] No snippet available');
+      return {
+        name: 'Gold',
+        value: 2650,
+        unit: 'USD/oz',
+        source_name: 'Fallback',
+        source_url: 'https://www.kitco.com/charts/livegold.html',
+        as_of: new Date().toISOString(),
+      };
+    }
+    
+    const price = extractNumber(snippet) || 2650;
+    console.log(`[fetchGold] Extracted price: ${price} from snippet: ${snippet.substring(0, 100)}`);
+    
+    return {
+      name: 'Gold',
+      value: price,
+      unit: 'USD/oz',
+      source_name: topResult?.displayLink || 'Kitco',
+      source_url: topResult?.link || 'https://www.kitco.com/charts/livegold.html',
+      as_of: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('[fetchGold] Error:', error);
     return {
       name: 'Gold',
       value: 2650,
@@ -119,24 +196,53 @@ async function fetchGold(): Promise<MarketDataItem> {
       as_of: new Date().toISOString(),
     };
   }
-  
-  const price = extractNumber(topResult.snippet) || 2650;
-  
-  return {
-    name: 'Gold',
-    value: price,
-    unit: 'USD/oz',
-    source_name: topResult.displayLink || 'Kitco',
-    source_url: topResult.link,
-    as_of: new Date().toISOString(),
-  };
 }
 
 async function fetchBTC(): Promise<MarketDataItem> {
-  const results = await searchGoogle('bitcoin price USD');
-  const topResult = results[0];
-  
-  if (!topResult) {
+  try {
+    const results = await searchGoogle('bitcoin price USD site:finance.yahoo.com');
+    
+    if (!results || results.length === 0) {
+      console.log('[fetchBTC] No results from Google CSE');
+      return {
+        name: 'BTC',
+        value: 95000,
+        unit: 'USD',
+        source_name: 'Fallback',
+        source_url: 'https://finance.yahoo.com/quote/BTC-USD/',
+        as_of: new Date().toISOString(),
+      };
+    }
+    
+    const topResult = results[0];
+    const snippet = topResult?.snippet || topResult?.htmlSnippet || topResult?.title || '';
+    
+    if (!snippet) {
+      console.log('[fetchBTC] No snippet available');
+      return {
+        name: 'BTC',
+        value: 95000,
+        unit: 'USD',
+        source_name: 'Fallback',
+        source_url: 'https://finance.yahoo.com/quote/BTC-USD/',
+        as_of: new Date().toISOString(),
+      };
+    }
+    
+    // Use specialized Bitcoin price extraction
+    const price = extractBitcoinPrice(snippet) || 95000;
+    console.log(`[fetchBTC] Extracted price: ${price} from snippet: ${snippet.substring(0, 100)}`);
+    
+    return {
+      name: 'BTC',
+      value: price,
+      unit: 'USD',
+      source_name: topResult?.displayLink || 'Yahoo Finance',
+      source_url: topResult?.link || 'https://finance.yahoo.com/quote/BTC-USD/',
+      as_of: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('[fetchBTC] Error:', error);
     return {
       name: 'BTC',
       value: 95000,
@@ -146,32 +252,73 @@ async function fetchBTC(): Promise<MarketDataItem> {
       as_of: new Date().toISOString(),
     };
   }
-  
-  // Use specialized Bitcoin price extraction
-  const price = extractBitcoinPrice(topResult.snippet) || 95000;
-  
-  return {
-    name: 'BTC',
-    value: price,
-    unit: 'USD',
-    source_name: topResult.displayLink || 'Yahoo Finance',
-    source_url: topResult.link,
-    as_of: new Date().toISOString(),
-  };
 }
 
 async function fetchMortgageRate(): Promise<MarketDataItem> {
-  // Try authoritative sources first, fallback to general search
-  let results = await searchGoogle('California jumbo mortgage rates today site:bankrate.com OR site:nerdwallet.com OR site:mortgagenewsdaily.com');
-  
-  // Fallback if no results from specific sites
-  if (!results || results.length === 0) {
-    results = await searchGoogle('California jumbo mortgage rates today');
-  }
-  
-  const topResult = results[0];
-  if (!topResult) {
-    // Return fallback data
+  try {
+    // Try authoritative sources first, fallback to general search
+    let results = await searchGoogle('California jumbo mortgage rates today site:bankrate.com');
+    
+    // Fallback if no results from specific sites
+    if (!results || results.length === 0) {
+      results = await searchGoogle('California jumbo mortgage rates today site:nerdwallet.com');
+    }
+    
+    if (!results || results.length === 0) {
+      console.log('[fetchMortgageRate] No results from Google CSE');
+      return {
+        name: 'CA_JUMBO_ARM',
+        value: 0.069,
+        unit: 'rate',
+        source_name: 'Fallback',
+        source_url: 'https://www.bankrate.com/mortgages/mortgage-rates/',
+        as_of: new Date().toISOString(),
+      };
+    }
+    
+    const topResult = results[0];
+    
+    if (!topResult) {
+      console.log('[fetchMortgageRate] No valid result');
+      return {
+        name: 'CA_JUMBO_ARM',
+        value: 0.069,
+        unit: 'rate',
+        source_name: 'Fallback',
+        source_url: 'https://www.bankrate.com/mortgages/mortgage-rates/',
+        as_of: new Date().toISOString(),
+      };
+    }
+    
+    // Try to extract rate (as percentage)
+    const snippet = topResult?.snippet || topResult?.htmlSnippet || topResult?.title || '';
+    
+    if (!snippet) {
+      console.log('[fetchMortgageRate] No snippet available');
+      return {
+        name: 'CA_JUMBO_ARM',
+        value: 0.069,
+        unit: 'rate',
+        source_name: 'Fallback',
+        source_url: 'https://www.bankrate.com/mortgages/mortgage-rates/',
+        as_of: new Date().toISOString(),
+      };
+    }
+    
+    const rateMatch = snippet.match(/(\d+\.?\d*)%/);
+    const rate = rateMatch ? parseFloat(rateMatch[1]) / 100 : 0.069;
+    console.log(`[fetchMortgageRate] Extracted rate: ${rate} from snippet: ${snippet.substring(0, 100)}`);
+    
+    return {
+      name: 'CA_JUMBO_ARM',
+      value: rate,
+      unit: 'rate',
+      source_name: topResult?.displayLink || 'Bankrate',
+      source_url: topResult?.link || 'https://www.bankrate.com/mortgages/mortgage-rates/',
+      as_of: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('[fetchMortgageRate] Error:', error);
     return {
       name: 'CA_JUMBO_ARM',
       value: 0.069,
@@ -181,41 +328,87 @@ async function fetchMortgageRate(): Promise<MarketDataItem> {
       as_of: new Date().toISOString(),
     };
   }
-  
-  // Try to extract rate (as percentage)
-  const snippet = topResult.snippet || topResult.htmlSnippet || '';
-  const rateMatch = snippet.match(/(\d+\.?\d*)%/);
-  const rate = rateMatch ? parseFloat(rateMatch[1]) / 100 : 0.069;
-  
-  return {
-    name: 'CA_JUMBO_ARM',
-    value: rate,
-    unit: 'rate',
-    source_name: topResult.displayLink || 'Bankrate',
-    source_url: topResult.link,
-    as_of: new Date().toISOString(),
-  };
 }
 
 async function fetchPowerball(): Promise<MarketDataItem> {
-  // Try official powerball.com first with specific query
-  let results = await searchGoogle('Powerball jackpot next drawing site:powerball.com');
-  
-  // Fallback to other lottery sites
-  if (!results || results.length === 0) {
-    results = await searchGoogle('powerball jackpot site:lottery.com OR site:usamega.com');
-  }
-  
-  // Last fallback: general search but exclude YouTube
-  if (!results || results.length === 0) {
-    results = await searchGoogle('powerball jackpot today -site:youtube.com');
-  }
-  
-  // Filter out YouTube results
-  const filteredResults = results.filter(r => !r.link?.includes('youtube.com'));
-  const topResult = filteredResults[0];
-  if (!topResult) {
-    // Return fallback data
+  try {
+    // Try official powerball.com first with specific query
+    let results = await searchGoogle('Powerball jackpot next drawing site:powerball.com');
+    
+    // Fallback to other lottery sites
+    if (!results || results.length === 0) {
+      results = await searchGoogle('powerball jackpot site:lottery.com');
+    }
+    
+    if (!results || results.length === 0) {
+      console.log('[fetchPowerball] No results from Google CSE');
+      return {
+        name: 'POWERBALL',
+        value: 485000000,
+        unit: 'USD',
+        source_name: 'Fallback',
+        source_url: 'https://www.powerball.com/',
+        as_of: new Date().toISOString(),
+      };
+    }
+    
+    // Filter out YouTube and Yahoo Finance results
+    const filteredResults = results.filter(r => {
+      const link = r?.link || '';
+      return !link.includes('youtube.com') && !link.includes('yahoo.com');
+    });
+    
+    const topResult = filteredResults[0];
+    
+    if (!topResult) {
+      console.log('[fetchPowerball] No valid results after filtering');
+      return {
+        name: 'POWERBALL',
+        value: 485000000,
+        unit: 'USD',
+        source_name: 'Fallback',
+        source_url: 'https://www.powerball.com/',
+        as_of: new Date().toISOString(),
+      };
+    }
+    
+    const snippet = topResult?.snippet || topResult?.htmlSnippet || topResult?.title || '';
+    
+    if (!snippet) {
+      console.log('[fetchPowerball] No snippet available');
+      return {
+        name: 'POWERBALL',
+        value: 485000000,
+        unit: 'USD',
+        source_name: 'Fallback',
+        source_url: 'https://www.powerball.com/',
+        as_of: new Date().toISOString(),
+      };
+    }
+    
+    // Try to extract jackpot amount (in millions or billions)
+    const millionMatch = snippet.match(/\$(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:million|M)/i);
+    const billionMatch = snippet.match(/\$(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:billion|B)/i);
+    
+    let amount = 485000000; // Default fallback
+    if (billionMatch) {
+      amount = parseFloat(billionMatch[1].replace(/,/g, '')) * 1000000000;
+    } else if (millionMatch) {
+      amount = parseFloat(millionMatch[1].replace(/,/g, '')) * 1000000;
+    }
+    
+    console.log(`[fetchPowerball] Extracted amount: $${amount} from snippet: ${snippet.substring(0, 100)}`);
+    
+    return {
+      name: 'POWERBALL',
+      value: amount,
+      unit: 'USD',
+      source_name: topResult?.displayLink || 'Powerball.com',
+      source_url: topResult?.link || 'https://www.powerball.com/',
+      as_of: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('[fetchPowerball] Error:', error);
     return {
       name: 'POWERBALL',
       value: 485000000,
@@ -225,27 +418,6 @@ async function fetchPowerball(): Promise<MarketDataItem> {
       as_of: new Date().toISOString(),
     };
   }
-  
-  // Try to extract jackpot amount (in millions or billions)
-  const snippet = topResult.snippet || topResult.htmlSnippet || '';
-  const millionMatch = snippet.match(/\$(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:million|M)/i);
-  const billionMatch = snippet.match(/\$(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:billion|B)/i);
-  
-  let amount = 485000000; // Default fallback
-  if (billionMatch) {
-    amount = parseFloat(billionMatch[1].replace(/,/g, '')) * 1000000000;
-  } else if (millionMatch) {
-    amount = parseFloat(millionMatch[1].replace(/,/g, '')) * 1000000;
-  }
-  
-  return {
-    name: 'POWERBALL',
-    value: amount,
-    unit: 'USD',
-    source_name: topResult.displayLink || 'Powerball.com',
-    source_url: topResult.link,
-    as_of: new Date().toISOString(),
-  };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
