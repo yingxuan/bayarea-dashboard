@@ -1,0 +1,81 @@
+{
+    "data": {
+        "spy": {
+            "name": "SPY",
+            "value": 681.92,
+            "unit": "USD",
+            "source_name": "Stooq",
+            "source_url": "https://finance.yahoo.com/quote/SPY/",
+            "as_of": "2026-01-01T06:28:56.118Z",
+            "debug": {
+                "data_source": "stooq_api",
+                "api_response": {
+                    "close": 681.92,
+                    "raw_csv": "SPY.US,2025-12-31,22:00:15,687.14,687.36,681.71,681.92,74144801"
+                }
+            }
+        },
+        "gold": {
+            "name": "Gold",
+            "value": 4318.59,
+            "unit": "USD/oz",
+            "source_name": "Stooq",
+            "source_url": "https://www.lbma.org.uk/prices-and-data/precious-metal-prices",
+            "as_of": "2026-01-01T06:28:56.149Z",
+            "debug": {
+                "data_source": "stooq_api",
+                "api_response": {
+                    "close": 4318.59,
+                    "raw_csv": "XAUUSD,2025-12-31,23:00:32,4343.03,4373.135,4274.63,4318.59,"
+                }
+            }
+        },
+        "btc": {
+            "name": "BTC",
+            "value": 87510,
+            "unit": "USD",
+            "source_name": "CoinGecko",
+            "source_url": "https://www.coingecko.com/en/coins/bitcoin",
+            "as_of": "2026-01-01T06:28:55.706Z",
+            "debug": {
+                "data_source": "coingecko_api",
+                "api_response": {
+                    "bitcoin": {
+                        "usd": 87510
+                    }
+                }
+            }
+        },
+        "mortgage": {
+            "name": "CA_JUMBO_ARM",
+            "value": "Unavailable",
+            "unit": "rate",
+            "source_name": "Bankrate",
+            "source_url": "https://www.bankrate.com/mortgages/mortgage-rates/",
+            "as_of": "2026-01-01T06:28:55.554Z",
+            "debug": {
+                "data_source": "none",
+                "error": "No reliable API available for mortgage rates"
+            }
+        },
+        "powerball": {
+            "name": "POWERBALL",
+            "value": "Unavailable",
+            "unit": "USD",
+            "source_name": "Powerball.com",
+            "source_url": "https://www.powerball.com/",
+            "as_of": "2026-01-01T06:28:55.554Z",
+            "debug": {
+                "data_source": "none",
+                "error": "Scraping not allowed, no reliable API available"
+            }
+        }
+    },
+    "updated_at": "12/31, 10:28 PM",
+    "fetched_at": "2026-01-01T06:28:56.149Z",
+    "cache_hit": false,
+    "cache_mode": "bypass",
+    "cache_age_seconds": 0,
+    "cache_expires_in_seconds": 600,
+    "cache_key": "market_data"
+}

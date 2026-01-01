@@ -249,20 +249,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           // Reject URLs from excluded sources
           const isExcluded = excludedSources.some(source => url.includes(source));
           
-          // Check if domain is in allowlist
-          const isAllowed = allowedDomains.some(domain => url.includes(domain));
+          // Check if domain is in allowlist (optional - prefer but don't require)
+          const isPreferred = allowedDomains.some(domain => url.includes(domain));
           
-          // Only include if: allowed domain AND not rejected AND not excluded
-          if (isAllowed && !isRejected && !isExcluded) {
+          // Include if: NOT rejected AND NOT excluded
+          // Allowlist is used for sorting priority, not filtering
+          if (!isRejected && !isExcluded) {
             seen.add(result.link);
-            uniqueResults.push(result);
+            uniqueResults.push({ ...result, isPreferred });
           }
         }
       }
     }
     
-    // Sort by: 1) Source tier, 2) Most recent date
+    // Sort by: 1) Preferred domains first, 2) Source tier, 3) Most recent date
     uniqueResults.sort((a, b) => {
+      // Preferred domains (allowlist) come first
+      if (a.isPreferred && !b.isPreferred) return -1;
+      if (!a.isPreferred && b.isPreferred) return 1;
+      
       const aIsTier1 = tier1Sources.some(source => 
         a.link?.toLowerCase().includes(source)
       );
