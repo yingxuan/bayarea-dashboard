@@ -97,16 +97,34 @@ async function fetchNewsAPIHeadlines(category: string = 'technology', pageSize: 
 }
 
 const ALLOWED_DOMAINS = [
+  // Major tech news sources
   'reuters.com',
   'theverge.com',
   'arstechnica.com',
   'techcrunch.com',
   'wired.com',
-  'ft.com',
+  'engadget.com',
+  'gizmodo.com',
+  'zdnet.com',
+  'cnet.com',
+  'venturebeat.com',
+  'theinformation.com',
+  'axios.com',
+  // Business/Finance (tech-focused)
   'bloomberg.com',
+  'ft.com',
   'wsj.com',
   'nytimes.com',
-  'cnbc.com'
+  'cnbc.com',
+  'businessinsider.com',
+  'forbes.com',
+  // Aggregators and others
+  'biztoc.com',
+  'techxplore.com',
+  'phys.org', // Science/tech news
+  'science.org',
+  'ieee.org',
+  'acm.org',
 ];
 
 function isArticleValid(article: any): boolean {
@@ -274,7 +292,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Check if NEWS_API_KEY is configured
     if (!NEWS_API_KEY) {
       console.warn('[API /api/ai-news] NEWS_API_KEY not configured');
-      const response = {
+      const response: any = {
         news: [],
         updated_at: new Date().toLocaleString('en-US', {
           timeZone: 'America/Los_Angeles',
@@ -291,6 +309,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         cache_expires_in_seconds: Math.floor(CACHE_TTL / 1000),
         error: 'NEWS_API_KEY not configured. Get your free API key at https://newsapi.org/register',
         message: 'To enable AI news, add NEWS_API_KEY to Vercel environment variables. See NEWSAPI_SETUP.md for instructions.',
+        debug: {
+          reason: 'NEWS_API_KEY not configured',
+          total_fetched: 0,
+          unique_after_dedup: 0,
+          filtered_out: 0,
+        },
       };
       
       // Don't cache error state - allow retry after key is added
@@ -311,41 +335,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       'AI startup funding',
     ];
     
-    // Fetch articles for each query (limit to avoid rate limits)
+    // Use top-headlines as primary source (guaranteed to work on free tier)
+    // This is more reliable than "everything" endpoint which may have restrictions
     const allArticles: any[] = [];
     const queryErrors: string[] = [];
-    let useHeadlinesFallback = false;
     
-    // Try "everything" endpoint first
-    for (const query of queries.slice(0, 5)) { // Limit to 5 queries to stay within rate limits
-      try {
-        const articles = await fetchNewsAPIEverything(query, 3);
-        console.log(`[AI News] Query "${query}" returned ${articles.length} articles`);
-        allArticles.push(...articles);
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`[AI News] Query "${query}" failed:`, errorMsg);
-        queryErrors.push(`${query}: ${errorMsg}`);
-        
-        // If we get a 426 (Upgrade Required) or similar, switch to headlines fallback
-        if (errorMsg.includes('426') || errorMsg.includes('upgrade') || errorMsg.includes('paid')) {
-          useHeadlinesFallback = true;
+    console.log('[AI News] Fetching from top-headlines (technology category)...');
+    try {
+      const headlines = await fetchNewsAPIHeadlines('technology', 30); // Increased to get more articles after filtering
+      console.log(`[AI News] Headlines returned ${headlines.length} articles`);
+      allArticles.push(...headlines);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`[AI News] Headlines failed:`, errorMsg);
+      queryErrors.push(`headlines: ${errorMsg}`);
+      
+      // Fallback: Try "everything" endpoint with a single broad query
+      if (allArticles.length === 0) {
+        console.log('[AI News] Trying everything endpoint as fallback...');
+        try {
+          const articles = await fetchNewsAPIEverything('artificial intelligence OR AI technology', 10);
+          console.log(`[AI News] Everything fallback returned ${articles.length} articles`);
+          allArticles.push(...articles);
+        } catch (fallbackError) {
+          const fallbackMsg = fallbackError instanceof Error ? fallbackError.message : 'Unknown error';
+          console.error(`[AI News] Everything fallback failed:`, fallbackMsg);
+          queryErrors.push(`everything_fallback: ${fallbackMsg}`);
         }
-        // Continue with other queries
-      }
-    }
-    
-    // Fallback to top-headlines if everything endpoint fails (free tier limitation)
-    if (allArticles.length === 0 && useHeadlinesFallback) {
-      console.log('[AI News] Everything endpoint failed, trying top-headlines fallback...');
-      try {
-        const headlines = await fetchNewsAPIHeadlines('technology', 20);
-        console.log(`[AI News] Headlines fallback returned ${headlines.length} articles`);
-        allArticles.push(...headlines);
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`[AI News] Headlines fallback failed:`, errorMsg);
-        queryErrors.push(`headlines_fallback: ${errorMsg}`);
       }
     }
     
