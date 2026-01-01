@@ -170,22 +170,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     // Fetch fresh news from Google CSE
-    // Use targeted queries with date restrictions to get recent, relevant news
+    // Use site: operator to target news sites explicitly
     const queries = [
-      // AI company news (past 3 days)
-      { query: 'OpenAI OR ChatGPT OR GPT', dateRestrict: 'd3' },
-      { query: 'NVIDIA AI chips OR GPU', dateRestrict: 'd3' },
-      { query: 'Google Gemini OR DeepMind', dateRestrict: 'd3' },
-      { query: 'Meta AI OR Llama', dateRestrict: 'd3' },
-      { query: 'Microsoft Azure AI OR Copilot', dateRestrict: 'd3' },
+      // AI company news from tech news sites (past 3 days)
+      { query: 'OpenAI OR ChatGPT site:techcrunch.com OR site:theverge.com OR site:arstechnica.com', dateRestrict: 'd3' },
+      { query: 'NVIDIA AI site:reuters.com OR site:bloomberg.com OR site:cnbc.com', dateRestrict: 'd3' },
+      { query: 'Google AI OR Gemini site:theverge.com OR site:wired.com', dateRestrict: 'd3' },
+      { query: 'Meta AI OR Llama site:techcrunch.com OR site:venturebeat.com', dateRestrict: 'd3' },
       
       // Job market & tech industry (past week)
-      { query: 'tech layoffs OR hiring 2025', dateRestrict: 'd7' },
-      { query: 'Silicon Valley jobs OR salaries', dateRestrict: 'd7' },
+      { query: 'tech layoffs OR hiring site:techcrunch.com OR site:theverge.com', dateRestrict: 'd7' },
+      { query: 'Silicon Valley jobs site:reuters.com OR site:bloomberg.com', dateRestrict: 'd7' },
       
       // Broader AI/tech news (past 3 days)
-      { query: 'artificial intelligence breakthrough', dateRestrict: 'd3' },
-      { query: 'AI startup funding OR investment', dateRestrict: 'd7' },
+      { query: 'artificial intelligence site:wired.com OR site:arstechnica.com', dateRestrict: 'd3' },
+      { query: 'AI startup funding site:techcrunch.com OR site:venturebeat.com', dateRestrict: 'd7' },
     ];
     
     // Search with multiple queries and combine results
