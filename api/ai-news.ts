@@ -62,6 +62,42 @@ async function fetchNewsAPI(query: string, pageSize: number = 10): Promise<any[]
   return data.articles || [];
 }
 
+const ALLOWED_DOMAINS = [
+  'reuters.com',
+  'theverge.com',
+  'arstechnica.com',
+  'techcrunch.com',
+  'wired.com',
+  'ft.com',
+  'bloomberg.com',
+  'wsj.com',
+  'nytimes.com',
+  'cnbc.com'
+];
+
+function isArticleValid(article: any): boolean {
+  const url = article.url?.toLowerCase() || '';
+  const title = article.title?.toLowerCase() || '';
+  
+  // Reject stock quote pages
+  if (url.includes('/quote/') || url.includes('/symbol/') || url.includes('/stock/')) {
+    return false;
+  }
+  
+  // Reject finance domains unless explicitly allowed
+  if (url.includes('finance.yahoo.com') || url.includes('marketwatch.com')) {
+    return false;
+  }
+  
+  // Check allowlist
+  const domain = new URL(url).hostname.replace('www.', '');
+  if (!ALLOWED_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))) {
+    return false;
+  }
+  
+  return true;
+}
+
 function enhanceNewsItem(article: any): NewsItem {
   const title = article.title?.toLowerCase() || '';
   const description = article.description?.toLowerCase() || '';
@@ -264,8 +300,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return bDate - aDate;
     });
     
+    // Filter by allowlist and quality
+    const filteredArticles = uniqueArticles.filter(isArticleValid);
+    
     // Take top 5 and enhance with Chinese summaries
-    const news = uniqueArticles.slice(0, 5).map(enhanceNewsItem);
+    const news = filteredArticles.slice(0, 5).map(enhanceNewsItem);
     
     const fetchedAt = new Date();
     const response = {
@@ -283,6 +322,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cache_mode: nocache ? 'bypass' : 'normal',
       cache_age_seconds: 0,
       cache_expires_in_seconds: Math.floor(CACHE_TTL / 1000),
+      age: 0,
+      expiry: Math.floor(CACHE_TTL / 1000),
     };
     
     // Update cache

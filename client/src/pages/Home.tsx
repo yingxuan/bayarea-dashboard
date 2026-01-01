@@ -137,7 +137,8 @@ export default function Home() {
 
 
 
-        {/* Job Market Temperature */}
+        {/* Job Market Temperature - Disabled as per constraints (no real data source yet) */}
+        {/* 
         <section className="mb-12">
           <JobMarketTemperature 
             layoffCount={2}
@@ -145,6 +146,7 @@ export default function Home() {
             spyChangePercent={0.26}
           />
         </section>
+        */}
 
         {/* Food Section */}
         <section className="mb-12">

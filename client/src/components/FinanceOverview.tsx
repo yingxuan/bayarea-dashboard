@@ -119,7 +119,7 @@ export default function FinanceOverview() {
             {
               code: "CA_JUMBO_ARM",
               name: "California Jumbo Loan 7/1 ARM",
-              value: marketData.mortgage.value === "Unavailable" ? "Unavailable" : Number(marketData.mortgage.value),
+              value: marketData.mortgage.value,
               change: 0,
               changePercent: 0,
               source: marketData.mortgage.source_name,
@@ -129,7 +129,7 @@ export default function FinanceOverview() {
             {
               code: "POWERBALL",
               name: "Powerball Jackpot",
-              value: marketData.powerball.value === "Unavailable" ? "Unavailable" : Number(marketData.powerball.value),
+              value: marketData.powerball.value,
               change: 0,
               changePercent: 0,
               source: marketData.powerball.source_name,

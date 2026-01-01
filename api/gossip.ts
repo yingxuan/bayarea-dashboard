@@ -104,7 +104,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         minute: '2-digit',
         hour12: true,
       }),
+      fetched_at: new Date().toISOString(),
       cache_hit: false,
+      age: 0,
+      expiry: Math.floor(CACHE_TTL / 1000),
     };
 
     // Update cache

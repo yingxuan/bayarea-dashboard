@@ -199,7 +199,7 @@ async function fetchGold(): Promise<MarketDataItem> {
  * Note: No reliable API available, returning unavailable
  */
 async function fetchMortgageRate(): Promise<MarketDataItem> {
-  console.log('[fetchMortgageRate] No reliable API available');
+  console.log('[fetchMortgageRate] No reliable API available, returning Unavailable');
   
   return {
     name: 'CA_JUMBO_ARM',
@@ -220,7 +220,7 @@ async function fetchMortgageRate(): Promise<MarketDataItem> {
  * Note: No scraping allowed, returning unavailable with correct source
  */
 async function fetchPowerball(): Promise<MarketDataItem> {
-  console.log('[fetchPowerball] No scraping allowed, returning unavailable');
+  console.log('[fetchPowerball] No scraping allowed, returning Unavailable');
   
   return {
     name: 'POWERBALL',
@@ -313,6 +313,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cache_age_seconds: 0,
       cache_expires_in_seconds: Math.floor(CACHE_TTL / 1000),
       cache_key: cacheKey,
+      age: 0,
+      expiry: Math.floor(CACHE_TTL / 1000),
     };
     
     // Update cache
