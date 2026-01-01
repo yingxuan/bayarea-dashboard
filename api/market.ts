@@ -21,6 +21,13 @@ interface MarketDataItem {
   source_name: string;
   source_url: string;
   as_of: string; // ISO 8601 timestamp with timezone
+  // Debug fields (temporary for verification)
+  debug?: {
+    extraction_method: string;
+    raw_snippet: string;
+    extracted_value: number | string;
+    validation_passed: boolean;
+  };
 }
 
 async function searchGoogle(query: string): Promise<any[]> {
@@ -40,7 +47,7 @@ async function searchGoogle(query: string): Promise<any[]> {
  * SPY prices are typically $400-$800
  * Avoid matching "500" from "S&P 500"
  */
-function extractSPYPrice(text: string): number | null {
+function extractSPYPrice(text: string): { price: number | null; method: string } {
   const cleaned = text.replace(/,/g, '');
   
   // Pattern 1: Look for price with $ symbol and 2 decimal places
@@ -49,7 +56,7 @@ function extractSPYPrice(text: string): number | null {
   if (dollarMatch) {
     const price = parseFloat(dollarMatch[1]);
     if (price >= 400 && price <= 800) {
-      return price;
+      return { price, method: 'dollar_pattern_with_decimals' };
     }
   }
   
@@ -59,7 +66,7 @@ function extractSPYPrice(text: string): number | null {
   if (priceMatch) {
     const price = parseFloat(priceMatch[1]);
     if (price >= 400 && price <= 800) {
-      return price;
+      return { price, method: 'three_digit_with_decimals' };
     }
   }
   
@@ -69,11 +76,11 @@ function extractSPYPrice(text: string): number | null {
   if (spyAfterMatch) {
     const price = parseFloat(spyAfterMatch[1]);
     if (price >= 400 && price <= 800) {
-      return price;
+      return { price, method: 'spy_keyword_followed_by_price' };
     }
   }
   
-  return null;
+  return { price: null, method: 'no_pattern_matched' };
 }
 
 /**
@@ -81,7 +88,7 @@ function extractSPYPrice(text: string): number | null {
  * Gold prices are typically $2,000-$5,000 per oz
  * Avoid matching "26" from "Feb 26" or other dates
  */
-function extractGoldPrice(text: string): number | null {
+function extractGoldPrice(text: string): { price: number | null; method: string } {
   const cleaned = text.replace(/,/g, '');
   
   // Pattern 1: Look for 4-digit price in gold range with $ symbol
@@ -90,7 +97,7 @@ function extractGoldPrice(text: string): number | null {
   if (dollarMatch) {
     const price = parseFloat(dollarMatch[1]);
     if (price >= 2000 && price <= 5000) {
-      return price;
+      return { price, method: 'gold_dollar_pattern' };
     }
   }
   
@@ -100,7 +107,7 @@ function extractGoldPrice(text: string): number | null {
   if (priceMatch) {
     const price = parseFloat(priceMatch[1]);
     if (price >= 2000 && price <= 5000) {
-      return price;
+      return { price, method: 'gold_four_digit_pattern' };
     }
   }
   
@@ -110,7 +117,7 @@ function extractGoldPrice(text: string): number | null {
   if (goldAfterMatch) {
     const price = parseFloat(goldAfterMatch[1]);
     if (price >= 2000 && price <= 5000) {
-      return price;
+      return { price, method: 'gold_keyword_after' };
     }
   }
   
@@ -120,18 +127,17 @@ function extractGoldPrice(text: string): number | null {
   if (goldBeforeMatch) {
     const price = parseFloat(goldBeforeMatch[1]);
     if (price >= 2000 && price <= 5000) {
-      return price;
+      return { price, method: 'gold_keyword_before' };
     }
   }
-  
-  return null;
+  return { price: null, method: 'no_pattern_matched' };
 }
 
 /**
  * Extract Bitcoin price from snippet
  * Bitcoin prices are typically $10,000-$150,000
  */
-function extractBitcoinPrice(text: string): number | null {
+function extractBitcoinPrice(text: string): { price: number | null; method: string } {
   const cleaned = text.replace(/,/g, '');
   
   // Pattern 1: Look for 5-6 digit price with $ symbol
@@ -140,7 +146,7 @@ function extractBitcoinPrice(text: string): number | null {
   if (dollarMatch) {
     const price = parseFloat(dollarMatch[1]);
     if (price >= 10000 && price <= 150000) {
-      return price;
+      return { price, method: 'btc_dollar_pattern' };
     }
   }
   
@@ -150,7 +156,7 @@ function extractBitcoinPrice(text: string): number | null {
   if (priceMatch) {
     const price = parseFloat(priceMatch[1]);
     if (price >= 10000 && price <= 150000) {
-      return price;
+      return { price, method: 'btc_five_six_digit' };
     }
   }
   
@@ -160,11 +166,11 @@ function extractBitcoinPrice(text: string): number | null {
   if (btcAfterMatch) {
     const price = parseFloat(btcAfterMatch[1]);
     if (price >= 10000 && price <= 150000) {
-      return price;
+      return { price, method: 'btc_keyword_after' };
     }
   }
   
-  return null;
+  return { price: null, method: 'no_pattern_matched' };
 }
 
 async function fetchSPY(): Promise<MarketDataItem> {
@@ -198,8 +204,11 @@ async function fetchSPY(): Promise<MarketDataItem> {
       };
     }
     
-    const price = extractSPYPrice(snippet) || 687.01;
-    console.log(`[fetchSPY] Extracted price: ${price} from snippet: ${snippet.substring(0, 100)}`);
+    const extraction = extractSPYPrice(snippet);
+    const price = extraction.price || 687.01;
+    const usedFallback = extraction.price === null;
+    
+    console.log(`[fetchSPY] Extracted price: ${price} via ${extraction.method} from snippet: ${snippet.substring(0, 100)}`);
     
     return {
       name: 'SPY',
@@ -208,6 +217,12 @@ async function fetchSPY(): Promise<MarketDataItem> {
       source_name: topResult?.displayLink || 'Yahoo Finance',
       source_url: topResult?.link || 'https://finance.yahoo.com/quote/SPY/',
       as_of: new Date().toISOString(),
+      debug: {
+        extraction_method: usedFallback ? 'fallback' : extraction.method,
+        raw_snippet: snippet.substring(0, 200),
+        extracted_value: extraction.price || 'null (used fallback)',
+        validation_passed: !usedFallback,
+      },
     };
   } catch (error) {
     console.error('[fetchSPY] Error:', error);
@@ -274,8 +289,11 @@ async function fetchGold(): Promise<MarketDataItem> {
       };
     }
     
-    const price = extractGoldPrice(snippet) || 2650;
-    console.log(`[fetchGold] Extracted price: ${price} from snippet: ${snippet.substring(0, 100)}`);
+    const extraction = extractGoldPrice(snippet);
+    const price = extraction.price || 2650;
+    const usedFallback = extraction.price === null;
+    
+    console.log(`[fetchGold] Extracted price: ${price} via ${extraction.method} from snippet: ${snippet.substring(0, 100)}`);
     
     return {
       name: 'Gold',
@@ -284,6 +302,12 @@ async function fetchGold(): Promise<MarketDataItem> {
       source_name: topResult?.displayLink || 'Kitco',
       source_url: topResult?.link || 'https://www.kitco.com/charts/livegold.html',
       as_of: new Date().toISOString(),
+      debug: {
+        extraction_method: usedFallback ? 'fallback' : extraction.method,
+        raw_snippet: snippet.substring(0, 200),
+        extracted_value: extraction.price || 'null (used fallback)',
+        validation_passed: !usedFallback,
+      },
     };
   } catch (error) {
     console.error('[fetchGold] Error:', error);
@@ -330,8 +354,11 @@ async function fetchBTC(): Promise<MarketDataItem> {
     }
     
     // Use specialized Bitcoin price extraction
-    const price = extractBitcoinPrice(snippet) || 95000;
-    console.log(`[fetchBTC] Extracted price: ${price} from snippet: ${snippet.substring(0, 100)}`);
+    const extraction = extractBitcoinPrice(snippet);
+    const price = extraction.price || 95000;
+    const usedFallback = extraction.price === null;
+    
+    console.log(`[fetchBTC] Extracted price: ${price} via ${extraction.method} from snippet: ${snippet.substring(0, 100)}`);
     
     return {
       name: 'BTC',
@@ -340,6 +367,12 @@ async function fetchBTC(): Promise<MarketDataItem> {
       source_name: topResult?.displayLink || 'Yahoo Finance',
       source_url: topResult?.link || 'https://finance.yahoo.com/quote/BTC-USD/',
       as_of: new Date().toISOString(),
+      debug: {
+        extraction_method: usedFallback ? 'fallback' : extraction.method,
+        raw_snippet: snippet.substring(0, 200),
+        extracted_value: extraction.price || 'null (used fallback)',
+        validation_passed: !usedFallback,
+      },
     };
   } catch (error) {
     console.error('[fetchBTC] Error:', error);
@@ -409,12 +442,18 @@ async function fetchMortgageRate(): Promise<MarketDataItem> {
     const percentPattern = /([\d]+\.[\d]{1,2})%/;
     const percentMatch = snippet.match(percentPattern);
     let rate = 0.069; // Default fallback
+    let extractionMethod = 'fallback';
+    let extractedValue: any = 'null (used fallback)';
+    let validationPassed = false;
     
     if (percentMatch) {
       const extracted = parseFloat(percentMatch[1]) / 100;
       // Mortgage rates typically 3%-10%
       if (extracted >= 0.03 && extracted <= 0.10) {
         rate = extracted;
+        extractionMethod = 'percent_pattern';
+        extractedValue = extracted;
+        validationPassed = true;
       }
     } else {
       // Pattern 2: Look for "rate" followed by percentage
@@ -424,10 +463,13 @@ async function fetchMortgageRate(): Promise<MarketDataItem> {
         const extracted = parseFloat(rateMatch[1]) / 100;
         if (extracted >= 0.03 && extracted <= 0.10) {
           rate = extracted;
+          extractionMethod = 'rate_keyword_pattern';
+          extractedValue = extracted;
+          validationPassed = true;
         }
       }
     }
-    console.log(`[fetchMortgageRate] Extracted rate: ${rate} from snippet: ${snippet.substring(0, 100)}`);
+    console.log(`[fetchMortgageRate] Extracted rate: ${rate} via ${extractionMethod} from snippet: ${snippet.substring(0, 100)}`);
     
     return {
       name: 'CA_JUMBO_ARM',
@@ -436,6 +478,12 @@ async function fetchMortgageRate(): Promise<MarketDataItem> {
       source_name: topResult?.displayLink || 'Bankrate',
       source_url: topResult?.link || 'https://www.bankrate.com/mortgages/mortgage-rates/',
       as_of: new Date().toISOString(),
+      debug: {
+        extraction_method: extractionMethod,
+        raw_snippet: snippet.substring(0, 200),
+        extracted_value: extractedValue,
+        validation_passed: validationPassed,
+      },
     };
   } catch (error) {
     console.error('[fetchMortgageRate] Error:', error);
@@ -511,11 +559,17 @@ async function fetchPowerball(): Promise<MarketDataItem> {
     const billionPattern = /\$?([\d,]+(?:\.[\d]+)?)\s*(?:billion|B)/i;
     const billionMatch = snippet.match(billionPattern);
     let amount = 485000000; // Default fallback
+    let extractionMethod = 'fallback';
+    let extractedValue: any = 'null (used fallback)';
+    let validationPassed = false;
     
     if (billionMatch) {
       const extracted = parseFloat(billionMatch[1].replace(/,/g, '')) * 1000000000;
       if (extracted >= 100000000 && extracted <= 10000000000) {
         amount = extracted;
+        extractionMethod = 'billion_pattern';
+        extractedValue = extracted;
+        validationPassed = true;
       }
     } else {
       // Pattern 2: Million format
@@ -525,11 +579,14 @@ async function fetchPowerball(): Promise<MarketDataItem> {
         const extracted = parseFloat(millionMatch[1].replace(/,/g, '')) * 1000000;
         if (extracted >= 100000000 && extracted <= 10000000000) {
           amount = extracted;
+          extractionMethod = 'million_pattern';
+          extractedValue = extracted;
+          validationPassed = true;
         }
       }
     }
     
-    console.log(`[fetchPowerball] Extracted amount: $${amount} from snippet: ${snippet.substring(0, 100)}`);
+    console.log(`[fetchPowerball] Extracted amount: $${amount} via ${extractionMethod} from snippet: ${snippet.substring(0, 100)}`);
     
     return {
       name: 'POWERBALL',
@@ -538,6 +595,12 @@ async function fetchPowerball(): Promise<MarketDataItem> {
       source_name: topResult?.displayLink || 'Powerball.com',
       source_url: topResult?.link || 'https://www.powerball.com/',
       as_of: new Date().toISOString(),
+      debug: {
+        extraction_method: extractionMethod,
+        raw_snippet: snippet.substring(0, 200),
+        extracted_value: extractedValue,
+        validation_passed: validationPassed,
+      },
     };
   } catch (error) {
     console.error('[fetchPowerball] Error:', error);
@@ -564,15 +627,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   
   try {
-    // Check cache
+    // Check for cache bypass parameter
+    const nocache = req.query.nocache === '1' || req.query.nocache === 'true';
     const cacheKey = 'market_data';
     const cached = cache.get(cacheKey);
+    const now = Date.now();
     
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    // Calculate cache metadata
+    let cacheAgeSeconds = 0;
+    let cacheExpiresInSeconds = Math.floor(CACHE_TTL / 1000);
+    
+    if (cached) {
+      cacheAgeSeconds = Math.floor((now - cached.timestamp) / 1000);
+      const remainingMs = CACHE_TTL - (now - cached.timestamp);
+      cacheExpiresInSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+    }
+    
+    // Return cached data if valid and not bypassed
+    if (!nocache && cached && now - cached.timestamp < CACHE_TTL) {
       return res.status(200).json({
         ...cached.data,
         cache_hit: true,
+        cache_mode: 'normal',
+        cache_age_seconds: cacheAgeSeconds,
+        cache_expires_in_seconds: cacheExpiresInSeconds,
+        cache_key: cacheKey,
       });
+    }
+    
+    // Log cache bypass
+    if (nocache) {
+      console.log('[API /api/market] Cache bypass requested via ?nocache=1');
     }
     
     // Fetch fresh data
@@ -584,6 +669,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fetchPowerball(),
     ]);
     
+    const fetchedAt = new Date();
     const response = {
       data: {
         spy,
@@ -592,7 +678,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         mortgage,
         powerball,
       },
-      updated_at: new Date().toLocaleString('en-US', {
+      updated_at: fetchedAt.toLocaleString('en-US', {
         timeZone: 'America/Los_Angeles',
         month: 'numeric',
         day: 'numeric',
@@ -600,7 +686,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         minute: '2-digit',
         hour12: true,
       }),
+      fetched_at: fetchedAt.toISOString(),
       cache_hit: false,
+      cache_mode: nocache ? 'bypass' : 'normal',
+      cache_age_seconds: 0,
+      cache_expires_in_seconds: Math.floor(CACHE_TTL / 1000),
+      cache_key: cacheKey,
     };
     
     // Update cache
