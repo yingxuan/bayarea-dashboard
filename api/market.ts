@@ -7,10 +7,12 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { withTimeout, tryPrimaryThenFallback } from '../server/utils.js';
 
 // In-memory cache (persists across invocations in same instance)
 const cache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const FETCH_TIMEOUT_MS = 5000; // 5 seconds timeout
 
 /**
  * Standard market data item structure
@@ -43,49 +45,53 @@ interface MarketDataItem {
 }
 
 /**
- * Fetch Bitcoin price from CoinGecko API
+ * Fetch Bitcoin price from CoinGecko API (with timeout)
  */
 async function fetchBTC(): Promise<MarketDataItem> {
+  const now = new Date().toISOString();
+  
   try {
-    const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
-    
-    if (!response.ok) {
-      throw new Error(`CoinGecko API error: ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    const price = data?.bitcoin?.usd;
-    
-    if (!price || typeof price !== 'number') {
-      throw new Error('Invalid price data from CoinGecko');
-    }
-    
-    console.log(`[fetchBTC] CoinGecko API returned: $${price}`);
-    
-    const now = new Date().toISOString();
-    return {
-      name: 'BTC',
-      value: price,
-      unit: 'USD',
-      status: 'ok' as const,
-      asOf: now,
-      source: {
-        name: 'CoinGecko',
-        url: 'https://www.coingecko.com/en/coins/bitcoin',
-      },
-      ttlSeconds: 600, // 10 minutes
-      // Legacy fields for backward compatibility
-      source_name: 'CoinGecko',
-      source_url: 'https://www.coingecko.com/en/coins/bitcoin',
-      as_of: now,
-      debug: {
-        data_source: 'coingecko_api',
-        api_response: { bitcoin: { usd: price } },
-      },
+    const fetchFn = async () => {
+      const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+      
+      if (!response.ok) {
+        throw new Error(`CoinGecko API error: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      const price = data?.bitcoin?.usd;
+      
+      if (!price || typeof price !== 'number') {
+        throw new Error('Invalid price data from CoinGecko');
+      }
+      
+      console.log(`[fetchBTC] CoinGecko API returned: $${price}`);
+      
+      return {
+        name: 'BTC',
+        value: price,
+        unit: 'USD',
+        status: 'ok' as const,
+        asOf: now,
+        source: {
+          name: 'CoinGecko',
+          url: 'https://www.coingecko.com/en/coins/bitcoin',
+        },
+        ttlSeconds: 600, // 10 minutes
+        // Legacy fields for backward compatibility
+        source_name: 'CoinGecko',
+        source_url: 'https://www.coingecko.com/en/coins/bitcoin',
+        as_of: now,
+        debug: {
+          data_source: 'coingecko_api',
+          api_response: { bitcoin: { usd: price } },
+        },
+      };
     };
+    
+    return await withTimeout(fetchFn, FETCH_TIMEOUT_MS, 'fetchBTC');
   } catch (error) {
     console.error('[fetchBTC] Error:', error);
-    const now = new Date().toISOString();
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     return {
       name: 'BTC',
@@ -112,10 +118,13 @@ async function fetchBTC(): Promise<MarketDataItem> {
 }
 
 /**
- * Fetch SPY price from Stooq API
+ * Fetch SPY price from Stooq API (primary) with Yahoo Finance fallback
  */
 async function fetchSPY(): Promise<MarketDataItem> {
-  try {
+  const now = new Date().toISOString();
+  
+  // Primary: Stooq API (CSV)
+  const primaryFn = async (): Promise<MarketDataItem> => {
     const response = await fetch('https://stooq.com/q/l/?s=spy.us&f=sd2t2ohlcv&h&e=csv');
     
     if (!response.ok) {
@@ -140,7 +149,6 @@ async function fetchSPY(): Promise<MarketDataItem> {
     
     console.log(`[fetchSPY] Stooq API returned: $${closePrice}`);
     
-    const now = new Date().toISOString();
     return {
       name: 'SPY',
       value: closePrice,
@@ -161,9 +169,72 @@ async function fetchSPY(): Promise<MarketDataItem> {
         api_response: { close: closePrice, raw_csv: dataLine },
       },
     };
+  };
+  
+  // Fallback: Yahoo Finance API (no key required, but may be rate-limited)
+  const fallbackFn = async (): Promise<MarketDataItem> => {
+    // Yahoo Finance v8 API - no key required, but may be rate-limited
+    // Risk: Rate limiting, but robust JSON parsing with error handling
+    const response = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=1d');
+    
+    if (!response.ok) {
+      throw new Error(`Yahoo Finance API error: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Robust parsing with multiple fallback paths
+    const result = data?.chart?.result?.[0];
+    if (!result) {
+      throw new Error('Invalid response structure from Yahoo Finance');
+    }
+    
+    const meta = result.meta;
+    const price = meta?.regularMarketPrice || meta?.previousClose || meta?.chartPreviousClose;
+    
+    if (!price || typeof price !== 'number' || price <= 0) {
+      throw new Error(`Invalid price from Yahoo Finance: ${price}`);
+    }
+    
+    // Calculate change if available
+    const previousClose = meta?.previousClose || meta?.chartPreviousClose || price;
+    const change = price - previousClose;
+    const changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0;
+    
+    console.log(`[fetchSPY] Yahoo Finance fallback returned: $${price}`);
+    
+    return {
+      name: 'SPY',
+      value: price,
+      change,
+      change_percent: changePercent,
+      unit: 'USD',
+      status: 'ok' as const,
+      asOf: now,
+      source: {
+        name: 'Yahoo Finance',
+        url: 'https://finance.yahoo.com/quote/SPY/',
+      },
+      ttlSeconds: 600,
+      // Legacy fields for backward compatibility
+      source_name: 'Yahoo Finance',
+      source_url: 'https://finance.yahoo.com/quote/SPY/',
+      as_of: now,
+      debug: {
+        data_source: 'yahoo_finance_api',
+        api_response: { price, change, changePercent },
+      },
+    };
+  };
+  
+  try {
+    return await tryPrimaryThenFallback(
+      () => withTimeout(primaryFn, FETCH_TIMEOUT_MS, 'fetchSPY (Stooq)'),
+      () => withTimeout(fallbackFn, FETCH_TIMEOUT_MS, 'fetchSPY (Yahoo Finance)'),
+      'fetchSPY'
+    );
   } catch (error) {
-    console.error('[fetchSPY] Error:', error);
-    const now = new Date().toISOString();
+    console.error('[fetchSPY] Both primary and fallback failed:', error);
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     return {
       name: 'SPY',
@@ -172,17 +243,17 @@ async function fetchSPY(): Promise<MarketDataItem> {
       status: 'unavailable' as const,
       asOf: now,
       source: {
-        name: 'Stooq',
+        name: 'Stooq / Yahoo Finance',
         url: 'https://finance.yahoo.com/quote/SPY/',
       },
       ttlSeconds: 600,
       error: errorMsg,
       // Legacy fields for backward compatibility
-      source_name: 'Stooq',
+      source_name: 'Stooq / Yahoo Finance',
       source_url: 'https://finance.yahoo.com/quote/SPY/',
       as_of: now,
       debug: {
-        data_source: 'stooq_api',
+        data_source: 'both_failed',
         error: errorMsg,
       },
     };
@@ -190,10 +261,13 @@ async function fetchSPY(): Promise<MarketDataItem> {
 }
 
 /**
- * Fetch Gold (XAUUSD) price from Stooq API
+ * Fetch Gold (XAUUSD) price from Stooq API (primary) with Yahoo Finance fallback
  */
 async function fetchGold(): Promise<MarketDataItem> {
-  try {
+  const now = new Date().toISOString();
+  
+  // Primary: Stooq API (CSV)
+  const primaryFn = async (): Promise<MarketDataItem> => {
     const response = await fetch('https://stooq.com/q/l/?s=xauusd&f=sd2t2ohlcv&h&e=csv');
     
     if (!response.ok) {
@@ -218,7 +292,6 @@ async function fetchGold(): Promise<MarketDataItem> {
     
     console.log(`[fetchGold] Stooq API returned: $${closePrice}`);
     
-    const now = new Date().toISOString();
     return {
       name: 'Gold',
       value: closePrice,
@@ -239,9 +312,72 @@ async function fetchGold(): Promise<MarketDataItem> {
         api_response: { close: closePrice, raw_csv: dataLine },
       },
     };
+  };
+  
+  // Fallback: Yahoo Finance API (GC=F gold futures, no key required)
+  // Risk: Rate limiting, but robust JSON parsing with error handling
+  const fallbackFn = async (): Promise<MarketDataItem> => {
+    // Yahoo Finance v8 API for gold futures (GC=F)
+    const response = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=1d');
+    
+    if (!response.ok) {
+      throw new Error(`Yahoo Finance API error: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Robust parsing with multiple fallback paths
+    const result = data?.chart?.result?.[0];
+    if (!result) {
+      throw new Error('Invalid response structure from Yahoo Finance');
+    }
+    
+    const meta = result.meta;
+    const price = meta?.regularMarketPrice || meta?.previousClose || meta?.chartPreviousClose;
+    
+    if (!price || typeof price !== 'number' || price <= 0) {
+      throw new Error(`Invalid price from Yahoo Finance: ${price}`);
+    }
+    
+    // Calculate change if available
+    const previousClose = meta?.previousClose || meta?.chartPreviousClose || price;
+    const change = price - previousClose;
+    const changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0;
+    
+    console.log(`[fetchGold] Yahoo Finance fallback returned: $${price}`);
+    
+    return {
+      name: 'Gold',
+      value: price,
+      change,
+      change_percent: changePercent,
+      unit: 'USD/oz',
+      status: 'ok' as const,
+      asOf: now,
+      source: {
+        name: 'Yahoo Finance',
+        url: 'https://www.lbma.org.uk/prices-and-data/precious-metal-prices',
+      },
+      ttlSeconds: 600,
+      // Legacy fields for backward compatibility
+      source_name: 'Yahoo Finance',
+      source_url: 'https://www.lbma.org.uk/prices-and-data/precious-metal-prices',
+      as_of: now,
+      debug: {
+        data_source: 'yahoo_finance_api',
+        api_response: { price, change, changePercent },
+      },
+    };
+  };
+  
+  try {
+    return await tryPrimaryThenFallback(
+      () => withTimeout(primaryFn, FETCH_TIMEOUT_MS, 'fetchGold (Stooq)'),
+      () => withTimeout(fallbackFn, FETCH_TIMEOUT_MS, 'fetchGold (Yahoo Finance)'),
+      'fetchGold'
+    );
   } catch (error) {
-    console.error('[fetchGold] Error:', error);
-    const now = new Date().toISOString();
+    console.error('[fetchGold] Both primary and fallback failed:', error);
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     return {
       name: 'Gold',
@@ -250,17 +386,17 @@ async function fetchGold(): Promise<MarketDataItem> {
       status: 'unavailable' as const,
       asOf: now,
       source: {
-        name: 'Stooq',
+        name: 'Stooq / Yahoo Finance',
         url: 'https://www.lbma.org.uk/prices-and-data/precious-metal-prices',
       },
       ttlSeconds: 600,
       error: errorMsg,
       // Legacy fields for backward compatibility
-      source_name: 'Stooq',
+      source_name: 'Stooq / Yahoo Finance',
       source_url: 'https://www.lbma.org.uk/prices-and-data/precious-metal-prices',
       as_of: now,
       debug: {
-        data_source: 'stooq_api',
+        data_source: 'both_failed',
         error: errorMsg,
       },
     };
