@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import path from "path";
@@ -66,7 +67,7 @@ async function startServer() {
     // In development, just return API info for non-API routes
     app.get("*", (req, res) => {
       if (!req.path.startsWith("/api")) {
-        res.status(200).json({
+        return res.status(200).json({
           message: "Development mode: Frontend is served by Vite dev server on port 3000",
           api_endpoints: [
             "/api/market",
@@ -78,6 +79,8 @@ async function startServer() {
           ]
         });
       }
+      // If it's an API route but not matched, return 404
+      res.status(404).json({ error: "API endpoint not found" });
     });
   }
 
