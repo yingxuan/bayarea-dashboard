@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
+import { TrendingUp, TrendingDown, ExternalLink, AlertCircle, Clock } from "lucide-react";
 import { generateMarketJudgment, type MarketJudgment } from "@/lib/judgment";
 import { config } from "@/config";
 
@@ -17,8 +17,19 @@ interface MarketDataItem {
   change?: number;
   change_percent?: number;
   unit: string;
-  source_name: string;
-  source_url: string;
+  // New standard fields (preferred)
+  status?: "ok" | "stale" | "unavailable";
+  asOf?: string;
+  source?: {
+    name: string;
+    url: string;
+  };
+  ttlSeconds?: number;
+  error?: string;
+  // Legacy fields (for backward compatibility)
+  source_name?: string;
+  source_url?: string;
+  as_of?: string;
 }
 
 interface FinanceData {
@@ -32,8 +43,10 @@ interface FinanceData {
     value: number | string;
     change: number;
     changePercent: number;
+    status: "ok" | "stale" | "unavailable";
     source?: string;
     sourceUrl?: string;
+    error?: string;
     note?: string;
   }>;
   lastUpdated: string;
@@ -67,9 +80,42 @@ export default function FinanceOverview() {
         
         console.log("Market data received:", marketData);
         
+        // Helper function to extract source info (prefer new fields, fallback to legacy)
+        const getSourceInfo = (item: MarketDataItem) => {
+          return {
+            name: item.source?.name || item.source_name || "Unknown",
+            url: item.source?.url || item.source_url || "#",
+          };
+        };
+        
+        // Helper function to get status (prefer new field, default to "ok" if value is valid)
+        const getStatus = (item: MarketDataItem): "ok" | "stale" | "unavailable" => {
+          if (item.status) return item.status;
+          // Fallback: if value is "Unavailable" or invalid, treat as unavailable
+          if (item.value === "Unavailable" || (typeof item.value === "string" && item.value.toLowerCase() === "unavailable")) {
+            return "unavailable";
+          }
+          // If value is a valid number, treat as ok
+          if (typeof item.value === "number" && item.value > 0) {
+            return "ok";
+          }
+          return "unavailable";
+        };
+        
+        // Helper function to safely convert value to number
+        const getNumericValue = (item: MarketDataItem): number => {
+          if (typeof item.value === "number") return item.value;
+          if (typeof item.value === "string" && item.value !== "Unavailable") {
+            const parsed = parseFloat(item.value);
+            return isNaN(parsed) ? 0 : parsed;
+          }
+          return 0;
+        };
+        
         // Calculate portfolio value (mock for now)
         const portfolioValue = 150000;
-        const spyChangePercent = marketData.spy.change_percent || 0;
+        const spyStatus = getStatus(marketData.spy);
+        const spyChangePercent = spyStatus === "ok" ? (marketData.spy.change_percent || 0) : 0;
         const todayChange = portfolioValue * spyChangePercent / 100;
         
         const result2 = {
@@ -92,29 +138,35 @@ export default function FinanceOverview() {
             {
               code: "SPY",
               name: "S&P 500 ETF",
-              value: Number(marketData.spy.value),
-              change: Number(marketData.spy.change || 0),
-              changePercent: Number(marketData.spy.change_percent || 0),
-              source: marketData.spy.source_name,
-              sourceUrl: marketData.spy.source_url,
+              value: spyStatus === "ok" ? getNumericValue(marketData.spy) : "Unavailable",
+              change: spyStatus === "ok" ? Number(marketData.spy.change || 0) : 0,
+              changePercent: spyStatus === "ok" ? Number(marketData.spy.change_percent || 0) : 0,
+              status: spyStatus,
+              source: getSourceInfo(marketData.spy).name,
+              sourceUrl: getSourceInfo(marketData.spy).url,
+              error: marketData.spy.error,
             },
             {
               code: "GOLD",
               name: "Gold",
-              value: Number(marketData.gold.value),
-              change: Number(marketData.gold.change || 0),
-              changePercent: Number(marketData.gold.change_percent || 0),
-              source: marketData.gold.source_name,
-              sourceUrl: marketData.gold.source_url,
+              value: getStatus(marketData.gold) === "ok" ? getNumericValue(marketData.gold) : "Unavailable",
+              change: getStatus(marketData.gold) === "ok" ? Number(marketData.gold.change || 0) : 0,
+              changePercent: getStatus(marketData.gold) === "ok" ? Number(marketData.gold.change_percent || 0) : 0,
+              status: getStatus(marketData.gold),
+              source: getSourceInfo(marketData.gold).name,
+              sourceUrl: getSourceInfo(marketData.gold).url,
+              error: marketData.gold.error,
             },
             {
               code: "BTC",
               name: "Bitcoin",
-              value: Number(marketData.btc.value),
-              change: Number(marketData.btc.change || 0),
-              changePercent: Number(marketData.btc.change_percent || 0),
-              source: marketData.btc.source_name,
-              sourceUrl: marketData.btc.source_url,
+              value: getStatus(marketData.btc) === "ok" ? getNumericValue(marketData.btc) : "Unavailable",
+              change: getStatus(marketData.btc) === "ok" ? Number(marketData.btc.change || 0) : 0,
+              changePercent: getStatus(marketData.btc) === "ok" ? Number(marketData.btc.change_percent || 0) : 0,
+              status: getStatus(marketData.btc),
+              source: getSourceInfo(marketData.btc).name,
+              sourceUrl: getSourceInfo(marketData.btc).url,
+              error: marketData.btc.error,
             },
             {
               code: "CA_JUMBO_ARM",
@@ -122,8 +174,10 @@ export default function FinanceOverview() {
               value: marketData.mortgage.value,
               change: 0,
               changePercent: 0,
-              source: marketData.mortgage.source_name,
-              sourceUrl: marketData.mortgage.source_url,
+              status: getStatus(marketData.mortgage),
+              source: getSourceInfo(marketData.mortgage).name,
+              sourceUrl: getSourceInfo(marketData.mortgage).url,
+              error: marketData.mortgage.error,
               note: "基于最新公布利率",
             },
             {
@@ -132,23 +186,25 @@ export default function FinanceOverview() {
               value: marketData.powerball.value,
               change: 0,
               changePercent: 0,
-              source: marketData.powerball.source_name,
-              sourceUrl: marketData.powerball.source_url,
+              status: getStatus(marketData.powerball),
+              source: getSourceInfo(marketData.powerball).name,
+              sourceUrl: getSourceInfo(marketData.powerball).url,
+              error: marketData.powerball.error,
             },
           ],
-          lastUpdated: result.updated_at,
+          lastUpdated: result.updated_at || result.fetched_at || new Date().toLocaleString(),
         };
 
         console.log("Finance data processed:", result2);
         setData(result2);
         
-        // Generate market judgment
-        const marketJudgment = generateMarketJudgment({
+        // Generate market judgment (only if SPY is available)
+        const marketJudgment = spyStatus === "ok" ? generateMarketJudgment({
           spyChangePercent: marketData.spy.change_percent || 0,
           portfolioChangePercent: spyChangePercent,
-          btcChangePercent: marketData.btc.change_percent || 0,
-          goldChangePercent: marketData.gold.change_percent || 0,
-        });
+          btcChangePercent: getStatus(marketData.btc) === "ok" ? (marketData.btc.change_percent || 0) : 0,
+          goldChangePercent: getStatus(marketData.gold) === "ok" ? (marketData.gold.change_percent || 0) : 0,
+        }) : null;
         console.log("Market judgment:", marketJudgment);
         setJudgment(marketJudgment);
       } catch (error) {
@@ -295,58 +351,115 @@ export default function FinanceOverview() {
 
       {/* Indices Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {data.indices.map((index) => (
-          <div
-            key={index.code}
-            className="glow-border rounded-sm p-4 bg-card hover:bg-card/80 transition-colors"
-          >
-            <div className="text-xs text-muted-foreground mb-1">
-              {index.code}
-            </div>
-            <div className="text-sm font-medium text-foreground mb-2">
-              {index.name}
-            </div>
-            <div className="text-xl font-mono font-bold text-foreground mb-1">
-              {index.value === "Unavailable" 
-                ? "Unavailable"
-                : index.code === 'CA_JUMBO_ARM' 
-                  ? `${(Number(index.value) * 100).toFixed(2)}%`
-                  : Number(index.value).toLocaleString()}
-            </div>
-            {index.change !== 0 && (
-              <div
-                className={`text-xs font-mono flex items-center gap-1 ${
-                  index.change >= 0 ? "text-green-400" : "text-red-400"
-                }`}
-              >
-                {index.change >= 0 ? (
-                  <TrendingUp className="w-3 h-3" />
-                ) : (
-                  <TrendingDown className="w-3 h-3" />
+        {data.indices.map((index) => {
+          const isUnavailable = index.status === "unavailable";
+          const isStale = index.status === "stale";
+          const isOk = index.status === "ok";
+          
+          return (
+            <div
+              key={index.code}
+              className={`glow-border rounded-sm p-4 bg-card hover:bg-card/80 transition-colors ${
+                isUnavailable ? "opacity-75" : ""
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-xs text-muted-foreground">
+                  {index.code}
+                </div>
+                {/* Status indicator */}
+                {isStale && (
+                  <div className="flex items-center gap-1 text-xs text-yellow-400" title="数据可能已过期">
+                    <Clock className="w-3 h-3" />
+                  </div>
                 )}
-                {index.change >= 0 ? "+" : ""}
-                {index.change} ({index.changePercent >= 0 ? "+" : ""}
-                {index.changePercent}%)
+                {isUnavailable && (
+                  <div className="flex items-center gap-1 text-xs text-red-400" title="数据不可用">
+                    <AlertCircle className="w-3 h-3" />
+                  </div>
+                )}
               </div>
-            )}
-            {index.source && index.sourceUrl && (
-              <a
-                href={index.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-blue-400 hover:text-blue-300 mt-2 flex items-center gap-1"
-              >
-                <ExternalLink className="w-3 h-3" />
-                {index.source}
-              </a>
-            )}
-            {index.note && (
-              <div className="text-xs text-muted-foreground/70 mt-1">
-                {index.note}
+              <div className="text-sm font-medium text-foreground mb-2">
+                {index.name}
               </div>
-            )}
-          </div>
-        ))}
+              
+              {/* Value display - different for unavailable */}
+              {isUnavailable ? (
+                <div className="space-y-2">
+                  <div className="text-lg font-mono font-bold text-muted-foreground">
+                    不可用
+                  </div>
+                  {index.error && (
+                    <div className="text-xs text-muted-foreground/70">
+                      {index.error}
+                    </div>
+                  )}
+                  {index.sourceUrl && index.sourceUrl !== "#" && (
+                    <a
+                      href={index.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-2"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      查看来源
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="text-xl font-mono font-bold text-foreground mb-1">
+                    {index.code === 'CA_JUMBO_ARM' 
+                      ? `${(Number(index.value) * 100).toFixed(2)}%`
+                      : typeof index.value === "number"
+                        ? index.value.toLocaleString()
+                        : index.value}
+                  </div>
+                  {isOk && index.change !== 0 && (
+                    <div
+                      className={`text-xs font-mono flex items-center gap-1 ${
+                        index.change >= 0 ? "text-green-400" : "text-red-400"
+                      }`}
+                    >
+                      {index.change >= 0 ? (
+                        <TrendingUp className="w-3 h-3" />
+                      ) : (
+                        <TrendingDown className="w-3 h-3" />
+                      )}
+                      {index.change >= 0 ? "+" : ""}
+                      {index.change} ({index.changePercent >= 0 ? "+" : ""}
+                      {index.changePercent}%)
+                    </div>
+                  )}
+                  {isStale && (
+                    <div className="text-xs text-yellow-400/70 mt-1">
+                      数据可能已过期
+                    </div>
+                  )}
+                </>
+              )}
+              
+              {/* Source link - only show for ok/stale, or as "查看来源" for unavailable */}
+              {!isUnavailable && index.source && index.sourceUrl && index.sourceUrl !== "#" && (
+                <a
+                  href={index.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-400 hover:text-blue-300 mt-2 flex items-center gap-1"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  {index.source}
+                </a>
+              )}
+              
+              {index.note && (
+                <div className="text-xs text-muted-foreground/70 mt-1">
+                  {index.note}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
       
       {/* Last Updated Timestamp */}

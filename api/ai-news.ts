@@ -275,8 +275,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Return cached data if valid and not bypassed
     if (!nocache && cached && now - cached.timestamp < CACHE_TTL) {
+      const cachedData = cached.data;
+      // Ensure cached response has standard structure
+      if (!cachedData.status) {
+        // Migrate old cache format to new format
+        cachedData.status = cachedData.items?.length > 0 ? "ok" : (cachedData.error ? "unavailable" : "ok");
+        cachedData.items = cachedData.items || cachedData.news || [];
+        cachedData.count = cachedData.count ?? cachedData.items.length;
+        cachedData.asOf = cachedData.asOf || cachedData.fetched_at || new Date().toISOString();
+        cachedData.source = cachedData.source || { name: 'NewsAPI.org', url: 'https://newsapi.org/' };
+        cachedData.ttlSeconds = cachedData.ttlSeconds || Math.floor(CACHE_TTL / 1000);
+      }
       return res.status(200).json({
-        ...cached.data,
+        ...cachedData,
         cache_hit: true,
         cache_mode: 'normal',
         cache_age_seconds: cacheAgeSeconds,
@@ -292,7 +303,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Check if NEWS_API_KEY is configured
     if (!NEWS_API_KEY) {
       console.warn('[API /api/ai-news] NEWS_API_KEY not configured');
+      const fetchedAtISO = new Date().toISOString();
       const response: any = {
+        // Standard response structure
+        status: 'unavailable' as const,
+        items: [],
+        count: 0,
+        asOf: fetchedAtISO,
+        source: {
+          name: 'NewsAPI.org',
+          url: 'https://newsapi.org/',
+        },
+        ttlSeconds: 0, // No caching for unavailable
+        error: 'NEWS_API_KEY not configured. Get your free API key at https://newsapi.org/register',
+        cache_hit: false,
+        fetched_at: fetchedAtISO,
+        debug: {
+          reason: 'NEWS_API_KEY not configured',
+          total_fetched: 0,
+          filtered_out: 0,
+        },
+        // Legacy fields for backward compatibility
         news: [],
         updated_at: new Date().toLocaleString('en-US', {
           timeZone: 'America/Los_Angeles',
@@ -302,19 +333,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           minute: '2-digit',
           hour12: true,
         }),
-        fetched_at: new Date().toISOString(),
-        cache_hit: false,
-        cache_mode: nocache ? 'bypass' : 'normal',
-        cache_age_seconds: 0,
-        cache_expires_in_seconds: Math.floor(CACHE_TTL / 1000),
-        error: 'NEWS_API_KEY not configured. Get your free API key at https://newsapi.org/register',
         message: 'To enable AI news, add NEWS_API_KEY to Vercel environment variables. See NEWSAPI_SETUP.md for instructions.',
-        debug: {
-          reason: 'NEWS_API_KEY not configured',
-          total_fetched: 0,
-          unique_after_dedup: 0,
-          filtered_out: 0,
-        },
       };
       
       // Don't cache error state - allow retry after key is added
@@ -424,7 +443,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const news = filteredArticles.slice(0, 5).map(enhanceNewsItem);
     
     const fetchedAt = new Date();
+    const fetchedAtISO = fetchedAt.toISOString();
+    const ttlSeconds = Math.floor(CACHE_TTL / 1000);
+    
+    // Determine status
+    let status: "ok" | "stale" | "unavailable" = "ok";
+    if (news.length === 0) {
+      status = allArticles.length === 0 ? "unavailable" : "ok"; // Empty but fetched = ok (just filtered out)
+    }
+    
     const response: any = {
+      // Standard response structure
+      status,
+      items: news,
+      count: news.length,
+      asOf: fetchedAtISO,
+      source: {
+        name: 'NewsAPI.org',
+        url: 'https://newsapi.org/',
+      },
+      ttlSeconds,
+      cache_hit: false,
+      fetched_at: fetchedAtISO,
+      // Legacy fields for backward compatibility
       news,
       updated_at: fetchedAt.toLocaleString('en-US', {
         timeZone: 'America/Los_Angeles',
@@ -434,19 +475,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         minute: '2-digit',
         hour12: true,
       }),
-      fetched_at: fetchedAt.toISOString(),
-      cache_hit: false,
       cache_mode: nocache ? 'bypass' : 'normal',
       cache_age_seconds: 0,
-      cache_expires_in_seconds: Math.floor(CACHE_TTL / 1000),
+      cache_expires_in_seconds: ttlSeconds,
       age: 0,
-      expiry: Math.floor(CACHE_TTL / 1000),
+      expiry: ttlSeconds,
     };
     
     // Add debug info if no articles found
     if (news.length === 0 && debugInfo) {
       response.debug = debugInfo;
       response.message = 'No articles found. Check debug info for details.';
+      if (allArticles.length === 0) {
+        response.error = 'No articles fetched from NewsAPI';
+      }
     }
     
     // Update cache
@@ -464,16 +506,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const stale = cache.get(cacheKey);
     
     if (stale) {
+      const staleData = stale.data;
+      // Ensure stale response has standard structure
+      if (!staleData.status) {
+        staleData.status = staleData.items?.length > 0 ? "stale" : "unavailable";
+        staleData.items = staleData.items || staleData.news || [];
+        staleData.count = staleData.count ?? staleData.items.length;
+        staleData.asOf = staleData.asOf || staleData.fetched_at || new Date().toISOString();
+        staleData.source = staleData.source || { name: 'NewsAPI.org', url: 'https://newsapi.org/' };
+        staleData.ttlSeconds = staleData.ttlSeconds || Math.floor(CACHE_TTL / 1000);
+      } else {
+        staleData.status = "stale"; // Override to stale if we're using stale cache
+      }
       return res.status(200).json({
-        ...stale.data,
+        ...staleData,
         cache_hit: true,
         stale: true,
       });
     }
     
-    res.status(500).json({
-      error: 'Failed to fetch AI news',
-      message: error instanceof Error ? error.message : 'Unknown error',
+    const errorAtISO = new Date().toISOString();
+    res.status(200).json({
+      status: 'unavailable' as const,
+      items: [],
+      count: 0,
+      asOf: errorAtISO,
+      source: {
+        name: 'NewsAPI.org',
+        url: 'https://newsapi.org/',
+      },
+      ttlSeconds: 0,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      cache_hit: false,
+      fetched_at: errorAtISO,
+      // Legacy fields
+      news: [],
+      updated_at: new Date().toLocaleString('en-US', {
+        timeZone: 'America/Los_Angeles',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      }),
     });
   }
 }
