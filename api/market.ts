@@ -12,16 +12,29 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 const cache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
+/**
+ * Standard market data item structure
+ * Follows: {status, value, asOf, source, ttlSeconds, error?}
+ */
 interface MarketDataItem {
   name: string;
   value: number | string;
   change?: number;
   change_percent?: number;
   unit: string;
-  source_name: string;
-  source_url: string;
-  as_of: string; // ISO 8601 timestamp with timezone
-  // Debug fields (temporary for verification)
+  status: "ok" | "stale" | "unavailable";
+  asOf: string; // ISO 8601 timestamp (renamed from as_of for consistency)
+  source: {
+    name: string;
+    url: string;
+  };
+  ttlSeconds: number;
+  error?: string; // Only if status === "unavailable"
+  // Legacy fields (for backward compatibility)
+  source_name?: string; // Deprecated, use source.name
+  source_url?: string; // Deprecated, use source.url
+  as_of?: string; // Deprecated, use asOf
+  // Debug fields (optional, for troubleshooting)
   debug?: {
     data_source: string;
     api_response?: any;
@@ -49,13 +62,22 @@ async function fetchBTC(): Promise<MarketDataItem> {
     
     console.log(`[fetchBTC] CoinGecko API returned: $${price}`);
     
+    const now = new Date().toISOString();
     return {
       name: 'BTC',
       value: price,
       unit: 'USD',
+      status: 'ok' as const,
+      asOf: now,
+      source: {
+        name: 'CoinGecko',
+        url: 'https://www.coingecko.com/en/coins/bitcoin',
+      },
+      ttlSeconds: 600, // 10 minutes
+      // Legacy fields for backward compatibility
       source_name: 'CoinGecko',
       source_url: 'https://www.coingecko.com/en/coins/bitcoin',
-      as_of: new Date().toISOString(),
+      as_of: now,
       debug: {
         data_source: 'coingecko_api',
         api_response: { bitcoin: { usd: price } },
@@ -63,16 +85,27 @@ async function fetchBTC(): Promise<MarketDataItem> {
     };
   } catch (error) {
     console.error('[fetchBTC] Error:', error);
+    const now = new Date().toISOString();
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     return {
       name: 'BTC',
       value: 'Unavailable',
       unit: 'USD',
+      status: 'unavailable' as const,
+      asOf: now,
+      source: {
+        name: 'CoinGecko',
+        url: 'https://www.coingecko.com/en/coins/bitcoin',
+      },
+      ttlSeconds: 600,
+      error: errorMsg,
+      // Legacy fields for backward compatibility
       source_name: 'CoinGecko',
       source_url: 'https://www.coingecko.com/en/coins/bitcoin',
-      as_of: new Date().toISOString(),
+      as_of: now,
       debug: {
         data_source: 'coingecko_api',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMsg,
       },
     };
   }
@@ -107,13 +140,22 @@ async function fetchSPY(): Promise<MarketDataItem> {
     
     console.log(`[fetchSPY] Stooq API returned: $${closePrice}`);
     
+    const now = new Date().toISOString();
     return {
       name: 'SPY',
       value: closePrice,
       unit: 'USD',
+      status: 'ok' as const,
+      asOf: now,
+      source: {
+        name: 'Stooq',
+        url: 'https://finance.yahoo.com/quote/SPY/',
+      },
+      ttlSeconds: 600, // 10 minutes
+      // Legacy fields for backward compatibility
       source_name: 'Stooq',
       source_url: 'https://finance.yahoo.com/quote/SPY/',
-      as_of: new Date().toISOString(),
+      as_of: now,
       debug: {
         data_source: 'stooq_api',
         api_response: { close: closePrice, raw_csv: dataLine },
@@ -121,16 +163,27 @@ async function fetchSPY(): Promise<MarketDataItem> {
     };
   } catch (error) {
     console.error('[fetchSPY] Error:', error);
+    const now = new Date().toISOString();
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     return {
       name: 'SPY',
       value: 'Unavailable',
       unit: 'USD',
+      status: 'unavailable' as const,
+      asOf: now,
+      source: {
+        name: 'Stooq',
+        url: 'https://finance.yahoo.com/quote/SPY/',
+      },
+      ttlSeconds: 600,
+      error: errorMsg,
+      // Legacy fields for backward compatibility
       source_name: 'Stooq',
       source_url: 'https://finance.yahoo.com/quote/SPY/',
-      as_of: new Date().toISOString(),
+      as_of: now,
       debug: {
         data_source: 'stooq_api',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMsg,
       },
     };
   }
@@ -165,13 +218,22 @@ async function fetchGold(): Promise<MarketDataItem> {
     
     console.log(`[fetchGold] Stooq API returned: $${closePrice}`);
     
+    const now = new Date().toISOString();
     return {
       name: 'Gold',
       value: closePrice,
       unit: 'USD/oz',
+      status: 'ok' as const,
+      asOf: now,
+      source: {
+        name: 'Stooq',
+        url: 'https://www.lbma.org.uk/prices-and-data/precious-metal-prices',
+      },
+      ttlSeconds: 600, // 10 minutes
+      // Legacy fields for backward compatibility
       source_name: 'Stooq',
       source_url: 'https://www.lbma.org.uk/prices-and-data/precious-metal-prices',
-      as_of: new Date().toISOString(),
+      as_of: now,
       debug: {
         data_source: 'stooq_api',
         api_response: { close: closePrice, raw_csv: dataLine },
@@ -179,16 +241,27 @@ async function fetchGold(): Promise<MarketDataItem> {
     };
   } catch (error) {
     console.error('[fetchGold] Error:', error);
+    const now = new Date().toISOString();
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     return {
       name: 'Gold',
       value: 'Unavailable',
       unit: 'USD/oz',
+      status: 'unavailable' as const,
+      asOf: now,
+      source: {
+        name: 'Stooq',
+        url: 'https://www.lbma.org.uk/prices-and-data/precious-metal-prices',
+      },
+      ttlSeconds: 600,
+      error: errorMsg,
+      // Legacy fields for backward compatibility
       source_name: 'Stooq',
       source_url: 'https://www.lbma.org.uk/prices-and-data/precious-metal-prices',
-      as_of: new Date().toISOString(),
+      as_of: now,
       debug: {
         data_source: 'stooq_api',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMsg,
       },
     };
   }
@@ -201,13 +274,23 @@ async function fetchGold(): Promise<MarketDataItem> {
 async function fetchMortgageRate(): Promise<MarketDataItem> {
   console.log('[fetchMortgageRate] No reliable API available, returning Unavailable');
   
+  const now = new Date().toISOString();
   return {
     name: 'CA_JUMBO_ARM',
     value: 'Unavailable',
     unit: 'rate',
+    status: 'unavailable' as const,
+    asOf: now,
+    source: {
+      name: 'Bankrate',
+      url: 'https://www.bankrate.com/mortgages/mortgage-rates/',
+    },
+    ttlSeconds: 0, // No caching for unavailable items
+    error: 'No reliable API available for mortgage rates',
+    // Legacy fields for backward compatibility
     source_name: 'Bankrate',
     source_url: 'https://www.bankrate.com/mortgages/mortgage-rates/',
-    as_of: new Date().toISOString(),
+    as_of: now,
     debug: {
       data_source: 'none',
       error: 'No reliable API available for mortgage rates',
@@ -222,13 +305,23 @@ async function fetchMortgageRate(): Promise<MarketDataItem> {
 async function fetchPowerball(): Promise<MarketDataItem> {
   console.log('[fetchPowerball] No scraping allowed, returning Unavailable');
   
+  const now = new Date().toISOString();
   return {
     name: 'POWERBALL',
     value: 'Unavailable',
     unit: 'USD',
+    status: 'unavailable' as const,
+    asOf: now,
+    source: {
+      name: 'Powerball.com',
+      url: 'https://www.powerball.com/',
+    },
+    ttlSeconds: 0, // No caching for unavailable items
+    error: 'Scraping not allowed, no reliable API available',
+    // Legacy fields for backward compatibility
     source_name: 'Powerball.com',
     source_url: 'https://www.powerball.com/',
-    as_of: new Date().toISOString(),
+    as_of: now,
     debug: {
       data_source: 'none',
       error: 'Scraping not allowed, no reliable API available',
