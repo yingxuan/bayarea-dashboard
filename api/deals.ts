@@ -5,11 +5,20 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { CACHE_TTL, API_URLS, SOURCE_INFO, ttlMsToSeconds } from '../shared/config.js';
+import {
+  cache,
+  setCorsHeaders,
+  handleOptions,
+  isCacheBypass,
+  getCachedData,
+  setCache,
+  getStaleCache,
+  normalizeCachedResponse,
+  normalizeStaleResponse,
+  formatUpdatedAt,
+} from './utils.js';
 
 const DEALS_CACHE_TTL = CACHE_TTL.DEALS;
-
-// In-memory cache
-const cache = new Map<string, { data: any; timestamp: number }>();
 
 interface Deal {
   id: string;
@@ -77,50 +86,27 @@ async function fetchRedditDeals(): Promise<Deal[]> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(res);
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (handleOptions(req, res)) {
+    return;
   }
 
   try {
-    // Check cache
-    const nocache = req.query.nocache === '1' || req.query.nocache === 'true';
+    const nocache = isCacheBypass(req);
     const cacheKey = 'deals';
-    const cached = cache.get(cacheKey);
-    const now = Date.now();
     
-    // Calculate cache metadata
-    let cacheAgeSeconds = 0;
-    let cacheExpiresInSeconds = Math.floor(DEALS_CACHE_TTL / 1000);
-    
+    // Check cache
+    const cached = getCachedData(cacheKey, DEALS_CACHE_TTL, nocache);
     if (cached) {
-      cacheAgeSeconds = Math.floor((now - cached.timestamp) / 1000);
-      const remainingMs = DEALS_CACHE_TTL - (now - cached.timestamp);
-      cacheExpiresInSeconds = Math.max(0, Math.floor(remainingMs / 1000));
-    }
-    
-    // Return cached data if valid and not bypassed
-    if (!nocache && cached && now - cached.timestamp < DEALS_CACHE_TTL) {
       const cachedData = cached.data;
-      // Ensure cached response has standard structure
-      if (!cachedData.status) {
-        cachedData.status = cachedData.items?.length > 0 ? "ok" : "ok";
-        cachedData.items = cachedData.items || cachedData.deals || [];
-        cachedData.count = cachedData.count ?? cachedData.items.length;
-        cachedData.asOf = cachedData.asOf || cachedData.fetched_at || new Date().toISOString();
-        cachedData.source = cachedData.source || SOURCE_INFO.REDDIT;
-        cachedData.ttlSeconds = cachedData.ttlSeconds || ttlMsToSeconds(DEALS_CACHE_TTL);
-      }
+      normalizeCachedResponse(cachedData, SOURCE_INFO.REDDIT, ttlMsToSeconds(DEALS_CACHE_TTL), 'deals');
       return res.status(200).json({
         ...cachedData,
         cache_hit: true,
         cache_mode: 'normal',
-        cache_age_seconds: cacheAgeSeconds,
-        cache_expires_in_seconds: cacheExpiresInSeconds,
+        cache_age_seconds: cached.cacheAgeSeconds,
+        cache_expires_in_seconds: cached.cacheExpiresInSeconds,
       });
     }
 
@@ -146,14 +132,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fetched_at: fetchedAtISO,
       // Legacy fields for backward compatibility
       deals: deals.slice(0, 8),
-      updated_at: new Date().toLocaleString('en-US', {
-        timeZone: 'America/Los_Angeles',
-        month: 'numeric',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      }),
+      updated_at: formatUpdatedAt(),
       cache_mode: nocache ? 'bypass' : 'normal',
       cache_age_seconds: 0,
       cache_expires_in_seconds: ttlSeconds,
@@ -162,10 +141,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     // Update cache
-    cache.set(cacheKey, {
-      data: response,
-      timestamp: now,
-    });
+    setCache(cacheKey, response);
 
     res.status(200).json(response);
   } catch (error) {
@@ -173,21 +149,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Try to return stale cache
     const cacheKey = 'deals';
-    const stale = cache.get(cacheKey);
+    const stale = getStaleCache(cacheKey);
     
     if (stale) {
       const staleData = stale.data;
-      // Ensure stale response has standard structure
-      if (!staleData.status) {
-        staleData.status = staleData.items?.length > 0 ? "stale" : "unavailable";
-        staleData.items = staleData.items || staleData.deals || [];
-        staleData.count = staleData.count ?? staleData.items.length;
-        staleData.asOf = staleData.asOf || staleData.fetched_at || new Date().toISOString();
-        staleData.source = staleData.source || SOURCE_INFO.REDDIT;
-        staleData.ttlSeconds = staleData.ttlSeconds || ttlMsToSeconds(DEALS_CACHE_TTL);
-      } else {
-        staleData.status = "stale"; // Override to stale if we're using stale cache
-      }
+      normalizeStaleResponse(staleData, SOURCE_INFO.REDDIT, ttlMsToSeconds(DEALS_CACHE_TTL), 'deals');
       return res.status(200).json({
         ...staleData,
         cache_hit: true,
@@ -208,14 +174,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fetched_at: errorAtISO,
       // Legacy fields
       deals: [],
-      updated_at: new Date().toLocaleString('en-US', {
-        timeZone: 'America/Los_Angeles',
-        month: 'numeric',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      }),
+      updated_at: formatUpdatedAt(),
     });
   }
 }

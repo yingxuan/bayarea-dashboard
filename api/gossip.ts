@@ -5,11 +5,20 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { CACHE_TTL, API_URLS, SOURCE_INFO, ttlMsToSeconds } from '../shared/config.js';
+import {
+  cache,
+  setCorsHeaders,
+  handleOptions,
+  isCacheBypass,
+  getCachedData,
+  setCache,
+  getStaleCache,
+  normalizeCachedResponse,
+  normalizeStaleResponse,
+  formatUpdatedAt,
+} from './utils.js';
 
 const GOSSIP_CACHE_TTL = CACHE_TTL.GOSSIP;
-
-// In-memory cache
-const cache = new Map<string, { data: any; timestamp: number }>();
 
 interface GossipItem {
   id: number;
@@ -74,33 +83,21 @@ async function fetchHackerNews(): Promise<GossipItem[]> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(res);
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (handleOptions(req, res)) {
+    return;
   }
 
   try {
-    // Check cache
-    const nocache = req.query.nocache === '1' || req.query.nocache === 'true';
+    const nocache = isCacheBypass(req);
     const cacheKey = 'gossip';
-    const cached = cache.get(cacheKey);
-    const now = Date.now();
     
-    if (!nocache && cached && now - cached.timestamp < GOSSIP_CACHE_TTL) {
+    // Check cache
+    const cached = getCachedData(cacheKey, GOSSIP_CACHE_TTL, nocache);
+    if (cached) {
       const cachedData = cached.data;
-      // Ensure cached response has standard structure
-      if (!cachedData.status) {
-        cachedData.status = cachedData.items?.length > 0 ? "ok" : "ok";
-        cachedData.items = cachedData.items || cachedData.gossip || [];
-        cachedData.count = cachedData.count ?? cachedData.items.length;
-        cachedData.asOf = cachedData.asOf || cachedData.fetched_at || new Date().toISOString();
-        cachedData.source = cachedData.source || SOURCE_INFO.HACKER_NEWS;
-        cachedData.ttlSeconds = cachedData.ttlSeconds || ttlMsToSeconds(GOSSIP_CACHE_TTL);
-      }
+      normalizeCachedResponse(cachedData, SOURCE_INFO.HACKER_NEWS, ttlMsToSeconds(GOSSIP_CACHE_TTL), 'gossip');
       return res.status(200).json({
         ...cachedData,
         cache_hit: true,
@@ -124,23 +121,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fetched_at: fetchedAtISO,
       // Legacy fields for backward compatibility
       gossip: gossip.slice(0, 8),
-      updated_at: new Date().toLocaleString('en-US', {
-        timeZone: 'America/Los_Angeles',
-        month: 'numeric',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      }),
+      updated_at: formatUpdatedAt(),
       age: 0,
       expiry: ttlSeconds,
     };
 
     // Update cache
-    cache.set(cacheKey, {
-      data: response,
-      timestamp: now,
-    });
+    setCache(cacheKey, response);
 
     res.status(200).json(response);
   } catch (error) {
@@ -148,21 +135,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Try to return stale cache
     const cacheKey = 'gossip';
-    const stale = cache.get(cacheKey);
+    const stale = getStaleCache(cacheKey);
     
     if (stale) {
       const staleData = stale.data;
-      // Ensure stale response has standard structure
-      if (!staleData.status) {
-        staleData.status = staleData.items?.length > 0 ? "stale" : "unavailable";
-        staleData.items = staleData.items || staleData.gossip || [];
-        staleData.count = staleData.count ?? staleData.items.length;
-        staleData.asOf = staleData.asOf || staleData.fetched_at || new Date().toISOString();
-        staleData.source = staleData.source || { name: 'Hacker News', url: 'https://news.ycombinator.com/' };
-        staleData.ttlSeconds = staleData.ttlSeconds || ttlMsToSeconds(GOSSIP_CACHE_TTL);
-      } else {
-        staleData.status = "stale"; // Override to stale if we're using stale cache
-      }
+      normalizeStaleResponse(staleData, SOURCE_INFO.HACKER_NEWS, ttlMsToSeconds(GOSSIP_CACHE_TTL), 'gossip');
       return res.status(200).json({
         ...staleData,
         cache_hit: true,
@@ -183,14 +160,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fetched_at: errorAtISO,
       // Legacy fields
       gossip: [],
-      updated_at: new Date().toLocaleString('en-US', {
-        timeZone: 'America/Los_Angeles',
-        month: 'numeric',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      }),
+      updated_at: formatUpdatedAt(),
     });
   }
 }

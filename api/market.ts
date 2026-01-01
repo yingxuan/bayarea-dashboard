@@ -9,9 +9,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { withTimeout, tryPrimaryThenFallback } from '../server/utils.js';
 import { CACHE_TTL, FETCH_TIMEOUT_MS, API_URLS, SOURCE_INFO, ttlMsToSeconds } from '../shared/config.js';
+import {
+  cache,
+  setCorsHeaders,
+  handleOptions,
+  isCacheBypass,
+  getCachedData,
+  setCache,
+  getStaleCache,
+  formatUpdatedAt,
+} from './utils.js';
 
-// In-memory cache (persists across invocations in same instance)
-const cache = new Map<string, { data: any; timestamp: number }>();
 const MARKET_CACHE_TTL = CACHE_TTL.MARKET;
 
 /**
@@ -466,41 +474,25 @@ async function fetchPowerball(): Promise<MarketDataItem> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Set CORS headers (frontend on manus.space, backend on vercel.app)
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(res);
   
-  // Handle OPTIONS preflight request
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (handleOptions(req, res)) {
+    return;
   }
   
   try {
-    // Check for cache bypass parameter
-    const nocache = req.query.nocache === '1' || req.query.nocache === 'true';
+    const nocache = isCacheBypass(req);
     const cacheKey = 'market_data';
-    const cached = cache.get(cacheKey);
-    const now = Date.now();
     
-    // Calculate cache metadata
-    let cacheAgeSeconds = 0;
-    let cacheExpiresInSeconds = Math.floor(MARKET_CACHE_TTL / 1000);
-    
+    // Check cache
+    const cached = getCachedData(cacheKey, MARKET_CACHE_TTL, nocache);
     if (cached) {
-      cacheAgeSeconds = Math.floor((now - cached.timestamp) / 1000);
-      const remainingMs = MARKET_CACHE_TTL - (now - cached.timestamp);
-      cacheExpiresInSeconds = Math.max(0, Math.floor(remainingMs / 1000));
-    }
-    
-    // Return cached data if valid and not bypassed
-    if (!nocache && cached && now - cached.timestamp < MARKET_CACHE_TTL) {
       return res.status(200).json({
         ...cached.data,
         cache_hit: true,
         cache_mode: 'normal',
-        cache_age_seconds: cacheAgeSeconds,
-        cache_expires_in_seconds: cacheExpiresInSeconds,
+        cache_age_seconds: cached.cacheAgeSeconds,
+        cache_expires_in_seconds: cached.cacheExpiresInSeconds,
         cache_key: cacheKey,
       });
     }
@@ -528,14 +520,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         mortgage,
         powerball,
       },
-      updated_at: fetchedAt.toLocaleString('en-US', {
-        timeZone: 'America/Los_Angeles',
-        month: 'numeric',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      }),
+      updated_at: formatUpdatedAt(),
       fetched_at: fetchedAt.toISOString(),
       cache_hit: false,
       cache_mode: nocache ? 'bypass' : 'normal',
@@ -547,10 +532,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
     
     // Update cache
-    cache.set(cacheKey, {
-      data: response,
-      timestamp: Date.now(),
-    });
+    setCache(cacheKey, response);
     
     res.status(200).json(response);
   } catch (error) {
@@ -558,7 +540,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Try to return stale cache
     const cacheKey = 'market_data';
-    const stale = cache.get(cacheKey);
+    const stale = getStaleCache(cacheKey);
     
     if (stale) {
       return res.status(200).json({
