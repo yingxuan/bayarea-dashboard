@@ -48,6 +48,10 @@ async function fetchHackerNews(): Promise<GossipItem[]> {
     story && !story.dead && !story.deleted && story.title
   );
   
+  // Filter to 7 days old max (7 * 24 * 3600 = 604800 seconds)
+  const sevenDaysAgo = Date.now() / 1000 - 604800;
+  const recentStories = validStories.filter((story: any) => story.time >= sevenDaysAgo);
+  
   // Calculate time ago
   const getTimeAgo = (timestamp: number) => {
     const now = Date.now() / 1000;
@@ -58,7 +62,7 @@ async function fetchHackerNews(): Promise<GossipItem[]> {
     return `${Math.floor(hours / 24)} days ago`;
   };
   
-  return validStories.map((story: any) => ({
+  return recentStories.map((story: any) => ({
     id: story.id,
     title: story.title,
     url: story.url || `https://news.ycombinator.com/item?id=${story.id}`, // External URL or HN discussion
@@ -81,21 +85,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // Check cache
+    const nocache = req.query.nocache === '1' || req.query.nocache === 'true';
     const cacheKey = 'gossip';
     const cached = cache.get(cacheKey);
+    const now = Date.now();
     
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    if (!nocache && cached && now - cached.timestamp < CACHE_TTL) {
+      const cachedData = cached.data;
+      // Ensure cached response has standard structure
+      if (!cachedData.status) {
+        cachedData.status = cachedData.items?.length > 0 ? "ok" : "ok";
+        cachedData.items = cachedData.items || cachedData.gossip || [];
+        cachedData.count = cachedData.count ?? cachedData.items.length;
+        cachedData.asOf = cachedData.asOf || cachedData.fetched_at || new Date().toISOString();
+        cachedData.source = cachedData.source || { name: 'Hacker News', url: 'https://news.ycombinator.com/' };
+        cachedData.ttlSeconds = cachedData.ttlSeconds || Math.floor(CACHE_TTL / 1000);
+      }
       return res.status(200).json({
-        ...cached.data,
+        ...cachedData,
         cache_hit: true,
       });
     }
 
     // Fetch fresh data
     const gossip = await fetchHackerNews();
+    const fetchedAtISO = new Date().toISOString();
+    const ttlSeconds = Math.floor(CACHE_TTL / 1000);
     
-    const response = {
-      gossip: gossip.slice(0, 8), // Top 8 stories
+    const response: any = {
+      // Standard response structure
+      status: 'ok' as const,
+      items: gossip.slice(0, 8), // Top 8 stories
+      count: gossip.slice(0, 8).length,
+      asOf: fetchedAtISO,
+      source: {
+        name: 'Hacker News',
+        url: 'https://news.ycombinator.com/',
+      },
+      ttlSeconds,
+      cache_hit: false,
+      fetched_at: fetchedAtISO,
+      // Legacy fields for backward compatibility
+      gossip: gossip.slice(0, 8),
       updated_at: new Date().toLocaleString('en-US', {
         timeZone: 'America/Los_Angeles',
         month: 'numeric',
@@ -104,16 +135,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         minute: '2-digit',
         hour12: true,
       }),
-      fetched_at: new Date().toISOString(),
-      cache_hit: false,
       age: 0,
-      expiry: Math.floor(CACHE_TTL / 1000),
+      expiry: ttlSeconds,
     };
 
     // Update cache
     cache.set(cacheKey, {
       data: response,
-      timestamp: Date.now(),
+      timestamp: now,
     });
 
     res.status(200).json(response);
@@ -125,16 +154,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const stale = cache.get(cacheKey);
     
     if (stale) {
+      const staleData = stale.data;
+      // Ensure stale response has standard structure
+      if (!staleData.status) {
+        staleData.status = staleData.items?.length > 0 ? "stale" : "unavailable";
+        staleData.items = staleData.items || staleData.gossip || [];
+        staleData.count = staleData.count ?? staleData.items.length;
+        staleData.asOf = staleData.asOf || staleData.fetched_at || new Date().toISOString();
+        staleData.source = staleData.source || { name: 'Hacker News', url: 'https://news.ycombinator.com/' };
+        staleData.ttlSeconds = staleData.ttlSeconds || Math.floor(CACHE_TTL / 1000);
+      } else {
+        staleData.status = "stale"; // Override to stale if we're using stale cache
+      }
       return res.status(200).json({
-        ...stale.data,
+        ...staleData,
         cache_hit: true,
         stale: true,
       });
     }
 
-    res.status(500).json({
-      error: 'Failed to fetch gossip',
-      message: error instanceof Error ? error.message : 'Unknown error',
+    const errorAtISO = new Date().toISOString();
+    res.status(200).json({
+      status: 'unavailable' as const,
+      items: [],
+      count: 0,
+      asOf: errorAtISO,
+      source: {
+        name: 'Hacker News',
+        url: 'https://news.ycombinator.com/',
+      },
+      ttlSeconds: 0,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      cache_hit: false,
+      fetched_at: errorAtISO,
+      // Legacy fields
+      gossip: [],
+      updated_at: new Date().toLocaleString('en-US', {
+        timeZone: 'America/Los_Angeles',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      }),
     });
   }
 }
