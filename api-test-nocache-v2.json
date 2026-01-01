@@ -1,0 +1,69 @@
+{
+    "data": {
+        "spy": {
+            "name": "SPY",
+            "value": 687.01,
+            "unit": "USD",
+            "source_name": "finance.yahoo.com",
+            "source_url": "https://finance.yahoo.com/quote/SPY/",
+            "as_of": "2026-01-01T05:11:56.061Z",
+            "debug": {
+                "extraction_method": "fallback",
+                "raw_snippet": "Discovery: Surprisingly High Merger Price Alters Shareholder Value for Both ... PFFA Virtus InfraCap U.S. Preferred Stock ETF. 21.55. -0.19%. BAPR Innovator\u00a0...",
+                "extracted_value": "null (used fallback)",
+                "validation_passed": false
+            }
+        },
+        "gold": {
+            "name": "Gold",
+            "value": 2650,
+            "unit": "USD/oz",
+            "source_name": "finance.yahoo.com",
+            "source_url": "https://finance.yahoo.com/quote/GC=F/",
+            "as_of": "2026-01-01T05:11:56.541Z",
+            "debug": {
+                "extraction_method": "fallback",
+                "raw_snippet": "Find the latest Gold Feb 26 (GC=F) stock quote, history, news and other vital information to help you with your stock trading and investing.",
+                "extracted_value": "null (used fallback)",
+                "validation_passed": false
+            }
+        },
+        "btc": {
+            "name": "BTC",
+            "value": 95000,
+            "unit": "USD",
+            "source_name": "finance.yahoo.com",
+            "source_url": "https://finance.yahoo.com/quote/BTC-USD/",
+            "as_of": "2026-01-01T05:11:56.086Z",
+            "debug": {
+                "extraction_method": "fallback",
+                "raw_snippet": "Find the live Bitcoin USD (BTC-USD) price, history, news and other vital information to help with your cryptocurrency trading and investing.",
+                "extracted_value": "null (used fallback)",
+                "validation_passed": false
+            }
+        },
+        "mortgage": {
+            "name": "CA_JUMBO_ARM",
+            "value": 0.069,
+            "unit": "rate",
+            "source_name": "Fallback",
+            "source_url": "https://www.bankrate.com/mortgages/mortgage-rates/",
+            "as_of": "2026-01-01T05:11:56.459Z"
+        },
+        "powerball": {
+            "name": "POWERBALL",
+            "value": 485000000,
+            "unit": "USD",
+            "source_name": "Fallback",
+            "source_url": "https://www.powerball.com/",
+            "as_of": "2026-01-01T05:11:56.203Z"
+        }
+    },
+    "updated_at": "12/31, 9:11 PM",
+    "fetched_at": "2026-01-01T05:11:56.541Z",
+    "cache_hit": false,
+    "cache_mode": "bypass",
+    "cache_age_seconds": 0,
+    "cache_expires_in_seconds": 600,
+    "cache_key": "market_data"
+}

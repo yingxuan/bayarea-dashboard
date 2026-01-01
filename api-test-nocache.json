@@ -1,0 +1,46 @@
+{
+    "data": {
+        "spy": {
+            "name": "SPY",
+            "value": 687.01,
+            "unit": "USD",
+            "source_name": "finance.yahoo.com",
+            "source_url": "https://finance.yahoo.com/quote/SPY/",
+            "as_of": "2026-01-01T05:06:29.468Z"
+        },
+        "gold": {
+            "name": "Gold",
+            "value": 2650,
+            "unit": "USD/oz",
+            "source_name": "finance.yahoo.com",
+            "source_url": "https://finance.yahoo.com/quote/GC=F/",
+            "as_of": "2026-01-01T05:06:29.902Z"
+        },
+        "btc": {
+            "name": "BTC",
+            "value": 95000,
+            "unit": "USD",
+            "source_name": "finance.yahoo.com",
+            "source_url": "https://finance.yahoo.com/quote/BTC-USD/",
+            "as_of": "2026-01-01T05:06:29.383Z"
+        },
+        "mortgage": {
+            "name": "CA_JUMBO_ARM",
+            "value": 0.069,
+            "unit": "rate",
+            "source_name": "Fallback",
+            "source_url": "https://www.bankrate.com/mortgages/mortgage-rates/",
+            "as_of": "2026-01-01T05:06:29.909Z"
+        },
+        "powerball": {
+            "name": "POWERBALL",
+            "value": 485000000,
+            "unit": "USD",
+            "source_name": "Fallback",
+            "source_url": "https://www.powerball.com/",
+            "as_of": "2026-01-01T05:06:29.878Z"
+        }
+    },
+    "updated_at": "12/31, 9:06 PM",
+    "cache_hit": true
+}

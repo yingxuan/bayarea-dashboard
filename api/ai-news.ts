@@ -137,15 +137,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   
   try {
-    // Check cache
+    // Check for cache bypass parameter
+    const nocache = req.query.nocache === '1' || req.query.nocache === 'true';
     const cacheKey = 'ai_news';
     const cached = cache.get(cacheKey);
+    const now = Date.now();
     
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    // Calculate cache metadata
+    let cacheAgeSeconds = 0;
+    let cacheExpiresInSeconds = Math.floor(CACHE_TTL / 1000);
+    
+    if (cached) {
+      cacheAgeSeconds = Math.floor((now - cached.timestamp) / 1000);
+      const remainingMs = CACHE_TTL - (now - cached.timestamp);
+      cacheExpiresInSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+    }
+    
+    // Return cached data if valid and not bypassed
+    if (!nocache && cached && now - cached.timestamp < CACHE_TTL) {
       return res.status(200).json({
         ...cached.data,
         cache_hit: true,
+        cache_mode: 'normal',
+        cache_age_seconds: cacheAgeSeconds,
+        cache_expires_in_seconds: cacheExpiresInSeconds,
       });
+    }
+    
+    // Log cache bypass
+    if (nocache) {
+      console.log('[API /api/ai-news] Cache bypass requested via ?nocache=1');
     }
     
     // Fetch fresh news from Google CSE
@@ -193,24 +214,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       'cnbc.com', 'ft.com', 'wsj.com', 'nytimes.com'
     ];
     
-    // Sources to exclude (low quality, aggregators, interview forums, stock quotes, etc.)
+    // URL rejection patterns (stock quotes, symbols, finance pages)
+    const rejectionPatterns = [
+      '/quote/', '/quotes/', '/stock/', '/stocks/', '/symbol/',
+      'finance.yahoo.com/quote', 'finance.yahoo.com/quotes',
+      'google.com/finance', 'marketwatch.com/investing/stock',
+      'nasdaq.com/market-activity/stocks'
+    ];
+    
+    // Domain allowlist for news articles
+    const allowedDomains = [
+      'reuters.com', 'theverge.com', 'arstechnica.com',
+      'techcrunch.com', 'wired.com', 'ft.com',
+      'bloomberg.com', 'cnbc.com', 'wsj.com',
+      'nytimes.com', 'venturebeat.com', 'engadget.com',
+      'theinformation.com'
+    ];
+    
+    // Sources to exclude (low quality, aggregators, social media)
     const excludedSources = [
       'youtube.com', 'reddit.com', 'twitter.com', 'x.com',
       'facebook.com', 'pinterest.com',
-      '1point3acres.com', '1p3a.com', 'mitbbs.com',  // Interview forums
-      '/quote/', '/quotes/', '/stock/', '/stocks/',  // Stock quote pages
-      'finance.yahoo.com/quote', 'google.com/finance'
+      '1point3acres.com', '1p3a.com', 'mitbbs.com'
     ];
     
     for (const results of allResults) {
       for (const result of results) {
         if (!seen.has(result.link)) {
-          // Skip excluded sources
-          const isExcluded = excludedSources.some(source => 
-            result.link?.toLowerCase().includes(source)
-          );
+          const url = result.link?.toLowerCase() || '';
           
-          if (!isExcluded) {
+          // Reject URLs matching rejection patterns (quote pages, stock symbols)
+          const isRejected = rejectionPatterns.some(pattern => url.includes(pattern));
+          
+          // Reject URLs from excluded sources
+          const isExcluded = excludedSources.some(source => url.includes(source));
+          
+          // Check if domain is in allowlist
+          const isAllowed = allowedDomains.some(domain => url.includes(domain));
+          
+          // Only include if: allowed domain AND not rejected AND not excluded
+          if (isAllowed && !isRejected && !isExcluded) {
             seen.add(result.link);
             uniqueResults.push(result);
           }
@@ -255,9 +298,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Take top 5 and enhance with Chinese summaries
     const news = uniqueResults.slice(0, 5).map(enhanceNewsItem);
     
+    const fetchedAt = new Date();
     const response = {
       news,
-      updated_at: new Date().toLocaleString('en-US', {
+      updated_at: fetchedAt.toLocaleString('en-US', {
         timeZone: 'America/Los_Angeles',
         month: 'numeric',
         day: 'numeric',
@@ -265,7 +309,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         minute: '2-digit',
         hour12: true,
       }),
+      fetched_at: fetchedAt.toISOString(),
       cache_hit: false,
+      cache_mode: nocache ? 'bypass' : 'normal',
+      cache_age_seconds: 0,
+      cache_expires_in_seconds: Math.floor(CACHE_TTL / 1000),
     };
     
     // Update cache
