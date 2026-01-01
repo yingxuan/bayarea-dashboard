@@ -8,11 +8,11 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { withTimeout, tryPrimaryThenFallback } from '../server/utils.js';
+import { CACHE_TTL, FETCH_TIMEOUT_MS, API_URLS, SOURCE_INFO, ttlMsToSeconds } from '../shared/config.js';
 
 // In-memory cache (persists across invocations in same instance)
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
-const FETCH_TIMEOUT_MS = 5000; // 5 seconds timeout
+const MARKET_CACHE_TTL = CACHE_TTL.MARKET;
 
 /**
  * Standard market data item structure
@@ -77,7 +77,7 @@ async function fetchBTC(): Promise<MarketDataItem> {
           name: 'CoinGecko',
           url: 'https://www.coingecko.com/en/coins/bitcoin',
         },
-        ttlSeconds: 600, // 10 minutes
+        ttlSeconds: ttlMsToSeconds(MARKET_CACHE_TTL),
         // Legacy fields for backward compatibility
         source_name: 'CoinGecko',
         source_url: 'https://www.coingecko.com/en/coins/bitcoin',
@@ -540,10 +540,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cache_hit: false,
       cache_mode: nocache ? 'bypass' : 'normal',
       cache_age_seconds: 0,
-      cache_expires_in_seconds: Math.floor(CACHE_TTL / 1000),
+      cache_expires_in_seconds: ttlMsToSeconds(MARKET_CACHE_TTL),
       cache_key: cacheKey,
       age: 0,
-      expiry: Math.floor(CACHE_TTL / 1000),
+      expiry: ttlMsToSeconds(MARKET_CACHE_TTL),
     };
     
     // Update cache

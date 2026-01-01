@@ -8,14 +8,13 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { CACHE_TTL, API_URLS, SOURCE_INFO, ttlMsToSeconds } from '../shared/config.js';
 
 const NEWS_API_KEY = process.env.NEWS_API_KEY!;
-const NEWS_API_URL_EVERYTHING = 'https://newsapi.org/v2/everything';
-const NEWS_API_URL_HEADLINES = 'https://newsapi.org/v2/top-headlines';
+const NEWS_CACHE_TTL = CACHE_TTL.NEWS;
 
 // In-memory cache
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 interface NewsItem {
   title: string;
@@ -45,7 +44,7 @@ async function fetchNewsAPIEverything(query: string, pageSize: number = 10): Pro
     apiKey: NEWS_API_KEY,
   });
 
-  const response = await fetch(`${NEWS_API_URL_EVERYTHING}?${params}`);
+  const response = await fetch(`${API_URLS.NEWSAPI_EVERYTHING}?${params}`);
   
   if (!response.ok) {
     const error = await response.text();
@@ -78,7 +77,7 @@ async function fetchNewsAPIHeadlines(category: string = 'technology', pageSize: 
     apiKey: NEWS_API_KEY,
   });
 
-  const response = await fetch(`${NEWS_API_URL_HEADLINES}?${params}`);
+  const response = await fetch(`${API_URLS.NEWSAPI_HEADLINES}?${params}`);
   
   if (!response.ok) {
     const error = await response.text();
@@ -283,7 +282,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         cachedData.items = cachedData.items || cachedData.news || [];
         cachedData.count = cachedData.count ?? cachedData.items.length;
         cachedData.asOf = cachedData.asOf || cachedData.fetched_at || new Date().toISOString();
-        cachedData.source = cachedData.source || { name: 'NewsAPI.org', url: 'https://newsapi.org/' };
+        cachedData.source = cachedData.source || SOURCE_INFO.NEWSAPI;
         cachedData.ttlSeconds = cachedData.ttlSeconds || Math.floor(CACHE_TTL / 1000);
       }
       return res.status(200).json({
@@ -312,7 +311,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         asOf: fetchedAtISO,
         source: {
           name: 'NewsAPI.org',
-          url: 'https://newsapi.org/',
+          ...SOURCE_INFO.NEWSAPI,
         },
         ttlSeconds: 0, // No caching for unavailable
         error: 'NEWS_API_KEY not configured. Get your free API key at https://newsapi.org/register',
@@ -444,7 +443,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     const fetchedAt = new Date();
     const fetchedAtISO = fetchedAt.toISOString();
-    const ttlSeconds = Math.floor(CACHE_TTL / 1000);
+    const ttlSeconds = ttlMsToSeconds(NEWS_CACHE_TTL);
     
     // Determine status
     let status: "ok" | "stale" | "unavailable" = "ok";
@@ -514,7 +513,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         staleData.count = staleData.count ?? staleData.items.length;
         staleData.asOf = staleData.asOf || staleData.fetched_at || new Date().toISOString();
         staleData.source = staleData.source || { name: 'NewsAPI.org', url: 'https://newsapi.org/' };
-        staleData.ttlSeconds = staleData.ttlSeconds || Math.floor(CACHE_TTL / 1000);
+        staleData.ttlSeconds = staleData.ttlSeconds || ttlMsToSeconds(NEWS_CACHE_TTL);
       } else {
         staleData.status = "stale"; // Override to stale if we're using stale cache
       }

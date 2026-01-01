@@ -4,13 +4,13 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { CACHE_TTL, API_URLS, SOURCE_INFO, ttlMsToSeconds } from '../shared/config.js';
 
 const YELP_API_KEY = process.env.YELP_API_KEY!;
-const YELP_API_URL = 'https://api.yelp.com/v3/businesses/search';
+const RESTAURANTS_CACHE_TTL = CACHE_TTL.RESTAURANTS;
 
 // In-memory cache
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 hours
 
 interface Restaurant {
   id: string;
@@ -41,7 +41,7 @@ async function fetchYelpRestaurants(): Promise<Restaurant[]> {
     limit: '20',
   });
 
-  const response = await fetch(`${YELP_API_URL}?${params}`, {
+  const response = await fetch(`${API_URLS.YELP}?${params}`, {
     headers: {
       'Authorization': `Bearer ${YELP_API_KEY}`,
       'Accept': 'application/json',
@@ -83,7 +83,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const cacheKey = 'restaurants';
     const cached = cache.get(cacheKey);
     
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    if (cached && Date.now() - cached.timestamp < RESTAURANTS_CACHE_TTL) {
       return res.status(200).json({
         ...cached.data,
         cache_hit: true,
@@ -106,7 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fetched_at: new Date().toISOString(),
       cache_hit: false,
       age: 0,
-      expiry: Math.floor(CACHE_TTL / 1000),
+      expiry: ttlMsToSeconds(RESTAURANTS_CACHE_TTL),
     };
 
     // Update cache

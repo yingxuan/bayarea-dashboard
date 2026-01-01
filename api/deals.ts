@@ -4,12 +4,12 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { CACHE_TTL, ttlMsToSeconds } from '../shared/config.js';
 
-const REDDIT_API_BASE = 'https://www.reddit.com';
+const DEALS_CACHE_TTL = CACHE_TTL.DEALS;
 
 // In-memory cache
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 interface Deal {
   id: string;
@@ -91,7 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const cacheKey = 'deals';
     const cached = cache.get(cacheKey);
     
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    if (cached && Date.now() - cached.timestamp < DEALS_CACHE_TTL) {
       return res.status(200).json({
         ...cached.data,
         cache_hit: true,
@@ -114,7 +114,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fetched_at: new Date().toISOString(),
       cache_hit: false,
       age: 0,
-      expiry: Math.floor(CACHE_TTL / 1000),
+      expiry: ttlMsToSeconds(DEALS_CACHE_TTL),
     };
 
     // Update cache

@@ -12,6 +12,7 @@ import { generateMarketJudgment, type MarketJudgment } from "@/lib/judgment";
 import { config } from "@/config";
 import DataStateBadge from "@/components/DataStateBadge";
 import SourceLink from "@/components/SourceLink";
+import { getSourceInfo, getStatus, getNumericValue } from "@shared/utils";
 
 interface MarketDataItem {
   name: string;
@@ -78,37 +79,7 @@ export default function FinanceOverview() {
           powerball: MarketDataItem;
         } = result.data;
         
-        // Helper function to extract source info (prefer new fields, fallback to legacy)
-        const getSourceInfo = (item: MarketDataItem) => {
-          return {
-            name: item.source?.name || item.source_name || "Unknown",
-            url: item.source?.url || item.source_url || "#",
-          };
-        };
-        
-        // Helper function to get status (prefer new field, default to "ok" if value is valid)
-        const getStatus = (item: MarketDataItem): "ok" | "stale" | "unavailable" => {
-          if (item.status) return item.status;
-          // Fallback: if value is "Unavailable" or invalid, treat as unavailable
-          if (item.value === "Unavailable" || (typeof item.value === "string" && item.value.toLowerCase() === "unavailable")) {
-            return "unavailable";
-          }
-          // If value is a valid number, treat as ok
-          if (typeof item.value === "number" && item.value > 0) {
-            return "ok";
-          }
-          return "unavailable";
-        };
-        
-        // Helper function to safely convert value to number
-        const getNumericValue = (item: MarketDataItem): number => {
-          if (typeof item.value === "number") return item.value;
-          if (typeof item.value === "string" && item.value !== "Unavailable") {
-            const parsed = parseFloat(item.value);
-            return isNaN(parsed) ? 0 : parsed;
-          }
-          return 0;
-        };
+        // Use shared utility functions (imported at top)
         
         // Calculate portfolio value
         const portfolioValue = 150000;

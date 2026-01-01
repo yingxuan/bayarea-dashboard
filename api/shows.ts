@@ -4,13 +4,14 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { CACHE_TTL, ttlMsToSeconds } from '../shared/config.js';
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY!;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+const SHOWS_CACHE_TTL = CACHE_TTL.SHOWS;
 
 // In-memory cache
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 hours
 
 interface Show {
   id: number;
@@ -29,7 +30,7 @@ async function fetchTMDBShows(): Promise<Show[]> {
 
   // Fetch trending TV shows (this week)
   const response = await fetch(
-    `${TMDB_BASE_URL}/trending/tv/week?api_key=${TMDB_API_KEY}&language=en-US`
+    `${API_URLS.TMDB}/trending/tv/week?api_key=${TMDB_API_KEY}&language=en-US`
   );
 
   if (!response.ok) {
@@ -44,9 +45,9 @@ async function fetchTMDBShows(): Promise<Show[]> {
     description: show.overview || 'No description available',
     rating: show.vote_average,
     poster_url: show.poster_path 
-      ? `https://image.tmdb.org/t/p/w500${show.poster_path}`
+      ? `${API_URLS.TMDB_IMAGE}${show.poster_path}`
       : '',
-    url: `https://www.themoviedb.org/tv/${show.id}`, // TMDB page URL
+    url: `${API_URLS.TMDB_PAGE}/tv/${show.id}`, // TMDB page URL
     first_air_date: show.first_air_date || '',
   }));
 }
@@ -66,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const cacheKey = 'shows';
     const cached = cache.get(cacheKey);
     
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    if (cached && Date.now() - cached.timestamp < SHOWS_CACHE_TTL) {
       return res.status(200).json({
         ...cached.data,
         cache_hit: true,
@@ -89,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fetched_at: new Date().toISOString(),
       cache_hit: false,
       age: 0,
-      expiry: Math.floor(CACHE_TTL / 1000),
+      expiry: ttlMsToSeconds(SHOWS_CACHE_TTL),
     };
 
     // Update cache

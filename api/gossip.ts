@@ -4,12 +4,12 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { CACHE_TTL, API_URLS, SOURCE_INFO, ttlMsToSeconds } from '../shared/config.js';
 
-const HN_API_BASE = 'https://hacker-news.firebaseio.com/v0';
+const GOSSIP_CACHE_TTL = CACHE_TTL.GOSSIP;
 
 // In-memory cache
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 interface GossipItem {
   id: number;
@@ -31,7 +31,7 @@ async function fetchHNItem(id: number): Promise<any> {
 
 async function fetchHackerNews(): Promise<GossipItem[]> {
   // Fetch top stories
-  const response = await fetch(`${HN_API_BASE}/topstories.json`);
+    const response = await fetch(`${API_URLS.HACKER_NEWS}/topstories.json`);
   if (!response.ok) {
     throw new Error(`HN API error: ${response.statusText}`);
   }
@@ -90,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const cached = cache.get(cacheKey);
     const now = Date.now();
     
-    if (!nocache && cached && now - cached.timestamp < CACHE_TTL) {
+    if (!nocache && cached && now - cached.timestamp < GOSSIP_CACHE_TTL) {
       const cachedData = cached.data;
       // Ensure cached response has standard structure
       if (!cachedData.status) {
@@ -98,7 +98,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         cachedData.items = cachedData.items || cachedData.gossip || [];
         cachedData.count = cachedData.count ?? cachedData.items.length;
         cachedData.asOf = cachedData.asOf || cachedData.fetched_at || new Date().toISOString();
-        cachedData.source = cachedData.source || { name: 'Hacker News', url: 'https://news.ycombinator.com/' };
+        cachedData.source = cachedData.source || SOURCE_INFO.HACKER_NEWS;
         cachedData.ttlSeconds = cachedData.ttlSeconds || Math.floor(CACHE_TTL / 1000);
       }
       return res.status(200).json({
@@ -110,7 +110,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Fetch fresh data
     const gossip = await fetchHackerNews();
     const fetchedAtISO = new Date().toISOString();
-    const ttlSeconds = Math.floor(CACHE_TTL / 1000);
+    const ttlSeconds = ttlMsToSeconds(GOSSIP_CACHE_TTL);
     
     const response: any = {
       // Standard response structure
@@ -120,7 +120,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       asOf: fetchedAtISO,
       source: {
         name: 'Hacker News',
-        url: 'https://news.ycombinator.com/',
+        ...SOURCE_INFO.HACKER_NEWS,
       },
       ttlSeconds,
       cache_hit: false,
@@ -162,7 +162,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         staleData.count = staleData.count ?? staleData.items.length;
         staleData.asOf = staleData.asOf || staleData.fetched_at || new Date().toISOString();
         staleData.source = staleData.source || { name: 'Hacker News', url: 'https://news.ycombinator.com/' };
-        staleData.ttlSeconds = staleData.ttlSeconds || Math.floor(CACHE_TTL / 1000);
+        staleData.ttlSeconds = staleData.ttlSeconds || ttlMsToSeconds(GOSSIP_CACHE_TTL);
       } else {
         staleData.status = "stale"; // Override to stale if we're using stale cache
       }
@@ -181,7 +181,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       asOf: errorAtISO,
       source: {
         name: 'Hacker News',
-        url: 'https://news.ycombinator.com/',
+        ...SOURCE_INFO.HACKER_NEWS,
       },
       ttlSeconds: 0,
       error: error instanceof Error ? error.message : 'Unknown error',
