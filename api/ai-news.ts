@@ -1,12 +1,16 @@
 /**
  * Vercel Serverless Function: /api/ai-news
- * Fetches real-time AI/Tech news via Google Custom Search Engine
+ * Fetches real-time AI/Tech news via NewsAPI.org
+ * 
+ * REQUIRES: NEWS_API_KEY environment variable
+ * Get your free API key at: https://newsapi.org/register
+ * Free tier: 100 requests/day, 1 request/second
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const GOOGLE_CSE_API_KEY = process.env.GOOGLE_CSE_API_KEY!;
-const GOOGLE_CSE_ID = process.env.GOOGLE_CSE_ID!;
+const NEWS_API_KEY = process.env.NEWS_API_KEY!;
+const NEWS_API_URL = 'https://newsapi.org/v2/everything';
 
 // In-memory cache
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -23,104 +27,120 @@ interface NewsItem {
   as_of: string; // ISO 8601 timestamp with timezone
 }
 
-async function searchGoogle(query: string, num: number = 5, dateRestrict?: string): Promise<any[]> {
-  // Build URL with optional date restriction (e.g., 'd7' for past week)
-  let url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_CSE_API_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&num=${num}&sort=date`;
-  
-  if (dateRestrict) {
-    url += `&dateRestrict=${dateRestrict}`;
+/**
+ * Fetch news from NewsAPI.org
+ */
+async function fetchNewsAPI(query: string, pageSize: number = 10): Promise<any[]> {
+  if (!NEWS_API_KEY) {
+    console.warn('[AI News] NEWS_API_KEY not configured, returning empty results');
+    return [];
   }
+
+  const params = new URLSearchParams({
+    q: query,
+    language: 'en',
+    sortBy: 'publishedAt',
+    pageSize: pageSize.toString(),
+    apiKey: NEWS_API_KEY,
+  });
+
+  const response = await fetch(`${NEWS_API_URL}?${params}`);
   
-  const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Google CSE API error: ${response.statusText}`);
+    const error = await response.text();
+    console.error(`[AI News] NewsAPI error: ${response.statusText}`, error);
+    throw new Error(`NewsAPI error: ${response.statusText}`);
   }
-  
+
   const data = await response.json();
-  return data.items || [];
+  
+  if (data.status === 'error') {
+    console.error(`[AI News] NewsAPI returned error:`, data.message);
+    throw new Error(`NewsAPI error: ${data.message}`);
+  }
+
+  return data.articles || [];
 }
 
-function enhanceNewsItem(item: any): NewsItem {
-  const title = item.title.toLowerCase();
-  const snippet = item.snippet.toLowerCase();
+function enhanceNewsItem(article: any): NewsItem {
+  const title = article.title?.toLowerCase() || '';
+  const description = article.description?.toLowerCase() || '';
+  const content = article.content?.toLowerCase() || '';
+  const fullText = `${title} ${description} ${content}`;
   
   // Generate Chinese summary based on keywords
-  // Extract key information from title and snippet for more specific summaries
-  let summary_zh = item.title;
+  let summary_zh = article.title;
   let why_it_matters_zh = '可能影响科技行业发展趋势';
   
   // Helper function to extract key details
   const extractDetails = (text: string) => {
-    const lowerText = text.toLowerCase();
     const details: string[] = [];
     
     // Extract product names
-    if (lowerText.includes('gpt-5')) details.push('GPT-5');
-    if (lowerText.includes('gpt-4')) details.push('GPT-4');
-    if (lowerText.includes('gemini')) details.push('Gemini');
-    if (lowerText.includes('claude')) details.push('Claude');
+    if (text.includes('gpt-5')) details.push('GPT-5');
+    if (text.includes('gpt-4')) details.push('GPT-4');
+    if (text.includes('gemini')) details.push('Gemini');
+    if (text.includes('claude')) details.push('Claude');
     
     // Extract financial info
-    const investmentMatch = text.match(/\$(\d+(?:\.\d+)?\s*(?:billion|million|B|M))/i);
+    const investmentMatch = article.content?.match(/\$(\d+(?:\.\d+)?\s*(?:billion|million|B|M))/i);
     if (investmentMatch) details.push(investmentMatch[0]);
     
     // Extract percentage changes
-    const percentMatch = text.match(/(\d+(?:\.\d+)?%)/i);
+    const percentMatch = article.content?.match(/(\d+(?:\.\d+)?%)/i);
     if (percentMatch) details.push(percentMatch[0]);
     
     return details;
   };
   
-  const details = extractDetails(title + ' ' + snippet);
+  const details = extractDetails(fullText);
   
-  if (title.includes('nvidia') || title.includes('nvda') || snippet.includes('nvidia')) {
+  if (fullText.includes('nvidia') || fullText.includes('nvda')) {
     const detailsStr = details.length > 0 ? `（${details.join('、')}）` : '';
-    summary_zh = `英伟达${title.includes('chip') ? '芯片' : ''}${title.includes('earnings') ? '财报' : ''}最新动态${detailsStr}`;
+    summary_zh = `英伟达${fullText.includes('chip') ? '芯片' : ''}${fullText.includes('earnings') ? '财报' : ''}最新动态${detailsStr}`;
     why_it_matters_zh = '如果你持有 NVDA 股票或期权，或从事 AI 基础设施相关工作，这条新闻值得关注';
-  } else if (title.includes('openai') || snippet.includes('openai') || title.includes('chatgpt')) {
+  } else if (fullText.includes('openai') || fullText.includes('chatgpt')) {
     const detailsStr = details.length > 0 ? `（${details.join('、')}）` : '';
     summary_zh = `OpenAI 最新动态${detailsStr}`;
     why_it_matters_zh = 'OpenAI 的产品和战略变化可能影响 AI 工程师的技能需求和薪资水平';
-  } else if (title.includes('meta') || title.includes('facebook')) {
+  } else if (fullText.includes('meta') || fullText.includes('facebook')) {
     summary_zh = 'Meta 最新动态';
     why_it_matters_zh = 'Meta 的业务调整可能影响湾区就业市场和 AI/VR 岗位需求';
-  } else if (title.includes('google') || title.includes('alphabet') || title.includes('gemini')) {
+  } else if (fullText.includes('google') || fullText.includes('alphabet') || fullText.includes('gemini')) {
     summary_zh = 'Google 最新动态';
     why_it_matters_zh = 'Google 的产品和组织变化可能影响云计算和 AI 工程师的就业机会';
-  } else if (title.includes('microsoft') || title.includes('azure')) {
+  } else if (fullText.includes('microsoft') || fullText.includes('azure')) {
     summary_zh = '微软最新动态';
     why_it_matters_zh = '微软的云服务和 AI 战略可能影响相关岗位需求和薪资水平';
-  } else if (title.includes('amazon') || title.includes('aws')) {
+  } else if (fullText.includes('amazon') || fullText.includes('aws')) {
     summary_zh = '亚马逊最新动态';
     why_it_matters_zh = 'AWS 的业务变化可能影响云计算工程师的就业机会和薪资';
-  } else if (title.includes('apple')) {
+  } else if (fullText.includes('apple')) {
     summary_zh = '苹果最新动态';
     why_it_matters_zh = '苹果的产品和战略变化可能影响iOS开发和硬件工程师的需求';
-  } else if (title.includes('layoff') || title.includes('job cut') || snippet.includes('layoff')) {
+  } else if (fullText.includes('layoff') || fullText.includes('job cut')) {
     summary_zh = '科技公司裁员消息';
     why_it_matters_zh = '裁员信号可能预示就业市场降温，跳槽和谈 offer 需要更谨慎';
-  } else if (title.includes('hiring') || title.includes('job') || snippet.includes('hiring')) {
+  } else if (fullText.includes('hiring') || fullText.includes('job')) {
     summary_zh = '科技公司招聘动态';
     why_it_matters_zh = '招聘信号可能预示就业市场升温，是谈 offer 和跳槽的好时机';
-  } else if (title.includes('ai') || snippet.includes('artificial intelligence')) {
+  } else if (fullText.includes('ai') || fullText.includes('artificial intelligence')) {
     const detailsStr = details.length > 0 ? `（${details.join('、')}）` : '';
     summary_zh = `AI 行业最新进展${detailsStr}`;
     why_it_matters_zh = 'AI 技术的发展可能创造新的就业机会或改变现有岗位的技能要求';
-  } else if (title.includes('chip') || title.includes('semiconductor')) {
+  } else if (fullText.includes('chip') || fullText.includes('semiconductor')) {
     summary_zh = '芯片行业动态';
     why_it_matters_zh = '芯片供应链变化可能影响硬件和系统工程师的就业前景';
   }
   
   return {
-    title: item.title,
-    url: item.link,
-    source_name: item.displayLink,
-    snippet: item.snippet,
+    title: article.title || 'Untitled',
+    url: article.url,
+    source_name: article.source?.name || 'Unknown',
+    snippet: article.description || article.content?.substring(0, 200) || '',
     summary_zh,
     why_it_matters_zh,
-    published_at: item.pagemap?.metatags?.[0]?.['article:published_time'] || 
-                  item.pagemap?.metatags?.[0]?.['og:updated_time'] ||
-                  new Date().toISOString(),  // Fallback to current time if no date available
+    published_at: article.publishedAt || new Date().toISOString(),
     as_of: new Date().toISOString(),
   };
 }
@@ -169,141 +189,83 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log('[API /api/ai-news] Cache bypass requested via ?nocache=1');
     }
     
-    // Fetch fresh news from Google CSE
-    // Use broader queries, rely on exclusion filters to remove unwanted sources
+    // Check if NEWS_API_KEY is configured
+    if (!NEWS_API_KEY) {
+      console.warn('[API /api/ai-news] NEWS_API_KEY not configured');
+      const response = {
+        news: [],
+        updated_at: new Date().toLocaleString('en-US', {
+          timeZone: 'America/Los_Angeles',
+          month: 'numeric',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        }),
+        fetched_at: new Date().toISOString(),
+        cache_hit: false,
+        cache_mode: nocache ? 'bypass' : 'normal',
+        cache_age_seconds: 0,
+        cache_expires_in_seconds: Math.floor(CACHE_TTL / 1000),
+        error: 'NEWS_API_KEY not configured. Get your free API key at https://newsapi.org/register',
+      };
+      
+      // Cache empty result to avoid hammering the API
+      cache.set(cacheKey, {
+        data: response,
+        timestamp: Date.now(),
+      });
+      
+      return res.status(200).json(response);
+    }
+    
+    // Fetch fresh news from NewsAPI.org
+    // Use targeted queries for AI/tech news
     const queries = [
-      // AI company news (past month for better coverage)
-      { query: 'OpenAI news', dateRestrict: 'd30' },
-      { query: 'NVIDIA AI chips', dateRestrict: 'd30' },
-      { query: 'Google Gemini AI', dateRestrict: 'd30' },
-      { query: 'Meta AI Llama', dateRestrict: 'd30' },
-      { query: 'Microsoft Copilot AI', dateRestrict: 'd30' },
-      
-      // Job market & tech industry (past month)
-      { query: 'tech layoffs 2025', dateRestrict: 'd30' },
-      { query: 'Silicon Valley hiring', dateRestrict: 'd30' },
-      
-      // Broader AI/tech news (past month)
-      { query: 'artificial intelligence breakthrough', dateRestrict: 'd30' },
-      { query: 'AI startup funding', dateRestrict: 'd30' },
+      'OpenAI OR ChatGPT',
+      'NVIDIA AI',
+      'Google Gemini OR DeepMind',
+      'Meta AI OR Llama',
+      'Microsoft Copilot',
+      'tech layoffs',
+      'Silicon Valley jobs',
+      'artificial intelligence',
+      'AI startup funding',
     ];
     
-    // Search with multiple queries and combine results
-    const allResults = await Promise.all(
-      queries.map(({ query, dateRestrict }) => 
-        searchGoogle(query, 3, dateRestrict).catch(err => {
-          console.error(`[AI News] Query "${query}" failed:`, err.message);
-          return []; // Return empty array on failure
-        })
-      )
-    );
+    // Fetch articles for each query (limit to avoid rate limits)
+    const allArticles: any[] = [];
     
-    // Flatten and deduplicate by URL
-    const seen = new Set<string>();
-    const uniqueResults: any[] = [];
-    
-    // Tier 1: Premium tech news sources (highest priority)
-    const tier1Sources = [
-      'techcrunch.com', 'theverge.com', 'arstechnica.com',
-      'reuters.com', 'bloomberg.com', 'theinformation.com'
-    ];
-    
-    // Tier 2: Quality tech news sources
-    const tier2Sources = [
-      'venturebeat.com', 'wired.com', 'engadget.com',
-      'cnbc.com', 'ft.com', 'wsj.com', 'nytimes.com'
-    ];
-    
-    // URL rejection patterns (stock quotes, symbols, finance pages)
-    const rejectionPatterns = [
-      '/quote/', '/quotes/', '/stock/', '/stocks/', '/symbol/',
-      'finance.yahoo.com/quote', 'finance.yahoo.com/quotes',
-      'google.com/finance', 'marketwatch.com/investing/stock',
-      'nasdaq.com/market-activity/stocks'
-    ];
-    
-    // Domain allowlist for news articles
-    const allowedDomains = [
-      'reuters.com', 'theverge.com', 'arstechnica.com',
-      'techcrunch.com', 'wired.com', 'ft.com',
-      'bloomberg.com', 'cnbc.com', 'wsj.com',
-      'nytimes.com', 'venturebeat.com', 'engadget.com',
-      'theinformation.com'
-    ];
-    
-    // Sources to exclude (low quality, aggregators, social media, finance pages)
-    const excludedSources = [
-      'youtube.com', 'reddit.com', 'twitter.com', 'x.com',
-      'facebook.com', 'pinterest.com',
-      '1point3acres.com', '1p3a.com', 'mitbbs.com',
-      'finance.yahoo.com', 'google.com/finance', 'marketwatch.com',
-      'nasdaq.com', 'investing.com', 'seekingalpha.com'
-    ];
-    
-    for (const results of allResults) {
-      for (const result of results) {
-        if (!seen.has(result.link)) {
-          const url = result.link?.toLowerCase() || '';
-          
-          // Reject URLs matching rejection patterns (quote pages, stock symbols)
-          const isRejected = rejectionPatterns.some(pattern => url.includes(pattern));
-          
-          // Reject URLs from excluded sources
-          const isExcluded = excludedSources.some(source => url.includes(source));
-          
-          // Check if domain is in allowlist (optional - prefer but don't require)
-          const isPreferred = allowedDomains.some(domain => url.includes(domain));
-          
-          // Include if: NOT rejected AND NOT excluded
-          // Allowlist is used for sorting priority, not filtering
-          if (!isRejected && !isExcluded) {
-            seen.add(result.link);
-            uniqueResults.push({ ...result, isPreferred });
-          }
-        }
+    for (const query of queries.slice(0, 5)) { // Limit to 5 queries to stay within rate limits
+      try {
+        const articles = await fetchNewsAPI(query, 3);
+        allArticles.push(...articles);
+      } catch (error) {
+        console.error(`[AI News] Query "${query}" failed:`, error instanceof Error ? error.message : 'Unknown error');
+        // Continue with other queries
       }
     }
     
-    // Sort by: 1) Preferred domains first, 2) Source tier, 3) Most recent date
-    uniqueResults.sort((a, b) => {
-      // Preferred domains (allowlist) come first
-      if (a.isPreferred && !b.isPreferred) return -1;
-      if (!a.isPreferred && b.isPreferred) return 1;
-      
-      const aIsTier1 = tier1Sources.some(source => 
-        a.link?.toLowerCase().includes(source)
-      );
-      const bIsTier1 = tier1Sources.some(source => 
-        b.link?.toLowerCase().includes(source)
-      );
-      const aIsTier2 = tier2Sources.some(source => 
-        a.link?.toLowerCase().includes(source)
-      );
-      const bIsTier2 = tier2Sources.some(source => 
-        b.link?.toLowerCase().includes(source)
-      );
-      
-      // Tier 1 sources come first
-      if (aIsTier1 && !bIsTier1) return -1;
-      if (!aIsTier1 && bIsTier1) return 1;
-      
-      // Then Tier 2 sources
-      if (aIsTier2 && !bIsTier2) return -1;
-      if (!aIsTier2 && bIsTier2) return 1;
-      
-      // Within same tier, sort by date (most recent first)
-      const aDate = a.pagemap?.metatags?.[0]?.['article:published_time'] || 
-                    a.pagemap?.metatags?.[0]?.['og:updated_time'] ||
-                    '1970-01-01';
-      const bDate = b.pagemap?.metatags?.[0]?.['article:published_time'] || 
-                    b.pagemap?.metatags?.[0]?.['og:updated_time'] ||
-                    '1970-01-01';
-      
-      return new Date(bDate).getTime() - new Date(aDate).getTime();
+    // Deduplicate by URL
+    const seen = new Set<string>();
+    const uniqueArticles: any[] = [];
+    
+    for (const article of allArticles) {
+      if (article.url && !seen.has(article.url)) {
+        seen.add(article.url);
+        uniqueArticles.push(article);
+      }
+    }
+    
+    // Sort by published date (most recent first)
+    uniqueArticles.sort((a, b) => {
+      const aDate = new Date(a.publishedAt || 0).getTime();
+      const bDate = new Date(b.publishedAt || 0).getTime();
+      return bDate - aDate;
     });
     
     // Take top 5 and enhance with Chinese summaries
-    const news = uniqueResults.slice(0, 5).map(enhanceNewsItem);
+    const news = uniqueArticles.slice(0, 5).map(enhanceNewsItem);
     
     const fetchedAt = new Date();
     const response = {
