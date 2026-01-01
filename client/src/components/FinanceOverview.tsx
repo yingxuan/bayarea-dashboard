@@ -29,7 +29,7 @@ interface FinanceData {
   indices: Array<{
     code: string;
     name: string;
-    value: number;
+    value: number | string;
     change: number;
     changePercent: number;
     source?: string;
@@ -119,7 +119,7 @@ export default function FinanceOverview() {
             {
               code: "CA_JUMBO_ARM",
               name: "California Jumbo Loan 7/1 ARM",
-              value: Number(marketData.mortgage.value),
+              value: marketData.mortgage.value === "Unavailable" ? "Unavailable" : Number(marketData.mortgage.value),
               change: 0,
               changePercent: 0,
               source: marketData.mortgage.source_name,
@@ -129,7 +129,7 @@ export default function FinanceOverview() {
             {
               code: "POWERBALL",
               name: "Powerball Jackpot",
-              value: Number(marketData.powerball.value),
+              value: marketData.powerball.value === "Unavailable" ? "Unavailable" : Number(marketData.powerball.value),
               change: 0,
               changePercent: 0,
               source: marketData.powerball.source_name,
@@ -307,9 +307,11 @@ export default function FinanceOverview() {
               {index.name}
             </div>
             <div className="text-xl font-mono font-bold text-foreground mb-1">
-              {index.code === 'CA_JUMBO_ARM' 
-                ? `${(index.value * 100).toFixed(2)}%`
-                : index.value.toLocaleString()}
+              {index.value === "Unavailable" 
+                ? "Unavailable"
+                : index.code === 'CA_JUMBO_ARM' 
+                  ? `${(Number(index.value) * 100).toFixed(2)}%`
+                  : Number(index.value).toLocaleString()}
             </div>
             {index.change !== 0 && (
               <div

@@ -231,11 +231,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       'theinformation.com'
     ];
     
-    // Sources to exclude (low quality, aggregators, social media)
+    // Sources to exclude (low quality, aggregators, social media, finance pages)
     const excludedSources = [
       'youtube.com', 'reddit.com', 'twitter.com', 'x.com',
       'facebook.com', 'pinterest.com',
-      '1point3acres.com', '1p3a.com', 'mitbbs.com'
+      '1point3acres.com', '1p3a.com', 'mitbbs.com',
+      'finance.yahoo.com', 'google.com/finance', 'marketwatch.com',
+      'nasdaq.com', 'investing.com', 'seekingalpha.com'
     ];
     
     for (const results of allResults) {
