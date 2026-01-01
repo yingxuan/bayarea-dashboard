@@ -10,9 +10,24 @@ interface TimeAgoProps {
 
 export default function TimeAgo({ isoString, className = "" }: TimeAgoProps) {
   const formatTimeAgo = (dateString: string) => {
+    if (!dateString || dateString.trim() === '') {
+      return null;
+    }
+    
     const date = new Date(dateString);
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return null;
+    }
+    
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
+    
+    // Check if diff is reasonable (not negative or too large)
+    if (diffMs < 0 || diffMs > 100 * 365 * 24 * 60 * 60 * 1000) {
+      return null;
+    }
+    
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
     const diffHours = Math.floor(diffMinutes / 60);
     const diffDays = Math.floor(diffHours / 24);
@@ -25,6 +40,16 @@ export default function TimeAgo({ isoString, className = "" }: TimeAgoProps) {
   };
 
   const relativeTime = formatTimeAgo(isoString);
+  
+  // If invalid date, return "时间未知" or hide
+  if (relativeTime === null) {
+    return (
+      <span className={`text-xs text-muted-foreground font-mono ${className}`}>
+        时间未知
+      </span>
+    );
+  }
+
   const isoTime = new Date(isoString).toLocaleString("zh-CN", {
     year: "numeric",
     month: "2-digit",

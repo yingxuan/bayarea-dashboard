@@ -137,29 +137,6 @@ export default function FinanceOverview() {
               sourceUrl: getSourceInfo(marketData.btc).url,
               error: marketData.btc.error,
             },
-            {
-              code: "CA_JUMBO_ARM",
-              name: "California Jumbo Loan 7/1 ARM",
-              value: marketData.mortgage.value,
-              change: 0,
-              changePercent: 0,
-              status: getStatus(marketData.mortgage),
-              source: getSourceInfo(marketData.mortgage).name,
-              sourceUrl: getSourceInfo(marketData.mortgage).url,
-              error: marketData.mortgage.error,
-              note: "基于最新公布利率",
-            },
-            {
-              code: "POWERBALL",
-              name: "Powerball Jackpot",
-              value: marketData.powerball.value,
-              change: 0,
-              changePercent: 0,
-              status: getStatus(marketData.powerball),
-              source: getSourceInfo(marketData.powerball).name,
-              sourceUrl: getSourceInfo(marketData.powerball).url,
-              error: marketData.powerball.error,
-            },
           ],
           lastUpdated: result.updated_at || result.fetched_at || new Date().toLocaleString(),
         };
@@ -361,11 +338,9 @@ export default function FinanceOverview() {
               ) : (
                 <>
                   <div className="text-xl font-mono font-bold text-foreground mb-1">
-                    {index.code === 'CA_JUMBO_ARM' 
-                      ? `${(Number(index.value) * 100).toFixed(2)}%`
-                      : typeof index.value === "number"
-                        ? index.value.toLocaleString()
-                        : index.value}
+                    {typeof index.value === "number"
+                      ? index.value.toLocaleString()
+                      : index.value}
                   </div>
                   {isOk && index.change !== 0 && (
                     <div

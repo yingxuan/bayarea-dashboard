@@ -33,7 +33,11 @@ interface NewsItem {
   summary_zh?: string;
   why_it_matters_zh?: string;
   published_at?: string;
+  publishedAt?: string; // camelCase for client compatibility
   as_of: string; // ISO 8601 timestamp with timezone
+  id?: string; // Client-expected field
+  source?: string; // Client-expected field (alias for source_name)
+  relevanceScore?: number; // Client-expected field
 }
 
 /**
@@ -135,6 +139,69 @@ const ALLOWED_DOMAINS = [
   'acm.org',
 ];
 
+/**
+ * Normalize title for deduplication (remove special chars, lowercase, trim)
+ */
+function normalizeTitle(title: string): string {
+  return (title || '')
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '') // Remove special characters
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .trim();
+}
+
+/**
+ * Check if article is market-relevant (hard rules)
+ */
+function isMarketRelevant(article: any): boolean {
+  const title = article.title?.toLowerCase() || '';
+  const description = article.description?.toLowerCase() || '';
+  const content = article.content?.toLowerCase() || '';
+  const fullText = `${title} ${description} ${content}`;
+  
+  // Required topics (must match at least one)
+  const requiredTopics = [
+    // AI 芯片
+    /\b(ai chip|gpu|npu|tpu|neural processing|ai accelerator|h100|a100|b200)\b/i,
+    // 云计算
+    /\b(cloud computing|aws|azure|gcp|cloud service|saas|iaas|paas)\b/i,
+    // 大模型
+    /\b(large language model|llm|gpt|gemini|claude|foundation model|multimodal model)\b/i,
+    // 科技公司财报
+    /\b(earnings|quarterly|revenue|profit|financial results|q[1-4]|fy\d{4})\b/i,
+    // 监管政策
+    /\b(regulation|regulatory|policy|fcc|sec|ftc|antitrust|compliance)\b/i,
+    // 利率
+    /\b(interest rate|fed rate|federal reserve|monetary policy|inflation)\b/i,
+    // 出口管制
+    /\b(export control|trade restriction|sanction|embargo|chip ban)\b/i,
+  ];
+  
+  // Check if matches any required topic
+  const matchesRequired = requiredTopics.some(pattern => pattern.test(fullText));
+  if (!matchesRequired) {
+    return false;
+  }
+  
+  // Excluded topics (must not match)
+  const excludedTopics = [
+    // 游戏评测
+    /\b(game review|gaming review|gameplay|game rating|video game review)\b/i,
+    // 消费电子评测
+    /\b(product review|device review|phone review|laptop review|review:\s)/i,
+    // 纯娱乐内容
+    /\b(celebrity|gossip|entertainment news|movie review|tv show review)\b/i,
+  ];
+  
+  // Check if matches any excluded topic
+  const matchesExcluded = excludedTopics.some(pattern => pattern.test(fullText));
+  if (matchesExcluded) {
+    return false;
+  }
+  
+  return true;
+}
+
 function isArticleValid(article: any): boolean {
   const url = article.url?.toLowerCase() || '';
   const title = article.title?.toLowerCase() || '';
@@ -167,6 +234,11 @@ function isArticleValid(article: any): boolean {
     return false;
   }
   
+  // Market relevance filter
+  if (!isMarketRelevant(article)) {
+    return false;
+  }
+  
   return true;
 }
 
@@ -178,7 +250,7 @@ function enhanceNewsItem(article: any): NewsItem {
   
   // Generate Chinese summary based on keywords
   let summary_zh = article.title;
-  let why_it_matters_zh = '可能影响科技行业发展趋势';
+  let why_it_matters_zh = ''; // Will be set below, or use generic fallback
   
   // Helper function to extract key details
   const extractDetails = (text: string) => {
@@ -202,43 +274,90 @@ function enhanceNewsItem(article: any): NewsItem {
   };
   
   const details = extractDetails(fullText);
+  let hasSpecificReason = false;
   
   if (fullText.includes('nvidia') || fullText.includes('nvda')) {
     const detailsStr = details.length > 0 ? `（${details.join('、')}）` : '';
     summary_zh = `英伟达${fullText.includes('chip') ? '芯片' : ''}${fullText.includes('earnings') ? '财报' : ''}最新动态${detailsStr}`;
     why_it_matters_zh = '如果你持有 NVDA 股票或期权，或从事 AI 基础设施相关工作，这条新闻值得关注';
+    hasSpecificReason = true;
   } else if (fullText.includes('openai') || fullText.includes('chatgpt')) {
     const detailsStr = details.length > 0 ? `（${details.join('、')}）` : '';
     summary_zh = `OpenAI 最新动态${detailsStr}`;
     why_it_matters_zh = 'OpenAI 的产品和战略变化可能影响 AI 工程师的技能需求和薪资水平';
+    hasSpecificReason = true;
   } else if (fullText.includes('meta') || fullText.includes('facebook')) {
     summary_zh = 'Meta 最新动态';
     why_it_matters_zh = 'Meta 的业务调整可能影响湾区就业市场和 AI/VR 岗位需求';
+    hasSpecificReason = true;
   } else if (fullText.includes('google') || fullText.includes('alphabet') || fullText.includes('gemini')) {
     summary_zh = 'Google 最新动态';
     why_it_matters_zh = 'Google 的产品和组织变化可能影响云计算和 AI 工程师的就业机会';
+    hasSpecificReason = true;
   } else if (fullText.includes('microsoft') || fullText.includes('azure')) {
     summary_zh = '微软最新动态';
     why_it_matters_zh = '微软的云服务和 AI 战略可能影响相关岗位需求和薪资水平';
+    hasSpecificReason = true;
   } else if (fullText.includes('amazon') || fullText.includes('aws')) {
     summary_zh = '亚马逊最新动态';
     why_it_matters_zh = 'AWS 的业务变化可能影响云计算工程师的就业机会和薪资';
+    hasSpecificReason = true;
   } else if (fullText.includes('apple')) {
     summary_zh = '苹果最新动态';
     why_it_matters_zh = '苹果的产品和战略变化可能影响iOS开发和硬件工程师的需求';
+    hasSpecificReason = true;
   } else if (fullText.includes('layoff') || fullText.includes('job cut')) {
     summary_zh = '科技公司裁员消息';
     why_it_matters_zh = '裁员信号可能预示就业市场降温，跳槽和谈 offer 需要更谨慎';
+    hasSpecificReason = true;
   } else if (fullText.includes('hiring') || fullText.includes('job')) {
     summary_zh = '科技公司招聘动态';
     why_it_matters_zh = '招聘信号可能预示就业市场升温，是谈 offer 和跳槽的好时机';
+    hasSpecificReason = true;
   } else if (fullText.includes('ai') || fullText.includes('artificial intelligence')) {
     const detailsStr = details.length > 0 ? `（${details.join('、')}）` : '';
     summary_zh = `AI 行业最新进展${detailsStr}`;
     why_it_matters_zh = 'AI 技术的发展可能创造新的就业机会或改变现有岗位的技能要求';
+    hasSpecificReason = true;
   } else if (fullText.includes('chip') || fullText.includes('semiconductor')) {
     summary_zh = '芯片行业动态';
     why_it_matters_zh = '芯片供应链变化可能影响硬件和系统工程师的就业前景';
+    hasSpecificReason = true;
+  } else if (fullText.includes('earnings') || fullText.includes('quarterly') || fullText.includes('revenue')) {
+    summary_zh = '科技公司财报';
+    why_it_matters_zh = '财报数据反映公司业绩，可能影响股价和就业市场';
+    hasSpecificReason = true;
+  } else if (fullText.includes('regulation') || fullText.includes('regulatory') || fullText.includes('policy')) {
+    summary_zh = '科技监管政策';
+    why_it_matters_zh = '监管政策变化可能影响行业发展和就业环境';
+    hasSpecificReason = true;
+  } else if (fullText.includes('interest rate') || fullText.includes('fed rate') || fullText.includes('federal reserve')) {
+    summary_zh = '利率政策动态';
+    why_it_matters_zh = '利率变化影响科技公司融资成本和估值';
+    hasSpecificReason = true;
+  } else if (fullText.includes('export control') || fullText.includes('trade restriction') || fullText.includes('sanction')) {
+    summary_zh = '出口管制政策';
+    why_it_matters_zh = '出口管制可能影响科技供应链和行业格局';
+    hasSpecificReason = true;
+  }
+  
+  // Fallback: use generic short message if no specific reason found
+  if (!hasSpecificReason || !why_it_matters_zh) {
+    why_it_matters_zh = '可能影响科技行业发展趋势';
+  }
+  
+  // Generate ID from URL or title
+  const id = article.url ? article.url.split('/').pop()?.split('?')[0] || article.url : article.title?.slice(0, 50) || 'unknown';
+  
+  // Ensure published_at is valid, fallback to current time if invalid
+  let publishedAt = article.publishedAt || new Date().toISOString();
+  try {
+    const date = new Date(publishedAt);
+    if (isNaN(date.getTime())) {
+      publishedAt = new Date().toISOString();
+    }
+  } catch {
+    publishedAt = new Date().toISOString();
   }
   
   return {
@@ -248,8 +367,13 @@ function enhanceNewsItem(article: any): NewsItem {
     snippet: article.description || article.content?.substring(0, 200) || '',
     summary_zh,
     why_it_matters_zh,
-    published_at: article.publishedAt || new Date().toISOString(),
+    published_at: publishedAt,
+    publishedAt: publishedAt, // Add camelCase version for client compatibility
     as_of: new Date().toISOString(),
+    // Add client-expected fields
+    id: id.substring(0, 100), // Limit length
+    source: article.source?.name || 'Unknown',
+    relevanceScore: 85, // Default relevance score (can be enhanced later)
   };
 }
 
@@ -359,13 +483,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     console.log(`[AI News] Total articles fetched: ${allArticles.length}`);
     
-    // Deduplicate by URL
+    // Deduplicate by (normalized title + source)
     const seen = new Set<string>();
     const uniqueArticles: any[] = [];
     
     for (const article of allArticles) {
-      if (article.url && !seen.has(article.url)) {
-        seen.add(article.url);
+      if (!article.url || !article.title) {
+        continue;
+      }
+      
+      const normalizedTitle = normalizeTitle(article.title);
+      const source = article.source?.name || 'unknown';
+      const dedupKey = `${normalizedTitle}|${source}`;
+      
+      if (!seen.has(dedupKey)) {
+        seen.add(dedupKey);
         uniqueArticles.push(article);
       }
     }
