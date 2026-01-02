@@ -18,6 +18,9 @@ export const CACHE_TTL = {
   // Restaurants and shows update slowly
   RESTAURANTS: 12 * 60 * 60 * 1000, // 12 hours
   SHOWS: 12 * 60 * 60 * 1000, // 12 hours
+  
+  // YouTube bloggers update frequently
+  YOUTUBERS: 15 * 60 * 1000, // 15 minutes
 } as const;
 
 /**
@@ -94,6 +97,10 @@ export const SOURCE_INFO = {
     name: 'Yelp',
     url: 'https://www.yelp.com/',
   },
+  YOUTUBE_RSS: {
+    name: 'YouTube RSS',
+    url: 'https://www.youtube.com/feeds/videos.xml',
+  },
 } as const;
 
 /**
@@ -109,3 +116,28 @@ export function ttlMsToSeconds(ttlMs: number): number {
 export function getCacheTtl(dataType: keyof typeof CACHE_TTL): number {
   return CACHE_TTL[dataType];
 }
+
+/**
+ * YouTube Channel Configuration
+ * Fixed whitelist of US stock market bloggers
+ */
+export const US_STOCK_YOUTUBERS = [
+  { name: "视野环球财经", handle: "@RhinoFinance", channelId: "UCFQsi7WaF5X41tcuOryDk8w" },
+  { name: "股市咖啡屋 Stock Cafe", handle: "@StockCafe", channelId: "UCGDMLMZtjCd5P4fhTCetwsw" },
+  { name: "美投讲美股", handle: "@MeiTouJun", channelId: "UCBUH38E0ngqvmTqdchWunwQ" },
+  { name: "老李玩钱", handle: "@老李玩钱", channelId: "UCo2gxyermsLBSCxFHvJs0Zg" },
+  { name: "美投侃新闻", handle: "@MeiTouNews", channelId: "UCGpj3DO_5_TUDCNUgS9mjiQ" },
+  { name: "投资TALK君", handle: "@yttalkjun", channelId: "UCRBrH2qS7yKGMNSmjnj8gcw" },
+  { name: "NaNa 说美股", handle: "@NaNaShuoMeiGu", channelId: "UCFhJ8ZFg9W4kLwFTBBNIjOw" },
+] as const;
+
+/**
+ * Helper: Generate YouTube RSS URL from channel ID
+ */
+export const ytRssUrl = (channelId: string) =>
+  `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+
+/**
+ * Legacy alias for backward compatibility
+ */
+export const YOUTUBE_CHANNELS = US_STOCK_YOUTUBERS;

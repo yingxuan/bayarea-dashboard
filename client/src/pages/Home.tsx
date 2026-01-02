@@ -14,6 +14,7 @@ import FoodGrid from "@/components/FoodGrid";
 import DealsGrid from "@/components/DealsGrid";
 import GossipList from "@/components/GossipList";
 import ShowsCard from "@/components/ShowsCard";
+import YouTubersList from "@/components/YouTubersList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { config } from "@/config";
 
@@ -23,6 +24,7 @@ export default function Home() {
   const [shows, setShows] = useState<any>(null);
   const [gossip, setGossip] = useState<any>(null);
   const [deals, setDeals] = useState<any>(null);
+  const [youtubers, setYouTubers] = useState<any>(null);
   const [showLifestyle, setShowLifestyle] = useState(false);
 
   useEffect(() => {
@@ -104,6 +106,20 @@ export default function Home() {
         setDeals(null);
       }
 
+      // YouTubers
+      try {
+        const response = await fetch(`${config.apiBaseUrl}/api/youtubers`);
+        if (response.ok) {
+          const result = await response.json();
+          // Support both new (items) and legacy (youtubers) format
+          const items = result.items || result.youtubers || [];
+          setYouTubers(items.length > 0 ? { youtubers: items } : null);
+        }
+      } catch (error) {
+        console.error("[Home] Failed to fetch youtubers:", error);
+        setYouTubers(null);
+      }
+
     }
     
     loadAllData();
@@ -125,7 +141,7 @@ export default function Home() {
 
       <main className="container py-6">
         {/* First Screen: Core Blocks */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 items-start">
           {/* Block 1: Asset Summary (Left, fixed on first screen) */}
           <div className="lg:col-span-1">
             <FinanceOverview />
@@ -173,11 +189,25 @@ export default function Home() {
                 <TabsTrigger value="tech">Tech</TabsTrigger>
               </TabsList>
               <TabsContent value="finance" className="mt-0">
-                <div className="glow-border rounded-sm p-4 bg-card">
-                  <div className="text-sm text-muted-foreground font-mono text-center py-8">
-                    Finance videos coming soon
+                {youtubers && youtubers.youtubers && youtubers.youtubers.length > 0 ? (
+                  <div>
+                    <div className="mb-3">
+                      <h3 className="text-base font-semibold font-mono text-foreground/90 mb-1">
+                        美股博主
+                      </h3>
+                      <p className="text-xs text-muted-foreground font-mono">
+                        最新视频更新
+                      </p>
+                    </div>
+                    <YouTubersList items={youtubers.youtubers} maxItems={5} />
                   </div>
-                </div>
+                ) : (
+                  <div className="glow-border rounded-sm p-4 bg-card">
+                    <div className="text-sm text-muted-foreground font-mono text-center py-8">
+                      暂无更新
+                    </div>
+                  </div>
+                )}
               </TabsContent>
               <TabsContent value="tech" className="mt-0">
                 <div className="glow-border rounded-sm p-4 bg-card">

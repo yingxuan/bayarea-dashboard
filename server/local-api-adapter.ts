@@ -12,6 +12,7 @@ import gossipHandler from '../api/gossip.js';
 import dealsHandler from '../api/deals.js';
 import restaurantsHandler from '../api/restaurants.js';
 import showsHandler from '../api/shows.js';
+import youtubersHandler from '../api/youtubers.js';
 
 /**
  * Convert Express Request/Response to Vercel Request/Response
@@ -94,4 +95,12 @@ export async function restaurantsRoute(req: Request, res: Response) {
 export async function showsRoute(req: Request, res: Response) {
   const { vercelReq, vercelRes } = expressToVercel(req, res);
   await showsHandler(vercelReq, vercelRes);
+}
+
+/**
+ * YouTubers API route
+ */
+export async function youtubersRoute(req: Request, res: Response) {
+  const { vercelReq, vercelRes } = expressToVercel(req, res);
+  await youtubersHandler(vercelReq, vercelRes);
 }
