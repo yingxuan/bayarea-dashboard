@@ -1,6 +1,6 @@
 /**
  * Today Spend Recommendations Component
- * Displays food recommendations (奶茶/中餐/咖啡/甜品) for "今天怎么花钱"
+ * Displays food recommendations (奶茶/中餐/咖啡/夜宵) for "吃喝玩乐"
  * 
  * Requirements:
  * - Always shows 6 items
@@ -16,7 +16,7 @@ import SourceLink from "@/components/SourceLink";
 interface FoodPlace {
   id: string;
   name: string;
-  category: string; // 奶茶/中餐/咖啡/甜品
+  category: string; // 奶茶/中餐/咖啡/夜宵
   rating: number;
   user_ratings_total: number; // New field from Google Places API
   review_count?: number; // Legacy field for backward compatibility

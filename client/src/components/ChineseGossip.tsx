@@ -1,6 +1,6 @@
 /**
  * Chinese Gossip Component
- * Displays Chinese gossip topics for "今天聊什么"
+ * Displays Chinese gossip topics for "吃瓜追剧"
  * 
  * Requirements:
  * - Always shows 3 items

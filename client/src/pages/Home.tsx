@@ -1,9 +1,9 @@
 /**
  * 湾区华人每日生存与机会面板
  * 核心回答3个问题：
- * 1) 今天怎么赚钱
- * 2) 今天怎么花钱
- * 3) 今天聊什么
+ * 1) 早日退休
+ * 2) 吃喝玩乐
+ * 3) 吃瓜追剧
  * 
  * 全局原则：
  * - 一切内容必须可转化为：钱 / 行动 / 社交话题
@@ -21,7 +21,7 @@ import NewsList from "@/components/NewsList";
 import FoodGrid from "@/components/FoodGrid";
 import GossipList from "@/components/GossipList";
 import YouTubersList from "@/components/YouTubersList";
-import TodaySpendRecommendations from "@/components/TodaySpendRecommendations";
+import TodaySpendCarousels from "@/components/TodaySpendCarousels";
 import ChineseGossip from "@/components/ChineseGossip";
 import LeekCommunity from "@/components/LeekCommunity";
 import { config } from "@/config";
@@ -44,19 +44,19 @@ async function fetchWithTimeout(url: string, timeoutMs = 10000): Promise<Respons
 }
 
 export default function Home() {
-  // Section 1: 今天怎么赚钱
+  // Section 1: 早日退休
   const [marketNews, setMarketNews] = useState<any[]>([]); // 解释型市场要闻（只限解释涨跌）
   const [stockYoutubers, setStockYoutubers] = useState<any[]>([]); // 美股博主视频（每频道1条）
 
-  // Section 2: 今天怎么花钱
+  // Section 2: 吃喝玩乐
   // 使用新的自动推荐模块，不再需要单独的状态
 
-  // Section 3: 今天聊什么
+  // Section 3: 吃瓜追剧
   // 使用新的中文八卦模块，不再需要单独的状态
 
   useEffect(() => {
     async function loadAllData() {
-      // Section 1: 今天怎么赚钱
+      // Section 1: 早日退休
       // 解释型市场要闻（使用 Google Finance 新闻）
       try {
         const apiUrl = `${config.apiBaseUrl}/api/market-news`;
@@ -116,11 +116,11 @@ export default function Home() {
         setStockYoutubers([]);
       }
 
-      // Section 2: 今天怎么花钱
+      // Section 2: 吃喝玩乐
       // 使用新的自动推荐模块 (TodaySpendRecommendations)
       // 数据由组件内部获取，无需在这里处理
 
-      // Section 3: 今天聊什么
+      // Section 3: 吃瓜追剧
       // 使用新的中文八卦模块 (ChineseGossip)
       // 数据由组件内部获取，无需在这里处理
     }
@@ -136,11 +136,11 @@ export default function Home() {
       <Navigation />
 
       <main className="container py-6 space-y-12">
-        {/* Section 1: 今天怎么赚钱 */}
+        {/* Section 1: 早日退休 */}
         <section>
           <div className="mb-6">
             <h1 className="text-2xl font-bold font-mono mb-2">
-              <span className="neon-text-blue">今天怎么赚钱</span>
+              <span className="neon-text-blue">早日退休</span>
             </h1>
             <p className="text-sm text-muted-foreground font-mono">
               持仓总览 • Top Movers • 市场要闻 • 美股博主
@@ -216,25 +216,25 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Section 2: 今天怎么花钱 */}
+        {/* Section 2: 吃喝玩乐 */}
         <section>
           <div className="mb-6">
             <h1 className="text-2xl font-bold font-mono mb-2">
-              <span className="neon-text-blue">今天怎么花钱</span>
+              <span className="neon-text-blue">吃喝玩乐</span>
             </h1>
             <p className="text-sm text-muted-foreground font-mono">
-              新开/热门奶茶、中餐、咖啡、甜品 • 基于湾区位置（Cupertino/Sunnyvale/SJ）• 今天或这周能去
+              新开/热门奶茶、中餐、咖啡、夜宵 • 基于湾区位置（Cupertino/Sunnyvale/SJ）• 今天或这周能去
             </p>
           </div>
 
-          <TodaySpendRecommendations maxItems={6} />
+          <TodaySpendCarousels />
         </section>
 
-        {/* Section 3: 今天聊什么 */}
+        {/* Section 3: 吃瓜追剧 */}
         <section>
           <div className="mb-6">
             <h1 className="text-2xl font-bold font-mono mb-2">
-              <span className="neon-text-blue">今天聊什么</span>
+              <span className="neon-text-blue">吃瓜追剧</span>
             </h1>
             <p className="text-sm text-muted-foreground font-mono">
               中文八卦 · 华人优先 • 固定3条 • 只显示标题

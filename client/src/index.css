@@ -117,6 +117,15 @@
   }
   
   /* Scrollbar styling for cyberpunk feel */
+  /* Hide scrollbar for carousels */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
