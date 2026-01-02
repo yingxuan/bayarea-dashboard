@@ -11,8 +11,23 @@
  * VITE_API_BASE_URL=https://bayarea-dashboard.vercel.app
  */
 
-// API Base URL - prioritize environment variable, fallback to hardcoded URL
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://bayarea-dashboard.vercel.app';
+// API Base URL - prioritize environment variable, fallback based on environment
+const getApiBaseUrl = () => {
+  // If explicitly set, use it
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // In development, use relative path (Vite proxy will forward to localhost:3001)
+  if (import.meta.env.DEV) {
+    return ''; // Empty string = relative path, uses Vite proxy
+  }
+  
+  // In production, use Vercel URL
+  return 'https://bayarea-dashboard.vercel.app';
+};
+
+export const API_BASE_URL = getApiBaseUrl();
 
 export const config = {
   apiBaseUrl: API_BASE_URL,

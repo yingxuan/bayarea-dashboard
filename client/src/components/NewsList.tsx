@@ -98,8 +98,12 @@ export default function NewsList({
                 position="title-row"
                 className="text-muted-foreground hover:text-blue-400"
               />
-              <span>•</span>
-              <TimeAgo isoString={item.publishedAt} />
+              {item.publishedAt && (
+                <>
+                  <span>•</span>
+                  <TimeAgo isoString={item.publishedAt} />
+                </>
+              )}
             </div>
           </div>
 

@@ -30,10 +30,22 @@ export default function Home() {
     async function loadAllData() {
       // AI News
       try {
-        const response = await fetch(`${config.apiBaseUrl}/api/ai-news`);
+        const apiUrl = `${config.apiBaseUrl}/api/ai-news`;
+        const response = await fetch(apiUrl);
         if (response.ok) {
           const result = await response.json();
-          setIndustryNews({ news: result.news || [] });
+          // Support both new (items) and legacy (news) format
+          const newsItems = result.items || result.news || [];
+          console.log(`[Home] AI News fetched: ${newsItems.length} items`, {
+            status: result.status,
+            hasItems: !!result.items,
+            hasNews: !!result.news,
+            apiUrl,
+          });
+          setIndustryNews({ news: newsItems });
+        } else {
+          console.error(`[Home] AI News API error: ${response.status} ${response.statusText}`);
+          setIndustryNews({ news: [] });
         }
       } catch (error) {
         console.error("[Home] Failed to fetch AI news:", error);

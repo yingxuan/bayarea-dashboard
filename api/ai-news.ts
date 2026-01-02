@@ -122,6 +122,12 @@ const ALLOWED_DOMAINS = [
   'venturebeat.com',
   'theinformation.com',
   'axios.com',
+  '9to5google.com', // Google-focused tech news
+  '9to5mac.com', // Apple-focused tech news
+  'macrumors.com', // Apple news
+  'androidcentral.com', // Android news
+  'androidauthority.com', // Android news
+  'xda-developers.com', // Android/tech news
   // Business/Finance (tech-focused)
   'bloomberg.com',
   'ft.com',
@@ -139,6 +145,15 @@ const ALLOWED_DOMAINS = [
   'acm.org',
 ];
 
+// Blacklisted domains (explicitly exclude)
+const BLACKLISTED_DOMAINS = [
+  'marvelrivals.com', // Game website
+  'eurogamer.net', // Game website
+  'ign.com', // Game reviews
+  'gamespot.com', // Game reviews
+  'kotaku.com', // Game news
+];
+
 /**
  * Normalize title for deduplication (remove special chars, lowercase, trim)
  */
@@ -151,7 +166,8 @@ function normalizeTitle(title: string): string {
 }
 
 /**
- * Check if article is market-relevant (hard rules)
+ * Check if article is market-relevant (strict hard rules)
+ * Only allows: AI芯片/云计算/大模型 | 财报/裁员/招聘 | 监管/出口管制 | 利率/宏观政策
  */
 function isMarketRelevant(article: any): boolean {
   const title = article.title?.toLowerCase() || '';
@@ -159,22 +175,29 @@ function isMarketRelevant(article: any): boolean {
   const content = article.content?.toLowerCase() || '';
   const fullText = `${title} ${description} ${content}`;
   
-  // Required topics (must match at least one)
+  // Strict required topics (must match at least one category)
   const requiredTopics = [
-    // AI 芯片
-    /\b(ai chip|gpu|npu|tpu|neural processing|ai accelerator|h100|a100|b200)\b/i,
-    // 云计算
-    /\b(cloud computing|aws|azure|gcp|cloud service|saas|iaas|paas)\b/i,
-    // 大模型
-    /\b(large language model|llm|gpt|gemini|claude|foundation model|multimodal model)\b/i,
-    // 科技公司财报
-    /\b(earnings|quarterly|revenue|profit|financial results|q[1-4]|fy\d{4})\b/i,
-    // 监管政策
-    /\b(regulation|regulatory|policy|fcc|sec|ftc|antitrust|compliance)\b/i,
-    // 利率
-    /\b(interest rate|fed rate|federal reserve|monetary policy|inflation)\b/i,
-    // 出口管制
-    /\b(export control|trade restriction|sanction|embargo|chip ban)\b/i,
+    // Category 1: AI 芯片 / 云计算 / 大模型
+    /\b(ai chip|gpu|npu|tpu|neural processing|ai accelerator|h100|a100|b200|h200|blackwell|tensor core|semiconductor)\b/i,
+    /\b(cloud computing|aws|azure|gcp|google cloud|cloud service|saas|iaas|paas|cloud infrastructure|microsoft cloud)\b/i,
+    /\b(large language model|llm|gpt-?[0-9]|gemini|claude|foundation model|multimodal model|ai model|chatgpt|openai)\b/i,
+    
+    // Category 2: 科技公司财报 / 裁员 / 招聘
+    /\b(earnings|quarterly|q[1-4]|fy\d{4}|financial results|revenue|profit|loss|guidance|eps|beat|miss|stock price|shares)\b/i,
+    /\b(layoff|lay off|job cut|job cuts|workforce reduction|downsizing|restructuring|firing|termination)\b/i,
+    /\b(hiring|job opening|job post|recruiting|headcount|expansion|new role|position|vacancy)\b/i,
+    
+    // Category 3: 科技监管 / 出口管制
+    /\b(regulation|regulatory|policy|fcc|sec|ftc|antitrust|compliance|doj|justice department|lawsuit)\b/i,
+    /\b(export control|trade restriction|sanction|embargo|chip ban|export ban|bureau of industry|biden|china)\b/i,
+    
+    // Category 4: 利率 / 宏观政策
+    /\b(interest rate|fed rate|federal reserve|monetary policy|inflation|fomc|rate cut|rate hike|powell)\b/i,
+    /\b(macro policy|economic policy|trade policy|tariff|trade war|stimulus|recession)\b/i,
+    
+    // Category 5: 主要科技公司（放宽匹配，但必须与市场相关）
+    /\b(nvidia|nvda|apple|aapl|microsoft|msft|google|alphabet|goog|amazon|amzn|meta|fb|facebook|tesla|tsla)\b/i,
+    /\b(tech company|technology company|silicon valley|startup|ipo|venture capital|vc funding)\b/i,
   ];
   
   // Check if matches any required topic
@@ -183,14 +206,16 @@ function isMarketRelevant(article: any): boolean {
     return false;
   }
   
-  // Excluded topics (must not match)
+  // Strict excluded topics (must not match any)
   const excludedTopics = [
-    // 游戏评测
-    /\b(game review|gaming review|gameplay|game rating|video game review)\b/i,
-    // 消费电子评测
-    /\b(product review|device review|phone review|laptop review|review:\s)/i,
-    // 纯娱乐内容
-    /\b(celebrity|gossip|entertainment news|movie review|tv show review)\b/i,
+    // 游戏 / 消费电子评测
+    /\b(game review|gaming review|gameplay|game rating|video game review|game preview)\b/i,
+    /\b(product review|device review|phone review|laptop review|review:\s|hands.?on review)\b/i,
+    /\b(unboxing|first impressions|vs\.|comparison review)\b/i,
+    
+    // 纯产品评论 / 娱乐内容
+    /\b(celebrity|gossip|entertainment news|movie review|tv show review|film review)\b/i,
+    /\b(sports|music|fashion|lifestyle|travel|food review)\b/i,
   ];
   
   // Check if matches any excluded topic
@@ -221,11 +246,11 @@ function isArticleValid(article: any): boolean {
     return false;
   }
   
-  // Check allowlist - safely parse URL
+  // Check blacklist first
   try {
     const urlObj = new URL(url);
     const domain = urlObj.hostname.replace('www.', '');
-    if (!ALLOWED_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))) {
+    if (BLACKLISTED_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))) {
       return false;
     }
   } catch (error) {
@@ -234,12 +259,31 @@ function isArticleValid(article: any): boolean {
     return false;
   }
   
-  // Market relevance filter
+  // Market relevance filter (check content first)
   if (!isMarketRelevant(article)) {
     return false;
   }
   
-  return true;
+  // Check allowlist - if content is relevant, allow even if domain not in allowlist
+  // This allows new/relevant tech news sources to pass through
+  try {
+    const urlObj = new URL(url);
+    const domain = urlObj.hostname.replace('www.', '');
+    const isInAllowlist = ALLOWED_DOMAINS.some(d => domain === d || domain.endsWith('.' + d));
+    
+    // If domain is in allowlist, allow
+    if (isInAllowlist) {
+      return true;
+    }
+    
+    // If domain not in allowlist but content is market-relevant, allow it
+    // This is more permissive - we trust content relevance over domain whitelist
+    return true;
+  } catch (error) {
+    // Invalid URL format, reject
+    console.warn(`[AI News] Invalid URL format: ${url}`, error);
+    return false;
+  }
 }
 
 function enhanceNewsItem(article: any): NewsItem {
@@ -276,88 +320,120 @@ function enhanceNewsItem(article: any): NewsItem {
   const details = extractDetails(fullText);
   let hasSpecificReason = false;
   
+  // Generate specific "why it matters" - must mention: 股价/就业/资本/监管
   if (fullText.includes('nvidia') || fullText.includes('nvda')) {
     const detailsStr = details.length > 0 ? `（${details.join('、')}）` : '';
     summary_zh = `英伟达${fullText.includes('chip') ? '芯片' : ''}${fullText.includes('earnings') ? '财报' : ''}最新动态${detailsStr}`;
-    why_it_matters_zh = '如果你持有 NVDA 股票或期权，或从事 AI 基础设施相关工作，这条新闻值得关注';
+    if (fullText.includes('earnings') || fullText.includes('revenue') || fullText.includes('guidance')) {
+      why_it_matters_zh = '财报超预期可能推高 NVDA 股价，影响 AI 概念股情绪';
+    } else {
+      why_it_matters_zh = '英伟达动态直接影响 AI 芯片股估值和 AI 基础设施就业';
+    }
     hasSpecificReason = true;
   } else if (fullText.includes('openai') || fullText.includes('chatgpt')) {
     const detailsStr = details.length > 0 ? `（${details.join('、')}）` : '';
     summary_zh = `OpenAI 最新动态${detailsStr}`;
-    why_it_matters_zh = 'OpenAI 的产品和战略变化可能影响 AI 工程师的技能需求和薪资水平';
+    why_it_matters_zh = 'OpenAI 产品变化影响 AI 工程师就业需求和相关公司股价';
     hasSpecificReason = true;
   } else if (fullText.includes('meta') || fullText.includes('facebook')) {
     summary_zh = 'Meta 最新动态';
-    why_it_matters_zh = 'Meta 的业务调整可能影响湾区就业市场和 AI/VR 岗位需求';
+    if (fullText.includes('layoff') || fullText.includes('job cut')) {
+      why_it_matters_zh = 'Meta 裁员信号预示就业市场收紧，可能影响湾区岗位';
+    } else if (fullText.includes('earnings') || fullText.includes('revenue')) {
+      why_it_matters_zh = 'Meta 财报影响股价，反映广告和 AI 业务资本投入';
+    } else {
+      why_it_matters_zh = 'Meta 业务调整影响 AI/VR 岗位需求和公司估值';
+    }
     hasSpecificReason = true;
   } else if (fullText.includes('google') || fullText.includes('alphabet') || fullText.includes('gemini')) {
     summary_zh = 'Google 最新动态';
-    why_it_matters_zh = 'Google 的产品和组织变化可能影响云计算和 AI 工程师的就业机会';
+    if (fullText.includes('earnings') || fullText.includes('revenue')) {
+      why_it_matters_zh = 'Google 财报影响股价，反映云计算和 AI 业务资本投入';
+    } else {
+      why_it_matters_zh = 'Google 变化影响云计算和 AI 工程师就业机会';
+    }
     hasSpecificReason = true;
   } else if (fullText.includes('microsoft') || fullText.includes('azure')) {
     summary_zh = '微软最新动态';
-    why_it_matters_zh = '微软的云服务和 AI 战略可能影响相关岗位需求和薪资水平';
+    if (fullText.includes('earnings') || fullText.includes('revenue')) {
+      why_it_matters_zh = '微软财报影响股价，反映 Azure 和 AI 业务资本投入';
+    } else {
+      why_it_matters_zh = '微软云服务和 AI 战略影响相关岗位需求和公司估值';
+    }
     hasSpecificReason = true;
   } else if (fullText.includes('amazon') || fullText.includes('aws')) {
     summary_zh = '亚马逊最新动态';
-    why_it_matters_zh = 'AWS 的业务变化可能影响云计算工程师的就业机会和薪资';
+    if (fullText.includes('earnings') || fullText.includes('revenue')) {
+      why_it_matters_zh = 'AWS 财报影响股价，反映云计算业务资本投入';
+    } else {
+      why_it_matters_zh = 'AWS 业务变化影响云计算工程师就业和公司估值';
+    }
     hasSpecificReason = true;
   } else if (fullText.includes('apple')) {
     summary_zh = '苹果最新动态';
-    why_it_matters_zh = '苹果的产品和战略变化可能影响iOS开发和硬件工程师的需求';
+    if (fullText.includes('earnings') || fullText.includes('revenue')) {
+      why_it_matters_zh = '苹果财报影响股价，反映硬件和 AI 业务资本投入';
+    } else {
+      why_it_matters_zh = '苹果产品变化影响 iOS 开发和硬件工程师就业';
+    }
     hasSpecificReason = true;
-  } else if (fullText.includes('layoff') || fullText.includes('job cut')) {
+  } else if (fullText.includes('layoff') || fullText.includes('job cut') || fullText.includes('workforce reduction')) {
     summary_zh = '科技公司裁员消息';
-    why_it_matters_zh = '裁员信号可能预示就业市场降温，跳槽和谈 offer 需要更谨慎';
+    why_it_matters_zh = '裁员信号预示就业市场降温，影响跳槽和谈 offer 时机';
     hasSpecificReason = true;
-  } else if (fullText.includes('hiring') || fullText.includes('job')) {
+  } else if (fullText.includes('hiring') || (fullText.includes('job') && (fullText.includes('opening') || fullText.includes('post')))) {
     summary_zh = '科技公司招聘动态';
-    why_it_matters_zh = '招聘信号可能预示就业市场升温，是谈 offer 和跳槽的好时机';
+    why_it_matters_zh = '招聘信号预示就业市场升温，影响谈 offer 和跳槽时机';
     hasSpecificReason = true;
-  } else if (fullText.includes('ai') || fullText.includes('artificial intelligence')) {
-    const detailsStr = details.length > 0 ? `（${details.join('、')}）` : '';
-    summary_zh = `AI 行业最新进展${detailsStr}`;
-    why_it_matters_zh = 'AI 技术的发展可能创造新的就业机会或改变现有岗位的技能要求';
+  } else if ((fullText.includes('gpu') || fullText.includes('ai chip') || fullText.includes('h100') || fullText.includes('a100')) && !fullText.includes('review')) {
+    summary_zh = 'AI 芯片动态';
+    why_it_matters_zh = 'AI 芯片供应影响相关公司股价和硬件工程师就业';
     hasSpecificReason = true;
-  } else if (fullText.includes('chip') || fullText.includes('semiconductor')) {
-    summary_zh = '芯片行业动态';
-    why_it_matters_zh = '芯片供应链变化可能影响硬件和系统工程师的就业前景';
+  } else if (fullText.includes('cloud computing') || fullText.includes('aws') || fullText.includes('azure') || fullText.includes('gcp')) {
+    summary_zh = '云计算动态';
+    why_it_matters_zh = '云计算业务变化影响相关公司股价和工程师就业';
     hasSpecificReason = true;
-  } else if (fullText.includes('earnings') || fullText.includes('quarterly') || fullText.includes('revenue')) {
+  } else if ((fullText.includes('gpt') || fullText.includes('llm') || fullText.includes('large language model')) && !fullText.includes('review')) {
+    summary_zh = '大模型动态';
+    why_it_matters_zh = '大模型进展影响 AI 概念股股价和 AI 工程师就业';
+    hasSpecificReason = true;
+  } else if (fullText.includes('earnings') || fullText.includes('quarterly') || (fullText.includes('revenue') && fullText.includes('tech'))) {
     summary_zh = '科技公司财报';
-    why_it_matters_zh = '财报数据反映公司业绩，可能影响股价和就业市场';
+    why_it_matters_zh = '财报数据影响股价，反映公司业绩和资本投入';
     hasSpecificReason = true;
-  } else if (fullText.includes('regulation') || fullText.includes('regulatory') || fullText.includes('policy')) {
+  } else if (fullText.includes('regulation') || fullText.includes('regulatory') || fullText.includes('sec') || fullText.includes('ftc') || fullText.includes('antitrust')) {
     summary_zh = '科技监管政策';
-    why_it_matters_zh = '监管政策变化可能影响行业发展和就业环境';
+    why_it_matters_zh = '监管政策变化影响行业发展和公司估值';
     hasSpecificReason = true;
-  } else if (fullText.includes('interest rate') || fullText.includes('fed rate') || fullText.includes('federal reserve')) {
+  } else if (fullText.includes('interest rate') || fullText.includes('fed rate') || fullText.includes('federal reserve') || fullText.includes('fomc')) {
     summary_zh = '利率政策动态';
     why_it_matters_zh = '利率变化影响科技公司融资成本和估值';
     hasSpecificReason = true;
-  } else if (fullText.includes('export control') || fullText.includes('trade restriction') || fullText.includes('sanction')) {
+  } else if (fullText.includes('export control') || fullText.includes('trade restriction') || fullText.includes('sanction') || fullText.includes('chip ban')) {
     summary_zh = '出口管制政策';
-    why_it_matters_zh = '出口管制可能影响科技供应链和行业格局';
+    why_it_matters_zh = '出口管制影响科技供应链和行业格局，可能影响股价';
     hasSpecificReason = true;
   }
   
-  // Fallback: use generic short message if no specific reason found
+  // Fallback: use strict generic message (≤1 line, must mention market impact)
   if (!hasSpecificReason || !why_it_matters_zh) {
-    why_it_matters_zh = '可能影响科技行业发展趋势';
+    why_it_matters_zh = '可能影响科技股情绪';
   }
   
   // Generate ID from URL or title
   const id = article.url ? article.url.split('/').pop()?.split('?')[0] || article.url : article.title?.slice(0, 50) || 'unknown';
   
-  // Ensure published_at is valid, fallback to current time if invalid
-  let publishedAt = article.publishedAt || new Date().toISOString();
-  try {
-    const date = new Date(publishedAt);
-    if (isNaN(date.getTime())) {
-      publishedAt = new Date().toISOString();
+  // Handle publishedAt: if missing or invalid, set to empty string (client will hide time)
+  let publishedAt = article.publishedAt || '';
+  if (publishedAt) {
+    try {
+      const date = new Date(publishedAt);
+      if (isNaN(date.getTime())) {
+        publishedAt = ''; // Invalid date, set to empty (client will hide)
+      }
+    } catch {
+      publishedAt = ''; // Invalid format, set to empty (client will hide)
     }
-  } catch {
-    publishedAt = new Date().toISOString();
   }
   
   return {
@@ -514,14 +590,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Log filtering stats for debugging
     if (uniqueArticles.length > 0 && filteredArticles.length === 0) {
-      const sampleDomains = uniqueArticles.slice(0, 5).map(a => {
-        try {
-          return new URL(a.url).hostname;
-        } catch {
-          return 'invalid-url';
-        }
-      });
-      console.warn(`[AI News] All ${uniqueArticles.length} articles were filtered out. Sample domains:`, sampleDomains);
+      const sampleTitles = uniqueArticles.slice(0, 3).map(a => a.title?.substring(0, 60) || 'no title');
+      console.warn(`[AI News] All ${uniqueArticles.length} articles were filtered out by relevance filter. Sample titles:`, sampleTitles);
+      console.warn(`[AI News] This may indicate the relevance filter is too strict. Consider checking isMarketRelevant() logic.`);
     } else {
       console.log(`[AI News] Filtered ${uniqueArticles.length} articles to ${filteredArticles.length} valid articles`);
     }
@@ -534,18 +605,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           total_fetched: allArticles.length,
           unique_after_dedup: uniqueArticles.length,
           filtered_out: uniqueArticles.length,
+          sample_titles: uniqueArticles.slice(0, 5).map(a => a.title?.substring(0, 80) || 'no title'),
           sample_domains: uniqueArticles.slice(0, 3).map(a => {
             try {
               return new URL(a.url).hostname;
             } catch {
               return 'invalid-url';
             }
-          })
+          }),
+          hint: 'All articles were filtered out by relevance filter. Try ?nocache=1 to fetch fresh data.'
         }
       : undefined;
     
-    // Take top 5 and enhance with Chinese summaries
-    const news = filteredArticles.slice(0, 5).map(enhanceNewsItem);
+    // Calculate market impact score for sorting (subjective rules)
+    const calculateMarketImpact = (article: any): number => {
+      const title = article.title?.toLowerCase() || '';
+      const description = article.description?.toLowerCase() || '';
+      const content = article.content?.toLowerCase() || '';
+      const fullText = `${title} ${description} ${content}`;
+      
+      let score = 50; // Base score
+      
+      // High impact: earnings, layoffs, major policy
+      if (fullText.includes('earnings') || fullText.includes('quarterly') || fullText.includes('revenue')) score += 30;
+      if (fullText.includes('layoff') || fullText.includes('job cut')) score += 25;
+      if (fullText.includes('regulation') || fullText.includes('antitrust') || fullText.includes('export control')) score += 25;
+      
+      // Medium-high: major company news
+      if (fullText.includes('nvidia') || fullText.includes('nvda')) score += 20;
+      if (fullText.includes('openai') || fullText.includes('chatgpt')) score += 15;
+      if (fullText.includes('google') || fullText.includes('alphabet') || fullText.includes('microsoft') || fullText.includes('amazon')) score += 15;
+      
+      // Medium: AI chip, cloud, LLM
+      if (fullText.includes('gpu') || fullText.includes('ai chip') || fullText.includes('h100')) score += 10;
+      if (fullText.includes('cloud computing') || fullText.includes('aws') || fullText.includes('azure')) score += 10;
+      if (fullText.includes('llm') || fullText.includes('gpt') || fullText.includes('large language model')) score += 10;
+      
+      // Lower: hiring, general policy
+      if (fullText.includes('hiring') || fullText.includes('job opening')) score += 5;
+      if (fullText.includes('interest rate') || fullText.includes('fed rate')) score += 5;
+      
+      return score;
+    };
+    
+    // Sort by market impact (highest first), then take top 3
+    const sortedArticles = filteredArticles
+      .map(article => ({ article, impact: calculateMarketImpact(article) }))
+      .sort((a, b) => b.impact - a.impact)
+      .map(item => item.article);
+    
+    const news = sortedArticles.slice(0, 3).map(enhanceNewsItem);
     
     const fetchedAt = new Date();
     const fetchedAtISO = fetchedAt.toISOString();
