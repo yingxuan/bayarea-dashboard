@@ -304,7 +304,7 @@ export default function FinanceOverview() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* A) Portfolio Summary */}
       {holdingsLoaded && (
         <PortfolioSummary
@@ -321,7 +321,7 @@ export default function FinanceOverview() {
         <TopMovers quotesData={quotesData} holdings={holdings} />
       )}
 
-      {/* D) Market Explanation */}
+      {/* D) Market Explanation - Max 3 bullets */}
       {holdingsLoaded && holdings.length > 0 && (
         <MarketExplanation 
           dailyPct={portfolioMetrics.dailyChangePercent}
@@ -329,9 +329,13 @@ export default function FinanceOverview() {
         />
       )}
 
-      {/* C) Indices (SPY, GOLD, BTC) */}
-      <div className="grid grid-cols-1 gap-4">
-        {indices.map((index) => {
+      {/* C) Market Temperature (SPY, GOLD, BTC combined) */}
+      <div className="glow-border rounded-sm p-4 bg-card">
+        <h3 className="text-base font-semibold font-mono mb-3 text-foreground/90">
+          市场温度
+        </h3>
+        <div className="space-y-3">
+          {indices.map((index) => {
           const isUnavailable = index.status === "unavailable";
           const isStale = index.status === "stale";
           const isOk = index.status === "ok";
@@ -339,80 +343,55 @@ export default function FinanceOverview() {
           return (
             <div
               key={index.code}
-              className={`glow-border rounded-sm p-4 bg-card hover:bg-card/80 transition-colors ${
+              className={`flex items-center justify-between py-2 border-b border-border/50 last:border-0 ${
                 isUnavailable ? "opacity-75" : ""
               }`}
             >
-              <div className="flex items-center justify-between mb-1">
-                <div className="text-xs text-muted-foreground">
-                  {index.code}
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="text-xs font-mono text-muted-foreground">
+                    {index.code}
+                  </div>
+                  <div className="text-sm font-medium text-foreground">
+                    {index.name}
+                  </div>
+                  <DataStateBadge status={index.status} />
                 </div>
-                {/* Status badge */}
-                <DataStateBadge status={index.status} />
-              </div>
-              <div className="text-sm font-medium text-foreground mb-2">
-                {index.name}
-              </div>
-              
-              {/* Value display - different for unavailable */}
-              {isUnavailable ? (
-                <div className="space-y-2">
-                  <div className="text-lg font-mono font-bold text-muted-foreground">
+                
+                {/* Value display - compact */}
+                {isUnavailable ? (
+                  <div className="text-sm font-mono text-muted-foreground">
                     不可用
                   </div>
-                  {index.error && (
-                    <div className="text-xs text-muted-foreground/70">
-                      {index.error}
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="text-base font-mono font-bold text-foreground">
+                      {typeof index.value === "number"
+                        ? index.value.toLocaleString()
+                        : index.value}
                     </div>
-                  )}
-                  <SourceLink
-                    name="查看来源"
-                    url={index.sourceUrl || "#"}
-                    position="card-bottom"
-                  />
-                </div>
-              ) : (
-                <>
-                  <div className="text-xl font-mono font-bold text-foreground mb-1">
-                    {typeof index.value === "number"
-                      ? index.value.toLocaleString()
-                      : index.value}
+                    {isOk && index.change !== undefined && index.change !== 0 && !isNaN(Number(index.change)) && (
+                      <div
+                        className={`text-xs font-mono flex items-center gap-1 ${
+                          Number(index.change) >= 0 ? "text-green-400" : "text-red-400"
+                        }`}
+                      >
+                        {Number(index.change) >= 0 ? (
+                          <TrendingUp className="w-3 h-3" />
+                        ) : (
+                          <TrendingDown className="w-3 h-3" />
+                        )}
+                        {Number(index.change) >= 0 ? "+" : ""}
+                        {typeof index.change === 'number' ? index.change.toFixed(2) : index.change} {index.changePercent !== undefined && !isNaN(Number(index.changePercent)) ? `(${Number(index.changePercent) >= 0 ? "+" : ""}${Number(index.changePercent).toFixed(2)}%)` : ''}
+                      </div>
+                    )}
                   </div>
-                  {isOk && index.change !== undefined && index.change !== 0 && !isNaN(Number(index.change)) && (
-                    <div
-                      className={`text-xs font-mono flex items-center gap-1 ${
-                        Number(index.change) >= 0 ? "text-green-400" : "text-red-400"
-                      }`}
-                    >
-                      {Number(index.change) >= 0 ? (
-                        <TrendingUp className="w-3 h-3" />
-                      ) : (
-                        <TrendingDown className="w-3 h-3" />
-                      )}
-                      {Number(index.change) >= 0 ? "+" : ""}
-                      {typeof index.change === 'number' ? index.change.toFixed(2) : index.change} {index.changePercent !== undefined && !isNaN(Number(index.changePercent)) ? `(${Number(index.changePercent) >= 0 ? "+" : ""}${Number(index.changePercent).toFixed(2)}%)` : ''}
-                    </div>
-                  )}
-                  {isStale && (
-                    <div className="text-xs text-yellow-400/70 mt-1">
-                      数据可能已过期
-                    </div>
-                  )}
-                </>
-              )}
-              
-              {/* Source link - fixed position bottom-right */}
-              {!isUnavailable && (
-                <SourceLink
-                  name={index.source || ""}
-                  url={index.sourceUrl || "#"}
-                  position="card-bottom"
-                />
-              )}
-              
+                )}
+              </div>
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );

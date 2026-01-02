@@ -14,6 +14,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { CACHE_TTL, API_URLS, SOURCE_INFO, ttlMsToSeconds } from '../shared/config.js';
+import { getGossipSeedData, type GossipSeedItem } from '../shared/gossip-seed-data.js';
 import {
   cache,
   setCorsHeaders,
@@ -133,9 +134,9 @@ async function fetchRedditGossip(): Promise<ChineseGossipItem[]> {
           if (!postData || !postData.title) continue;
           
           const title = postData.title;
-          // More lenient: if no keyword match, still include if it's from relevant subreddits
-          // For bayarea subreddit, accept all posts; for others, require keyword match
-          const shouldInclude = subreddit === 'bayarea' || matchesKeywords(title);
+          // More lenient: accept all posts from bayarea, or if matches keywords, or if has high engagement
+          const hasHighEngagement = (postData.num_comments || 0) >= 20 || (postData.ups || 0) >= 50;
+          const shouldInclude = subreddit === 'bayarea' || matchesKeywords(title) || hasHighEngagement;
           if (!shouldInclude) continue;
           
           const publishedAt = new Date(postData.created_utc * 1000).toISOString();
@@ -190,7 +191,8 @@ async function fetchHackerNewsGossip(): Promise<ChineseGossipItem[]> {
         if (!item || !item.title || item.dead || item.deleted) continue;
         
         // More lenient: accept if matches keywords OR has high score (likely tech-related)
-        const shouldInclude = matchesKeywords(item.title) || (item.score && item.score >= 50);
+        // Lower threshold to get more items
+        const shouldInclude = matchesKeywords(item.title) || (item.score && item.score >= 30);
         if (!shouldInclude) continue;
         
         const publishedAt = new Date(item.time * 1000).toISOString();
@@ -373,6 +375,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
     
+    // If still less than 3, use seed data as fallback
+    if (finalItems.length < 3) {
+      console.warn(`[API /api/chinese-gossip] Only found ${finalItems.length} items, using seed data as fallback`);
+      const seedItems = getGossipSeedData();
+      const existingIds = new Set(finalItems.map(i => i.id));
+      const seedFormatted = seedItems
+        .filter(item => !existingIds.has(item.id))
+        .map(item => ({
+          id: item.id,
+          title: formatTitleWithSource(item as ChineseGossipItem),
+          url: item.url,
+          source: item.source,
+          publishedAt: item.publishedAt,
+        }));
+      finalItems = [...finalItems, ...seedFormatted].slice(0, 3);
+    }
+    
     const response: any = {
       // Standard response structure
       status: 'ok' as const,
@@ -409,9 +428,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         items = [];
       }
       if (items.length < 3) {
-        // If stale cache has less than 3, we still return what we have
-        // (requirement: never show "暂无内容", so we return what we can)
-        console.warn(`[API /api/chinese-gossip] Stale cache has only ${items.length} items, returning them anyway`);
+        // If stale cache has less than 3, fill with seed data
+        console.warn(`[API /api/chinese-gossip] Stale cache has only ${items.length} items, using seed data as fallback`);
+        const seedItems = getGossipSeedData();
+        const existingIds = new Set(items.map((i: any) => i.id));
+        const seedFormatted = seedItems
+          .filter(item => !existingIds.has(item.id))
+          .map(item => ({
+            id: item.id,
+            title: formatTitleWithSource(item as ChineseGossipItem),
+            url: item.url,
+            source: item.source,
+            publishedAt: item.publishedAt,
+          }));
+        items = [...items, ...seedFormatted].slice(0, 3);
       }
       
       return res.status(200).json({
@@ -423,19 +453,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Last resort: return empty array (but this should never happen due to stale cache fallback)
-    // However, requirement says never show "暂无内容", so we return empty array silently
+    // Last resort: return seed data (should never fail)
+    console.warn('[API /api/chinese-gossip] All sources failed, using seed data as last resort');
     const errorAtISO = new Date().toISOString();
+    const seedItems = getGossipSeedData();
+    const seedFormatted = seedItems.map(item => ({
+      id: item.id,
+      title: formatTitleWithSource(item as ChineseGossipItem),
+      url: item.url,
+      source: item.source,
+      publishedAt: item.publishedAt,
+    }));
+    
     res.status(200).json({
-      status: 'unavailable' as const,
-      items: [],
-      count: 0,
+      status: 'ok' as const,
+      items: seedFormatted,
+      count: seedFormatted.length,
       asOf: errorAtISO,
       source: SOURCE_INFO.REDDIT,
-      ttlSeconds: 0,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      ttlSeconds: ttlMsToSeconds(CHINESE_GOSSIP_CACHE_TTL),
       cache_hit: false,
       fetched_at: errorAtISO,
+      fallback: 'seed',
     });
   }
 }

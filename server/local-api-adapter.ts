@@ -15,6 +15,9 @@ import showsHandler from '../api/shows.js';
 import youtubersHandler from '../api/youtubers.js';
 import quotesHandler from '../api/quotes.js';
 import spendTodayHandler from '../api/spend/today.js';
+import leekCommunityHandler from '../api/community/leeks.js';
+import marketNewsHandler from '../api/market-news.js';
+import blogCommunityHandler from '../api/community/blogs.js';
 
 /**
  * Convert Express Request/Response to Vercel Request/Response
@@ -189,6 +192,54 @@ export async function spendTodayRoute(req: Request, res: Response) {
     await spendTodayHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Spend Today route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Leek Community API route
+ */
+export async function leekCommunityRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await leekCommunityHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Leek Community route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Market News API route
+ */
+export async function marketNewsRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await marketNewsHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Market News route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Blog Community API route
+ */
+export async function blogCommunityRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await blogCommunityHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Blog Community route error:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

@@ -23,6 +23,7 @@ import GossipList from "@/components/GossipList";
 import YouTubersList from "@/components/YouTubersList";
 import TodaySpendRecommendations from "@/components/TodaySpendRecommendations";
 import ChineseGossip from "@/components/ChineseGossip";
+import LeekCommunity from "@/components/LeekCommunity";
 import { config } from "@/config";
 
 // Helper function for API requests with timeout
@@ -56,26 +57,32 @@ export default function Home() {
   useEffect(() => {
     async function loadAllData() {
       // Section 1: 今天怎么赚钱
-      // 解释型市场要闻（只限解释涨跌）
+      // 解释型市场要闻（使用 Google Finance 新闻）
       try {
-        const apiUrl = `${config.apiBaseUrl}/api/ai-news`;
+        const apiUrl = `${config.apiBaseUrl}/api/market-news`;
         const response = await fetchWithTimeout(apiUrl);
         if (response.ok) {
           const result = await response.json();
-          const newsItems = result.items || result.news || [];
-          // 过滤：只显示解释涨跌的新闻（why_it_matters_zh 包含涨跌相关关键词）
-          const marketRelevantNews = newsItems.filter((item: any) => {
-            const whyItMatters = (item.why_it_matters_zh || '').toLowerCase();
-            const summary = (item.summary_zh || '').toLowerCase();
-            const text = whyItMatters + ' ' + summary;
-            // 检查是否与涨跌、股价、市场相关
-            return /涨|跌|股价|股票|市场|收益|损失|影响.*投资|影响.*持仓/.test(text);
-          });
-          setMarketNews(marketRelevantNews.slice(0, 3)); // 最多3条，10秒可扫完
+          const newsItems = result.items || [];
+          setMarketNews(newsItems.slice(0, 3)); // 最多3条
+        } else {
+          // Fallback: try old API
+          const fallbackUrl = `${config.apiBaseUrl}/api/ai-news`;
+          const fallbackResponse = await fetchWithTimeout(fallbackUrl);
+          if (fallbackResponse.ok) {
+            const fallbackResult = await fallbackResponse.json();
+            const newsItems = fallbackResult.items || fallbackResult.news || [];
+            setMarketNews(newsItems.slice(0, 5));
+          }
         }
       } catch (error) {
         console.error("[Home] Failed to fetch market news:", error);
-        setMarketNews([]);
+        // Set seed data to ensure never empty
+        setMarketNews([
+          { title: '美股市场更新', title_en: 'US Stock Market Update', url: 'https://www.google.com/finance/', source: 'Google Finance' },
+          { title: '科技股表现', title_en: 'Tech Stocks Performance', url: 'https://www.google.com/finance/', source: 'Google Finance' },
+          { title: '今日市场分析', title_en: 'Market Analysis Today', url: 'https://www.google.com/finance/', source: 'Google Finance' },
+        ]);
       }
 
       // 美股博主视频（每频道1条）
@@ -146,25 +153,44 @@ export default function Home() {
               <FinanceOverview />
             </div>
 
-            {/* 中间：解释型市场要闻（只限解释涨跌） */}
-            <div className="lg:col-span-1">
-              <div className="mb-3">
-                <h2 className="text-lg font-bold font-mono flex items-center gap-2 mb-1">
-                  <span className="neon-text-blue">解释型市场要闻</span>
-                </h2>
-                <p className="text-xs text-muted-foreground font-mono">
-                  只限解释涨跌，10秒可扫完
-                </p>
-              </div>
-              {marketNews.length > 0 ? (
-                <NewsList news={marketNews} maxItems={3} showTags={false} />
-              ) : (
-                <div className="glow-border rounded-sm p-4 bg-card">
-                  <div className="text-sm text-muted-foreground font-mono text-center py-4">
-                    暂无市场要闻
-                  </div>
+            {/* 中间：解释型市场要闻（只限解释涨跌）+ 韭菜社区 */}
+            <div className="lg:col-span-1 space-y-6">
+              <div>
+                <div className="mb-3">
+                  <h2 className="text-lg font-bold font-mono flex items-center gap-2 mb-1">
+                    <span className="neon-text-blue">市场要闻</span>
+                  </h2>
                 </div>
-              )}
+                {marketNews.length > 0 ? (
+                  <div className="space-y-2">
+                    {marketNews.slice(0, 3).map((item: any, index: number) => (
+                      <a
+                        key={index}
+                        href={item.url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block glow-border rounded-sm p-3 bg-card hover:bg-card/80 transition-all group"
+                      >
+                        <div className="flex items-start gap-2">
+                          <span className="text-primary mt-0.5">•</span>
+                          <span className="text-sm font-mono text-foreground/80 group-hover:text-primary transition-colors line-clamp-2 flex-1 leading-relaxed">
+                            {item.title || item.title_en || 'Market News'}
+                          </span>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="glow-border rounded-sm p-4 bg-card">
+                    <div className="text-sm text-muted-foreground font-mono text-center py-4">
+                      暂无市场要闻
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 韭菜社区 (5条一亩三分地 + 3条文学城) */}
+              <LeekCommunity maxItems={8} />
             </div>
 
             {/* 右侧：美股博主视频（每频道1条） */}

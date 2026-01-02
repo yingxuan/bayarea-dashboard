@@ -14,7 +14,10 @@ import {
   showsRoute,
   youtubersRoute,
   quotesRoute,
-  spendTodayRoute
+  spendTodayRoute,
+  leekCommunityRoute,
+  blogCommunityRoute,
+  marketNewsRoute
 } from "./local-api-adapter.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -57,6 +60,10 @@ async function startServer() {
   app.options('/api/quotes', (_req, res) => res.sendStatus(200));
   app.get('/api/spend/today', spendTodayRoute);
   app.options('/api/spend/today', (_req, res) => res.sendStatus(200));
+  app.get('/api/community/leeks', leekCommunityRoute);
+  app.options('/api/community/leeks', (_req, res) => res.sendStatus(200));
+  app.get('/api/community/blogs', blogCommunityRoute);
+  app.options('/api/community/blogs', (_req, res) => res.sendStatus(200));
   
   // Mount legacy API routes (if any)
   app.use(apiRouter);
@@ -87,7 +94,10 @@ async function startServer() {
             "/api/shows",
             "/api/youtubers",
             "/api/quotes",
-            "/api/spend/today"
+            "/api/spend/today",
+            "/api/community/leeks",
+            "/api/community/blogs",
+            "/api/market-news"
           ]
         });
       }

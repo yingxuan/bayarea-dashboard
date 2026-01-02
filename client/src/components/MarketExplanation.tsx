@@ -37,8 +37,8 @@ export default function MarketExplanation({ dailyPct, topMovers }: MarketExplana
       <h3 className="text-base font-semibold font-mono mb-3 text-foreground/90">
         市场解释
       </h3>
-      <ul className="space-y-2">
-        {explanation.explanations.map((text, index) => (
+      <ul className="space-y-1.5">
+        {explanation.explanations.slice(0, 3).map((text, index) => (
           <li
             key={index}
             className="flex items-start gap-2 text-sm text-foreground/80 font-mono"
