@@ -204,6 +204,10 @@ GET /api/community/deals
 # Install dependencies
 pnpm install
 
+# Configure environment variables (see Environment Variables section below)
+cp .env.example .env
+# Edit .env and add your API keys
+
 # Start development server
 pnpm dev
 
@@ -213,6 +217,35 @@ pnpm build
 # Start production server
 pnpm start
 ```
+
+### Environment Variables
+
+Create a `.env` file in the project root with the following variables:
+
+```bash
+# News API (for AI/Tech news)
+NEWS_API_KEY=your_newsapi_key_here
+
+# Finnhub API (for stock quotes - REQUIRED for holdings feature)
+FINNHUB_API_KEY=your_finnhub_key_here
+
+# Yelp API (optional, for restaurants)
+YELP_API_KEY=your_yelp_key_here
+
+# TMDB API (optional, for TV shows)
+TMDB_API_KEY=your_tmdb_key_here
+
+# Google CSE (optional, for search)
+GOOGLE_CSE_API_KEY=your_google_cse_key_here
+GOOGLE_CSE_ID=your_google_cse_id_here
+```
+
+**Required for Holdings Feature:**
+- `FINNHUB_API_KEY`: Get a free key at https://finnhub.io/ (see `FINNHUB_SETUP.md` for details)
+  - **Security:** Server-side only - never exposed to frontend bundle (no `VITE_` prefix)
+  - **Missing key:** API will return `status="unavailable"` with `error="Missing FINNHUB_API_KEY"`
+
+**Security Note:** All API keys are server-side only. They are never exposed to the frontend bundle or client-side code. The `.env` and `.env.local` files are automatically ignored by `.gitignore`.
 
 ### Project Structure
 
@@ -259,8 +292,9 @@ The dashboard is built with a **mobile-first** approach:
 ## Data Sources (Production Integration)
 
 ### Finance Data
-- **Yahoo Finance API**: Stock prices, market indices
-- **Coinbase API**: Cryptocurrency prices
+- **Finnhub API**: Real-time stock quotes for any ticker (see `FINNHUB_SETUP.md`)
+- **Stooq API**: SPY, Gold prices
+- **CoinGecko API**: Bitcoin prices
 - **Freddie Mac API**: Mortgage rates
 - **Powerball API**: Lottery jackpot
 
