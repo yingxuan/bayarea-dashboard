@@ -166,65 +166,78 @@ function normalizeTitle(title: string): string {
 }
 
 /**
- * Check if article is market-relevant (strict hard rules)
- * Only allows: AI芯片/云计算/大模型 | 财报/裁员/招聘 | 监管/出口管制 | 利率/宏观政策
+ * Classify article category: 'macro' (US economy) or 'mega' (tech giants)
+ * Returns null if not market-relevant
  */
-function isMarketRelevant(article: any): boolean {
+function classifyArticle(article: any): 'macro' | 'mega' | null {
   const title = article.title?.toLowerCase() || '';
   const description = article.description?.toLowerCase() || '';
   const content = article.content?.toLowerCase() || '';
   const fullText = `${title} ${description} ${content}`;
   
-  // Strict required topics (must match at least one category)
-  const requiredTopics = [
-    // Category 1: AI 芯片 / 云计算 / 大模型
-    /\b(ai chip|gpu|npu|tpu|neural processing|ai accelerator|h100|a100|b200|h200|blackwell|tensor core|semiconductor)\b/i,
-    /\b(cloud computing|aws|azure|gcp|google cloud|cloud service|saas|iaas|paas|cloud infrastructure|microsoft cloud)\b/i,
-    /\b(large language model|llm|gpt-?[0-9]|gemini|claude|foundation model|multimodal model|ai model|chatgpt|openai)\b/i,
-    
-    // Category 2: 科技公司财报 / 裁员 / 招聘
-    /\b(earnings|quarterly|q[1-4]|fy\d{4}|financial results|revenue|profit|loss|guidance|eps|beat|miss|stock price|shares)\b/i,
-    /\b(layoff|lay off|job cut|job cuts|workforce reduction|downsizing|restructuring|firing|termination)\b/i,
-    /\b(hiring|job opening|job post|recruiting|headcount|expansion|new role|position|vacancy)\b/i,
-    
-    // Category 3: 科技监管 / 出口管制
-    /\b(regulation|regulatory|policy|fcc|sec|ftc|antitrust|compliance|doj|justice department|lawsuit)\b/i,
-    /\b(export control|trade restriction|sanction|embargo|chip ban|export ban|bureau of industry|biden|china)\b/i,
-    
-    // Category 4: 利率 / 宏观政策
-    /\b(interest rate|fed rate|federal reserve|monetary policy|inflation|fomc|rate cut|rate hike|powell)\b/i,
-    /\b(macro policy|economic policy|trade policy|tariff|trade war|stimulus|recession)\b/i,
-    
-    // Category 5: 主要科技公司（放宽匹配，但必须与市场相关）
-    /\b(nvidia|nvda|apple|aapl|microsoft|msft|google|alphabet|goog|amazon|amzn|meta|fb|facebook|tesla|tsla)\b/i,
-    /\b(tech company|technology company|silicon valley|startup|ipo|venture capital|vc funding)\b/i,
+  // Category A: US Economic News (must match at least one)
+  const macroKeywords = [
+    /\b(fed|federal reserve|fomc|powell|jerome powell)\b/i,
+    /\b(rate|interest rate|fed rate|rate cut|rate hike|monetary policy)\b/i,
+    /\b(cpi|consumer price index|inflation|deflation|pce)\b/i,
+    /\b(jobs|payroll|nonfarm payroll|unemployment|employment|jobless|initial claims)\b/i,
+    /\b(gdp|gross domestic product|economic growth|recession|soft landing|hard landing)\b/i,
+    /\b(treasury yield|bond yield|10-year|30-year|yield curve)\b/i,
+    /\b(government shutdown|debt ceiling|fiscal policy|budget)\b/i,
   ];
   
-  // Check if matches any required topic
-  const matchesRequired = requiredTopics.some(pattern => pattern.test(fullText));
-  if (!matchesRequired) {
-    return false;
-  }
+  // Category B: Tech Giants (must match company + business keyword)
+  const megaTechCompanies = [
+    /\b(aapl|apple)\b/i,
+    /\b(msft|microsoft)\b/i,
+    /\b(nvda|nvidia)\b/i,
+    /\b(goog|googl|google|alphabet)\b/i,
+    /\b(amzn|amazon)\b/i,
+    /\b(meta|facebook|fb)\b/i,
+    /\b(tsla|tesla)\b/i,
+  ];
   
-  // Strict excluded topics (must not match any)
+  const megaBusinessKeywords = [
+    /\b(earnings|quarterly|q[1-4]|fy\d{4}|revenue|profit|loss|guidance|eps|beat|miss)\b/i,
+    /\b(capex|capital expenditure|investment|spending)\b/i,
+    /\b(ai|artificial intelligence|chips|semiconductor|gpu|h100|a100)\b/i,
+    /\b(cloud|aws|azure|gcp|cloud computing)\b/i,
+    /\b(antitrust|regulation|regulatory|export controls|export ban|chip ban)\b/i,
+  ];
+  
+  // Check for macro category
+  const isMacro = macroKeywords.some(pattern => pattern.test(fullText));
+  
+  // Check for mega tech category (must have both company and business keyword)
+  const hasMegaCompany = megaTechCompanies.some(pattern => pattern.test(fullText));
+  const hasMegaBusiness = megaBusinessKeywords.some(pattern => pattern.test(fullText));
+  const isMega = hasMegaCompany && hasMegaBusiness;
+  
+  // Excluded topics (must not match any)
   const excludedTopics = [
-    // 游戏 / 消费电子评测
-    /\b(game review|gaming review|gameplay|game rating|video game review|game preview)\b/i,
+    /\b(game review|gaming review|gameplay|game rating|video game review)\b/i,
     /\b(product review|device review|phone review|laptop review|review:\s|hands.?on review)\b/i,
     /\b(unboxing|first impressions|vs\.|comparison review)\b/i,
-    
-    // 纯产品评论 / 娱乐内容
-    /\b(celebrity|gossip|entertainment news|movie review|tv show review|film review)\b/i,
+    /\b(celebrity|gossip|entertainment news|movie review|tv show review)\b/i,
     /\b(sports|music|fashion|lifestyle|travel|food review)\b/i,
   ];
   
-  // Check if matches any excluded topic
   const matchesExcluded = excludedTopics.some(pattern => pattern.test(fullText));
   if (matchesExcluded) {
-    return false;
+    return null;
   }
   
-  return true;
+  if (isMacro) return 'macro';
+  if (isMega) return 'mega';
+  return null;
+}
+
+/**
+ * Check if article is market-relevant (strict hard rules)
+ * Only allows: US economic news or tech giants business news
+ */
+function isMarketRelevant(article: any): boolean {
+  return classifyArticle(article) !== null;
 }
 
 function isArticleValid(article: any): boolean {
@@ -320,105 +333,163 @@ function enhanceNewsItem(article: any): NewsItem {
   const details = extractDetails(fullText);
   let hasSpecificReason = false;
   
-  // Generate specific "why it matters" - must mention: 股价/就业/资本/监管
-  if (fullText.includes('nvidia') || fullText.includes('nvda')) {
-    const detailsStr = details.length > 0 ? `（${details.join('、')}）` : '';
-    summary_zh = `英伟达${fullText.includes('chip') ? '芯片' : ''}${fullText.includes('earnings') ? '财报' : ''}最新动态${detailsStr}`;
-    if (fullText.includes('earnings') || fullText.includes('revenue') || fullText.includes('guidance')) {
-      why_it_matters_zh = '财报超预期可能推高 NVDA 股价，影响 AI 概念股情绪';
-    } else {
-      why_it_matters_zh = '英伟达动态直接影响 AI 芯片股估值和 AI 基础设施就业';
+  // Classify article to determine "why it matters"
+  const category = classifyArticle(article);
+  
+  // Generate specific "why it matters" - must point to: 利率/盈利预期/资本开支/监管/风险偏好
+  if (category === 'macro') {
+    // US Economic News
+    if (fullText.includes('fed') || fullText.includes('federal reserve') || fullText.includes('fomc') || fullText.includes('powell')) {
+      if (fullText.includes('rate cut') || fullText.includes('rate hike') || fullText.includes('interest rate')) {
+        summary_zh = '美联储利率决策';
+        why_it_matters_zh = '利率变化直接影响科技股估值和融资成本，影响大盘风险偏好';
+      } else {
+        summary_zh = '美联储政策动态';
+        why_it_matters_zh = 'Fed 政策信号影响市场风险偏好和科技股估值';
+      }
+      hasSpecificReason = true;
+    } else if (fullText.includes('cpi') || fullText.includes('inflation') || fullText.includes('consumer price')) {
+      summary_zh = '通胀数据';
+      why_it_matters_zh = '通胀数据影响 Fed 利率决策，进而影响科技股估值';
+      hasSpecificReason = true;
+    } else if (fullText.includes('jobs') || fullText.includes('payroll') || fullText.includes('unemployment')) {
+      summary_zh = '就业数据';
+      why_it_matters_zh = '就业数据影响 Fed 利率决策，影响大盘风险偏好';
+      hasSpecificReason = true;
+    } else if (fullText.includes('gdp') || fullText.includes('recession') || fullText.includes('soft landing')) {
+      summary_zh = '经济增长数据';
+      why_it_matters_zh = '经济增长预期影响市场风险偏好和科技股盈利预期';
+      hasSpecificReason = true;
+    } else if (fullText.includes('treasury yield') || fullText.includes('bond yield') || fullText.includes('yield curve')) {
+      summary_zh = '国债收益率';
+      why_it_matters_zh = '国债收益率变化影响科技股估值和风险偏好';
+      hasSpecificReason = true;
+    } else if (fullText.includes('government shutdown') || fullText.includes('debt ceiling')) {
+      summary_zh = '财政政策';
+      why_it_matters_zh = '财政政策不确定性影响市场风险偏好';
+      hasSpecificReason = true;
     }
-    hasSpecificReason = true;
-  } else if (fullText.includes('openai') || fullText.includes('chatgpt')) {
-    const detailsStr = details.length > 0 ? `（${details.join('、')}）` : '';
-    summary_zh = `OpenAI 最新动态${detailsStr}`;
-    why_it_matters_zh = 'OpenAI 产品变化影响 AI 工程师就业需求和相关公司股价';
-    hasSpecificReason = true;
-  } else if (fullText.includes('meta') || fullText.includes('facebook')) {
-    summary_zh = 'Meta 最新动态';
-    if (fullText.includes('layoff') || fullText.includes('job cut')) {
-      why_it_matters_zh = 'Meta 裁员信号预示就业市场收紧，可能影响湾区岗位';
-    } else if (fullText.includes('earnings') || fullText.includes('revenue')) {
-      why_it_matters_zh = 'Meta 财报影响股价，反映广告和 AI 业务资本投入';
-    } else {
-      why_it_matters_zh = 'Meta 业务调整影响 AI/VR 岗位需求和公司估值';
+  } else if (category === 'mega') {
+    // Tech Giants Business News
+    if (fullText.includes('nvda') || fullText.includes('nvidia')) {
+      if (fullText.includes('earnings') || fullText.includes('guidance') || fullText.includes('revenue')) {
+        summary_zh = '英伟达财报';
+        why_it_matters_zh = 'NVDA 财报影响 AI 概念股盈利预期和估值';
+      } else if (fullText.includes('capex') || fullText.includes('capital expenditure')) {
+        summary_zh = '英伟达资本开支';
+        why_it_matters_zh = 'NVDA 资本开支计划影响 AI 芯片供应链和行业盈利预期';
+      } else if (fullText.includes('antitrust') || fullText.includes('regulation') || fullText.includes('export controls')) {
+        summary_zh = '英伟达监管动态';
+        why_it_matters_zh = '监管政策影响 NVDA 业务和科技股风险偏好';
+      } else {
+        summary_zh = '英伟达业务动态';
+        why_it_matters_zh = 'NVDA 业务变化影响 AI 概念股盈利预期';
+      }
+      hasSpecificReason = true;
+    } else if (fullText.includes('aapl') || fullText.includes('apple')) {
+      if (fullText.includes('earnings') || fullText.includes('guidance')) {
+        summary_zh = '苹果财报';
+        why_it_matters_zh = 'AAPL 财报影响科技股盈利预期和估值';
+      } else if (fullText.includes('capex')) {
+        summary_zh = '苹果资本开支';
+        why_it_matters_zh = 'AAPL 资本开支影响供应链和行业盈利预期';
+      } else if (fullText.includes('antitrust') || fullText.includes('regulation')) {
+        summary_zh = '苹果监管动态';
+        why_it_matters_zh = '监管政策影响 AAPL 业务和科技股风险偏好';
+      } else {
+        summary_zh = '苹果业务动态';
+        why_it_matters_zh = 'AAPL 业务变化影响科技股盈利预期';
+      }
+      hasSpecificReason = true;
+    } else if (fullText.includes('msft') || fullText.includes('microsoft')) {
+      if (fullText.includes('earnings') || fullText.includes('guidance')) {
+        summary_zh = '微软财报';
+        why_it_matters_zh = 'MSFT 财报影响云计算和 AI 概念股盈利预期';
+      } else if (fullText.includes('capex')) {
+        summary_zh = '微软资本开支';
+        why_it_matters_zh = 'MSFT 资本开支影响 AI 和云计算行业盈利预期';
+      } else if (fullText.includes('antitrust') || fullText.includes('regulation')) {
+        summary_zh = '微软监管动态';
+        why_it_matters_zh = '监管政策影响 MSFT 业务和科技股风险偏好';
+      } else {
+        summary_zh = '微软业务动态';
+        why_it_matters_zh = 'MSFT 业务变化影响科技股盈利预期';
+      }
+      hasSpecificReason = true;
+    } else if (fullText.includes('goog') || fullText.includes('googl') || fullText.includes('google') || fullText.includes('alphabet')) {
+      if (fullText.includes('earnings') || fullText.includes('guidance')) {
+        summary_zh = 'Google 财报';
+        why_it_matters_zh = 'GOOGL 财报影响广告和 AI 概念股盈利预期';
+      } else if (fullText.includes('capex')) {
+        summary_zh = 'Google 资本开支';
+        why_it_matters_zh = 'GOOGL 资本开支影响 AI 和云计算行业盈利预期';
+      } else if (fullText.includes('antitrust') || fullText.includes('regulation')) {
+        summary_zh = 'Google 监管动态';
+        why_it_matters_zh = '监管政策影响 GOOGL 业务和科技股风险偏好';
+      } else {
+        summary_zh = 'Google 业务动态';
+        why_it_matters_zh = 'GOOGL 业务变化影响科技股盈利预期';
+      }
+      hasSpecificReason = true;
+    } else if (fullText.includes('amzn') || fullText.includes('amazon')) {
+      if (fullText.includes('earnings') || fullText.includes('guidance')) {
+        summary_zh = '亚马逊财报';
+        why_it_matters_zh = 'AMZN 财报影响电商和云计算概念股盈利预期';
+      } else if (fullText.includes('capex')) {
+        summary_zh = '亚马逊资本开支';
+        why_it_matters_zh = 'AMZN 资本开支影响云计算行业盈利预期';
+      } else if (fullText.includes('antitrust') || fullText.includes('regulation')) {
+        summary_zh = '亚马逊监管动态';
+        why_it_matters_zh = '监管政策影响 AMZN 业务和科技股风险偏好';
+      } else {
+        summary_zh = '亚马逊业务动态';
+        why_it_matters_zh = 'AMZN 业务变化影响科技股盈利预期';
+      }
+      hasSpecificReason = true;
+    } else if (fullText.includes('meta') || fullText.includes('facebook') || fullText.includes('fb')) {
+      if (fullText.includes('earnings') || fullText.includes('guidance')) {
+        summary_zh = 'Meta 财报';
+        why_it_matters_zh = 'META 财报影响广告和 AI 概念股盈利预期';
+      } else if (fullText.includes('capex')) {
+        summary_zh = 'Meta 资本开支';
+        why_it_matters_zh = 'META 资本开支影响 AI 和 VR 行业盈利预期';
+      } else if (fullText.includes('antitrust') || fullText.includes('regulation')) {
+        summary_zh = 'Meta 监管动态';
+        why_it_matters_zh = '监管政策影响 META 业务和科技股风险偏好';
+      } else {
+        summary_zh = 'Meta 业务动态';
+        why_it_matters_zh = 'META 业务变化影响科技股盈利预期';
+      }
+      hasSpecificReason = true;
+    } else if (fullText.includes('tsla') || fullText.includes('tesla')) {
+      if (fullText.includes('earnings') || fullText.includes('guidance')) {
+        summary_zh = '特斯拉财报';
+        why_it_matters_zh = 'TSLA 财报影响电动车概念股盈利预期';
+      } else if (fullText.includes('capex')) {
+        summary_zh = '特斯拉资本开支';
+        why_it_matters_zh = 'TSLA 资本开支影响电动车行业盈利预期';
+      } else if (fullText.includes('regulation')) {
+        summary_zh = '特斯拉监管动态';
+        why_it_matters_zh = '监管政策影响 TSLA 业务和科技股风险偏好';
+      } else {
+        summary_zh = '特斯拉业务动态';
+        why_it_matters_zh = 'TSLA 业务变化影响科技股盈利预期';
+      }
+      hasSpecificReason = true;
     }
-    hasSpecificReason = true;
-  } else if (fullText.includes('google') || fullText.includes('alphabet') || fullText.includes('gemini')) {
-    summary_zh = 'Google 最新动态';
-    if (fullText.includes('earnings') || fullText.includes('revenue')) {
-      why_it_matters_zh = 'Google 财报影响股价，反映云计算和 AI 业务资本投入';
-    } else {
-      why_it_matters_zh = 'Google 变化影响云计算和 AI 工程师就业机会';
-    }
-    hasSpecificReason = true;
-  } else if (fullText.includes('microsoft') || fullText.includes('azure')) {
-    summary_zh = '微软最新动态';
-    if (fullText.includes('earnings') || fullText.includes('revenue')) {
-      why_it_matters_zh = '微软财报影响股价，反映 Azure 和 AI 业务资本投入';
-    } else {
-      why_it_matters_zh = '微软云服务和 AI 战略影响相关岗位需求和公司估值';
-    }
-    hasSpecificReason = true;
-  } else if (fullText.includes('amazon') || fullText.includes('aws')) {
-    summary_zh = '亚马逊最新动态';
-    if (fullText.includes('earnings') || fullText.includes('revenue')) {
-      why_it_matters_zh = 'AWS 财报影响股价，反映云计算业务资本投入';
-    } else {
-      why_it_matters_zh = 'AWS 业务变化影响云计算工程师就业和公司估值';
-    }
-    hasSpecificReason = true;
-  } else if (fullText.includes('apple')) {
-    summary_zh = '苹果最新动态';
-    if (fullText.includes('earnings') || fullText.includes('revenue')) {
-      why_it_matters_zh = '苹果财报影响股价，反映硬件和 AI 业务资本投入';
-    } else {
-      why_it_matters_zh = '苹果产品变化影响 iOS 开发和硬件工程师就业';
-    }
-    hasSpecificReason = true;
-  } else if (fullText.includes('layoff') || fullText.includes('job cut') || fullText.includes('workforce reduction')) {
-    summary_zh = '科技公司裁员消息';
-    why_it_matters_zh = '裁员信号预示就业市场降温，影响跳槽和谈 offer 时机';
-    hasSpecificReason = true;
-  } else if (fullText.includes('hiring') || (fullText.includes('job') && (fullText.includes('opening') || fullText.includes('post')))) {
-    summary_zh = '科技公司招聘动态';
-    why_it_matters_zh = '招聘信号预示就业市场升温，影响谈 offer 和跳槽时机';
-    hasSpecificReason = true;
-  } else if ((fullText.includes('gpu') || fullText.includes('ai chip') || fullText.includes('h100') || fullText.includes('a100')) && !fullText.includes('review')) {
-    summary_zh = 'AI 芯片动态';
-    why_it_matters_zh = 'AI 芯片供应影响相关公司股价和硬件工程师就业';
-    hasSpecificReason = true;
-  } else if (fullText.includes('cloud computing') || fullText.includes('aws') || fullText.includes('azure') || fullText.includes('gcp')) {
-    summary_zh = '云计算动态';
-    why_it_matters_zh = '云计算业务变化影响相关公司股价和工程师就业';
-    hasSpecificReason = true;
-  } else if ((fullText.includes('gpt') || fullText.includes('llm') || fullText.includes('large language model')) && !fullText.includes('review')) {
-    summary_zh = '大模型动态';
-    why_it_matters_zh = '大模型进展影响 AI 概念股股价和 AI 工程师就业';
-    hasSpecificReason = true;
-  } else if (fullText.includes('earnings') || fullText.includes('quarterly') || (fullText.includes('revenue') && fullText.includes('tech'))) {
-    summary_zh = '科技公司财报';
-    why_it_matters_zh = '财报数据影响股价，反映公司业绩和资本投入';
-    hasSpecificReason = true;
-  } else if (fullText.includes('regulation') || fullText.includes('regulatory') || fullText.includes('sec') || fullText.includes('ftc') || fullText.includes('antitrust')) {
-    summary_zh = '科技监管政策';
-    why_it_matters_zh = '监管政策变化影响行业发展和公司估值';
-    hasSpecificReason = true;
-  } else if (fullText.includes('interest rate') || fullText.includes('fed rate') || fullText.includes('federal reserve') || fullText.includes('fomc')) {
-    summary_zh = '利率政策动态';
-    why_it_matters_zh = '利率变化影响科技公司融资成本和估值';
-    hasSpecificReason = true;
-  } else if (fullText.includes('export control') || fullText.includes('trade restriction') || fullText.includes('sanction') || fullText.includes('chip ban')) {
-    summary_zh = '出口管制政策';
-    why_it_matters_zh = '出口管制影响科技供应链和行业格局，可能影响股价';
-    hasSpecificReason = true;
   }
   
   // Fallback: use strict generic message (≤1 line, must mention market impact)
   if (!hasSpecificReason || !why_it_matters_zh) {
-    why_it_matters_zh = '可能影响科技股情绪';
+    if (category === 'macro') {
+      why_it_matters_zh = '可能影响大盘风险偏好';
+    } else if (category === 'mega') {
+      why_it_matters_zh = '可能影响科技股估值';
+    } else {
+      why_it_matters_zh = '可能影响大盘风险偏好/科技股估值';
+    }
   }
+  
   
   // Generate ID from URL or title
   const id = article.url ? article.url.split('/').pop()?.split('?')[0] || article.url : article.title?.slice(0, 50) || 'unknown';
@@ -617,8 +688,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       : undefined;
     
-    // Calculate market impact score for sorting (subjective rules)
-    const calculateMarketImpact = (article: any): number => {
+    // Classify and score articles
+    const classifiedArticles = filteredArticles.map(article => {
+      const category = classifyArticle(article);
       const title = article.title?.toLowerCase() || '';
       const description = article.description?.toLowerCase() || '';
       const content = article.content?.toLowerCase() || '';
@@ -626,35 +698,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       let score = 50; // Base score
       
-      // High impact: earnings, layoffs, major policy
-      if (fullText.includes('earnings') || fullText.includes('quarterly') || fullText.includes('revenue')) score += 30;
-      if (fullText.includes('layoff') || fullText.includes('job cut')) score += 25;
-      if (fullText.includes('regulation') || fullText.includes('antitrust') || fullText.includes('export control')) score += 25;
+      // Macro category scoring
+      if (category === 'macro') {
+        score += 100; // Base macro score
+        // High impact macro news
+        if (fullText.includes('fed') || fullText.includes('federal reserve') || fullText.includes('fomc')) score += 30;
+        if (fullText.includes('rate cut') || fullText.includes('rate hike')) score += 25;
+        if (fullText.includes('cpi') || fullText.includes('inflation')) score += 20;
+        if (fullText.includes('jobs') || fullText.includes('payroll')) score += 20;
+        if (fullText.includes('gdp') || fullText.includes('recession')) score += 15;
+        if (fullText.includes('treasury yield')) score += 15;
+      }
       
-      // Medium-high: major company news
-      if (fullText.includes('nvidia') || fullText.includes('nvda')) score += 20;
-      if (fullText.includes('openai') || fullText.includes('chatgpt')) score += 15;
-      if (fullText.includes('google') || fullText.includes('alphabet') || fullText.includes('microsoft') || fullText.includes('amazon')) score += 15;
+      // Mega tech category scoring
+      if (category === 'mega') {
+        score += 80; // Base mega score
+        // High impact mega tech news
+        if (fullText.includes('earnings') || fullText.includes('guidance')) score += 30;
+        if (fullText.includes('capex') || fullText.includes('capital expenditure')) score += 25;
+        if (fullText.includes('antitrust') || fullText.includes('regulation') || fullText.includes('export controls')) score += 20;
+        // Company-specific scoring
+        if (fullText.includes('nvda') || fullText.includes('nvidia')) score += 15;
+        if (fullText.includes('aapl') || fullText.includes('apple')) score += 12;
+        if (fullText.includes('msft') || fullText.includes('microsoft')) score += 12;
+        if (fullText.includes('goog') || fullText.includes('google') || fullText.includes('alphabet')) score += 10;
+        if (fullText.includes('amzn') || fullText.includes('amazon')) score += 10;
+        if (fullText.includes('meta') || fullText.includes('facebook')) score += 10;
+        if (fullText.includes('tsla') || fullText.includes('tesla')) score += 8;
+      }
       
-      // Medium: AI chip, cloud, LLM
-      if (fullText.includes('gpu') || fullText.includes('ai chip') || fullText.includes('h100')) score += 10;
-      if (fullText.includes('cloud computing') || fullText.includes('aws') || fullText.includes('azure')) score += 10;
-      if (fullText.includes('llm') || fullText.includes('gpt') || fullText.includes('large language model')) score += 10;
-      
-      // Lower: hiring, general policy
-      if (fullText.includes('hiring') || fullText.includes('job opening')) score += 5;
-      if (fullText.includes('interest rate') || fullText.includes('fed rate')) score += 5;
-      
-      return score;
-    };
+      return { article, category, score };
+    });
     
-    // Sort by market impact (highest first), then take top 3
-    const sortedArticles = filteredArticles
-      .map(article => ({ article, impact: calculateMarketImpact(article) }))
-      .sort((a, b) => b.impact - a.impact)
+    // Separate into macro and mega categories
+    const macroArticles = classifiedArticles
+      .filter(item => item.category === 'macro')
+      .sort((a, b) => b.score - a.score)
       .map(item => item.article);
     
-    const news = sortedArticles.slice(0, 3).map(enhanceNewsItem);
+    const megaArticles = classifiedArticles
+      .filter(item => item.category === 'mega')
+      .sort((a, b) => b.score - a.score)
+      .map(item => item.article);
+    
+    // Take top 2 from each category, then combine (macro first, then mega)
+    const selectedArticles = [
+      ...macroArticles.slice(0, 2),
+      ...megaArticles.slice(0, 2),
+    ];
+    
+    const news = selectedArticles.map(enhanceNewsItem);
     
     const fetchedAt = new Date();
     const fetchedAtISO = fetchedAt.toISOString();

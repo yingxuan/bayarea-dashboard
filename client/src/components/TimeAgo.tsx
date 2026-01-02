@@ -41,13 +41,9 @@ export default function TimeAgo({ isoString, className = "" }: TimeAgoProps) {
 
   const relativeTime = formatTimeAgo(isoString);
   
-  // If invalid date, return "时间未知" or hide
+  // If invalid date, return null (don't display anything)
   if (relativeTime === null) {
-    return (
-      <span className={`text-xs text-muted-foreground font-mono ${className}`}>
-        时间未知
-      </span>
-    );
+    return null;
   }
 
   const isoTime = new Date(isoString).toLocaleString("zh-CN", {

@@ -138,6 +138,18 @@ export const ytRssUrl = (channelId: string) =>
   `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
 
 /**
+ * Silicon Valley Tech YouTubers
+ * Fixed whitelist of tech-focused channels
+ */
+export const SILICON_VALLEY_YOUTUBERS = [
+  { name: "硅谷101", handle: "@TheValley101", channelId: "UCFQsi7WaF5X41tcuOryDk8w" },
+  { name: "Lenny's Podcast", handle: "@LennysPodcast", channelId: "UCf2yB7qHmlidcFo9Xx5D7uA" },
+  { name: "Andrej Karpathy", handle: "@AndrejKarpathy", channelId: "UCABdYk_MJ0rn8cYjBIq9fRQ" },
+  { name: "Dwarkesh Patel", handle: "@DwarkeshPatel", channelId: "UC2hQ8dvk9jN3cjhCgJZ4t0Q" },
+  { name: "shengfm", handle: "@shengfm", channelId: "UCs9-1ZQ5v5UgE4yXr1KoxYg" },
+] as const;
+
+/**
  * Legacy alias for backward compatibility
  */
 export const YOUTUBE_CHANNELS = US_STOCK_YOUTUBERS;

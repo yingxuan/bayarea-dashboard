@@ -25,6 +25,7 @@ export default function Home() {
   const [gossip, setGossip] = useState<any>(null);
   const [deals, setDeals] = useState<any>(null);
   const [youtubers, setYouTubers] = useState<any>(null);
+  const [techYoutubers, setTechYouTubers] = useState<any>(null);
   const [showLifestyle, setShowLifestyle] = useState(false);
 
   useEffect(() => {
@@ -106,18 +107,34 @@ export default function Home() {
         setDeals(null);
       }
 
-      // YouTubers
+      // YouTubers (Stock)
       try {
-        const response = await fetch(`${config.apiBaseUrl}/api/youtubers`);
+        const response = await fetch(`${config.apiBaseUrl}/api/youtubers?category=stock&nocache=1`);
         if (response.ok) {
           const result = await response.json();
           // Support both new (items) and legacy (youtubers) format
           const items = result.items || result.youtubers || [];
+          console.log("[Home] Stock youtubers fetched:", items.length, "items");
           setYouTubers(items.length > 0 ? { youtubers: items } : null);
         }
       } catch (error) {
         console.error("[Home] Failed to fetch youtubers:", error);
         setYouTubers(null);
+      }
+
+      // Tech YouTubers
+      try {
+        const response = await fetch(`${config.apiBaseUrl}/api/youtubers?category=tech&nocache=1`);
+        if (response.ok) {
+          const result = await response.json();
+          // Support both new (items) and legacy (youtubers) format
+          const items = result.items || result.youtubers || [];
+          console.log("[Home] Tech youtubers fetched:", items.length, "items");
+          setTechYouTubers(items.length > 0 ? { youtubers: items } : null);
+        }
+      } catch (error) {
+        console.error("[Home] Failed to fetch tech youtubers:", error);
+        setTechYouTubers(null);
       }
 
     }
@@ -183,12 +200,12 @@ export default function Home() {
                 </span>
               </h2>
             </div>
-            <Tabs defaultValue="finance" className="w-full">
+            <Tabs defaultValue="stock" className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="finance">Finance</TabsTrigger>
-                <TabsTrigger value="tech">Tech</TabsTrigger>
+                <TabsTrigger value="stock">美股博主</TabsTrigger>
+                <TabsTrigger value="tech">硅谷科技圈</TabsTrigger>
               </TabsList>
-              <TabsContent value="finance" className="mt-0">
+              <TabsContent value="stock" className="mt-0">
                 {youtubers && youtubers.youtubers && youtubers.youtubers.length > 0 ? (
                   <div>
                     <div className="mb-3">
@@ -210,11 +227,25 @@ export default function Home() {
                 )}
               </TabsContent>
               <TabsContent value="tech" className="mt-0">
-                <div className="glow-border rounded-sm p-4 bg-card">
-                  <div className="text-sm text-muted-foreground font-mono text-center py-8">
-                    Tech videos coming soon
+                {techYoutubers && techYoutubers.youtubers && techYoutubers.youtubers.length > 0 ? (
+                  <div>
+                    <div className="mb-3">
+                      <h3 className="text-base font-semibold font-mono text-foreground/90 mb-1">
+                        硅谷科技圈
+                      </h3>
+                      <p className="text-xs text-muted-foreground font-mono">
+                        最新视频更新
+                      </p>
+                    </div>
+                    <YouTubersList items={techYoutubers.youtubers} maxItems={5} />
                   </div>
-                </div>
+                ) : (
+                  <div className="glow-border rounded-sm p-4 bg-card">
+                    <div className="text-sm text-muted-foreground font-mono text-center py-8">
+                      暂无更新
+                    </div>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>
