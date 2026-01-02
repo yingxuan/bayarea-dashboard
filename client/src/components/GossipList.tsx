@@ -71,18 +71,11 @@ export default function GossipList({ posts, maxItems = 10 }: GossipListProps) {
                 )}
               </div>
 
-              <p className="text-xs text-foreground/70 mb-2 line-clamp-1">
-                {post.excerpt}
-              </p>
-
+              {/* 标题级即可，不追求权威 - 只显示最基本信息 */}
               <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
                 <div className="flex items-center gap-1">
                   <MessageCircle className="w-3 h-3" />
                   <span>{formatNumber(post.replyCount)}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Eye className="w-3 h-3" />
-                  <span>{formatNumber(post.viewCount)}</span>
                 </div>
                 <span>•</span>
                 <TimeAgo isoString={post.publishedAt} />

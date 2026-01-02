@@ -1,9 +1,17 @@
 /**
- * Data Punk Design: Homepage with all dashboard modules
- * - Grid background pattern
- * - Asymmetric layout (70% main content, 30% sidebar on desktop)
- * - Mobile-first responsive design
- * - All modules with neon accents and glow effects
+ * 湾区华人每日生存与机会面板
+ * 核心回答3个问题：
+ * 1) 今天怎么赚钱
+ * 2) 今天怎么花钱
+ * 3) 今天聊什么
+ * 
+ * 全局原则：
+ * - 一切内容必须可转化为：钱 / 行动 / 社交话题
+ * - 不做纯信息、不做百科、不做教育
+ * - 首页服务的是"真实生活"，不是理性最优
+ * - 每个section 10秒可扫完
+ * - 宁缺毋滥
+ * - 与湾区华人无关的内容不出现
  */
 
 import { useEffect, useState } from "react";
@@ -11,11 +19,10 @@ import Navigation from "@/components/Navigation";
 import FinanceOverview from "@/components/FinanceOverview";
 import NewsList from "@/components/NewsList";
 import FoodGrid from "@/components/FoodGrid";
-import DealsGrid from "@/components/DealsGrid";
 import GossipList from "@/components/GossipList";
-import ShowsCard from "@/components/ShowsCard";
 import YouTubersList from "@/components/YouTubersList";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import TodaySpendRecommendations from "@/components/TodaySpendRecommendations";
+import ChineseGossip from "@/components/ChineseGossip";
 import { config } from "@/config";
 
 // Helper function for API requests with timeout
@@ -36,124 +43,79 @@ async function fetchWithTimeout(url: string, timeoutMs = 10000): Promise<Respons
 }
 
 export default function Home() {
-  const [industryNews, setIndustryNews] = useState<any>(null);
-  const [chineseRestaurants, setChineseRestaurants] = useState<any>(null);
-  const [shows, setShows] = useState<any>(null);
-  const [gossip, setGossip] = useState<any>(null);
-  const [deals, setDeals] = useState<any>(null);
-  const [youtubers, setYouTubers] = useState<any>(null);
-  const [techYoutubers, setTechYouTubers] = useState<any>(null);
-  const [showLifestyle, setShowLifestyle] = useState(false);
+  // Section 1: 今天怎么赚钱
+  const [marketNews, setMarketNews] = useState<any[]>([]); // 解释型市场要闻（只限解释涨跌）
+  const [stockYoutubers, setStockYoutubers] = useState<any[]>([]); // 美股博主视频（每频道1条）
+
+  // Section 2: 今天怎么花钱
+  // 使用新的自动推荐模块，不再需要单独的状态
+
+  // Section 3: 今天聊什么
+  // 使用新的中文八卦模块，不再需要单独的状态
 
   useEffect(() => {
-    // Fetch all real data from APIs
     async function loadAllData() {
-      // AI News
+      // Section 1: 今天怎么赚钱
+      // 解释型市场要闻（只限解释涨跌）
       try {
         const apiUrl = `${config.apiBaseUrl}/api/ai-news`;
         const response = await fetchWithTimeout(apiUrl);
         if (response.ok) {
           const result = await response.json();
-          // Support both new (items) and legacy (news) format
           const newsItems = result.items || result.news || [];
-          console.log(`[Home] AI News fetched: ${newsItems.length} items`, {
-            status: result.status,
-            hasItems: !!result.items,
-            hasNews: !!result.news,
-            apiUrl,
+          // 过滤：只显示解释涨跌的新闻（why_it_matters_zh 包含涨跌相关关键词）
+          const marketRelevantNews = newsItems.filter((item: any) => {
+            const whyItMatters = (item.why_it_matters_zh || '').toLowerCase();
+            const summary = (item.summary_zh || '').toLowerCase();
+            const text = whyItMatters + ' ' + summary;
+            // 检查是否与涨跌、股价、市场相关
+            return /涨|跌|股价|股票|市场|收益|损失|影响.*投资|影响.*持仓/.test(text);
           });
-          setIndustryNews({ news: newsItems });
-        } else {
-          console.error(`[Home] AI News API error: ${response.status} ${response.statusText}`);
-          setIndustryNews({ news: [] });
+          setMarketNews(marketRelevantNews.slice(0, 3)); // 最多3条，10秒可扫完
         }
       } catch (error) {
-        console.error("[Home] Failed to fetch AI news:", error);
-        setIndustryNews({ news: [] });
+        console.error("[Home] Failed to fetch market news:", error);
+        setMarketNews([]);
       }
 
-      // Restaurants
-      try {
-        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/restaurants`);
-        if (response.ok) {
-          const result = await response.json();
-          setChineseRestaurants(result.restaurants || []);
-        }
-      } catch (error) {
-        console.error("[Home] Failed to fetch restaurants:", error);
-        setChineseRestaurants([]);
-      }
-
-      // TV Shows
-      try {
-        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/shows`);
-        if (response.ok) {
-          const result = await response.json();
-          setShows(result.shows || []);
-        }
-      } catch (error) {
-        console.error("[Home] Failed to fetch shows:", error);
-        setShows([]);
-      }
-
-      // Gossip (Hacker News)
-      try {
-        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/gossip`);
-        if (response.ok) {
-          const result = await response.json();
-          // Support both new (items) and legacy (gossip) format
-          const items = result.items || result.gossip || [];
-          setGossip(items.length > 0 ? { posts: items } : null);
-        }
-      } catch (error) {
-        console.error("[Home] Failed to fetch gossip:", error);
-        setGossip(null);
-      }
-
-      // Deals (Reddit)
-      try {
-        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/deals`);
-        if (response.ok) {
-          const result = await response.json();
-          // Support both new (items) and legacy (deals) format
-          const items = result.items || result.deals || [];
-          setDeals(items.length > 0 ? { deals: items } : null);
-        }
-      } catch (error) {
-        console.error("[Home] Failed to fetch deals:", error);
-        setDeals(null);
-      }
-
-      // YouTubers (Stock)
+      // 美股博主视频（每频道1条）
       try {
         const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/youtubers?category=stock&nocache=1`);
         if (response.ok) {
           const result = await response.json();
-          // Support both new (items) and legacy (youtubers) format
           const items = result.items || result.youtubers || [];
-          console.log("[Home] Stock youtubers fetched:", items.length, "items");
-          setYouTubers(items.length > 0 ? { youtubers: items } : null);
+          // 按频道分组，每频道只取最新1条
+          const channelMap = new Map<string, any>();
+          items.forEach((item: any) => {
+            const channelName = item.channelName || item.channel || '';
+            if (channelName && item.status === 'ok') {
+              if (!channelMap.has(channelName)) {
+                channelMap.set(channelName, item);
+              } else {
+                // 如果已有，比较发布时间，保留最新的
+                const existing = channelMap.get(channelName);
+                const existingTime = new Date(existing.publishedAt || 0).getTime();
+                const currentTime = new Date(item.publishedAt || 0).getTime();
+                if (currentTime > existingTime) {
+                  channelMap.set(channelName, item);
+                }
+              }
+            }
+          });
+          setStockYoutubers(Array.from(channelMap.values()).slice(0, 5)); // 最多5个频道
         }
       } catch (error) {
-        console.error("[Home] Failed to fetch youtubers:", error);
-        setYouTubers(null);
+        console.error("[Home] Failed to fetch stock youtubers:", error);
+        setStockYoutubers([]);
       }
 
-      // Tech YouTubers
-      try {
-        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/youtubers?category=tech&nocache=1`);
-        if (response.ok) {
-          const result = await response.json();
-          // Support both new (items) and legacy (youtubers) format
-          const items = result.items || result.youtubers || [];
-          console.log("[Home] Tech youtubers fetched:", items.length, "items");
-          setTechYouTubers(items.length > 0 ? { youtubers: items } : null);
-        }
-      } catch (error) {
-        console.error("[Home] Failed to fetch tech youtubers:", error);
-        setTechYouTubers(null);
-      }
+      // Section 2: 今天怎么花钱
+      // 使用新的自动推荐模块 (TodaySpendRecommendations)
+      // 数据由组件内部获取，无需在这里处理
 
+      // Section 3: 今天聊什么
+      // 使用新的中文八卦模块 (ChineseGossip)
+      // 数据由组件内部获取，无需在这里处理
     }
     
     loadAllData();
@@ -162,159 +124,99 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // Check if any lifestyle modules have data
-  const hasLifestyleData = 
-    (chineseRestaurants && chineseRestaurants.restaurants && chineseRestaurants.restaurants.length > 0) ||
-    (shows && shows.shows && shows.shows.length > 0) ||
-    (gossip && gossip.posts && gossip.posts.length > 0) ||
-    (deals && deals.deals && deals.deals.length > 0);
-
   return (
     <div className="min-h-screen bg-background grid-bg">
       <Navigation />
 
-      <main className="container py-6">
-        {/* First Screen: Core Blocks */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 items-start">
-          {/* Block 1: Asset Summary (Left, fixed on first screen) */}
-          <div className="lg:col-span-1">
-            <FinanceOverview />
+      <main className="container py-6 space-y-12">
+        {/* Section 1: 今天怎么赚钱 */}
+        <section>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold font-mono mb-2">
+              <span className="neon-text-blue">今天怎么赚钱</span>
+            </h1>
+            <p className="text-sm text-muted-foreground font-mono">
+              持仓总览 • Top Movers • 市场要闻 • 美股博主
+            </p>
           </div>
 
-          {/* Block 2: Market-moving News (Center, main area) */}
-          <div className="lg:col-span-1">
-            {industryNews && industryNews.news && industryNews.news.length > 0 ? (
-              <div>
-                <div className="mb-3">
-                  <h2 className="text-lg font-bold font-mono flex items-center gap-2 mb-1">
-                    <span className="neon-text-blue">市场要闻</span>
-                    <span className="text-muted-foreground text-sm">
-                      | Market-moving News
-                    </span>
-                  </h2>
-                  <p className="text-xs text-muted-foreground font-mono">
-                    今天影响钱和工作的科技要闻
-                  </p>
-                </div>
-                <NewsList news={industryNews.news} maxItems={5} showTags={true} />
-              </div>
-            ) : (
-              <div className="glow-border rounded-sm p-4 bg-card">
-                <div className="text-sm text-muted-foreground font-mono">
-                  市场要闻暂不可用
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Block 3: Videos (Right, with Tabs) */}
-          <div className="lg:col-span-1">
-            <div className="mb-3">
-              <h2 className="text-lg font-bold font-mono flex items-center gap-2 mb-1">
-                <span className="neon-text-blue">视频</span>
-                <span className="text-muted-foreground text-sm">
-                  | Videos
-                </span>
-              </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* 左侧：我的持仓总览 + Top Movers */}
+            <div className="lg:col-span-1 space-y-6">
+              <FinanceOverview />
             </div>
-            <Tabs key="videos-tabs" defaultValue="stock" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="stock">美股博主</TabsTrigger>
-                <TabsTrigger value="tech">硅谷科技圈</TabsTrigger>
-              </TabsList>
-              <TabsContent value="stock" className="mt-0">
-                {youtubers && youtubers.youtubers && youtubers.youtubers.length > 0 ? (
-                  <YouTubersList items={youtubers.youtubers} maxItems={5} />
-                ) : (
-                  <div className="glow-border rounded-sm p-4 bg-card">
-                    <div className="text-sm text-muted-foreground font-mono text-center py-8">
-                      暂无更新
-                    </div>
-                  </div>
-                )}
-              </TabsContent>
-              <TabsContent value="tech" className="mt-0">
-                {techYoutubers && techYoutubers.youtubers && techYoutubers.youtubers.length > 0 ? (
-                  <YouTubersList items={techYoutubers.youtubers} maxItems={5} />
-                ) : (
-                  <div className="glow-border rounded-sm p-4 bg-card">
-                    <div className="text-sm text-muted-foreground font-mono text-center py-8">
-                      暂无更新
-                    </div>
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
 
-        {/* Second Screen: Lifestyle Modules (Collapsible) */}
-        {hasLifestyleData && (
-          <div className="border-t border-border pt-8">
-            <button
-              onClick={() => setShowLifestyle(!showLifestyle)}
-              className="w-full flex items-center justify-between mb-4 p-3 glow-border rounded-sm bg-card hover:bg-card/80 transition-colors"
-            >
-              <h2 className="text-lg font-bold font-mono flex items-center gap-2">
-                <span className="neon-text-blue">生活</span>
-                <span className="text-muted-foreground text-sm">
-                  | Lifestyle
-                </span>
-              </h2>
-              <span className="text-sm text-muted-foreground font-mono">
-                {showLifestyle ? "收起" : "展开"}
-              </span>
-            </button>
-
-            {showLifestyle && (
-              <div className="space-y-8">
-                {/* Food Section */}
-                {chineseRestaurants && chineseRestaurants.restaurants && chineseRestaurants.restaurants.length > 0 && (
-                  <section>
-                    <h3 className="text-base font-semibold mb-3 font-mono text-foreground/90">
-                      中餐推荐 <span className="text-muted-foreground text-sm">10 miles</span>
-                    </h3>
-                    <FoodGrid
-                      places={chineseRestaurants.restaurants}
-                      maxItems={4}
-                      showCuisine={true}
-                    />
-                  </section>
-                )}
-
-                {/* Shows Section */}
-                {shows && shows.shows && shows.shows.length > 0 && (
-                  <section>
-                    <h3 className="text-base font-semibold mb-3 font-mono text-foreground/90">
-                      追剧推荐
-                    </h3>
-                    <ShowsCard shows={shows.shows} maxItems={3} />
-                  </section>
-                )}
-
-                {/* Gossip Section */}
-                {gossip && gossip.posts && gossip.posts.length > 0 && (
-                  <section>
-                    <h3 className="text-base font-semibold mb-3 font-mono text-foreground/90">
-                      吃瓜
-                    </h3>
-                    <GossipList posts={gossip.posts} maxItems={10} />
-                  </section>
-                )}
-
-                {/* Deals Section */}
-                {deals && deals.deals && deals.deals.length > 0 && (
-                  <section>
-                    <h3 className="text-base font-semibold mb-3 font-mono text-foreground/90">
-                      遍地羊毛
-                    </h3>
-                    <DealsGrid deals={deals.deals} maxItems={12} />
-                  </section>
-                )}
+            {/* 中间：解释型市场要闻（只限解释涨跌） */}
+            <div className="lg:col-span-1">
+              <div className="mb-3">
+                <h2 className="text-lg font-bold font-mono flex items-center gap-2 mb-1">
+                  <span className="neon-text-blue">解释型市场要闻</span>
+                </h2>
+                <p className="text-xs text-muted-foreground font-mono">
+                  只限解释涨跌，10秒可扫完
+                </p>
               </div>
-            )}
+              {marketNews.length > 0 ? (
+                <NewsList news={marketNews} maxItems={3} showTags={false} />
+              ) : (
+                <div className="glow-border rounded-sm p-4 bg-card">
+                  <div className="text-sm text-muted-foreground font-mono text-center py-4">
+                    暂无市场要闻
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 右侧：美股博主视频（每频道1条） */}
+            <div className="lg:col-span-1">
+              <div className="mb-3">
+                <h2 className="text-lg font-bold font-mono flex items-center gap-2 mb-1">
+                  <span className="neon-text-blue">美股博主</span>
+                </h2>
+                <p className="text-xs text-muted-foreground font-mono">
+                  每频道1条最新视频
+                </p>
+              </div>
+              {stockYoutubers.length > 0 ? (
+                <YouTubersList items={stockYoutubers} maxItems={5} />
+              ) : (
+                <div className="glow-border rounded-sm p-4 bg-card">
+                  <div className="text-sm text-muted-foreground font-mono text-center py-4">
+                    暂无更新
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </section>
+
+        {/* Section 2: 今天怎么花钱 */}
+        <section>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold font-mono mb-2">
+              <span className="neon-text-blue">今天怎么花钱</span>
+            </h1>
+            <p className="text-sm text-muted-foreground font-mono">
+              新开/热门奶茶、中餐、咖啡、甜品 • 基于湾区位置（Cupertino/Sunnyvale/SJ）• 今天或这周能去
+            </p>
+          </div>
+
+          <TodaySpendRecommendations maxItems={6} />
+        </section>
+
+        {/* Section 3: 今天聊什么 */}
+        <section>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold font-mono mb-2">
+              <span className="neon-text-blue">今天聊什么</span>
+            </h1>
+            <p className="text-sm text-muted-foreground font-mono">
+              中文八卦 · 华人优先 • 固定3条 • 只显示标题
+            </p>
+          </div>
+
+          <ChineseGossip maxItems={3} />
+        </section>
       </main>
 
       {/* Footer */}
@@ -322,13 +224,13 @@ export default function Home() {
         <div className="container">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground font-mono">
             <div>
-              <span className="neon-text-blue font-bold">湾区码农每日决策仪表盘</span>
-              <span className="ml-2">| 3-5分钟掌握今日要点</span>
+              <span className="neon-text-blue font-bold">湾区华人每日生存与机会面板</span>
+              <span className="ml-2">| 每个section 10秒可扫完</span>
             </div>
             <div className="flex items-center gap-4">
               <span>数据每日更新</span>
               <span>•</span>
-              <span>Built with Data Punk Style</span>
+              <span>宁缺毋滥</span>
             </div>
           </div>
         </div>

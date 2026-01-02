@@ -13,6 +13,8 @@ import dealsHandler from '../api/deals.js';
 import restaurantsHandler from '../api/restaurants.js';
 import showsHandler from '../api/shows.js';
 import youtubersHandler from '../api/youtubers.js';
+import quotesHandler from '../api/quotes.js';
+import spendTodayHandler from '../api/spend/today.js';
 
 /**
  * Convert Express Request/Response to Vercel Request/Response
@@ -155,6 +157,38 @@ export async function youtubersRoute(req: Request, res: Response) {
     await youtubersHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] YouTubers route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Quotes API route
+ */
+export async function quotesRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await quotesHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Quotes route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Spend Today API route
+ */
+export async function spendTodayRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await spendTodayHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Spend Today route error:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

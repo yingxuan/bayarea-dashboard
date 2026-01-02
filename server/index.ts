@@ -12,7 +12,9 @@ import {
   dealsRoute, 
   restaurantsRoute, 
   showsRoute,
-  youtubersRoute
+  youtubersRoute,
+  quotesRoute,
+  spendTodayRoute
 } from "./local-api-adapter.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -51,6 +53,10 @@ async function startServer() {
   app.options('/api/shows', (_req, res) => res.sendStatus(200));
   app.get('/api/youtubers', youtubersRoute);
   app.options('/api/youtubers', (_req, res) => res.sendStatus(200));
+  app.get('/api/quotes', quotesRoute);
+  app.options('/api/quotes', (_req, res) => res.sendStatus(200));
+  app.get('/api/spend/today', spendTodayRoute);
+  app.options('/api/spend/today', (_req, res) => res.sendStatus(200));
   
   // Mount legacy API routes (if any)
   app.use(apiRouter);
@@ -79,7 +85,9 @@ async function startServer() {
             "/api/deals",
             "/api/restaurants",
             "/api/shows",
-            "/api/youtubers"
+            "/api/youtubers",
+            "/api/quotes",
+            "/api/spend/today"
           ]
         });
       }

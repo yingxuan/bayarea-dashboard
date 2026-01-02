@@ -251,7 +251,135 @@ export function generateWhyItMatters(title: string, description: string, tags: s
 }
 
 // ============================================================================
-// 3. Job Market Module - Market Temperature
+// 3. Market Explanation Module
+// ============================================================================
+
+export interface MarketExplanation {
+  explanations: string[]; // 2-3条解释，永远不为空
+}
+
+/**
+ * Generate market explanation based on portfolio daily change and top movers
+ * 
+ * Rules:
+ * 1) 判断当日类型：
+ *    - |dailyPct| < 0.3% → 平盘
+ *    - dailyPct ≥ 0.3% → 上涨
+ *    - dailyPct ≤ -0.3% → 下跌
+ * 
+ * 2) 使用模板生成 2–3 条解释（不可为空）
+ * 
+ * 3) Top Movers 轻度联动（可选）
+ */
+export function generateMarketExplanation(
+  dailyPct: number,
+  topMovers: string[] // tickers 列表，如 ['NVDA', 'TSLA', 'MSFT']
+): MarketExplanation {
+  const explanations: string[] = [];
+  
+  // 判断当日类型
+  const isFlat = Math.abs(dailyPct) < 0.3;
+  const isUp = dailyPct >= 0.3;
+  const isDown = dailyPct <= -0.3;
+  
+  // 获取 Top Movers 的 tickers（大写）
+  const moversUpper = topMovers.map(t => t.toUpperCase());
+  
+  // 根据类型生成基础解释
+  if (isDown) {
+    // 下跌模板
+    explanations.push('美债收益率上行，对科技股估值形成压力');
+    explanations.push('风险偏好下降，资金从高波动资产撤出');
+    
+    // Top Movers 轻度联动
+    if (moversUpper.includes('NVDA') || moversUpper.includes('SOXL')) {
+      explanations.push('半导体板块承压');
+    } else if (moversUpper.includes('TSLA')) {
+      explanations.push('电动车板块波动');
+    } else if (moversUpper.includes('MSFT') || moversUpper.includes('AAPL')) {
+      explanations.push('大型科技股影响指数表现');
+    } else {
+      // 如果没有特定板块，添加第三条通用解释
+      explanations.push('市场整体风险偏好回落');
+    }
+  } else if (isUp) {
+    // 上涨模板
+    explanations.push('利率预期缓和，风险偏好回升');
+    explanations.push('科技板块反弹带动指数走强');
+    
+    // Top Movers 轻度联动
+    if (moversUpper.includes('NVDA') || moversUpper.includes('SOXL')) {
+      explanations.push('半导体板块反弹');
+    } else if (moversUpper.includes('TSLA')) {
+      explanations.push('电动车板块波动');
+    } else if (moversUpper.includes('MSFT') || moversUpper.includes('AAPL')) {
+      explanations.push('大型科技股影响指数表现');
+    } else {
+      // 如果没有特定板块，添加第三条通用解释
+      explanations.push('市场情绪转暖，资金回流成长股');
+    }
+  } else {
+    // 震荡模板（平盘）
+    explanations.push('投资者观望即将公布的宏观数据');
+    explanations.push('板块轮动，但整体缺乏明确方向');
+    
+    // Top Movers 轻度联动
+    if (moversUpper.includes('NVDA') || moversUpper.includes('SOXL')) {
+      explanations.push('半导体板块震荡整理');
+    } else if (moversUpper.includes('TSLA')) {
+      explanations.push('电动车板块波动');
+    } else if (moversUpper.includes('MSFT') || moversUpper.includes('AAPL')) {
+      explanations.push('大型科技股影响指数表现');
+    } else {
+      // 如果没有特定板块，添加第三条通用解释
+      explanations.push('市场等待更多明确信号');
+    }
+  }
+  
+  // 确保永远有 2-3 条解释（如果少于2条，补充通用解释）
+  // 注意：上面的逻辑已经确保至少有3条，但为了防御性编程，这里再检查一次
+  if (explanations.length < 2) {
+    if (isDown) {
+      explanations.push('市场整体风险偏好回落');
+    } else if (isUp) {
+      explanations.push('市场情绪转暖，资金回流成长股');
+    } else {
+      explanations.push('市场等待更多明确信号');
+    }
+  }
+  
+  // 确保至少有2条，最多3条
+  // 如果只有1条，再补充一条
+  if (explanations.length === 1) {
+    if (isDown) {
+      explanations.push('市场整体风险偏好回落');
+    } else if (isUp) {
+      explanations.push('市场情绪转暖，资金回流成长股');
+    } else {
+      explanations.push('市场等待更多明确信号');
+    }
+  }
+  
+  // 限制最多3条，最少2条
+  const finalExplanations = explanations.slice(0, 3);
+  if (finalExplanations.length < 2) {
+    // 如果还是少于2条（理论上不应该发生），再补充
+    if (isDown) {
+      finalExplanations.push('市场整体风险偏好回落');
+    } else if (isUp) {
+      finalExplanations.push('市场情绪转暖，资金回流成长股');
+    } else {
+      finalExplanations.push('市场等待更多明确信号');
+    }
+  }
+  
+  return {
+    explanations: finalExplanations.slice(0, 3) // 确保最多3条
+  };
+}
+
+// ============================================================================
+// 4. Job Market Module - Market Temperature
 // ============================================================================
 
 export interface JobMarketJudgment {

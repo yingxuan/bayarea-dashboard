@@ -6,13 +6,18 @@
  * - Live data from serverless API (/api/market)
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
 import { generateMarketJudgment, type MarketJudgment } from "@/lib/judgment";
 import { config } from "@/config";
 import DataStateBadge from "@/components/DataStateBadge";
 import SourceLink from "@/components/SourceLink";
 import { getSourceInfo, getStatus, getNumericValue } from "@shared/utils";
+import { useHoldings } from "@/hooks/useHoldings";
+import PortfolioSummary from "@/components/PortfolioSummary";
+import TopMovers from "@/components/TopMovers";
+import MarketExplanation from "@/components/MarketExplanation";
+import { usePortfolioSummary } from "@/hooks/usePortfolioSummary";
 
 interface MarketDataItem {
   name: string;
@@ -35,31 +40,21 @@ interface MarketDataItem {
   as_of?: string;
 }
 
-interface FinanceData {
-  stockMarketValue: { value: number; currency: string };
-  todayChange: { amount: number; percentage: number };
-  totalGainLoss: { amount: number; percentage: number };
-  ytd: { percentage: number };
-  indices: Array<{
-    code: string;
-    name: string;
-    value: number | string;
-    change?: number; // Optional: only show if available
-    changePercent?: number; // Optional: only show if available
-    status: "ok" | "stale" | "unavailable";
-    source?: string;
-    sourceUrl?: string;
-    error?: string;
-    note?: string;
-  }>;
-  lastUpdated: string;
-}
+// FinanceData interface removed - calculations now handled by PortfolioSummary and TopMovers components
 
 export default function FinanceOverview() {
-  const [data, setData] = useState<FinanceData | null>(null);
+  const [marketData, setMarketData] = useState<{
+    spy: MarketDataItem;
+    gold: MarketDataItem;
+    btc: MarketDataItem;
+    mortgage: MarketDataItem;
+    powerball: MarketDataItem;
+  } | null>(null);
   const [judgment, setJudgment] = useState<MarketJudgment | null>(null);
   const [loading, setLoading] = useState(true);
+  const { holdings, isLoaded: holdingsLoaded, ytdBaseline, updateYtdBaseline } = useHoldings();
 
+  // Fetch market data (separate from holdings calculation)
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -81,7 +76,7 @@ export default function FinanceOverview() {
         }
         
         const result = await response.json();
-        const marketData: {
+        const data: {
           spy: MarketDataItem;
           gold: MarketDataItem;
           btc: MarketDataItem;
@@ -89,76 +84,16 @@ export default function FinanceOverview() {
           powerball: MarketDataItem;
         } = result.data;
         
-        // Use shared utility functions (imported at top)
-        
-        // Calculate portfolio value
-        const portfolioValue = 150000;
-        const spyStatus = getStatus(marketData.spy);
-        const spyChangePercent = spyStatus === "ok" ? (marketData.spy.change_percent || 0) : 0;
-        const todayChange = portfolioValue * spyChangePercent / 100;
-        
-        const result2 = {
-          stockMarketValue: {
-            value: portfolioValue,
-            currency: "USD",
-          },
-          todayChange: {
-            amount: Math.round(todayChange),
-            percentage: Number(spyChangePercent.toFixed(2)),
-          },
-          totalGainLoss: {
-            amount: Math.round(portfolioValue * 0.15),
-            percentage: 15,
-          },
-          ytd: {
-            percentage: 15,
-          },
-          indices: [
-            {
-              code: "SPY",
-              name: "S&P 500 ETF",
-              value: spyStatus === "ok" ? getNumericValue(marketData.spy) : "Unavailable",
-              change: spyStatus === "ok" && marketData.spy.change !== undefined ? Number(marketData.spy.change) : undefined,
-              changePercent: spyStatus === "ok" && marketData.spy.change_percent !== undefined ? Number(marketData.spy.change_percent) : undefined,
-              status: spyStatus,
-              source: getSourceInfo(marketData.spy).name,
-              sourceUrl: getSourceInfo(marketData.spy).url,
-              error: marketData.spy.error,
-            },
-            {
-              code: "GOLD",
-              name: "Gold",
-              value: getStatus(marketData.gold) === "ok" ? getNumericValue(marketData.gold) : "Unavailable",
-              change: getStatus(marketData.gold) === "ok" && marketData.gold.change !== undefined ? Number(marketData.gold.change) : undefined,
-              changePercent: getStatus(marketData.gold) === "ok" && marketData.gold.change_percent !== undefined ? Number(marketData.gold.change_percent) : undefined,
-              status: getStatus(marketData.gold),
-              source: getSourceInfo(marketData.gold).name,
-              sourceUrl: getSourceInfo(marketData.gold).url,
-              error: marketData.gold.error,
-            },
-            {
-              code: "BTC",
-              name: "Bitcoin",
-              value: getStatus(marketData.btc) === "ok" ? getNumericValue(marketData.btc) : "Unavailable",
-              change: getStatus(marketData.btc) === "ok" ? Number(marketData.btc.change || 0) : 0,
-              changePercent: getStatus(marketData.btc) === "ok" ? Number(marketData.btc.change_percent || 0) : 0,
-              status: getStatus(marketData.btc),
-              source: getSourceInfo(marketData.btc).name,
-              sourceUrl: getSourceInfo(marketData.btc).url,
-              error: marketData.btc.error,
-            },
-          ],
-          lastUpdated: result.updated_at || result.fetched_at || new Date().toLocaleString(),
-        };
-
-        setData(result2);
+        setMarketData(data);
         
         // Generate market judgment (only if SPY is available)
+        const spyStatus = getStatus(data.spy);
+        const spyChangePercent = spyStatus === "ok" ? (data.spy.change_percent || 0) : 0;
         const marketJudgment = spyStatus === "ok" ? generateMarketJudgment({
-          spyChangePercent: marketData.spy.change_percent || 0,
-          portfolioChangePercent: spyChangePercent,
-          btcChangePercent: getStatus(marketData.btc) === "ok" ? (marketData.btc.change_percent || 0) : 0,
-          goldChangePercent: getStatus(marketData.gold) === "ok" ? (marketData.gold.change_percent || 0) : 0,
+          spyChangePercent: data.spy.change_percent || 0,
+          portfolioChangePercent: spyChangePercent, // Will be updated by useMemo
+          btcChangePercent: getStatus(data.btc) === "ok" ? (data.btc.change_percent || 0) : 0,
+          goldChangePercent: getStatus(data.gold) === "ok" ? (data.gold.change_percent || 0) : 0,
         }) : null;
         setJudgment(marketJudgment);
         console.log('[FinanceOverview] Market data loaded successfully');
@@ -180,7 +115,137 @@ export default function FinanceOverview() {
     // Refresh every 5 minutes
     const interval = setInterval(loadData, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, []); // Only fetch market data, not dependent on holdings
+
+  // Fetch quotes for holdings
+  const [quotesData, setQuotesData] = useState<Record<string, { price: number; prevClose?: number; change?: number; changePercent?: number; status: string }>>({});
+  const [quotesLoading, setQuotesLoading] = useState(false);
+
+  // Force recalculation when holdings change by using a version counter
+  const [holdingsVersion, setHoldingsVersion] = useState(0);
+  
+  useEffect(() => {
+    if (holdingsLoaded) {
+      console.log('[FinanceOverview] Holdings changed, incrementing version:', holdings.length);
+      setHoldingsVersion(v => v + 1);
+    }
+  }, [holdings, holdingsLoaded]);
+
+  // Fetch quotes when holdings change
+  useEffect(() => {
+    if (!holdingsLoaded || holdings.length === 0) {
+      setQuotesData({});
+      return;
+    }
+
+    const fetchQuotes = async () => {
+      setQuotesLoading(true);
+      try {
+        const tickers = holdings.map(h => h.ticker.toUpperCase()).join(',');
+        const apiUrl = `${config.apiBaseUrl}/api/quotes?tickers=${encodeURIComponent(tickers)}`;
+        console.log('[FinanceOverview] Fetching quotes for:', tickers);
+        
+        const response = await fetch(apiUrl, {
+          signal: AbortSignal.timeout(10000),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Quotes API error: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        const quotes: Array<{
+          ticker: string;
+          status: 'ok' | 'stale' | 'unavailable';
+          price: number;
+          prevClose?: number;
+          change?: number;
+          changePercent?: number;
+          error?: string;
+        }> = result.quotes || [];
+        
+        // Convert to map for easy lookup with strict type checking
+        const quotesMap: Record<string, { price: number; prevClose?: number; change?: number; changePercent?: number; status: string }> = {};
+        quotes.forEach(quote => {
+          // Ensure all numeric values are properly converted to numbers
+          const price = Number(quote.price);
+          const prevClose = quote.prevClose !== undefined ? Number(quote.prevClose) : undefined;
+          const change = quote.change !== undefined ? Number(quote.change) : undefined;
+          const changePercent = quote.changePercent !== undefined ? Number(quote.changePercent) : undefined;
+          
+          if (isNaN(price) || price <= 0) {
+            console.warn('[FinanceOverview] Invalid price for', quote.ticker, ':', quote.price);
+            return;
+          }
+          
+          quotesMap[quote.ticker.toUpperCase()] = {
+            price,
+            prevClose,
+            change,
+            changePercent,
+            status: quote.status,
+          };
+        });
+        
+        setQuotesData(quotesMap);
+        console.log('[FinanceOverview] Quotes fetched:', Object.keys(quotesMap).length, 'tickers');
+      } catch (error) {
+        console.error('[FinanceOverview] Failed to fetch quotes:', error);
+        setQuotesData({});
+      } finally {
+        setQuotesLoading(false);
+      }
+    };
+
+    fetchQuotes();
+  }, [holdings, holdingsLoaded, config.apiBaseUrl]);
+
+  // Portfolio calculations are now handled by PortfolioSummary and TopMovers components
+  // Calculate portfolio metrics for market explanation
+  const portfolioMetrics = usePortfolioSummary(holdings, quotesData, ytdBaseline);
+  
+  // Calculate top movers tickers for market explanation
+  const topMoversTickers = useMemo(() => {
+    const movers: Array<{ ticker: string; dailyChangeAmount: number }> = [];
+    
+    holdings.forEach((holding) => {
+      const tickerUpper = holding.ticker.toUpperCase();
+      const quote = quotesData[tickerUpper];
+      const shares = Number(holding.shares);
+      
+      if (quote && quote.status === 'ok' && quote.price > 0 && !isNaN(shares) && shares > 0) {
+        const price = Number(quote.price);
+        const prevClose = quote.prevClose !== undefined ? Number(quote.prevClose) : undefined;
+        
+        if (!isNaN(price) && price > 0) {
+          let dailyChangeAmount = 0;
+          
+          if (prevClose !== undefined && !isNaN(prevClose) && prevClose > 0) {
+            const priceChange = price - prevClose;
+            dailyChangeAmount = shares * priceChange;
+          } else if (quote.change !== undefined) {
+            const change = Number(quote.change);
+            if (!isNaN(change)) {
+              dailyChangeAmount = shares * change;
+            }
+          }
+          
+          if (dailyChangeAmount !== 0) {
+            movers.push({
+              ticker: tickerUpper,
+              dailyChangeAmount,
+            });
+          }
+        }
+      }
+    });
+    
+    // Sort by absolute daily change amount, descending
+    movers.sort((a, b) => Math.abs(b.dailyChangeAmount) - Math.abs(a.dailyChangeAmount));
+    
+    // Return top 3 tickers
+    return movers.slice(0, 3).map(m => m.ticker);
+  }, [holdings, quotesData]);
 
   if (loading) {
     return (
@@ -193,133 +258,80 @@ export default function FinanceOverview() {
     );
   }
 
-  if (!data) {
+  if (!marketData) {
     return (
       <div className="glow-border rounded-sm p-6 bg-card">
-        <div className="text-red-400">Failed to load finance data</div>
+        <div className="text-red-400">Failed to load market data</div>
       </div>
     );
   }
 
+  // Prepare indices data (only SPY, GOLD, BTC)
+  const indices = [
+    {
+      code: "SPY",
+      name: "S&P 500 ETF",
+      value: getStatus(marketData.spy) === "ok" ? getNumericValue(marketData.spy) : "Unavailable",
+      change: getStatus(marketData.spy) === "ok" && marketData.spy.change !== undefined ? Number(marketData.spy.change) : undefined,
+      changePercent: getStatus(marketData.spy) === "ok" && marketData.spy.change_percent !== undefined ? Number(marketData.spy.change_percent) : undefined,
+      status: getStatus(marketData.spy),
+      source: getSourceInfo(marketData.spy).name,
+      sourceUrl: getSourceInfo(marketData.spy).url,
+      error: marketData.spy.error,
+    },
+    {
+      code: "GOLD",
+      name: "Gold",
+      value: getStatus(marketData.gold) === "ok" ? getNumericValue(marketData.gold) : "Unavailable",
+      change: getStatus(marketData.gold) === "ok" && marketData.gold.change !== undefined ? Number(marketData.gold.change) : undefined,
+      changePercent: getStatus(marketData.gold) === "ok" && marketData.gold.change_percent !== undefined ? Number(marketData.gold.change_percent) : undefined,
+      status: getStatus(marketData.gold),
+      source: getSourceInfo(marketData.gold).name,
+      sourceUrl: getSourceInfo(marketData.gold).url,
+      error: marketData.gold.error,
+    },
+    {
+      code: "BTC",
+      name: "Bitcoin",
+      value: getStatus(marketData.btc) === "ok" ? getNumericValue(marketData.btc) : "Unavailable",
+      change: getStatus(marketData.btc) === "ok" ? Number(marketData.btc.change || 0) : 0,
+      changePercent: getStatus(marketData.btc) === "ok" ? Number(marketData.btc.change_percent || 0) : 0,
+      status: getStatus(marketData.btc),
+      source: getSourceInfo(marketData.btc).name,
+      sourceUrl: getSourceInfo(marketData.btc).url,
+      error: marketData.btc.error,
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Main Overview Card */}
-      <div className="glow-border rounded-sm p-4 bg-card">
-        <h2 className="text-xl font-bold text-primary mb-3 flex items-center gap-2">
-          <span className="text-primary">票子</span>
-          <span className="text-muted-foreground text-base">| 早日财富自由</span>
-        </h2>
-        
-        {/* Judgment Layer */}
-        {judgment && (
-            <div className={`mb-4 p-3 rounded-sm border-l-4 ${
-            judgment.status === 'positive' ? 'border-green-400 bg-green-400/10' :
-            judgment.status === 'negative' ? 'border-red-400 bg-red-400/10' :
-            'border-blue-400 bg-blue-400/10'
-          }`}>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">{judgment.icon}</span>
-              <div className="flex-1">
-                <div className={`text-base font-medium ${
-                  judgment.status === 'positive' ? 'text-green-400' :
-                  judgment.status === 'negative' ? 'text-red-400' :
-                  'text-blue-400'
-                }`}>
-                  今日判断
-                </div>
-                <div className="text-foreground mt-1">
-                  {judgment.message}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+      {/* A) Portfolio Summary */}
+      {holdingsLoaded && (
+        <PortfolioSummary
+          quotesData={quotesData}
+          holdings={holdings}
+          holdingsLoaded={holdingsLoaded}
+          ytdBaseline={ytdBaseline}
+          onYtdBaselineChange={updateYtdBaseline}
+        />
+      )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
-          {/* Stock Market Value */}
-          <div className="text-center flex flex-col min-h-[80px]">
-            <div className="text-muted-foreground text-sm mb-2">股票市值</div>
-            <div className="text-2xl xl:text-3xl font-mono font-bold text-foreground leading-tight">
-              ${data.stockMarketValue.value.toLocaleString()}
-            </div>
-          </div>
+      {/* B) Top 3 Movers */}
+      {holdingsLoaded && holdings.length > 0 && (
+        <TopMovers quotesData={quotesData} holdings={holdings} />
+      )}
 
-          {/* Today's Change */}
-          <div className="text-center flex flex-col min-h-[80px]">
-            <div className="text-muted-foreground text-sm mb-2">今日涨跌</div>
-            <div className="flex flex-col items-center gap-1">
-              <div
-                className={`text-xl xl:text-2xl font-mono font-bold flex items-center justify-center gap-1 leading-tight ${
-                  data.todayChange.amount >= 0 ? "text-green-400" : "text-red-400"
-                }`}
-              >
-                {data.todayChange.amount >= 0 ? (
-                  <TrendingUp className="w-4 h-4 xl:w-5 xl:h-5 flex-shrink-0" />
-                ) : (
-                  <TrendingDown className="w-4 h-4 xl:w-5 xl:h-5 flex-shrink-0" />
-                )}
-                <span className="whitespace-nowrap">
-                  {data.todayChange.amount >= 0 ? "+" : ""}
-                  {data.todayChange.amount.toLocaleString()}
-                </span>
-              </div>
-              <div
-                className={`text-xs xl:text-sm font-mono leading-tight ${
-                  data.todayChange.percentage >= 0
-                    ? "text-green-400"
-                    : "text-red-400"
-                }`}
-              >
-                {data.todayChange.percentage >= 0 ? "+" : ""}
-                {data.todayChange.percentage}%
-              </div>
-            </div>
-          </div>
+      {/* D) Market Explanation */}
+      {holdingsLoaded && holdings.length > 0 && (
+        <MarketExplanation 
+          dailyPct={portfolioMetrics.dailyChangePercent}
+          topMovers={topMoversTickers}
+        />
+      )}
 
-          {/* Total Gain/Loss */}
-          <div className="text-center flex flex-col min-h-[80px]">
-            <div className="text-muted-foreground text-sm mb-2">总浮盈/浮亏</div>
-            <div className="flex flex-col items-center gap-1">
-              <div
-                className={`text-xl xl:text-2xl font-mono font-bold leading-tight ${
-                  data.totalGainLoss.amount >= 0
-                    ? "text-green-400"
-                    : "text-red-400"
-                }`}
-              >
-                {data.totalGainLoss.amount >= 0 ? "+" : ""}
-                {data.totalGainLoss.amount.toLocaleString()}
-              </div>
-              <div
-                className={`text-xs xl:text-sm font-mono leading-tight ${
-                  data.totalGainLoss.percentage >= 0
-                    ? "text-green-400"
-                    : "text-red-400"
-                }`}
-              >
-                {data.totalGainLoss.percentage.toFixed(2)}%
-              </div>
-            </div>
-          </div>
-
-          {/* YTD */}
-          <div className="text-center flex flex-col min-h-[80px]">
-            <div className="text-muted-foreground text-sm mb-2">YTD</div>
-            <div
-              className={`text-xl xl:text-2xl font-mono font-bold leading-tight ${
-                data.ytd.percentage >= 0 ? "text-green-400" : "text-red-400"
-              }`}
-            >
-              {data.ytd.percentage >= 0 ? "+" : ""}
-              {data.ytd.percentage.toFixed(2)}%
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Indices Grid */}
+      {/* C) Indices (SPY, GOLD, BTC) */}
       <div className="grid grid-cols-1 gap-4">
-        {data.indices.map((index) => {
+        {indices.map((index) => {
           const isUnavailable = index.status === "unavailable";
           const isStale = index.status === "stale";
           const isOk = index.status === "ok";
@@ -398,19 +410,9 @@ export default function FinanceOverview() {
                 />
               )}
               
-              {index.note && (
-                <div className="text-xs text-muted-foreground/70 mt-1">
-                  {index.note}
-                </div>
-              )}
             </div>
           );
         })}
-      </div>
-      
-      {/* Last Updated Timestamp */}
-      <div className="text-xs text-muted-foreground text-right mt-2">
-        数据更新于: {data.lastUpdated} PT
       </div>
     </div>
   );
