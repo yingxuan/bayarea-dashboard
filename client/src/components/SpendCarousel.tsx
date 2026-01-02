@@ -101,7 +101,7 @@ export default function SpendCarousel({ category, places, fallbackImage }: Spend
       >
         <CarouselContent className="-ml-2">
           {/* Card 1-2: Real places */}
-          {displayPlaces.map((place) => {
+          {top2Places.map((place) => {
             const photoUrl = place.photo_url || getFallbackImage();
             const isFallback = (place as any).isFallback;
             
@@ -113,7 +113,7 @@ export default function SpendCarousel({ category, places, fallbackImage }: Spend
                   rel={isFallback ? undefined : "noopener noreferrer"}
                   className="block w-44 rounded-lg overflow-hidden bg-card/50 border border-border/50 hover:border-primary/50 transition-all group"
                 >
-                  {/* Large Image - Compact for grid */}
+                  {/* Large Image - Compact for grid with dark gradient overlay */}
                   <div className="relative w-full h-32 bg-muted overflow-hidden">
                     <img
                       src={photoUrl}
@@ -127,31 +127,23 @@ export default function SpendCarousel({ category, places, fallbackImage }: Spend
                         }
                       }}
                     />
+                    {/* Dark gradient overlay for better text readability */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                     
-                    {/* Overlay: Name (bottom-left) */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                      <h4 className="text-xs font-semibold text-white line-clamp-1">
-                        {place.name}
-                      </h4>
-                    </div>
-                  </div>
-
-                  {/* Info: Rating + Distance (below image) - Compact */}
-                  <div className="p-2">
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
-                      <div className="flex items-center gap-0.5">
-                        <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
-                        <span>{place.rating.toFixed(1)}</span>
-                      </div>
-                      {place.distance_miles !== undefined && (
-                        <>
-                          <span>·</span>
-                          <div className="flex items-center gap-0.5">
-                            <MapPin className="w-2.5 h-2.5" />
+                    {/* Overlay: Name + Rating + Distance (bottom-left) */}
+                    <div className="absolute bottom-0 left-0 right-0 p-2 text-white z-10">
+                      <h4 className="text-sm font-semibold mb-1 truncate drop-shadow-lg">{place.name}</h4>
+                      <div className="flex items-center gap-1.5 text-xs drop-shadow-md">
+                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                        <span className="font-medium">{place.rating.toFixed(1)}</span>
+                        {place.distance_miles !== undefined && (
+                          <>
+                            <span className="text-white/70">•</span>
+                            <MapPin className="w-3 h-3" />
                             <span>{place.distance_miles.toFixed(1)} mi</span>
-                          </div>
-                        </>
-                      )}
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </a>

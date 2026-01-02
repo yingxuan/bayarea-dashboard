@@ -35,11 +35,17 @@ import {
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
 const SPEND_TODAY_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
-// City coordinates (latitude, longitude)
+// Maximum distance in miles (HARD LIMIT)
+const MAX_DISTANCE_MILES = 10;
+
+// City coordinates (latitude, longitude) - used as fallback if user location not provided
 const CITY_COORDS = {
   cupertino: { lat: 37.3230, lng: -122.0322 },
   sunnyvale: { lat: 37.3688, lng: -122.0363 },
 } as const;
+
+// Default center (Cupertino) for fallback
+const DEFAULT_CENTER = CITY_COORDS.cupertino;
 
 // Category to keyword mapping for Nearby Search
 const CATEGORY_KEYWORDS = {
@@ -72,6 +78,9 @@ interface GooglePlaceResult {
   photos?: Array<{
     photo_reference: string;
   }>;
+  opening_hours?: {
+    open_now?: boolean;
+  };
 }
 
 interface SpendPlace {
@@ -145,11 +154,12 @@ async function searchGooglePlacesNearby(
 }
 
 /**
- * Get place details (for photos and URL)
+ * Get place details (for photos, URL, and opening hours)
  */
 async function getPlaceDetails(placeId: string): Promise<{
   photo_reference?: string;
   url?: string;
+  opening_hours?: { open_now?: boolean };
 }> {
   if (!GOOGLE_PLACES_API_KEY) {
     return {};
@@ -158,7 +168,7 @@ async function getPlaceDetails(placeId: string): Promise<{
   try {
     const params = new URLSearchParams({
       place_id: placeId,
-      fields: 'photos,url',
+      fields: 'photos,url,opening_hours',
       key: GOOGLE_PLACES_API_KEY,
     });
 
@@ -171,7 +181,7 @@ async function getPlaceDetails(placeId: string): Promise<{
     }
 
     const data = await response.json();
-    const result: { photo_reference?: string; url?: string } = {};
+    const result: { photo_reference?: string; url?: string; opening_hours?: { open_now?: boolean } } = {};
     
     if (data.result?.photos && data.result.photos.length > 0) {
       result.photo_reference = data.result.photos[0].photo_reference;
@@ -179,6 +189,10 @@ async function getPlaceDetails(placeId: string): Promise<{
     
     if (data.result?.url) {
       result.url = data.result.url;
+    }
+    
+    if (data.result?.opening_hours) {
+      result.opening_hours = data.result.opening_hours;
     }
 
     return result;
@@ -211,25 +225,48 @@ function calculateDistanceMiles(
 
 /**
  * Fetch places from Google Places API for a specific city and category
- * No distance filtering - includes all places in Cupertino/Sunnyvale
+ * Filters by distance from user location (or city center) with 10-mile hard limit
  */
 async function fetchPlacesForCategory(
   city: keyof typeof CITY_COORDS,
-  category: keyof typeof CATEGORY_KEYWORDS
+  category: keyof typeof CATEGORY_KEYWORDS,
+  userLocation?: { lat: number; lng: number }
 ): Promise<SpendPlace[]> {
-  const coords = CITY_COORDS[city];
+  // IMPORTANT: Use English category values to avoid encoding issues
+  // Frontend will map these back to Chinese for display
+  const categoryToEnglish: Record<keyof typeof CATEGORY_KEYWORDS, string> = {
+    '奶茶': 'milk_tea',
+    '中餐': 'chinese',
+    '咖啡': 'coffee',
+    '夜宵': 'late_night',
+  };
+  
+  const categoryToChinese: Record<string, string> = {
+    'milk_tea': '奶茶',
+    'chinese': '中餐',
+    'coffee': '咖啡',
+    'late_night': '夜宵',
+  };
+  
+  // Use English category for storage, but keep Chinese for display
+  const categoryEnglish = categoryToEnglish[category] || String(category);
+  const categoryChinese = categoryToChinese[categoryEnglish] || category;
+  console.log(`[fetchPlacesForCategory] Category: "${category}" -> English: "${categoryEnglish}", Chinese: "${categoryChinese}"`);
+  
+  // Use user location if provided, otherwise use city center
+  const searchCenter = userLocation || CITY_COORDS[city];
   const keywords = CATEGORY_KEYWORDS[category];
   const type = CATEGORY_TYPES[category];
-  // Use a larger radius to cover the entire city area (approximately 10 miles)
-  const RADIUS_METERS = 16093; // ~10 miles to cover entire city
+  // Search radius: 10 miles in meters (16093 meters)
+  const RADIUS_METERS = 16093; // ~10 miles
   
   const allPlaces: SpendPlace[] = [];
   const seenPlaceIds = new Set<string>();
 
-  for (const keyword of keywords) {
+      for (const keyword of keywords) {
     try {
       const results = await searchGooglePlacesNearby(
-        coords,
+        searchCenter,
         RADIUS_METERS,
         type,
         keyword
@@ -254,16 +291,50 @@ async function fetchPlacesForCategory(
         // If no geometry, skip (we need location data)
         if (!result.geometry?.location) continue;
         
-        // Calculate distance for display purposes only (not for filtering)
+        // Calculate distance from user location (or city center)
         const distanceMiles = calculateDistanceMiles(
-          coords.lat,
-          coords.lng,
+          searchCenter.lat,
+          searchCenter.lng,
           result.geometry.location.lat,
           result.geometry.location.lng
         );
+        
+        // HARD LIMIT: Discard places > 10 miles
+        if (distanceMiles > MAX_DISTANCE_MILES) {
+          console.log(`[Spend Today] Discarding "${result.name}" - distance ${distanceMiles.toFixed(1)} miles > ${MAX_DISTANCE_MILES} miles`);
+          continue;
+        }
 
-        // Get place details for photos and URL
+        // Get place details for photos, URL, and opening hours
         const details = await getPlaceDetails(result.place_id);
+        
+        // Special filtering for 夜宵 category
+        if (category === '夜宵') {
+          const isNightTime = (() => {
+            const now = new Date();
+            const localHour = now.getHours();
+            const localMinute = now.getMinutes();
+            const localTimeMinutes = localHour * 60 + localMinute;
+            // 8:30 PM = 20:30 = 20 * 60 + 30 = 1230 minutes
+            return localTimeMinutes >= 1230;
+          })();
+          
+          const hasOpeningHours = details.opening_hours?.open_now === true;
+          const nameLower = result.name.toLowerCase();
+          const hasNightKeywords = 
+            nameLower.includes('夜宵') ||
+            nameLower.includes('open late') ||
+            nameLower.includes('24 hours') ||
+            nameLower.includes('24hr') ||
+            nameLower.includes('midnight') ||
+            nameLower.includes('late night');
+          
+          // Must satisfy: (open_now AND night time) OR has night keywords
+          if (!((hasOpeningHours && isNightTime) || hasNightKeywords)) {
+            console.log(`[Spend Today] Discarding "${result.name}" from 夜宵 - doesn't meet night snack criteria`);
+            continue;
+          }
+        }
         
         let photoUrl: string | undefined;
         if (details.photo_reference) {
@@ -273,14 +344,13 @@ async function fetchPlacesForCategory(
         // Use Google Maps URL from details, or construct from place_id
         const mapsUrl = details.url || `https://www.google.com/maps/place/?q=place_id:${result.place_id}`;
 
-        // Ensure category is correctly set (explicit string to avoid encoding issues)
-        const categoryStr = String(category);
-        console.log(`[Spend Today] Setting place category to: "${categoryStr}" for place: ${result.name}`);
+        // Use Chinese category for the place object (for frontend display)
+        console.log(`[Spend Today] Setting place category to: "${categoryChinese}" for place: ${result.name}`);
         
         const place: SpendPlace = {
           id: result.place_id,
           name: result.name,
-          category: categoryStr, // Explicitly use string to ensure correct encoding
+          category: categoryChinese, // Use Chinese category for display
           rating: finalRating,
           user_ratings_total: finalUserRatingsTotal,
           address: result.formatted_address || '',
@@ -308,7 +378,7 @@ async function fetchPlacesForCategory(
 /**
  * Fetch all places from all cities and categories, then merge and sort by popularity
  */
-async function fetchAllPlacesFromGoogle(): Promise<SpendPlace[]> {
+async function fetchAllPlacesFromGoogle(userLocation?: { lat: number; lng: number }): Promise<SpendPlace[]> {
   const cities: Array<keyof typeof CITY_COORDS> = ['cupertino', 'sunnyvale'];
   const categories: Array<keyof typeof CATEGORY_KEYWORDS> = ['奶茶', '中餐', '咖啡', '夜宵'];
   
@@ -318,7 +388,7 @@ async function fetchAllPlacesFromGoogle(): Promise<SpendPlace[]> {
   for (const city of cities) {
     for (const category of categories) {
       try {
-        const places = await fetchPlacesForCategory(city, category);
+        const places = await fetchPlacesForCategory(city, category, userLocation);
         allPlaces.push(...places);
       } catch (error) {
         console.error(`[Spend Today] Error fetching ${category} in ${city}:`, error);
@@ -386,11 +456,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const nocache = isCacheBypass(req);
     const cacheKey = 'spend-today';
     
-    // Check cache (24 hours)
+    // Parse user location from query params (lat, lng)
+    let userLocation: { lat: number; lng: number } | undefined;
+    const latParam = req.query.lat;
+    const lngParam = req.query.lng;
+    if (latParam && lngParam) {
+      const lat = parseFloat(String(latParam));
+      const lng = parseFloat(String(lngParam));
+      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        userLocation = { lat, lng };
+        console.log(`[Spend Today] Using user location: ${lat}, ${lng}`);
+      } else {
+        console.warn(`[Spend Today] Invalid user location: lat=${latParam}, lng=${lngParam}`);
+      }
+    } else {
+      console.log(`[Spend Today] No user location provided, using default center: ${DEFAULT_CENTER.lat}, ${DEFAULT_CENTER.lng}`);
+    }
+    
+    // Check cache (24 hours) - but skip if nocache is set
     const cached = getCachedData(cacheKey, SPEND_TODAY_CACHE_TTL, nocache);
-    if (cached) {
+    if (cached && !nocache) {
       const cachedData = cached.data;
+      console.log('[Spend Today] Returning cached data');
       normalizeCachedResponse(cachedData, { name: 'Google Places', url: 'https://maps.google.com' }, ttlMsToSeconds(SPEND_TODAY_CACHE_TTL), 'spend-today');
+      
+      // Ensure proper encoding for JSON response
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
       return res.status(200).json({
         ...cachedData,
         cache_hit: true,
@@ -410,7 +501,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error('GOOGLE_PLACES_API_KEY not configured');
     }
 
-    const allPlaces = await fetchAllPlacesFromGoogle();
+    const allPlaces = await fetchAllPlacesFromGoogle(userLocation);
     console.log(`[Spend Today] Fetched ${allPlaces.length} total places from Google`);
     
     if (allPlaces.length === 0) {
@@ -420,6 +511,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.warn('  - Network issues');
       console.warn('  - No places match the search criteria');
     }
+    
+    // Group places by the category they were assigned during fetch
+    // Since we're calling fetchPlacesForCategory with explicit category names,
+    // we can track which category each place belongs to by the order they're returned
+    // But the most reliable way is to use the place.category field we set
     
     // Re-group directly by place.category (more reliable than using groupPlacesByCategory which might have encoding issues)
     const placesByCategoryDirect: Record<string, SpendPlace[]> = {
@@ -432,12 +528,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Group all places by their category field
     for (const place of allPlaces) {
       const placeCategory = place.category;
-      console.log(`[Spend Today] Place "${place.name}" has category: "${placeCategory}"`);
+      console.log(`[Spend Today] Place "${place.name}" has category: "${placeCategory}" (bytes: ${Buffer.from(placeCategory, 'utf8').toString('hex')})`);
       
+      // Try exact match first
       if (placesByCategoryDirect.hasOwnProperty(placeCategory)) {
         placesByCategoryDirect[placeCategory].push(place);
       } else {
-        console.warn(`[Spend Today] Place "${place.name}" has unexpected category: "${placeCategory}"`);
+        // Try to match by checking if the category string matches any expected category
+        const expectedCategories: string[] = ['奶茶', '中餐', '咖啡', '夜宵'];
+        const matched = expectedCategories.find(cat => {
+          // Compare by byte representation to avoid encoding issues
+          const placeBytes = Buffer.from(placeCategory, 'utf8').toString('hex');
+          const catBytes = Buffer.from(cat, 'utf8').toString('hex');
+          return placeBytes === catBytes || placeCategory === cat;
+        });
+        
+        if (matched) {
+          console.log(`[Spend Today] Matched "${placeCategory}" to "${matched}" for place "${place.name}"`);
+          placesByCategoryDirect[matched].push(place);
+        } else {
+          console.warn(`[Spend Today] Place "${place.name}" has unexpected category: "${placeCategory}" (bytes: ${Buffer.from(placeCategory, 'utf8').toString('hex')})`);
+        }
       }
     }
     
@@ -452,19 +563,67 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const ttlSeconds = ttlMsToSeconds(SPEND_TODAY_CACHE_TTL);
     
     // Group by category - NO fallback data, only real places
-    const categories: Array<keyof typeof CATEGORY_KEYWORDS> = ['奶茶', '中餐', '咖啡', '夜宵'];
-    const finalPlacesByCategory: Record<string, SpendPlace[]> = {};
+    // IMPORTANT: Use English keys for itemsByCategory to avoid JSON encoding issues
+    // Each place still has the correct Chinese category field
+    const CATEGORY_MILK_TEA = '奶茶';
+    const CATEGORY_CHINESE = '中餐';
+    const CATEGORY_COFFEE = '咖啡';
+    const CATEGORY_LATE_NIGHT = '夜宵';
+    
+    // Map Chinese category names to English keys for JSON serialization
+    const CATEGORY_KEY_MAP: Record<string, string> = {
+      [CATEGORY_MILK_TEA]: 'milk_tea',
+      [CATEGORY_CHINESE]: 'chinese',
+      [CATEGORY_COFFEE]: 'coffee',
+      [CATEGORY_LATE_NIGHT]: 'late_night',
+    };
+    
+    const categories: string[] = [CATEGORY_MILK_TEA, CATEGORY_CHINESE, CATEGORY_COFFEE, CATEGORY_LATE_NIGHT];
+    const finalPlacesByCategory: Record<string, SpendPlace[]> = {
+      'milk_tea': [],
+      'chinese': [],
+      'coffee': [],
+      'late_night': [],
+    };
+    
+    // Log category keys to verify encoding
+    console.log('[Spend Today] Categories array:', categories);
+    console.log('[Spend Today] Categories bytes:', categories.map(c => Buffer.from(c, 'utf8').toString('hex')));
+    console.log('[Spend Today] FinalPlacesByCategory initial keys:', Object.keys(finalPlacesByCategory));
+    console.log('[Spend Today] FinalPlacesByCategory initial keys bytes:', Object.keys(finalPlacesByCategory).map(k => Buffer.from(k, 'utf8').toString('hex')));
     
     for (const category of categories) {
+      // Use the category directly (it's already a proper string literal)
+      console.log(`[Spend Today] Processing category: "${category}" (bytes: ${Buffer.from(category, 'utf8').toString('hex')})`);
+      
+      // Try to find matching places from placesByCategoryDirect
+      // First try exact match
       let categoryPlaces = placesByCategoryDirect[category] || [];
+      
+      // If no exact match, try to find by byte comparison
+      if (categoryPlaces.length === 0) {
+        const categoryBytes = Buffer.from(category, 'utf8').toString('hex');
+        for (const [key, places] of Object.entries(placesByCategoryDirect)) {
+          const keyBytes = Buffer.from(key, 'utf8').toString('hex');
+          if (keyBytes === categoryBytes) {
+            console.log(`[Spend Today] Matched category "${category}" to key "${key}" by byte comparison`);
+            categoryPlaces = places;
+            break;
+          }
+        }
+      }
+      
       console.log(`[Spend Today] Category ${category}: ${categoryPlaces.length} places from fresh fetch`);
       
       // Try stale cache if we have < 2 places (need at least 2 for carousel)
       if (categoryPlaces.length < 2) {
         console.log(`[Spend Today] Category ${category} has < 2 places, trying stale cache`);
         const stale = getStaleCache(cacheKey);
-        if (stale && stale.data.itemsByCategory && stale.data.itemsByCategory[category]) {
-          const staleItems = stale.data.itemsByCategory[category] as SpendPlace[];
+        // Try both the correct key and potential corrupted keys from stale cache
+        const staleKey = stale?.data?.itemsByCategory?.[category] ? category : 
+                        (stale?.data?.itemsByCategory ? Object.keys(stale.data.itemsByCategory)[0] : null);
+        if (stale && stale.data.itemsByCategory && staleKey) {
+          const staleItems = stale.data.itemsByCategory[staleKey] as SpendPlace[];
           // Only use stale items if they have valid place_id (real places)
           const validStaleItems = staleItems.filter(p => p.id && (p.id.startsWith('Ch') || p.id.length > 10));
           console.log(`[Spend Today] Found ${validStaleItems.length} valid stale items for ${category}`);
@@ -479,12 +638,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       
       // NO seed data fallback - only return real places
-      finalPlacesByCategory[category] = categoryPlaces.slice(0, 6);
-      console.log(`[Spend Today] Final count for ${category}: ${finalPlacesByCategory[category].length}`);
-      
-      if (finalPlacesByCategory[category].length === 0) {
-        console.warn(`[Spend Today] WARNING: Category ${category} has 0 places after all attempts`);
+      // Use English key for itemsByCategory, but keep Chinese category in each place
+      const englishKey = CATEGORY_KEY_MAP[category];
+      if (englishKey) {
+        finalPlacesByCategory[englishKey] = categoryPlaces.slice(0, 6);
+        console.log(`[Spend Today] Final count for ${category} (key: ${englishKey}): ${finalPlacesByCategory[englishKey].length}`);
+      } else {
+        console.error(`[Spend Today] ERROR: No English key mapping for category ${category}`);
       }
+      
+      if (englishKey && finalPlacesByCategory[englishKey].length === 0) {
+        console.warn(`[Spend Today] WARNING: Category ${category} (key: ${englishKey}) has 0 places after all attempts`);
+      }
+    }
+    
+    // Log final structure before sending
+    console.log('[Spend Today] FinalPlacesByCategory keys:', Object.keys(finalPlacesByCategory));
+    console.log('[Spend Today] FinalPlacesByCategory key bytes:', Object.keys(finalPlacesByCategory).map(k => Buffer.from(k, 'utf8').toString('hex')));
+    for (const [key, places] of Object.entries(finalPlacesByCategory)) {
+      console.log(`[Spend Today] FinalPlacesByCategory["${key}"]: ${places.length} places`);
     }
     
     const response: any = {
@@ -505,6 +677,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Update cache (24 hours)
     setCache(cacheKey, response);
 
+    // Ensure proper encoding for JSON response
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.status(200).json(response);
   } catch (error) {
     console.error('[API /api/spend/today] Error:', error);
@@ -540,6 +714,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Rebuild flat items array for backward compatibility
       items = Object.values(itemsByCategory).flat();
       
+      // Ensure proper encoding for JSON response
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
       return res.status(200).json({
         ...staleData,
         itemsByCategory,
@@ -561,6 +737,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       '夜宵': [],
     };
 
+    // Ensure proper encoding for JSON response
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.status(200).json({
       status: 'unavailable' as const,
       itemsByCategory: emptyByCategory,
