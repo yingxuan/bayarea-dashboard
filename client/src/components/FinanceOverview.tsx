@@ -44,8 +44,8 @@ interface FinanceData {
     code: string;
     name: string;
     value: number | string;
-    change: number;
-    changePercent: number;
+    change?: number; // Optional: only show if available
+    changePercent?: number; // Optional: only show if available
     status: "ok" | "stale" | "unavailable";
     source?: string;
     sourceUrl?: string;
@@ -118,8 +118,8 @@ export default function FinanceOverview() {
               code: "SPY",
               name: "S&P 500 ETF",
               value: spyStatus === "ok" ? getNumericValue(marketData.spy) : "Unavailable",
-              change: spyStatus === "ok" ? Number(marketData.spy.change || 0) : 0,
-              changePercent: spyStatus === "ok" ? Number(marketData.spy.change_percent || 0) : 0,
+              change: spyStatus === "ok" && marketData.spy.change !== undefined ? Number(marketData.spy.change) : undefined,
+              changePercent: spyStatus === "ok" && marketData.spy.change_percent !== undefined ? Number(marketData.spy.change_percent) : undefined,
               status: spyStatus,
               source: getSourceInfo(marketData.spy).name,
               sourceUrl: getSourceInfo(marketData.spy).url,
@@ -129,8 +129,8 @@ export default function FinanceOverview() {
               code: "GOLD",
               name: "Gold",
               value: getStatus(marketData.gold) === "ok" ? getNumericValue(marketData.gold) : "Unavailable",
-              change: getStatus(marketData.gold) === "ok" ? Number(marketData.gold.change || 0) : 0,
-              changePercent: getStatus(marketData.gold) === "ok" ? Number(marketData.gold.change_percent || 0) : 0,
+              change: getStatus(marketData.gold) === "ok" && marketData.gold.change !== undefined ? Number(marketData.gold.change) : undefined,
+              changePercent: getStatus(marketData.gold) === "ok" && marketData.gold.change_percent !== undefined ? Number(marketData.gold.change_percent) : undefined,
               status: getStatus(marketData.gold),
               source: getSourceInfo(marketData.gold).name,
               sourceUrl: getSourceInfo(marketData.gold).url,
@@ -366,19 +366,19 @@ export default function FinanceOverview() {
                       ? index.value.toLocaleString()
                       : index.value}
                   </div>
-                  {isOk && index.change !== undefined && index.change !== 0 && !isNaN(index.change) && (
+                  {isOk && index.change !== undefined && index.change !== 0 && !isNaN(Number(index.change)) && (
                     <div
                       className={`text-xs font-mono flex items-center gap-1 ${
-                        index.change >= 0 ? "text-green-400" : "text-red-400"
+                        Number(index.change) >= 0 ? "text-green-400" : "text-red-400"
                       }`}
                     >
-                      {index.change >= 0 ? (
+                      {Number(index.change) >= 0 ? (
                         <TrendingUp className="w-3 h-3" />
                       ) : (
                         <TrendingDown className="w-3 h-3" />
                       )}
-                      {index.change >= 0 ? "+" : ""}
-                      {typeof index.change === 'number' ? index.change.toFixed(2) : index.change} ({index.changePercent !== undefined && !isNaN(index.changePercent) ? (index.changePercent >= 0 ? "+" : "") + index.changePercent.toFixed(2) : "0.00"}%)
+                      {Number(index.change) >= 0 ? "+" : ""}
+                      {typeof index.change === 'number' ? index.change.toFixed(2) : index.change} {index.changePercent !== undefined && !isNaN(Number(index.changePercent)) ? `(${Number(index.changePercent) >= 0 ? "+" : ""}${Number(index.changePercent).toFixed(2)}%)` : ''}
                     </div>
                   )}
                   {isStale && (

@@ -169,24 +169,47 @@ function normalizeTitle(title: string): string {
  * Classify article category: 'macro' (US economy) or 'mega' (tech giants)
  * Returns null if not market-relevant
  */
+/**
+ * Classify article into 'macro' (US economic) or 'mega' (tech giants) categories
+ * STRICT RULES: Only these two categories are allowed
+ */
 function classifyArticle(article: any): 'macro' | 'mega' | null {
   const title = article.title?.toLowerCase() || '';
   const description = article.description?.toLowerCase() || '';
   const content = article.content?.toLowerCase() || '';
   const fullText = `${title} ${description} ${content}`;
   
-  // Category A: US Economic News (must match at least one)
-  const macroKeywords = [
-    /\b(fed|federal reserve|fomc|powell|jerome powell)\b/i,
-    /\b(rate|interest rate|fed rate|rate cut|rate hike|monetary policy)\b/i,
-    /\b(cpi|consumer price index|inflation|deflation|pce)\b/i,
-    /\b(jobs|payroll|nonfarm payroll|unemployment|employment|jobless|initial claims)\b/i,
-    /\b(gdp|gross domestic product|economic growth|recession|soft landing|hard landing)\b/i,
-    /\b(treasury yield|bond yield|10-year|30-year|yield curve)\b/i,
-    /\b(government shutdown|debt ceiling|fiscal policy|budget)\b/i,
+  // Excluded topics (must not match any) - checked FIRST
+  const excludedTopics = [
+    // Product reviews and launches
+    /\b(product review|device review|phone review|laptop review|review:\s|hands.?on review)\b/i,
+    /\b(product launch|new product|announces|unveils|introduces)\b/i,
+    /\b(feature|features|how to|tutorial|guide|tips|tricks)\b/i,
+    /\b(unboxing|first impressions|vs\.|comparison review)\b/i,
+    // Gaming and entertainment
+    /\b(game review|gaming review|gameplay|game rating|video game review)\b/i,
+    /\b(celebrity|gossip|entertainment news|movie review|tv show review)\b/i,
+    /\b(sports|music|fashion|lifestyle|travel|food review)\b/i,
   ];
   
-  // Category B: Tech Giants (must match company + business keyword)
+  const matchesExcluded = excludedTopics.some(pattern => pattern.test(fullText));
+  if (matchesExcluded) {
+    return null;
+  }
+  
+  // Category A: US Macro Economic News (must match at least one)
+  const macroKeywords = [
+    /\b(fed|federal reserve|fomc|powell|jerome powell)\b/i,
+    /\b(cpi|consumer price index|inflation|deflation|pce)\b/i,
+    /\b(jobs|payroll|nonfarm payroll|unemployment|employment|jobless|initial claims)\b/i,
+    /\b(gdp|gross domestic product|economic growth)\b/i,
+    /\b(treasury yield|bond yield|10-year|30-year|yield curve)\b/i,
+    /\b(recession|soft landing|hard landing)\b/i,
+    /\b(government shutdown|debt ceiling)\b/i,
+  ];
+  
+  // Category B: Tech Giants (AAPL MSFT NVDA GOOG AMZN META TSLA)
+  // Must have BOTH: company ticker/name AND business keyword
   const megaTechCompanies = [
     /\b(aapl|apple)\b/i,
     /\b(msft|microsoft)\b/i,
@@ -197,6 +220,7 @@ function classifyArticle(article: any): 'macro' | 'mega' | null {
     /\b(tsla|tesla)\b/i,
   ];
   
+  // Business keywords (earnings / guidance / capex / AI / chips / cloud / regulation)
   const megaBusinessKeywords = [
     /\b(earnings|quarterly|q[1-4]|fy\d{4}|revenue|profit|loss|guidance|eps|beat|miss)\b/i,
     /\b(capex|capital expenditure|investment|spending)\b/i,
@@ -208,28 +232,14 @@ function classifyArticle(article: any): 'macro' | 'mega' | null {
   // Check for macro category
   const isMacro = macroKeywords.some(pattern => pattern.test(fullText));
   
-  // Check for mega tech category (must have both company and business keyword)
+  // Check for mega tech category (must have BOTH company AND business keyword)
   const hasMegaCompany = megaTechCompanies.some(pattern => pattern.test(fullText));
   const hasMegaBusiness = megaBusinessKeywords.some(pattern => pattern.test(fullText));
   const isMega = hasMegaCompany && hasMegaBusiness;
   
-  // Excluded topics (must not match any)
-  const excludedTopics = [
-    /\b(game review|gaming review|gameplay|game rating|video game review)\b/i,
-    /\b(product review|device review|phone review|laptop review|review:\s|hands.?on review)\b/i,
-    /\b(unboxing|first impressions|vs\.|comparison review)\b/i,
-    /\b(celebrity|gossip|entertainment news|movie review|tv show review)\b/i,
-    /\b(sports|music|fashion|lifestyle|travel|food review)\b/i,
-  ];
-  
-  const matchesExcluded = excludedTopics.some(pattern => pattern.test(fullText));
-  if (matchesExcluded) {
-    return null;
-  }
-  
   if (isMacro) return 'macro';
   if (isMega) return 'mega';
-  return null;
+  return null; // Not in allowed categories
 }
 
 /**
@@ -243,6 +253,9 @@ function isMarketRelevant(article: any): boolean {
 function isArticleValid(article: any): boolean {
   const url = article.url?.toLowerCase() || '';
   const title = article.title?.toLowerCase() || '';
+  const description = article.description?.toLowerCase() || '';
+  const content = article.content?.toLowerCase() || '';
+  const fullText = `${title} ${description} ${content}`;
   
   // Must have a valid URL
   if (!url || !url.startsWith('http')) {
@@ -266,37 +279,34 @@ function isArticleValid(article: any): boolean {
     if (BLACKLISTED_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))) {
       return false;
     }
+    
+    // STRICT: Exclude 9to5Mac / 9to5Google product-only content
+    // These domains are allowed ONLY if content is market-relevant (earnings/guidance/capex/regulation)
+    // Reject pure product reviews/launches/features from these domains
+    if (domain === '9to5mac.com' || domain === '9to5google.com') {
+      // Check if it's a product review/launch/feature article
+      const isProductContent = /\b(review|launch|unveils|introduces|announces|new feature|how to|tutorial|hands.?on)\b/i.test(fullText);
+      // Check if it's market-relevant (earnings/guidance/capex/regulation)
+      const isMarketRelevant = /\b(earnings|guidance|capex|capital expenditure|regulation|regulatory|antitrust|revenue|profit|loss)\b/i.test(fullText);
+      
+      // Reject if it's product content but NOT market-relevant
+      if (isProductContent && !isMarketRelevant) {
+        return false;
+      }
+    }
   } catch (error) {
     // Invalid URL format, reject
     console.warn(`[AI News] Invalid URL format: ${url}`, error);
     return false;
   }
   
-  // Market relevance filter (check content first)
+  // Market relevance filter (check content first) - STRICT: only macro or mega
   if (!isMarketRelevant(article)) {
     return false;
   }
   
-  // Check allowlist - if content is relevant, allow even if domain not in allowlist
-  // This allows new/relevant tech news sources to pass through
-  try {
-    const urlObj = new URL(url);
-    const domain = urlObj.hostname.replace('www.', '');
-    const isInAllowlist = ALLOWED_DOMAINS.some(d => domain === d || domain.endsWith('.' + d));
-    
-    // If domain is in allowlist, allow
-    if (isInAllowlist) {
-      return true;
-    }
-    
-    // If domain not in allowlist but content is market-relevant, allow it
-    // This is more permissive - we trust content relevance over domain whitelist
-    return true;
-  } catch (error) {
-    // Invalid URL format, reject
-    console.warn(`[AI News] Invalid URL format: ${url}`, error);
-    return false;
-  }
+  // If content is market-relevant, allow it (domain check already done above)
+  return true;
 }
 
 function enhanceNewsItem(article: any): NewsItem {
@@ -336,158 +346,128 @@ function enhanceNewsItem(article: any): NewsItem {
   // Classify article to determine "why it matters"
   const category = classifyArticle(article);
   
-  // Generate specific "why it matters" - must point to: 利率/盈利预期/资本开支/监管/风险偏好
+  /**
+   * Generate "why it matters" - STRICT RULES:
+   * - ≤ 1 line
+   * - Must point to one of: 利率 / 盈利预期 / 估值 / 资本开支 / 风险偏好 / 监管风险
+   * - No generic phrases like "可能影响大盘" or "可能影响科技行业"
+   * - Fallback: "可能影响市场风险偏好"
+   */
+  
+  // Category: Macro (US Economic News)
   if (category === 'macro') {
-    // US Economic News
-    if (fullText.includes('fed') || fullText.includes('federal reserve') || fullText.includes('fomc') || fullText.includes('powell')) {
-      if (fullText.includes('rate cut') || fullText.includes('rate hike') || fullText.includes('interest rate')) {
-        summary_zh = '美联储利率决策';
-        why_it_matters_zh = '利率变化直接影响科技股估值和融资成本，影响大盘风险偏好';
-      } else {
-        summary_zh = '美联储政策动态';
-        why_it_matters_zh = 'Fed 政策信号影响市场风险偏好和科技股估值';
-      }
-      hasSpecificReason = true;
-    } else if (fullText.includes('cpi') || fullText.includes('inflation') || fullText.includes('consumer price')) {
-      summary_zh = '通胀数据';
-      why_it_matters_zh = '通胀数据影响 Fed 利率决策，进而影响科技股估值';
-      hasSpecificReason = true;
-    } else if (fullText.includes('jobs') || fullText.includes('payroll') || fullText.includes('unemployment')) {
-      summary_zh = '就业数据';
-      why_it_matters_zh = '就业数据影响 Fed 利率决策，影响大盘风险偏好';
-      hasSpecificReason = true;
-    } else if (fullText.includes('gdp') || fullText.includes('recession') || fullText.includes('soft landing')) {
-      summary_zh = '经济增长数据';
-      why_it_matters_zh = '经济增长预期影响市场风险偏好和科技股盈利预期';
-      hasSpecificReason = true;
-    } else if (fullText.includes('treasury yield') || fullText.includes('bond yield') || fullText.includes('yield curve')) {
-      summary_zh = '国债收益率';
-      why_it_matters_zh = '国债收益率变化影响科技股估值和风险偏好';
-      hasSpecificReason = true;
-    } else if (fullText.includes('government shutdown') || fullText.includes('debt ceiling')) {
-      summary_zh = '财政政策';
-      why_it_matters_zh = '财政政策不确定性影响市场风险偏好';
+    // 利率 (Interest Rate)
+    if (fullText.includes('rate cut') || fullText.includes('rate hike') || fullText.includes('interest rate') || 
+        (fullText.includes('fed') && fullText.includes('rate'))) {
+      why_it_matters_zh = '影响利率预期，进而影响科技股估值';
       hasSpecificReason = true;
     }
-  } else if (category === 'mega') {
-    // Tech Giants Business News
-    if (fullText.includes('nvda') || fullText.includes('nvidia')) {
-      if (fullText.includes('earnings') || fullText.includes('guidance') || fullText.includes('revenue')) {
-        summary_zh = '英伟达财报';
-        why_it_matters_zh = 'NVDA 财报影响 AI 概念股盈利预期和估值';
-      } else if (fullText.includes('capex') || fullText.includes('capital expenditure')) {
-        summary_zh = '英伟达资本开支';
-        why_it_matters_zh = 'NVDA 资本开支计划影响 AI 芯片供应链和行业盈利预期';
-      } else if (fullText.includes('antitrust') || fullText.includes('regulation') || fullText.includes('export controls')) {
-        summary_zh = '英伟达监管动态';
-        why_it_matters_zh = '监管政策影响 NVDA 业务和科技股风险偏好';
+    // 风险偏好 (Risk Appetite) - Fed policy signals
+    else if (fullText.includes('fed') || fullText.includes('federal reserve') || fullText.includes('fomc') || fullText.includes('powell')) {
+      why_it_matters_zh = '影响市场风险偏好';
+      hasSpecificReason = true;
+    }
+    // 利率 (Interest Rate) - CPI/Inflation affects rate decisions
+    else if (fullText.includes('cpi') || fullText.includes('inflation') || fullText.includes('consumer price')) {
+      why_it_matters_zh = '影响利率预期，进而影响科技股估值';
+      hasSpecificReason = true;
+    }
+    // 风险偏好 (Risk Appetite) - Jobs data affects rate decisions
+    else if (fullText.includes('jobs') || fullText.includes('payroll') || fullText.includes('unemployment')) {
+      why_it_matters_zh = '影响利率预期和市场风险偏好';
+      hasSpecificReason = true;
+    }
+    // 风险偏好 (Risk Appetite) - GDP/Recession affects risk appetite
+    else if (fullText.includes('gdp') || fullText.includes('recession') || fullText.includes('soft landing')) {
+      why_it_matters_zh = '影响市场风险偏好和盈利预期';
+      hasSpecificReason = true;
+    }
+    // 估值 (Valuation) - Treasury yields affect valuation
+    else if (fullText.includes('treasury yield') || fullText.includes('bond yield') || fullText.includes('yield curve')) {
+      why_it_matters_zh = '影响科技股估值';
+      hasSpecificReason = true;
+    }
+    // 风险偏好 (Risk Appetite) - Government shutdown affects risk
+    else if (fullText.includes('government shutdown') || fullText.includes('debt ceiling')) {
+      why_it_matters_zh = '影响市场风险偏好';
+      hasSpecificReason = true;
+    }
+  }
+  // Category: Mega (Tech Giants)
+  else if (category === 'mega') {
+    // 盈利预期 (Earnings Expectations)
+    if (fullText.includes('earnings') || fullText.includes('guidance') || fullText.includes('revenue') || 
+        fullText.includes('profit') || fullText.includes('loss') || fullText.includes('eps')) {
+      if (fullText.includes('nvda') || fullText.includes('nvidia')) {
+        why_it_matters_zh = '影响 AI 概念股盈利预期';
+      } else if (fullText.includes('aapl') || fullText.includes('apple')) {
+        why_it_matters_zh = '影响科技股盈利预期';
+      } else if (fullText.includes('msft') || fullText.includes('microsoft')) {
+        why_it_matters_zh = '影响云计算和 AI 概念股盈利预期';
+      } else if (fullText.includes('goog') || fullText.includes('googl') || fullText.includes('google') || fullText.includes('alphabet')) {
+        why_it_matters_zh = '影响广告和 AI 概念股盈利预期';
+      } else if (fullText.includes('amzn') || fullText.includes('amazon')) {
+        why_it_matters_zh = '影响电商和云计算概念股盈利预期';
+      } else if (fullText.includes('meta') || fullText.includes('facebook') || fullText.includes('fb')) {
+        why_it_matters_zh = '影响广告和 AI 概念股盈利预期';
+      } else if (fullText.includes('tsla') || fullText.includes('tesla')) {
+        why_it_matters_zh = '影响电动车概念股盈利预期';
       } else {
-        summary_zh = '英伟达业务动态';
-        why_it_matters_zh = 'NVDA 业务变化影响 AI 概念股盈利预期';
+        why_it_matters_zh = '影响科技股盈利预期';
       }
       hasSpecificReason = true;
-    } else if (fullText.includes('aapl') || fullText.includes('apple')) {
-      if (fullText.includes('earnings') || fullText.includes('guidance')) {
-        summary_zh = '苹果财报';
-        why_it_matters_zh = 'AAPL 财报影响科技股盈利预期和估值';
-      } else if (fullText.includes('capex')) {
-        summary_zh = '苹果资本开支';
-        why_it_matters_zh = 'AAPL 资本开支影响供应链和行业盈利预期';
-      } else if (fullText.includes('antitrust') || fullText.includes('regulation')) {
-        summary_zh = '苹果监管动态';
-        why_it_matters_zh = '监管政策影响 AAPL 业务和科技股风险偏好';
+    }
+    // 资本开支 (Capital Expenditure)
+    else if (fullText.includes('capex') || fullText.includes('capital expenditure') || fullText.includes('investment') || fullText.includes('spending')) {
+      if (fullText.includes('nvda') || fullText.includes('nvidia')) {
+        why_it_matters_zh = '影响 AI 芯片行业资本开支预期';
+      } else if (fullText.includes('aapl') || fullText.includes('apple')) {
+        why_it_matters_zh = '影响供应链资本开支预期';
+      } else if (fullText.includes('msft') || fullText.includes('microsoft')) {
+        why_it_matters_zh = '影响 AI 和云计算资本开支预期';
+      } else if (fullText.includes('goog') || fullText.includes('googl') || fullText.includes('google') || fullText.includes('alphabet')) {
+        why_it_matters_zh = '影响 AI 和云计算资本开支预期';
+      } else if (fullText.includes('amzn') || fullText.includes('amazon')) {
+        why_it_matters_zh = '影响云计算资本开支预期';
+      } else if (fullText.includes('meta') || fullText.includes('facebook') || fullText.includes('fb')) {
+        why_it_matters_zh = '影响 AI 和 VR 资本开支预期';
+      } else if (fullText.includes('tsla') || fullText.includes('tesla')) {
+        why_it_matters_zh = '影响电动车行业资本开支预期';
       } else {
-        summary_zh = '苹果业务动态';
-        why_it_matters_zh = 'AAPL 业务变化影响科技股盈利预期';
+        why_it_matters_zh = '影响科技行业资本开支预期';
       }
       hasSpecificReason = true;
-    } else if (fullText.includes('msft') || fullText.includes('microsoft')) {
-      if (fullText.includes('earnings') || fullText.includes('guidance')) {
-        summary_zh = '微软财报';
-        why_it_matters_zh = 'MSFT 财报影响云计算和 AI 概念股盈利预期';
-      } else if (fullText.includes('capex')) {
-        summary_zh = '微软资本开支';
-        why_it_matters_zh = 'MSFT 资本开支影响 AI 和云计算行业盈利预期';
-      } else if (fullText.includes('antitrust') || fullText.includes('regulation')) {
-        summary_zh = '微软监管动态';
-        why_it_matters_zh = '监管政策影响 MSFT 业务和科技股风险偏好';
-      } else {
-        summary_zh = '微软业务动态';
-        why_it_matters_zh = 'MSFT 业务变化影响科技股盈利预期';
-      }
+    }
+    // 监管风险 (Regulatory Risk)
+    else if (fullText.includes('antitrust') || fullText.includes('regulation') || fullText.includes('regulatory') || 
+             fullText.includes('export controls') || fullText.includes('export ban') || fullText.includes('chip ban')) {
+      why_it_matters_zh = '影响监管风险和科技股风险偏好';
       hasSpecificReason = true;
-    } else if (fullText.includes('goog') || fullText.includes('googl') || fullText.includes('google') || fullText.includes('alphabet')) {
-      if (fullText.includes('earnings') || fullText.includes('guidance')) {
-        summary_zh = 'Google 财报';
-        why_it_matters_zh = 'GOOGL 财报影响广告和 AI 概念股盈利预期';
-      } else if (fullText.includes('capex')) {
-        summary_zh = 'Google 资本开支';
-        why_it_matters_zh = 'GOOGL 资本开支影响 AI 和云计算行业盈利预期';
-      } else if (fullText.includes('antitrust') || fullText.includes('regulation')) {
-        summary_zh = 'Google 监管动态';
-        why_it_matters_zh = '监管政策影响 GOOGL 业务和科技股风险偏好';
+    }
+    // 估值 (Valuation) - AI/chips/cloud business news
+    else if (fullText.includes('ai') || fullText.includes('artificial intelligence') || fullText.includes('chips') || 
+             fullText.includes('semiconductor') || fullText.includes('cloud') || fullText.includes('aws') || 
+             fullText.includes('azure') || fullText.includes('gcp')) {
+      if (fullText.includes('nvda') || fullText.includes('nvidia')) {
+        why_it_matters_zh = '影响 AI 概念股估值';
+      } else if (fullText.includes('msft') || fullText.includes('microsoft')) {
+        why_it_matters_zh = '影响云计算和 AI 概念股估值';
+      } else if (fullText.includes('goog') || fullText.includes('googl') || fullText.includes('google') || fullText.includes('alphabet')) {
+        why_it_matters_zh = '影响 AI 和云计算概念股估值';
+      } else if (fullText.includes('amzn') || fullText.includes('amazon')) {
+        why_it_matters_zh = '影响云计算概念股估值';
+      } else if (fullText.includes('meta') || fullText.includes('facebook') || fullText.includes('fb')) {
+        why_it_matters_zh = '影响 AI 概念股估值';
       } else {
-        summary_zh = 'Google 业务动态';
-        why_it_matters_zh = 'GOOGL 业务变化影响科技股盈利预期';
-      }
-      hasSpecificReason = true;
-    } else if (fullText.includes('amzn') || fullText.includes('amazon')) {
-      if (fullText.includes('earnings') || fullText.includes('guidance')) {
-        summary_zh = '亚马逊财报';
-        why_it_matters_zh = 'AMZN 财报影响电商和云计算概念股盈利预期';
-      } else if (fullText.includes('capex')) {
-        summary_zh = '亚马逊资本开支';
-        why_it_matters_zh = 'AMZN 资本开支影响云计算行业盈利预期';
-      } else if (fullText.includes('antitrust') || fullText.includes('regulation')) {
-        summary_zh = '亚马逊监管动态';
-        why_it_matters_zh = '监管政策影响 AMZN 业务和科技股风险偏好';
-      } else {
-        summary_zh = '亚马逊业务动态';
-        why_it_matters_zh = 'AMZN 业务变化影响科技股盈利预期';
-      }
-      hasSpecificReason = true;
-    } else if (fullText.includes('meta') || fullText.includes('facebook') || fullText.includes('fb')) {
-      if (fullText.includes('earnings') || fullText.includes('guidance')) {
-        summary_zh = 'Meta 财报';
-        why_it_matters_zh = 'META 财报影响广告和 AI 概念股盈利预期';
-      } else if (fullText.includes('capex')) {
-        summary_zh = 'Meta 资本开支';
-        why_it_matters_zh = 'META 资本开支影响 AI 和 VR 行业盈利预期';
-      } else if (fullText.includes('antitrust') || fullText.includes('regulation')) {
-        summary_zh = 'Meta 监管动态';
-        why_it_matters_zh = '监管政策影响 META 业务和科技股风险偏好';
-      } else {
-        summary_zh = 'Meta 业务动态';
-        why_it_matters_zh = 'META 业务变化影响科技股盈利预期';
-      }
-      hasSpecificReason = true;
-    } else if (fullText.includes('tsla') || fullText.includes('tesla')) {
-      if (fullText.includes('earnings') || fullText.includes('guidance')) {
-        summary_zh = '特斯拉财报';
-        why_it_matters_zh = 'TSLA 财报影响电动车概念股盈利预期';
-      } else if (fullText.includes('capex')) {
-        summary_zh = '特斯拉资本开支';
-        why_it_matters_zh = 'TSLA 资本开支影响电动车行业盈利预期';
-      } else if (fullText.includes('regulation')) {
-        summary_zh = '特斯拉监管动态';
-        why_it_matters_zh = '监管政策影响 TSLA 业务和科技股风险偏好';
-      } else {
-        summary_zh = '特斯拉业务动态';
-        why_it_matters_zh = 'TSLA 业务变化影响科技股盈利预期';
+        why_it_matters_zh = '影响科技股估值';
       }
       hasSpecificReason = true;
     }
   }
   
-  // Fallback: use strict generic message (≤1 line, must mention market impact)
-  if (!hasSpecificReason || !why_it_matters_zh) {
-    if (category === 'macro') {
-      why_it_matters_zh = '可能影响大盘风险偏好';
-    } else if (category === 'mega') {
-      why_it_matters_zh = '可能影响科技股估值';
-    } else {
-      why_it_matters_zh = '可能影响大盘风险偏好/科技股估值';
-    }
+  // Fallback: use strict generic message (only if no specific reason found)
+  if (!hasSpecificReason || !why_it_matters_zh || why_it_matters_zh.trim() === '') {
+    why_it_matters_zh = '可能影响市场风险偏好';
   }
   
   
@@ -730,28 +710,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return { article, category, score };
     });
     
-    // Sort all articles by score (relevance), regardless of category
-    const sortedArticles = classifiedArticles
+    // Separate articles by category
+    const macroArticles = classifiedArticles
+      .filter(item => item.category === 'macro')
+      .sort((a, b) => b.score - a.score) // Highest score first
+      .map(item => item.article);
+    
+    const megaArticles = classifiedArticles
+      .filter(item => item.category === 'mega')
       .sort((a, b) => b.score - a.score) // Highest score first
       .map(item => item.article);
     
     // Deduplicate by normalized(title + source) - second pass after scoring
     const seenAfterScoring = new Set<string>();
-    const uniqueAfterScoring: any[] = [];
+    const uniqueMacro: any[] = [];
+    const uniqueMega: any[] = [];
     
-    for (const article of sortedArticles) {
+    // Deduplicate macro articles
+    for (const article of macroArticles) {
       const normalizedTitle = normalizeTitle(article.title || '');
       const sourceName = article.source?.name || article.source_name || 'unknown';
       const dedupKey = `${normalizedTitle}|${sourceName}`.toLowerCase();
       
       if (!seenAfterScoring.has(dedupKey)) {
         seenAfterScoring.add(dedupKey);
-        uniqueAfterScoring.push(article);
+        uniqueMacro.push(article);
       }
     }
     
-    // Take top 5 articles
-    const selectedArticles = uniqueAfterScoring.slice(0, 5);
+    // Deduplicate mega articles
+    for (const article of megaArticles) {
+      const normalizedTitle = normalizeTitle(article.title || '');
+      const sourceName = article.source?.name || article.source_name || 'unknown';
+      const dedupKey = `${normalizedTitle}|${sourceName}`.toLowerCase();
+      
+      if (!seenAfterScoring.has(dedupKey)) {
+        seenAfterScoring.add(dedupKey);
+        uniqueMega.push(article);
+      }
+    }
+    
+    // STRICT LIMIT: Max 3 articles (macro 1 + mega 2)
+    const selectedMacro = uniqueMacro.slice(0, 1); // Max 1 macro article
+    const selectedMega = uniqueMega.slice(0, 2); // Max 2 mega articles
+    const selectedArticles = [...selectedMacro, ...selectedMega];
     
     // Enhance articles and detect duplicate "why it matters"
     const enhancedNews = selectedArticles.map(enhanceNewsItem);

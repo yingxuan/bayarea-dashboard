@@ -225,17 +225,24 @@ async function fetchSPY(): Promise<MarketDataItem> {
     }
     
     // Calculate change if available
-    const previousClose = meta?.previousClose || meta?.chartPreviousClose || price;
-    const change = price - previousClose;
-    const changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0;
+    const previousClose = meta?.previousClose || meta?.chartPreviousClose;
+    let change: number | undefined;
+    let changePercent: number | undefined;
     
-    console.log(`[fetchSPY] Yahoo Finance fallback returned: $${price}`);
+    if (previousClose && typeof previousClose === 'number' && previousClose > 0) {
+      change = price - previousClose;
+      changePercent = (change / previousClose) * 100;
+    }
+    
+    console.log(`[fetchSPY] Yahoo Finance fallback returned: $${price}, prevClose: ${previousClose}, change: ${changePercent?.toFixed(2)}%`);
     
     return {
       name: 'SPY',
       value: price,
       change,
       change_percent: changePercent,
+      prevClose: previousClose, // Add prevClose field
+      prevDayValue: previousClose, // Alias for prevClose
       unit: 'USD',
       status: 'ok' as const,
       asOf: now,
@@ -250,7 +257,7 @@ async function fetchSPY(): Promise<MarketDataItem> {
       as_of: now,
       debug: {
         data_source: 'yahoo_finance_api',
-        api_response: { price, change, changePercent },
+        api_response: { price, previousClose, change, changePercent },
       },
     };
   };

@@ -141,17 +141,47 @@ async function extractChannelIdFromUrl(url: string): Promise<string | null> {
 }
 
 /**
- * Get channel ID (from config or extract from URL)
+ * Get channel ID (from config or extract from URL/handle)
  */
-async function getChannelId(channel: { channelId?: string; url?: string }): Promise<string | null> {
-  // If channelId is already in config, use it
+async function getChannelId(channel: { channelId?: string; url?: string; handle?: string }): Promise<string | null> {
+  // If channelId is already in config, try it first
   if (channel.channelId && channel.channelId.trim() !== '') {
-    return channel.channelId;
+    // Verify the channelId works by trying to fetch RSS
+    const testUrl = ytRssUrl(channel.channelId);
+    try {
+      const testResponse = await fetch(testUrl, {
+        headers: { 'User-Agent': 'BayAreaDashboard/1.0' },
+        signal: AbortSignal.timeout(3000),
+      });
+      if (testResponse.ok) {
+        return channel.channelId; // ChannelId is valid
+      }
+      // If 404, fall through to extract from URL/handle
+      console.warn(`[YouTubers] ChannelId ${channel.channelId} returned ${testResponse.status}, will try to extract from URL/handle`);
+    } catch (error) {
+      // If fetch fails, fall through to extract from URL/handle
+      console.warn(`[YouTubers] Failed to verify channelId ${channel.channelId}, will try to extract from URL/handle`);
+    }
   }
   
-  // Otherwise, extract from URL
+  // Try to extract from URL
   if (channel.url) {
-    return await extractChannelIdFromUrl(channel.url);
+    const extractedId = await extractChannelIdFromUrl(channel.url);
+    if (extractedId) {
+      return extractedId;
+    }
+  }
+  
+  // Try to extract from handle (build URL from handle)
+  if (channel.handle) {
+    // Handle format: @TheValley101 -> https://www.youtube.com/@TheValley101
+    const handleUrl = channel.handle.startsWith('@') 
+      ? `https://www.youtube.com/${channel.handle}`
+      : `https://www.youtube.com/@${channel.handle}`;
+    const extractedId = await extractChannelIdFromUrl(handleUrl);
+    if (extractedId) {
+      return extractedId;
+    }
   }
   
   return null;

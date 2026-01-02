@@ -53,54 +53,111 @@ function expressToVercel(req: Request, res: Response) {
  * Market API route
  */
 export async function marketRoute(req: Request, res: Response) {
-  const { vercelReq, vercelRes } = expressToVercel(req, res);
-  await marketHandler(vercelReq, vercelRes);
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await marketHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Market route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+  }
 }
 
 /**
  * AI News API route
  */
 export async function aiNewsRoute(req: Request, res: Response) {
-  const { vercelReq, vercelRes } = expressToVercel(req, res);
-  await aiNewsHandler(vercelReq, vercelRes);
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await aiNewsHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] AI News route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
 }
 
 /**
  * Gossip API route
  */
 export async function gossipRoute(req: Request, res: Response) {
-  const { vercelReq, vercelRes } = expressToVercel(req, res);
-  await gossipHandler(vercelReq, vercelRes);
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await gossipHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Gossip route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
 }
 
 /**
  * Deals API route
  */
 export async function dealsRoute(req: Request, res: Response) {
-  const { vercelReq, vercelRes } = expressToVercel(req, res);
-  await dealsHandler(vercelReq, vercelRes);
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await dealsHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Deals route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
 }
 
 /**
  * Restaurants API route
  */
 export async function restaurantsRoute(req: Request, res: Response) {
-  const { vercelReq, vercelRes } = expressToVercel(req, res);
-  await restaurantsHandler(vercelReq, vercelRes);
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await restaurantsHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Restaurants route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
 }
 
 /**
  * Shows API route
  */
 export async function showsRoute(req: Request, res: Response) {
-  const { vercelReq, vercelRes } = expressToVercel(req, res);
-  await showsHandler(vercelReq, vercelRes);
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await showsHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Shows route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
 }
 
 /**
  * YouTubers API route
  */
 export async function youtubersRoute(req: Request, res: Response) {
-  const { vercelReq, vercelRes } = expressToVercel(req, res);
-  await youtubersHandler(vercelReq, vercelRes);
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await youtubersHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] YouTubers route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
 }
