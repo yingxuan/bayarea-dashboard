@@ -31,6 +31,8 @@ interface MarketDataItem {
   value: number | string;
   change?: number;
   change_percent?: number;
+  prevClose?: number; // Previous close price for delta calculation
+  prevDayValue?: number; // Alias for prevClose (alternative naming)
   unit: string;
   status: "ok" | "stale" | "unavailable";
   asOf: string; // ISO 8601 timestamp (renamed from as_of for consistency)
@@ -54,13 +56,15 @@ interface MarketDataItem {
 
 /**
  * Fetch Bitcoin price from CoinGecko API (with timeout)
+ * Includes 24h price change for delta calculation
  */
 async function fetchBTC(): Promise<MarketDataItem> {
   const now = new Date().toISOString();
   
   try {
     const fetchFn = async () => {
-      const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+      // Fetch price with 24h change data
+      const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true');
       
       if (!response.ok) {
         throw new Error(`CoinGecko API error: ${response.statusText}`);
@@ -68,16 +72,32 @@ async function fetchBTC(): Promise<MarketDataItem> {
       
       const data = await response.json();
       const price = data?.bitcoin?.usd;
+      const change24h = data?.bitcoin?.usd_24h_change;
       
       if (!price || typeof price !== 'number') {
         throw new Error('Invalid price data from CoinGecko');
       }
       
-      console.log(`[fetchBTC] CoinGecko API returned: $${price}`);
+      // Calculate prevClose from 24h change if available
+      let prevClose: number | undefined;
+      let change: number | undefined;
+      let change_percent: number | undefined;
+      
+      if (change24h !== undefined && typeof change24h === 'number') {
+        // prevClose = price / (1 + change24h/100)
+        prevClose = price / (1 + change24h / 100);
+        change = price - prevClose;
+        change_percent = change24h; // CoinGecko already provides percentage
+      }
+      
+      console.log(`[fetchBTC] CoinGecko API returned: $${price}, 24h change: ${change_percent?.toFixed(2)}%`);
       
       return {
         name: 'BTC',
         value: price,
+        change,
+        change_percent,
+        prevClose, // Add prevClose field
         unit: 'USD',
         status: 'ok' as const,
         asOf: now,
@@ -92,7 +112,7 @@ async function fetchBTC(): Promise<MarketDataItem> {
         as_of: now,
         debug: {
           data_source: 'coingecko_api',
-          api_response: { bitcoin: { usd: price } },
+          api_response: { bitcoin: { usd: price, usd_24h_change: change24h } },
         },
       };
     };
@@ -274,7 +294,7 @@ async function fetchSPY(): Promise<MarketDataItem> {
 async function fetchGold(): Promise<MarketDataItem> {
   const now = new Date().toISOString();
   
-  // Primary: Stooq API (CSV)
+  // Primary: Stooq API (CSV) - Note: Stooq doesn't provide prevClose, so we'll use Yahoo Finance fallback for delta
   const primaryFn = async (): Promise<MarketDataItem> => {
     const response = await fetch('https://stooq.com/q/l/?s=xauusd&f=sd2t2ohlcv&h&e=csv');
     
@@ -298,8 +318,10 @@ async function fetchGold(): Promise<MarketDataItem> {
       throw new Error(`Invalid close price: ${fields[6]}`);
     }
     
-    console.log(`[fetchGold] Stooq API returned: $${closePrice}`);
+    console.log(`[fetchGold] Stooq API returned: $${closePrice} (no prevClose available)`);
     
+    // Stooq doesn't provide prevClose, so we return without delta
+    // Yahoo Finance fallback will provide prevClose and delta
     return {
       name: 'Gold',
       value: closePrice,
@@ -348,17 +370,24 @@ async function fetchGold(): Promise<MarketDataItem> {
     }
     
     // Calculate change if available
-    const previousClose = meta?.previousClose || meta?.chartPreviousClose || price;
-    const change = price - previousClose;
-    const changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0;
+    const previousClose = meta?.previousClose || meta?.chartPreviousClose;
+    let change: number | undefined;
+    let changePercent: number | undefined;
     
-    console.log(`[fetchGold] Yahoo Finance fallback returned: $${price}`);
+    if (previousClose && typeof previousClose === 'number' && previousClose > 0) {
+      change = price - previousClose;
+      changePercent = (change / previousClose) * 100;
+    }
+    
+    console.log(`[fetchGold] Yahoo Finance fallback returned: $${price}, prevClose: ${previousClose}, change: ${changePercent?.toFixed(2)}%`);
     
     return {
       name: 'Gold',
       value: price,
       change,
       change_percent: changePercent,
+      prevClose: previousClose, // Add prevClose field
+      prevDayValue: previousClose, // Alias for prevClose
       unit: 'USD/oz',
       status: 'ok' as const,
       asOf: now,
@@ -373,7 +402,7 @@ async function fetchGold(): Promise<MarketDataItem> {
       as_of: now,
       debug: {
         data_source: 'yahoo_finance_api',
-        api_response: { price, change, changePercent },
+        api_response: { price, previousClose, change, changePercent },
       },
     };
   };

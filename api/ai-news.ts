@@ -730,24 +730,74 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return { article, category, score };
     });
     
-    // Separate into macro and mega categories
-    const macroArticles = classifiedArticles
-      .filter(item => item.category === 'macro')
-      .sort((a, b) => b.score - a.score)
+    // Sort all articles by score (relevance), regardless of category
+    const sortedArticles = classifiedArticles
+      .sort((a, b) => b.score - a.score) // Highest score first
       .map(item => item.article);
     
-    const megaArticles = classifiedArticles
-      .filter(item => item.category === 'mega')
-      .sort((a, b) => b.score - a.score)
-      .map(item => item.article);
+    // Deduplicate by normalized(title + source) - second pass after scoring
+    const seenAfterScoring = new Set<string>();
+    const uniqueAfterScoring: any[] = [];
     
-    // Take top 2 from each category, then combine (macro first, then mega)
-    const selectedArticles = [
-      ...macroArticles.slice(0, 2),
-      ...megaArticles.slice(0, 2),
+    for (const article of sortedArticles) {
+      const normalizedTitle = normalizeTitle(article.title || '');
+      const sourceName = article.source?.name || article.source_name || 'unknown';
+      const dedupKey = `${normalizedTitle}|${sourceName}`.toLowerCase();
+      
+      if (!seenAfterScoring.has(dedupKey)) {
+        seenAfterScoring.add(dedupKey);
+        uniqueAfterScoring.push(article);
+      }
+    }
+    
+    // Take top 5 articles
+    const selectedArticles = uniqueAfterScoring.slice(0, 5);
+    
+    // Enhance articles and detect duplicate "why it matters"
+    const enhancedNews = selectedArticles.map(enhanceNewsItem);
+    
+    // Detect and handle duplicate "why it matters" messages
+    const whyMattersSeen = new Map<string, number>();
+    const genericVariants = [
+      '可能影响科技股估值',
+      '可能影响大盘风险偏好',
+      '可能影响市场情绪',
+      '可能影响相关行业',
     ];
+    let genericIndex = 0;
     
-    const news = selectedArticles.map(enhanceNewsItem);
+    for (let i = 0; i < enhancedNews.length; i++) {
+      const item = enhancedNews[i];
+      const whyMatters = item.why_it_matters_zh || '';
+      
+      if (!whyMatters || whyMatters.trim() === '') {
+        continue; // Skip empty
+      }
+      
+      // Normalize for comparison (remove spaces, punctuation)
+      const normalized = whyMatters
+        .toLowerCase()
+        .replace(/[^\w\u4e00-\u9fa5]/g, '')
+        .trim();
+      
+      const count = whyMattersSeen.get(normalized) || 0;
+      whyMattersSeen.set(normalized, count + 1);
+      
+      // If duplicate (seen before), replace with generic or empty
+      if (count > 0) {
+        if (genericIndex < genericVariants.length) {
+          // Use different generic variant
+          item.why_it_matters_zh = genericVariants[genericIndex];
+          genericIndex++;
+        } else {
+          // No more variants, set to empty (better than duplicate)
+          item.why_it_matters_zh = '';
+        }
+        console.log(`[AI News] Duplicate "why it matters" detected for article ${i}, replaced with generic or empty`);
+      }
+    }
+    
+    const news = enhancedNews;
     
     const fetchedAt = new Date();
     const fetchedAtISO = fetchedAt.toISOString();

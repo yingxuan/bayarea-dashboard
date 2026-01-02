@@ -66,13 +66,15 @@ export default function NewsList({
             </div>
           </div>
 
-          {/* Why it matters - PROMINENT */}
-          <div className="bg-primary/5 border-l-2 border-primary pl-3 py-2 mb-3">
-            <p className="text-sm text-foreground/90 leading-relaxed">
-              <span className="font-semibold text-primary">💡 为什么重要：</span>
-              {item.why_it_matters_zh}
-            </p>
-          </div>
+          {/* Why it matters - PROMINENT (only if available) */}
+          {item.why_it_matters_zh && item.why_it_matters_zh.trim() !== '' && (
+            <div className="bg-primary/5 border-l-2 border-primary pl-3 py-2 mb-3">
+              <p className="text-sm text-foreground/90 leading-relaxed">
+                <span className="font-semibold text-primary">💡 为什么重要：</span>
+                {item.why_it_matters_zh}
+              </p>
+            </div>
+          )}
 
           {/* Tags and Metadata */}
           <div className="flex items-center justify-between gap-4">

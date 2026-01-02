@@ -63,11 +63,21 @@ export default function FinanceOverview() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Fetch market data from serverless API
-        const response = await fetch(`${config.apiBaseUrl}/api/market`);
+        // Fetch market data from serverless API with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
+        const apiUrl = `${config.apiBaseUrl}/api/market`;
+        console.log('[FinanceOverview] Fetching market data from:', apiUrl);
+        
+        const response = await fetch(apiUrl, {
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
         
         if (!response.ok) {
-          throw new Error(`API error: ${response.statusText}`);
+          throw new Error(`API error: ${response.status} ${response.statusText}`);
         }
         
         const result = await response.json();
@@ -151,8 +161,16 @@ export default function FinanceOverview() {
           goldChangePercent: getStatus(marketData.gold) === "ok" ? (marketData.gold.change_percent || 0) : 0,
         }) : null;
         setJudgment(marketJudgment);
+        console.log('[FinanceOverview] Market data loaded successfully');
       } catch (error) {
-        console.error("Failed to fetch finance overview:", error);
+        console.error("[FinanceOverview] Failed to fetch finance overview:", error);
+        if (error instanceof Error) {
+          if (error.name === 'AbortError') {
+            console.error("[FinanceOverview] Request timeout - backend server may not be running");
+          } else {
+            console.error("[FinanceOverview] Error details:", error.message);
+          }
+        }
       } finally {
         setLoading(false);
       }
@@ -217,72 +235,78 @@ export default function FinanceOverview() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
           {/* Stock Market Value */}
-          <div className="text-center">
-            <div className="text-muted-foreground text-sm mb-1">股票市值</div>
-            <div className="text-3xl font-mono font-bold text-foreground">
+          <div className="text-center flex flex-col min-h-[80px]">
+            <div className="text-muted-foreground text-sm mb-2">股票市值</div>
+            <div className="text-2xl xl:text-3xl font-mono font-bold text-foreground leading-tight">
               ${data.stockMarketValue.value.toLocaleString()}
             </div>
           </div>
 
           {/* Today's Change */}
-          <div className="text-center">
-            <div className="text-muted-foreground text-sm mb-1">今日涨跌</div>
-            <div
-              className={`text-2xl font-mono font-bold flex items-center justify-center gap-1 ${
-                data.todayChange.amount >= 0 ? "text-green-400" : "text-red-400"
-              }`}
-            >
-              {data.todayChange.amount >= 0 ? (
-                <TrendingUp className="w-5 h-5" />
-              ) : (
-                <TrendingDown className="w-5 h-5" />
-              )}
-              {data.todayChange.amount >= 0 ? "+" : ""}
-              {data.todayChange.amount.toLocaleString()}
-            </div>
-            <div
-              className={`text-sm font-mono ${
-                data.todayChange.percentage >= 0
-                  ? "text-green-400"
-                  : "text-red-400"
-              }`}
-            >
-              {data.todayChange.percentage >= 0 ? "+" : ""}
-              {data.todayChange.percentage}%
+          <div className="text-center flex flex-col min-h-[80px]">
+            <div className="text-muted-foreground text-sm mb-2">今日涨跌</div>
+            <div className="flex flex-col items-center gap-1">
+              <div
+                className={`text-xl xl:text-2xl font-mono font-bold flex items-center justify-center gap-1 leading-tight ${
+                  data.todayChange.amount >= 0 ? "text-green-400" : "text-red-400"
+                }`}
+              >
+                {data.todayChange.amount >= 0 ? (
+                  <TrendingUp className="w-4 h-4 xl:w-5 xl:h-5 flex-shrink-0" />
+                ) : (
+                  <TrendingDown className="w-4 h-4 xl:w-5 xl:h-5 flex-shrink-0" />
+                )}
+                <span className="whitespace-nowrap">
+                  {data.todayChange.amount >= 0 ? "+" : ""}
+                  {data.todayChange.amount.toLocaleString()}
+                </span>
+              </div>
+              <div
+                className={`text-xs xl:text-sm font-mono leading-tight ${
+                  data.todayChange.percentage >= 0
+                    ? "text-green-400"
+                    : "text-red-400"
+                }`}
+              >
+                {data.todayChange.percentage >= 0 ? "+" : ""}
+                {data.todayChange.percentage}%
+              </div>
             </div>
           </div>
 
           {/* Total Gain/Loss */}
-          <div className="text-center">
-            <div className="text-muted-foreground text-sm mb-1">总浮盈/浮亏</div>
-            <div
-              className={`text-2xl font-mono font-bold ${
-                data.totalGainLoss.amount >= 0
-                  ? "text-green-400"
-                  : "text-red-400"
-              }`}
-            >
-              {data.totalGainLoss.amount >= 0 ? "+" : ""}
-              {data.totalGainLoss.amount.toLocaleString()}
-            </div>
-            <div
-              className={`text-sm font-mono ${
-                data.totalGainLoss.percentage >= 0
-                  ? "text-green-400"
-                  : "text-red-400"
-              }`}
-            >
-              {data.totalGainLoss.percentage.toFixed(2)}%
+          <div className="text-center flex flex-col min-h-[80px]">
+            <div className="text-muted-foreground text-sm mb-2">总浮盈/浮亏</div>
+            <div className="flex flex-col items-center gap-1">
+              <div
+                className={`text-xl xl:text-2xl font-mono font-bold leading-tight ${
+                  data.totalGainLoss.amount >= 0
+                    ? "text-green-400"
+                    : "text-red-400"
+                }`}
+              >
+                {data.totalGainLoss.amount >= 0 ? "+" : ""}
+                {data.totalGainLoss.amount.toLocaleString()}
+              </div>
+              <div
+                className={`text-xs xl:text-sm font-mono leading-tight ${
+                  data.totalGainLoss.percentage >= 0
+                    ? "text-green-400"
+                    : "text-red-400"
+                }`}
+              >
+                {data.totalGainLoss.percentage.toFixed(2)}%
+              </div>
             </div>
           </div>
 
           {/* YTD */}
-          <div className="text-center">
-            <div className="text-muted-foreground text-sm mb-1">YTD</div>
+          <div className="text-center flex flex-col min-h-[80px]">
+            <div className="text-muted-foreground text-sm mb-2">YTD</div>
             <div
-              className={`text-2xl font-mono font-bold ${
+              className={`text-xl xl:text-2xl font-mono font-bold leading-tight ${
                 data.ytd.percentage >= 0 ? "text-green-400" : "text-red-400"
               }`}
             >
@@ -342,7 +366,7 @@ export default function FinanceOverview() {
                       ? index.value.toLocaleString()
                       : index.value}
                   </div>
-                  {isOk && index.change !== 0 && (
+                  {isOk && index.change !== undefined && index.change !== 0 && !isNaN(index.change) && (
                     <div
                       className={`text-xs font-mono flex items-center gap-1 ${
                         index.change >= 0 ? "text-green-400" : "text-red-400"
@@ -354,8 +378,7 @@ export default function FinanceOverview() {
                         <TrendingDown className="w-3 h-3" />
                       )}
                       {index.change >= 0 ? "+" : ""}
-                      {index.change} ({index.changePercent >= 0 ? "+" : ""}
-                      {index.changePercent}%)
+                      {typeof index.change === 'number' ? index.change.toFixed(2) : index.change} ({index.changePercent !== undefined && !isNaN(index.changePercent) ? (index.changePercent >= 0 ? "+" : "") + index.changePercent.toFixed(2) : "0.00"}%)
                     </div>
                   )}
                   {isStale && (

@@ -18,6 +18,23 @@ import YouTubersList from "@/components/YouTubersList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { config } from "@/config";
 
+// Helper function for API requests with timeout
+async function fetchWithTimeout(url: string, timeoutMs = 10000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
 export default function Home() {
   const [industryNews, setIndustryNews] = useState<any>(null);
   const [chineseRestaurants, setChineseRestaurants] = useState<any>(null);
@@ -34,7 +51,7 @@ export default function Home() {
       // AI News
       try {
         const apiUrl = `${config.apiBaseUrl}/api/ai-news`;
-        const response = await fetch(apiUrl);
+        const response = await fetchWithTimeout(apiUrl);
         if (response.ok) {
           const result = await response.json();
           // Support both new (items) and legacy (news) format
@@ -57,7 +74,7 @@ export default function Home() {
 
       // Restaurants
       try {
-        const response = await fetch(`${config.apiBaseUrl}/api/restaurants`);
+        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/restaurants`);
         if (response.ok) {
           const result = await response.json();
           setChineseRestaurants(result.restaurants || []);
@@ -69,7 +86,7 @@ export default function Home() {
 
       // TV Shows
       try {
-        const response = await fetch(`${config.apiBaseUrl}/api/shows`);
+        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/shows`);
         if (response.ok) {
           const result = await response.json();
           setShows(result.shows || []);
@@ -81,7 +98,7 @@ export default function Home() {
 
       // Gossip (Hacker News)
       try {
-        const response = await fetch(`${config.apiBaseUrl}/api/gossip`);
+        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/gossip`);
         if (response.ok) {
           const result = await response.json();
           // Support both new (items) and legacy (gossip) format
@@ -95,7 +112,7 @@ export default function Home() {
 
       // Deals (Reddit)
       try {
-        const response = await fetch(`${config.apiBaseUrl}/api/deals`);
+        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/deals`);
         if (response.ok) {
           const result = await response.json();
           // Support both new (items) and legacy (deals) format
@@ -109,7 +126,7 @@ export default function Home() {
 
       // YouTubers (Stock)
       try {
-        const response = await fetch(`${config.apiBaseUrl}/api/youtubers?category=stock&nocache=1`);
+        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/youtubers?category=stock&nocache=1`);
         if (response.ok) {
           const result = await response.json();
           // Support both new (items) and legacy (youtubers) format
@@ -124,7 +141,7 @@ export default function Home() {
 
       // Tech YouTubers
       try {
-        const response = await fetch(`${config.apiBaseUrl}/api/youtubers?category=tech&nocache=1`);
+        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/youtubers?category=tech&nocache=1`);
         if (response.ok) {
           const result = await response.json();
           // Support both new (items) and legacy (youtubers) format
@@ -200,24 +217,14 @@ export default function Home() {
                 </span>
               </h2>
             </div>
-            <Tabs defaultValue="stock" className="w-full">
+            <Tabs key="videos-tabs" defaultValue="stock" className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="stock">美股博主</TabsTrigger>
                 <TabsTrigger value="tech">硅谷科技圈</TabsTrigger>
               </TabsList>
               <TabsContent value="stock" className="mt-0">
                 {youtubers && youtubers.youtubers && youtubers.youtubers.length > 0 ? (
-                  <div>
-                    <div className="mb-3">
-                      <h3 className="text-base font-semibold font-mono text-foreground/90 mb-1">
-                        美股博主
-                      </h3>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        最新视频更新
-                      </p>
-                    </div>
-                    <YouTubersList items={youtubers.youtubers} maxItems={5} />
-                  </div>
+                  <YouTubersList items={youtubers.youtubers} maxItems={5} />
                 ) : (
                   <div className="glow-border rounded-sm p-4 bg-card">
                     <div className="text-sm text-muted-foreground font-mono text-center py-8">
@@ -228,17 +235,7 @@ export default function Home() {
               </TabsContent>
               <TabsContent value="tech" className="mt-0">
                 {techYoutubers && techYoutubers.youtubers && techYoutubers.youtubers.length > 0 ? (
-                  <div>
-                    <div className="mb-3">
-                      <h3 className="text-base font-semibold font-mono text-foreground/90 mb-1">
-                        硅谷科技圈
-                      </h3>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        最新视频更新
-                      </p>
-                    </div>
-                    <YouTubersList items={techYoutubers.youtubers} maxItems={5} />
-                  </div>
+                  <YouTubersList items={techYoutubers.youtubers} maxItems={5} />
                 ) : (
                   <div className="glow-border rounded-sm p-4 bg-card">
                     <div className="text-sm text-muted-foreground font-mono text-center py-8">
