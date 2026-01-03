@@ -215,11 +215,11 @@
     text-shadow: 0 0 10px oklch(0.65 0.25 230 / 0.5);
   }
   
-  /* Grid background pattern */
+  /* Grid background pattern - reduced opacity for less prominence */
   .grid-bg {
     background-image: 
-      linear-gradient(oklch(0.25 0.02 265 / 0.3) 1px, transparent 1px),
-      linear-gradient(90deg, oklch(0.25 0.02 265 / 0.3) 1px, transparent 1px);
+      linear-gradient(oklch(0.25 0.02 265 / 0.15) 0.5px, transparent 0.5px),
+      linear-gradient(90deg, oklch(0.25 0.02 265 / 0.15) 0.5px, transparent 0.5px);
     background-size: 20px 20px;
   }
   

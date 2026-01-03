@@ -17,6 +17,8 @@ import {
   spendTodayRoute,
   leekCommunityRoute,
   blogCommunityRoute,
+  huarenCommunityRoute,
+  gossipCommunityRoute,
   marketNewsRoute,
   chineseGossipRoute
 } from "./local-api-adapter.js";
@@ -65,6 +67,10 @@ async function startServer() {
   app.options('/api/community/leeks', (_req, res) => res.sendStatus(200));
   app.get('/api/community/blogs', blogCommunityRoute);
   app.options('/api/community/blogs', (_req, res) => res.sendStatus(200));
+  app.get('/api/community/huaren', huarenCommunityRoute);
+  app.options('/api/community/huaren', (_req, res) => res.sendStatus(200));
+  app.get('/api/community/gossip', gossipCommunityRoute);
+  app.options('/api/community/gossip', (_req, res) => res.sendStatus(200));
   app.get('/api/market-news', marketNewsRoute);
   app.options('/api/market-news', (_req, res) => res.sendStatus(200));
   app.get('/api/chinese-gossip', chineseGossipRoute);
@@ -102,6 +108,7 @@ async function startServer() {
             "/api/spend/today",
             "/api/community/leeks",
             "/api/community/blogs",
+            "/api/community/huaren",
             "/api/market-news",
             "/api/chinese-gossip"
           ]

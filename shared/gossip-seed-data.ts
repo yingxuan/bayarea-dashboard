@@ -14,36 +14,15 @@ export interface GossipSeedItem {
 
 /**
  * Seed data for Chinese gossip
- * Only huaren.us items as fallback
+ * Empty array - do NOT use fake placeholder items
+ * If fetch fails, return empty array and let UI handle it
  */
-export const GOSSIP_SEED_DATA: GossipSeedItem[] = [
-  {
-    id: 'seed_1',
-    title: '华人闲话版块最新讨论',
-    url: 'https://huaren.us/showforum.html?forumid=398',
-    source: 'huaren',
-    publishedAt: new Date().toISOString(),
-  },
-  {
-    id: 'seed_2',
-    title: '湾区华人社区热门话题',
-    url: 'https://huaren.us/showforum.html?forumid=398',
-    source: 'huaren',
-    publishedAt: new Date().toISOString(),
-  },
-  {
-    id: 'seed_3',
-    title: '查看华人闲话版块',
-    url: 'https://huaren.us/showforum.html?forumid=398',
-    source: 'huaren',
-    publishedAt: new Date().toISOString(),
-  },
-];
+export const GOSSIP_SEED_DATA: GossipSeedItem[] = [];
 
 /**
  * Get gossip seed data
- * Always returns 3 items
+ * Returns empty array - no fake placeholders
  */
 export function getGossipSeedData(): GossipSeedItem[] {
-  return GOSSIP_SEED_DATA.slice(0, 3);
+  return [];
 }

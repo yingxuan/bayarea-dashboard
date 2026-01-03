@@ -19,10 +19,11 @@ import Navigation from "@/components/Navigation";
 import TodaySpendCarousels from "@/components/TodaySpendCarousels";
 import ChineseGossip from "@/components/ChineseGossip";
 import PortfolioHero from "@/components/PortfolioHero";
-import MarketSnapshotCarousel from "@/components/MarketSnapshotCarousel";
+import MarketHighlights from "@/components/MarketHighlights";
 import CommunityVideoCarousel from "@/components/CommunityVideoCarousel";
 import DealsCarousel from "@/components/DealsCarousel";
 import ShowsCarousel from "@/components/ShowsCarousel";
+import SectionHeader from "@/components/SectionHeader";
 import { useHoldings } from "@/hooks/useHoldings";
 import { QuoteData } from "@/hooks/usePortfolioSummary";
 import { config } from "@/config";
@@ -116,6 +117,7 @@ export default function Home() {
 
   // Section 3: 追剧吃瓜薅羊毛
   const [shows, setShows] = useState<any[]>([]); // 追剧
+  const [showsOffset, setShowsOffset] = useState(0); // Offset for "换一批" functionality
   const [deals, setDeals] = useState<any[]>([]); // 薅羊毛
 
   useEffect(() => {
@@ -190,6 +192,7 @@ export default function Home() {
           const showsItems = result.items || result.shows || [];
           console.log('[Home] ✅ Fetched shows:', showsItems.length, 'items');
           setShows(showsItems); // All videos, no limit
+          setShowsOffset(0); // Reset offset when new data is loaded
         } else {
           console.warn('[Home] Shows API returned:', response.status, response.statusText);
           setShows([]);
@@ -226,35 +229,33 @@ export default function Home() {
       <Navigation />
 
       <main className="w-full min-w-0">
-        <div className="mx-auto w-full max-w-6xl px-4 md:px-6 py-3 space-y-6">
+        <div className="mx-auto w-full max-w-6xl px-4 md:px-6 py-3 space-y-4">
           {/* SECTION 1: 打工耽误赚钱 */}
-          <section className="flex flex-col gap-3 min-w-0">
-          <div className="mb-2">
-            <h1 className="text-2xl font-bold font-mono">
-              <span className="neon-text-blue">打工耽误赚钱</span>
-            </h1>
-          </div>
+          <section className="flex flex-col gap-4 min-w-0">
+            <div className="mb-2">
+              <h1 className="text-sm font-semibold font-mono">
+                <span className="neon-text-blue">打工耽误赚钱</span>
+              </h1>
+            </div>
 
-          {/* 1) Hero (compact, full width) */}
-          <PortfolioHero
-            quotesData={quotesData}
-            holdings={holdings}
-            holdingsLoaded={holdingsLoaded}
-            ytdBaseline={ytdBaseline}
-            onYtdBaselineChange={updateYtdBaseline}
-          />
+            {/* 1) Hero (compact, full width) */}
+            <PortfolioHero
+              quotesData={quotesData}
+              holdings={holdings}
+              holdingsLoaded={holdingsLoaded}
+              ytdBaseline={ytdBaseline}
+              onYtdBaselineChange={updateYtdBaseline}
+            />
 
-            {/* 2) Horizontal carousel: 市场快照 (3 cards, swipe) */}
+            {/* 2) 市场看点 (Market Highlights: 快照 + 要闻) */}
             <div className="w-full min-w-0">
-              <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">市场快照</h3>
-              <div className="w-full min-w-0 overflow-hidden">
-                <MarketSnapshotCarousel marketNews={marketNews} />
-              </div>
+              <SectionHeader title="市场看点" />
+              <MarketHighlights marketNews={marketNews} />
             </div>
 
             {/* 3) Horizontal carousel: 社区 & 视频 (2 cards, swipe) */}
             <div className="w-full min-w-0">
-              <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">社区 & 视频</h3>
+              <SectionHeader title="社区 & 视频" />
               <div className="w-full min-w-0 overflow-hidden">
                 <CommunityVideoCarousel stockYoutubers={stockYoutubers} />
               </div>
@@ -262,9 +263,9 @@ export default function Home() {
           </section>
 
           {/* SECTION 2: 民以食为天 */}
-          <section className="flex flex-col gap-3 min-w-0">
-            <div>
-              <h1 className="text-2xl font-bold font-mono">
+          <section className="flex flex-col gap-4 min-w-0">
+            <div className="mb-2">
+              <h1 className="text-sm font-semibold font-mono">
                 <span className="neon-text-blue">民以食为天</span>
               </h1>
             </div>
@@ -276,9 +277,9 @@ export default function Home() {
           </section>
 
           {/* SECTION 3: 追剧吃瓜薅羊毛 */}
-          <section className="flex flex-col gap-3 min-w-0">
-            <div>
-              <h1 className="text-2xl font-bold font-mono">
+          <section className="flex flex-col gap-4 min-w-0">
+            <div className="mb-2">
+              <h1 className="text-sm font-semibold font-mono">
                 <span className="neon-text-blue">追剧吃瓜薅羊毛</span>
               </h1>
             </div>
@@ -286,23 +287,34 @@ export default function Home() {
             {/* 1) Horizontal carousel: 追剧 */}
             {shows.length > 0 && (
               <div className="w-full min-w-0 overflow-hidden">
-                <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">追剧</h3>
-                <ShowsCarousel shows={shows} />
+                <SectionHeader title="追剧" />
+                <ShowsCarousel 
+                  shows={shows} 
+                  offset={showsOffset}
+                  onRefresh={() => {
+                    const VIDEOS_PER_BATCH = 4;
+                    setShowsOffset(prev => {
+                      const nextOffset = prev + VIDEOS_PER_BATCH;
+                      // Wrap around if we've reached the end
+                      return nextOffset >= shows.length ? 0 : nextOffset;
+                    });
+                  }}
+                />
               </div>
             )}
 
             {/* 2) Horizontal row: 吃瓜 and 薅羊毛 */}
-            <div className="w-full min-w-0 flex flex-col md:flex-row gap-3">
+            <div className="w-full min-w-0 flex flex-col md:flex-row gap-4">
               {/* 吃瓜 - Left side */}
               <div className="w-full md:w-1/2 min-w-0">
-                <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">吃瓜</h3>
+                <SectionHeader title="吃瓜" />
                 <ChineseGossip maxItems={3} />
               </div>
 
               {/* 薅羊毛 - Right side - Vertical 3 cards */}
               {deals.length > 0 && (
                 <div className="w-full md:w-1/2 min-w-0">
-                  <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">薅羊毛</h3>
+                  <SectionHeader title="薅羊毛" />
                   <div className="space-y-3">
                     {deals.slice(0, 3).map((deal) => (
                       <a

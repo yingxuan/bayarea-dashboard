@@ -35,6 +35,8 @@ interface SpendCarouselProps {
   category: string;
   places: SpendPlace[];
   fallbackImage?: string;
+  offset?: number; // Current display offset (for "换一批" functionality)
+  onRefresh?: () => void; // Callback for "换一批" button
 }
 
 // Category fallback images (placeholder URLs - can be replaced with actual images)
@@ -45,12 +47,12 @@ const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
   '夜宵': 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=300&fit=crop',
 };
 
-export default function SpendCarousel({ category, places, fallbackImage }: SpendCarouselProps) {
+export default function SpendCarousel({ category, places, fallbackImage, offset = 0, onRefresh }: SpendCarouselProps) {
   // Get fallback image for this category
   const getFallbackImage = () => fallbackImage || CATEGORY_FALLBACK_IMAGES[category] || CATEGORY_FALLBACK_IMAGES['中餐'];
 
   // Debug logging
-  console.log(`[SpendCarousel] Category: "${category}", Places count: ${places.length}`);
+  console.log(`[SpendCarousel] Category: "${category}", Places count: ${places.length}, Offset: ${offset}`);
   if (places.length > 0) {
     console.log(`[SpendCarousel] First place:`, places[0]);
   }
@@ -60,7 +62,7 @@ export default function SpendCarousel({ category, places, fallbackImage }: Spend
     console.warn(`[SpendCarousel] Category "${category}" has only ${places.length} places, showing compact placeholder`);
     return (
       <div className="rounded-sm p-2 bg-card border border-border/50 flex flex-col h-24">
-        <div className="mb-1 flex-shrink-0">
+        <div className="mb-1 flex-shrink-0 flex items-center justify-between">
           <h3 className="text-xs font-semibold font-mono text-foreground/90">
             {category}
           </h3>
@@ -74,20 +76,62 @@ export default function SpendCarousel({ category, places, fallbackImage }: Spend
     );
   }
 
-  // Select top 2 places for cards 1-2, remaining 4+ for blind box pool
-  const top2Places = places.slice(0, 2);
-  const randomPool = places.slice(2, 6); // Next 4 places for blind box
+  // Select 2 places starting from offset (for "换一批" functionality)
+  // Use modulo to cycle through places if offset exceeds array length
+  const normalizedOffset = Math.max(0, Math.min(offset, places.length - 1));
+  let top2Places: SpendPlace[] = [];
+  
+  if (normalizedOffset + 2 <= places.length) {
+    // Normal case: we have enough places from current offset
+    top2Places = places.slice(normalizedOffset, normalizedOffset + 2);
+  } else {
+    // Wrap around: take remaining from current offset + take from start
+    const fromEnd = places.slice(normalizedOffset);
+    const fromStart = places.slice(0, 2 - fromEnd.length);
+    top2Places = [...fromEnd, ...fromStart];
+  }
+  
+  // For blind box pool, use places that are not currently displayed
+  // Exclude the current 2 places and take next 4
+  const excludedIndices = new Set<number>();
+  if (normalizedOffset + 2 <= places.length) {
+    excludedIndices.add(normalizedOffset);
+    excludedIndices.add(normalizedOffset + 1);
+  } else {
+    // Handle wrap-around case
+    for (let i = normalizedOffset; i < places.length; i++) {
+      excludedIndices.add(i);
+    }
+    for (let i = 0; i < 2 - (places.length - normalizedOffset); i++) {
+      excludedIndices.add(i);
+    }
+  }
+  
+  const randomPool = places
+    .map((place, index) => ({ place, index }))
+    .filter(({ index }) => !excludedIndices.has(index))
+    .slice(0, 4)
+    .map(({ place }) => place);
 
-  // Ensure random pool has at least 1 item (if we have 3+ places)
-  const finalRandomPool = randomPool.length > 0 ? randomPool : places.slice(2, 3);
+  // Ensure random pool has at least 1 item
+  const finalRandomPool = randomPool.length > 0 ? randomPool : places.slice(0, 1);
 
   return (
     <div className="rounded-sm p-2 bg-card border border-border/50 flex flex-col h-auto min-h-0">
-      {/* Category Header - Top-left */}
-      <div className="mb-2 flex-shrink-0">
+      {/* Category Header - Top-left with Refresh Button */}
+      <div className="mb-2 flex-shrink-0 flex items-center justify-between">
         <h3 className="text-xs font-semibold font-mono text-foreground/90">
           {category}
         </h3>
+        {onRefresh && places.length > 2 && (
+          <button
+            onClick={onRefresh}
+            className="text-xs text-primary hover:text-primary/80 transition-colors font-mono px-2 py-0.5 rounded hover:bg-primary/10 border border-primary/20 hover:border-primary/40"
+            title="换一批"
+          >
+            换一批
+          </button>
+        )}
       </div>
 
       {/* Horizontal Carousel - Compact for grid: 2 real places + 1 blind box */}

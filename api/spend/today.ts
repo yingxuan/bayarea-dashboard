@@ -180,7 +180,6 @@ async function searchGooglePlacesNearby(
   }
 
   const results = data.results || [];
-  console.log(`[Spend Today] Nearby Search returned ${results.length} results for type="${type}", keyword="${keyword}"`);
   return results;
 }
 
@@ -366,8 +365,6 @@ async function fetchPlacesForCategory(
         keyword
       );
 
-      console.log(`[Spend Today] Found ${results.length} results for ${category} in ${city} with keyword "${keyword}"`);
-
       // Google Places API returns results sorted by relevance (best matches first)
       // We preserve this order by tracking the index
       for (let i = 0; i < results.length; i++) {
@@ -404,7 +401,6 @@ async function fetchPlacesForCategory(
         
         // HARD LIMIT: Only keep places within 8 miles of city center (Cupertino or Sunnyvale)
         if (distanceMiles > MAX_DISTANCE_MILES) {
-          console.log(`[Spend Today] ❌ FILTERED OUT ${category}: "${result.name}" - Reason: distance ${distanceMiles.toFixed(1)} miles > ${MAX_DISTANCE_MILES} miles from ${city}`);
           continue;
         }
 
@@ -451,21 +447,7 @@ async function fetchPlacesForCategory(
             if (!hasBubbleTeaInName && !hasBobaInName && !hasMilkTeaInName && !hasZhenzhuInName && !hasTapiocaInName && !hasMilkTeaKeyword) {
               reasons.push('no bubble tea keywords in name');
             }
-            console.log(`[Spend Today] ❌ FILTERED OUT 奶茶: "${result.name}" - Reasons: ${reasons.join('; ')}`);
             continue;
-          } else {
-            // Log why it was accepted
-            const acceptReasons = [];
-            if (hasCafeType) acceptReasons.push('cafe type');
-            if (hasRestaurantType) acceptReasons.push('restaurant type');
-            if (hasFoodType) acceptReasons.push('food type');
-            if (hasBubbleTeaInName) acceptReasons.push('"bubble tea" in name');
-            if (hasBobaInName) acceptReasons.push('"boba" in name');
-            if (hasMilkTeaInName) acceptReasons.push('"奶茶" in name');
-            if (hasZhenzhuInName) acceptReasons.push('"珍珠奶茶" in name');
-            if (hasTapiocaInName) acceptReasons.push('"tapioca" in name');
-            if (hasMilkTeaKeyword) acceptReasons.push('"milk tea" in name');
-            console.log(`[Spend Today] ✅ ACCEPTED 奶茶: "${result.name}" - Reasons: ${acceptReasons.join(', ')}`);
           }
         }
         
@@ -485,7 +467,6 @@ async function fetchPlacesForCategory(
             nameLower.includes('烤肉');
           
           if (!isBBQSkewersOrHotPot) {
-            console.log(`[Spend Today] ❌ FILTERED OUT 夜宵: "${result.name}" - Reason: not 烤串/火锅 (BBQ skewers/hot pot)`);
             continue;
           }
           
@@ -493,12 +474,8 @@ async function fetchPlacesForCategory(
           const opensLate = opensTill11pmOrLater(details.opening_hours);
           
           if (!opensLate) {
-            console.log(`[Spend Today] ❌ FILTERED OUT 夜宵: "${result.name}" - Reason: does not open till 11pm or later`);
             continue;
           }
-          
-          // Both conditions met
-          console.log(`[Spend Today] ✅ ACCEPTED 夜宵: "${result.name}" - Reasons: 烤串/火锅, opens till 11pm+`);
         }
         
         let photoUrl: string | undefined;
@@ -509,9 +486,6 @@ async function fetchPlacesForCategory(
         // Use Google Maps URL from details, or construct from place_id
         const mapsUrl = details.url || `https://www.google.com/maps/place/?q=place_id:${result.place_id}`;
 
-        // Use Chinese category for the place object (for frontend display)
-        console.log(`[Spend Today] Setting place category to: "${categoryChinese}" for place: ${result.name}`);
-        
         // Determine city name from coordinates (approximate)
         let cityName = city.charAt(0).toUpperCase() + city.slice(1).replace(' ', ' ');
         if (city === 'sanjose') {
@@ -542,7 +516,6 @@ async function fetchPlacesForCategory(
       // Small delay to avoid rate limiting
       await new Promise(resolve => setTimeout(resolve, 200));
     } catch (error) {
-      console.error(`[Spend Today] Error fetching ${category} in ${city} with keyword "${keyword}":`, error);
       // Continue with other keywords
     }
   }
@@ -589,7 +562,6 @@ async function fetchAllPlacesFromGoogle(): Promise<SpendPlace[]> {
         }
         allPlaces.push(...places);
       } catch (error) {
-        console.error(`[Spend Today] Error fetching ${category} in ${city}:`, error);
         // Continue with other cities/categories
       }
     }
@@ -673,19 +645,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const lng = parseFloat(String(lngParam));
       if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
         userLocation = { lat, lng };
-        console.log(`[Spend Today] Using user location: ${lat}, ${lng}`);
-      } else {
-        console.warn(`[Spend Today] Invalid user location: lat=${latParam}, lng=${lngParam}`);
       }
-    } else {
-      console.log(`[Spend Today] No user location provided, using default center: ${DEFAULT_CENTER.lat}, ${DEFAULT_CENTER.lng}`);
     }
     
     // Check cache (24 hours) - but skip if nocache is set
     const cached = getCachedData(cacheKey, SPEND_TODAY_CACHE_TTL, nocache);
     if (cached && !nocache) {
       const cachedData = cached.data;
-      console.log('[Spend Today] Returning cached data');
       normalizeCachedResponse(cachedData, { name: 'Google Places', url: 'https://maps.google.com' }, ttlMsToSeconds(SPEND_TODAY_CACHE_TTL), 'spend-today');
       
       // Ensure proper encoding for JSON response
@@ -699,11 +665,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Log cache bypass
-    if (nocache) {
-      console.log('[API /api/spend/today] Cache bypass requested via ?nocache=1');
-    }
-
     // Fetch from Google Places API
     if (!GOOGLE_PLACES_API_KEY) {
       throw new Error('GOOGLE_PLACES_API_KEY not configured');
@@ -711,23 +672,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Don't use userLocation - always search from city centers to ensure distance filtering
     const allPlaces = await fetchAllPlacesFromGoogle();
-    console.log(`[Spend Today] ✅ Fetched ${allPlaces.length} total places from Google Places API`);
-    if (allPlaces.length > 0) {
-      console.log(`[Spend Today] Sample places:`, allPlaces.slice(0, 3).map(p => `${p.name} (${p.category})`).join(', '));
-    }
     
     if (allPlaces.length === 0) {
-      console.warn('[Spend Today] No places found from Google Places API. This might indicate:');
-      console.warn('  - GOOGLE_PLACES_API_KEY is missing or invalid');
-      console.warn('  - API quota exceeded');
-      console.warn('  - Network issues');
-      console.warn('  - No places match the search criteria');
-      console.warn('  - All places were filtered out by category/opening hours criteria');
-      
       // Try to return stale cache if available
       const stale = getStaleCache(cacheKey);
       if (stale && stale.data && (stale.data.items?.length > 0 || Object.keys(stale.data.itemsByCategory || {}).length > 0)) {
-        console.log('[Spend Today] Returning stale cache due to empty fresh fetch');
         const staleData = stale.data;
         normalizeStaleResponse(staleData, { name: 'Google Places', url: 'https://maps.google.com' }, ttlMsToSeconds(SPEND_TODAY_CACHE_TTL), 'spend-today');
         
@@ -796,7 +745,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Group all places by their category field
     for (const place of allPlaces) {
       const placeCategory = place.category;
-      console.log(`[Spend Today] Place "${place.name}" has category: "${placeCategory}" (bytes: ${Buffer.from(placeCategory, 'utf8').toString('hex')})`);
       
       // Try exact match first
       if (placesByCategoryDirect.hasOwnProperty(placeCategory)) {
@@ -812,10 +760,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
         
         if (matched) {
-          console.log(`[Spend Today] Matched "${placeCategory}" to "${matched}" for place "${place.name}"`);
           placesByCategoryDirect[matched].push(place);
-        } else {
-          console.warn(`[Spend Today] Place "${place.name}" has unexpected category: "${placeCategory}" (bytes: ${Buffer.from(placeCategory, 'utf8').toString('hex')})`);
         }
       }
     }
@@ -831,8 +776,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return scoreA - scoreB; // Lower score = better
       });
     }
-    
-    console.log(`[Spend Today] Places by category (direct grouping):`, Object.keys(placesByCategoryDirect).map(cat => `${cat}: ${placesByCategoryDirect[cat]?.length || 0}`).join(', '));
     
     const fetchedAtISO = new Date().toISOString();
     const ttlSeconds = ttlMsToSeconds(SPEND_TODAY_CACHE_TTL);
@@ -1015,7 +958,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Last resort: return empty (NO fake data)
-    console.warn('[API /api/spend/today] All sources failed, returning empty result (no fake data)');
     const errorAtISO = new Date().toISOString();
     
     // Use English keys to match normal response format

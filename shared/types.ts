@@ -74,3 +74,16 @@ export interface MarketDataItem {
     error?: string;
   };
 }
+
+/**
+ * Unified Module Payload for community/gossip module
+ * Used for consistent data structure across all sources
+ */
+export interface ModulePayload<T> {
+  source: "live" | "cache" | "seed";
+  status: "ok" | "degraded" | "failed";
+  fetchedAt: string; // ISO 8601 timestamp
+  ttlSeconds: number;
+  note?: string; // Optional note explaining status/degradation
+  items: T[]; // Always >= 3 items (padded if necessary)
+}

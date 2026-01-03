@@ -35,6 +35,13 @@ const CATEGORIES = ['奶茶', '中餐', '夜宵', '甜品'] as const;
 export default function TodaySpendCarousels() {
   const [placesByCategory, setPlacesByCategory] = useState<Record<string, SpendPlace[]>>({});
   const [loading, setLoading] = useState(true);
+  // Track current display offset for each category (for "换一批" button)
+  const [categoryOffsets, setCategoryOffsets] = useState<Record<string, number>>({
+    '奶茶': 0,
+    '中餐': 0,
+    '夜宵': 0,
+    '甜品': 0,
+  });
 
   useEffect(() => {
     async function loadRecommendations() {
@@ -186,6 +193,13 @@ export default function TodaySpendCarousels() {
             
             console.log('[TodaySpendCarousels] Grouped items:', Object.entries(grouped).map(([k, v]) => `${k}: ${v.length}`));
             setPlacesByCategory(grouped);
+            // Reset offsets when new data is loaded
+            setCategoryOffsets({
+              '奶茶': 0,
+              '中餐': 0,
+              '夜宵': 0,
+              '甜品': 0,
+            });
           } else if (result.itemsByCategory && Object.keys(result.itemsByCategory).length > 0) {
             // Fallback: try to use itemsByCategory (API returns English keys: milk_tea, chinese, coffee, late_night)
             const keys = Object.keys(result.itemsByCategory);
@@ -249,6 +263,13 @@ export default function TodaySpendCarousels() {
             console.log('[TodaySpendCarousels] ✅ Normalized counts:', normalizedSummary);
             console.log('[TodaySpendCarousels] Setting placesByCategory with', Object.keys(normalized).length, 'categories');
             setPlacesByCategory(normalized);
+            // Reset offsets when new data is loaded
+            setCategoryOffsets({
+              '奶茶': 0,
+              '中餐': 0,
+              '夜宵': 0,
+              '甜品': 0,
+            });
           } else {
             console.warn('[TodaySpendCarousels] No items or itemsByCategory found in response');
             console.warn('[TodaySpendCarousels] Response:', result);
@@ -351,17 +372,35 @@ export default function TodaySpendCarousels() {
     }
   }
 
+  // Handler for "换一批" button
+  const handleRefreshCategory = (category: string) => {
+    setCategoryOffsets(prev => {
+      const currentOffset = prev[category] || 0;
+      const places = placesByCategory[category] || [];
+      // Move to next batch (2 places at a time)
+      // If we've reached the end, cycle back to start
+      const nextOffset = (currentOffset + 2) % Math.max(places.length, 2);
+      return {
+        ...prev,
+        [category]: nextOffset,
+      };
+    });
+  };
+
   return (
     <div className="flex flex-col md:grid md:grid-cols-2 gap-4 min-w-0">
       {CATEGORIES.map((category) => {
         const places = placesByCategory[category] || [];
-        console.log(`[TodaySpendCarousels] Rendering category "${category}" with ${places.length} places`);
+        const offset = categoryOffsets[category] || 0;
+        console.log(`[TodaySpendCarousels] Rendering category "${category}" with ${places.length} places, offset: ${offset}`);
         // Always render, even if empty (will show fallback cards)
         return (
           <div key={category} className="min-w-0">
             <SpendCarousel
               category={category}
               places={places}
+              offset={offset}
+              onRefresh={() => handleRefreshCategory(category)}
             />
           </div>
         );

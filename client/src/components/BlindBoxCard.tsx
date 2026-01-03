@@ -4,7 +4,6 @@
  */
 
 import { useState, useEffect } from "react";
-import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6 } from "lucide-react";
 import { MapPin, Star } from "lucide-react";
 
 interface SpendPlace {
@@ -25,28 +24,117 @@ interface BlindBoxCardProps {
   onReveal?: (place: SpendPlace) => void;
 }
 
-const DICE_ICONS = [Dice1, Dice2, Dice3, Dice4, Dice5, Dice6];
+/**
+ * Dice SVG Component
+ * A realistic 3D dice with red-orange gradient and glossy finish
+ */
+function DiceIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      className={className}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        {/* Red-orange gradient for dice body */}
+        <linearGradient id="diceGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ff6b6b" />
+          <stop offset="50%" stopColor="#ff8e53" />
+          <stop offset="100%" stopColor="#ffa726" />
+        </linearGradient>
+        {/* Lighter gradient for top face */}
+        <linearGradient id="diceTopGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ff8e53" />
+          <stop offset="100%" stopColor="#ffa726" />
+        </linearGradient>
+        {/* Darker gradient for right face */}
+        <linearGradient id="diceRightGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#e55555" />
+          <stop offset="100%" stopColor="#ff6b6b" />
+        </linearGradient>
+        {/* Highlight for glossy effect */}
+        <linearGradient id="diceHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.4" />
+          <stop offset="30%" stopColor="#ffffff" stopOpacity="0.1" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
+        {/* Shadow */}
+        <filter id="diceShadow">
+          <feDropShadow dx="3" dy="3" stdDeviation="4" floodOpacity="0.3"/>
+        </filter>
+      </defs>
+      
+      {/* Right face (darker) */}
+      <polygon 
+        points="75,15 90,8 90,75 75,82" 
+        fill="url(#diceRightGradient)" 
+        opacity="0.9"
+      />
+      
+      {/* Top face (lighter) */}
+      <polygon 
+        points="15,15 30,8 90,8 75,15" 
+        fill="url(#diceTopGradient)" 
+      />
+      
+      {/* Front face (main) */}
+      <rect 
+        x="15" 
+        y="15" 
+        width="60" 
+        height="67" 
+        rx="8" 
+        fill="url(#diceGradient)" 
+        filter="url(#diceShadow)"
+      />
+      
+      {/* Glossy highlight on front face */}
+      <rect 
+        x="15" 
+        y="15" 
+        width="60" 
+        height="67" 
+        rx="8" 
+        fill="url(#diceHighlight)" 
+      />
+      
+      {/* Dots (pips) - white oval shapes */}
+      {/* Top face: 1 dot (center) */}
+      <ellipse cx="52.5" cy="11.5" rx="4" ry="5" fill="white" opacity="0.95" />
+      
+      {/* Front face: 2 dots (diagonal) */}
+      <ellipse cx="30" cy="35" rx="4" ry="5" fill="white" opacity="0.95" />
+      <ellipse cx="60" cy="62" rx="4" ry="5" fill="white" opacity="0.95" />
+      
+      {/* Right face: 3 dots (diagonal) */}
+      <ellipse cx="80" cy="25" rx="3.5" ry="4.5" fill="white" opacity="0.9" />
+      <ellipse cx="85" cy="45" rx="3.5" ry="4.5" fill="white" opacity="0.9" />
+      <ellipse cx="82" cy="65" rx="3.5" ry="4.5" fill="white" opacity="0.9" />
+    </svg>
+  );
+}
 
 /**
  * Dice Animation Component
- * Cycles through dice faces during animation
+ * Animated dice with rotation
  */
 function DiceAnimation() {
-  const [currentFace, setCurrentFace] = useState(0);
+  const [rotation, setRotation] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentFace((prev) => (prev + 1) % 6);
-    }, 100); // Change face every 100ms
+      setRotation((prev) => (prev + 20) % 360);
+    }, 100);
 
     return () => clearInterval(interval);
   }, []);
-
-  const DiceIcon = DICE_ICONS[currentFace];
   
   return (
     <div className="animate-bounce">
-      <DiceIcon className="w-12 h-12 text-primary" />
+      <div style={{ transform: `rotate(${rotation}deg)` }}>
+        <DiceIcon className="w-14 h-14 text-primary" />
+      </div>
     </div>
   );
 }
@@ -164,23 +252,25 @@ export default function BlindBoxCard({ randomPool, fallbackImage, onReveal }: Bl
       disabled={isRolling || randomPool.length === 0}
       className="block w-44 rounded-lg overflow-hidden bg-card/50 border border-border/50 hover:border-primary/50 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      {/* Blind Box Image/Icon */}
+      {/* Dice Image/Icon */}
       <div className="relative w-full h-32 bg-gradient-to-br from-primary/20 to-primary/5 overflow-hidden flex items-center justify-center">
         {isRolling ? (
-          // Dice animation - cycle through dice faces
+          // Dice animation with rotation
           <DiceAnimation />
         ) : (
           // Static dice icon
-          <Dice6 className="w-12 h-12 text-primary/70" />
+          <DiceIcon className="w-14 h-14 text-primary/70" />
         )}
         
         {/* Overlay: Title */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-          <h4 className="text-xs font-semibold text-white">
-            {isRolling ? '摇骰子中...' : '盲盒'}
-          </h4>
+          {isRolling && (
+            <h4 className="text-xs font-semibold text-white">
+              摇色子中...
+            </h4>
+          )}
           {!isRolling && (
-            <p className="text-[10px] text-white/70 mt-0.5">随机选店</p>
+            <p className="text-[10px] text-white/70">随机选店</p>
           )}
         </div>
       </div>
@@ -188,7 +278,7 @@ export default function BlindBoxCard({ randomPool, fallbackImage, onReveal }: Bl
       {/* Info placeholder */}
       <div className="p-2">
         <div className="text-xs text-muted-foreground font-mono">
-          {isRolling ? '...' : '点击开启'}
+          {isRolling ? '...' : ''}
         </div>
       </div>
     </button>

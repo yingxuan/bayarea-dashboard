@@ -227,12 +227,82 @@ async function fetchHackerNewsGossip(): Promise<ChineseGossipItem[]> {
 /**
  * Fetch from huaren.us forum (华人闲话版块)
  */
+/**
+ * Fetch from RSSHub (fallback if direct HTML fetch fails)
+ */
+async function fetchHuarenGossipFromRSSHub(): Promise<ChineseGossipItem[]> {
+  const RSSHUB_URL = 'https://rsshub.app/huaren/forum/398';
+  const FETCH_TIMEOUT = 10000; // 10 seconds
+  
+  try {
+    console.log(`[Chinese Gossip] 🔄 Fetching from RSSHub: ${RSSHUB_URL}`);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+    
+    const response = await fetch(RSSHUB_URL, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'BayAreaDashboard/1.0',
+      },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    // Debug: Log HTTP status and content length
+    const contentLength = response.headers.get('content-length');
+    console.log(`[Chinese Gossip] 📊 RSSHub HTTP Status: ${response.status} ${response.statusText}`);
+    console.log(`[Chinese Gossip] 📊 RSSHub Content-Length: ${contentLength || 'unknown'}`);
+    
+    if (!response.ok) {
+      console.error(`[Chinese Gossip] ❌ RSSHub fetch failed: HTTP ${response.status} ${response.statusText}`);
+      return [];
+    }
+    
+    const xml = await response.text();
+    
+    // Debug: Log first 500 chars of RSS XML
+    const xmlPreview = xml.slice(0, 500);
+    console.log(`[Chinese Gossip] 📄 RSSHub first 500 chars:`, xmlPreview);
+    
+    const $ = cheerio.load(xml, { xmlMode: true });
+    const items: ChineseGossipItem[] = [];
+    
+    $('item').each((_, element) => {
+      const $item = $(element);
+      const title = $item.find('title').text().trim();
+      const link = $item.find('link').text().trim();
+      const pubDate = $item.find('pubDate').text().trim();
+      
+      if (title && link) {
+        // Extract thread ID from URL if possible
+        const tidMatch = link.match(/tid[=:](\d+)/);
+        const tid = tidMatch ? tidMatch[1] : Date.now().toString();
+        
+        items.push({
+          id: `huaren_rsshub_${tid}`,
+          title: title,
+          url: link,
+          source: 'huaren',
+          publishedAt: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
+        });
+      }
+    });
+    
+    console.log(`[Chinese Gossip] ✅ RSSHub fetched ${items.length} items`);
+    return items;
+  } catch (error) {
+    console.error(`[Chinese Gossip] ❌ RSSHub fetch error:`, error);
+    return [];
+  }
+}
+
 async function fetchHuarenGossip(): Promise<ChineseGossipItem[]> {
   const HUAREN_URL = 'https://huaren.us/showforum.html?forumid=398';
   const FETCH_TIMEOUT = 10000; // 10 seconds
   
   try {
-    console.log(`[Chinese Gossip] Fetching from huaren.us: ${HUAREN_URL}`);
+    console.log(`[Chinese Gossip] 🔍 Fetching from huaren.us: ${HUAREN_URL}`);
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
@@ -249,13 +319,36 @@ async function fetchHuarenGossip(): Promise<ChineseGossipItem[]> {
     
     clearTimeout(timeoutId);
     
+    // Debug: Log HTTP status and content length
+    const contentLength = response.headers.get('content-length');
+    console.log(`[Chinese Gossip] 📊 HTTP Status: ${response.status} ${response.statusText}`);
+    console.log(`[Chinese Gossip] 📊 Content-Length: ${contentLength || 'unknown'}`);
+    
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      console.error(`[Chinese Gossip] ❌ HTTP error! status: ${response.status}`);
+      // Try RSSHub as fallback
+      return await fetchHuarenGossipFromRSSHub();
     }
     
     // Detect encoding and decode
     const arrayBuffer = await response.arrayBuffer();
     const buf = Buffer.from(arrayBuffer);
+    
+    // Debug: Log first 500 chars of raw HTML
+    const rawHtmlPreview = buf.slice(0, 500).toString('latin1');
+    console.log(`[Chinese Gossip] 📄 First 500 chars of raw HTML:`, rawHtmlPreview);
+    
+    // Check for Cloudflare / JS challenge
+    const htmlPreviewLower = rawHtmlPreview.toLowerCase();
+    const hasCloudflare = htmlPreviewLower.includes('cloudflare') || 
+                          htmlPreviewLower.includes('checking your browser') ||
+                          htmlPreviewLower.includes('just a moment') ||
+                          htmlPreviewLower.includes('ddos protection');
+    
+    if (hasCloudflare) {
+      console.warn(`[Chinese Gossip] ⚠️ Detected Cloudflare/JS challenge, switching to RSSHub`);
+      return await fetchHuarenGossipFromRSSHub();
+    }
     
     // Try to detect charset from HTML
     const sniff = buf.slice(0, 16384).toString('latin1');
@@ -271,7 +364,7 @@ async function fetchHuarenGossip(): Promise<ChineseGossipItem[]> {
       }
     }
     
-    console.log(`[Chinese Gossip] Detected encoding: ${encoding}`);
+    console.log(`[Chinese Gossip] 📝 Detected encoding: ${encoding}`);
     const html = iconv.decode(buf, encoding);
     
     const $ = cheerio.load(html, {
@@ -456,14 +549,21 @@ async function fetchHuarenGossip(): Promise<ChineseGossipItem[]> {
       });
     });
     
+    // Check if we found any thread links
+    if (items.length === 0) {
+      console.warn(`[Chinese Gossip] ⚠️ No thread links found in HTML, switching to RSSHub`);
+      return await fetchHuarenGossipFromRSSHub();
+    }
+    
     // Filter by relevance (recent or high heat)
     const filteredItems = items.filter(item => isRelevant(item));
     
-    console.log(`[Chinese Gossip] Fetched ${filteredItems.length} items from huaren.us (from ${items.length} total)`);
+    console.log(`[Chinese Gossip] ✅ Fetched ${filteredItems.length} items from huaren.us (from ${items.length} total)`);
     return filteredItems;
   } catch (error) {
-    console.error('[Chinese Gossip] Error fetching huaren.us:', error);
-    return [];
+    console.error('[Chinese Gossip] ❌ Error fetching huaren.us:', error);
+    // Try RSSHub as fallback
+    return await fetchHuarenGossipFromRSSHub();
   }
 }
 
@@ -618,24 +718,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
     
-    // If still less than 3, use seed data as fallback (only huaren items)
-    if (finalItems.length < 3) {
-      console.warn(`[API /api/chinese-gossip] Only found ${finalItems.length} huaren items, using seed data as fallback`);
-      const seedItems = getGossipSeedData();
-      // Only use huaren items from seed data
-      const huarenSeedItems = seedItems.filter((item: any) => item.source === 'huaren');
-      const existingIds = new Set(finalItems.map(i => i.id));
-      const seedFormatted = huarenSeedItems
-        .filter(item => !existingIds.has(item.id))
-        .map(item => ({
-          id: item.id,
-          title: formatTitleWithSource(item as ChineseGossipItem),
-          url: item.url,
-          source: item.source,
-          publishedAt: item.publishedAt,
-        }));
-      finalItems = [...finalItems, ...seedFormatted].slice(0, 3);
-      console.log(`[API /api/chinese-gossip] Added ${seedFormatted.length} huaren items from seed data`);
+    // Do NOT use seed data fallback - return what we have (even if empty)
+    // UI will handle empty state appropriately
+    if (finalItems.length === 0) {
+      console.warn(`[API /api/chinese-gossip] ⚠️ No real items found, returning empty array (no fake placeholders)`);
+    } else {
+      console.log(`[API /api/chinese-gossip] ✅ Returning ${finalItems.length} real items (no seed data)`);
     }
     
     const response: any = {
@@ -673,23 +761,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       console.log(`[API /api/chinese-gossip] Filtered stale cache to ${items.length} huaren items`);
       
-      if (items.length < 3) {
-        // If stale cache has less than 3, fill with seed data (only huaren)
-        console.warn(`[API /api/chinese-gossip] Stale cache has only ${items.length} huaren items, using seed data as fallback`);
-        const seedItems = getGossipSeedData();
-        // Only use huaren items from seed data
-        const huarenSeedItems = seedItems.filter((item: any) => item.source === 'huaren');
-        const existingIds = new Set(items.map((i: any) => i.id));
-        const seedFormatted = huarenSeedItems
-          .filter(item => !existingIds.has(item.id))
-          .map(item => ({
-            id: item.id,
-            title: formatTitleWithSource(item as ChineseGossipItem),
-            url: item.url,
-            source: item.source,
-            publishedAt: item.publishedAt,
-          }));
-        items = [...items, ...seedFormatted].slice(0, 3);
+      // Do NOT use seed data fallback - return what we have (even if empty)
+      // UI will handle empty state appropriately
+      if (items.length === 0) {
+        console.warn(`[API /api/chinese-gossip] ⚠️ Stale cache has no items, returning empty array (no fake placeholders)`);
       }
       
       normalizeStaleResponse({ ...staleData, items }, SOURCE_INFO.REDDIT, ttlMsToSeconds(CHINESE_GOSSIP_CACHE_TTL), 'chinese-gossip');
@@ -703,30 +778,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Last resort: return seed data (only huaren items)
-    console.warn('[API /api/chinese-gossip] All sources failed, using seed data as last resort (huaren only)');
+    // Last resort: return empty array with unavailable status
+    // Do NOT return fake seed data
+    console.warn('[API /api/chinese-gossip] ❌ All sources failed, returning empty array (no fake placeholders)');
     const errorAtISO = new Date().toISOString();
-    const seedItems = getGossipSeedData();
-    // Only use huaren items from seed data
-    const huarenSeedItems = seedItems.filter((item: any) => item.source === 'huaren');
-    const seedFormatted = huarenSeedItems.map(item => ({
-      id: item.id,
-      title: formatTitleWithSource(item as ChineseGossipItem),
-      url: item.url,
-      source: item.source,
-      publishedAt: item.publishedAt,
-    }));
     
     res.status(200).json({
-      status: 'ok' as const,
-      items: seedFormatted,
-      count: seedFormatted.length,
+      status: 'unavailable' as const,
+      items: [],
+      count: 0,
       asOf: errorAtISO,
       source: SOURCE_INFO.REDDIT,
-      ttlSeconds: ttlMsToSeconds(CHINESE_GOSSIP_CACHE_TTL),
+      ttlSeconds: 0,
+      error: 'All sources failed',
+      message: 'Unable to fetch gossip from any source.',
       cache_hit: false,
       fetched_at: errorAtISO,
-      fallback: 'seed',
     });
   }
 }

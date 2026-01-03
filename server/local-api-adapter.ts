@@ -18,6 +18,8 @@ import spendTodayHandler from '../api/spend/today.js';
 import leekCommunityHandler from '../api/community/leeks.js';
 import marketNewsHandler from '../api/market-news.js';
 import blogCommunityHandler from '../api/community/blogs.js';
+import huarenCommunityHandler from '../api/community/huaren.js';
+import gossipCommunityHandler from '../api/community/gossip.js';
 import chineseGossipHandler from '../api/chinese-gossip.js';
 
 /**
@@ -241,6 +243,38 @@ export async function blogCommunityRoute(req: Request, res: Response) {
     await blogCommunityHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Blog Community route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Huaren Community API route
+ */
+export async function huarenCommunityRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await huarenCommunityHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Huaren Community route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Gossip Community API route (1point3acres + TeamBlind)
+ */
+export async function gossipCommunityRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await gossipCommunityHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Gossip Community route error:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

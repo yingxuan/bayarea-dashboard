@@ -183,7 +183,7 @@ function parseAllYouTubeRSS(xml: string): Array<{ videoId: string; title: string
 /**
  * Fetch multiple latest videos from a YouTube channel RSS feed
  */
-async function fetchChannelVideos(channelId: string, channelName: string, maxVideos: number = 5): Promise<Show[]> {
+async function fetchChannelVideos(channelId: string, channelName: string, maxVideos?: number): Promise<Show[]> {
   const rssUrl = ytRssUrl(channelId);
   const shows: Show[] = [];
   
@@ -210,8 +210,9 @@ async function fetchChannelVideos(channelId: string, channelName: string, maxVid
       return [];
     }
 
-    // Take up to maxVideos videos and convert to Show format
-    for (const videoData of videos.slice(0, maxVideos)) {
+    // Take all videos (or up to maxVideos if specified) and convert to Show format
+    const videosToProcess = maxVideos ? videos.slice(0, maxVideos) : videos;
+    for (const videoData of videosToProcess) {
       shows.push({
         id: videoData.videoId,
         title: videoData.title,
@@ -224,7 +225,7 @@ async function fetchChannelVideos(channelId: string, channelName: string, maxVid
       });
     }
 
-    console.log(`[Shows] ✅ Fetched ${shows.length} videos from ${channelName}`);
+    console.log(`[Shows] ✅ Fetched ${shows.length} videos from ${channelName} (RSS had ${videos.length} total videos)`);
     return shows;
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -251,8 +252,8 @@ async function fetchAllShows(): Promise<Show[]> {
       return { channelName: channel.name, shows: [] };
     }
     
-    // Fetch multiple videos from this channel (up to 5)
-    const shows = await fetchChannelVideos(channelId, channel.name, 5);
+    // Fetch multiple videos from this channel (no limit)
+    const shows = await fetchChannelVideos(channelId, channel.name, 50); // Increased to 50 per channel
     return { channelName: channel.name, shows };
   });
   
@@ -286,7 +287,7 @@ async function fetchAllShows(): Promise<Show[]> {
   
   // Add remaining videos from all channels (excluding the ones already used in first 4)
   const remainingShows: Show[] = [];
-  for (const [channelName, shows] of channelShowsMap.entries()) {
+  channelShowsMap.forEach((shows, channelName) => {
     if (usedChannels.has(channelName)) {
       // Skip the first video (already in firstFourShows), add the rest
       remainingShows.push(...shows.slice(1));
@@ -294,7 +295,7 @@ async function fetchAllShows(): Promise<Show[]> {
       // Add all videos from channels not in first 4
       remainingShows.push(...shows);
     }
-  }
+  });
   
   // Sort remaining videos by published date (newest first)
   remainingShows.sort((a: Show, b: Show) => {
@@ -347,7 +348,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const response: any = {
       // Standard response structure
       status: shows.length > 0 ? ('ok' as const) : ('unavailable' as const),
-      items: shows.slice(0, 6), // Top 6 videos (one from each channel, sorted by date)
+      items: shows, // All videos, no limit
       count: shows.length,
       asOf: fetchedAtISO,
       source: SOURCE_INFO.YOUTUBE_RSS,
@@ -355,7 +356,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cache_hit: false,
       fetched_at: fetchedAtISO,
       // Legacy fields for backward compatibility
-      shows: shows.slice(0, 6),
+      shows: shows, // All videos, no limit
       updated_at: formatUpdatedAt(),
       cache_mode: nocache ? 'bypass' : 'normal',
       cache_age_seconds: 0,

@@ -8,23 +8,23 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselPrevious,
-  CarouselNext,
 } from "@/components/ui/carousel";
 import ShowsCard from "@/components/ShowsCard";
 
 interface ShowsCarouselProps {
   shows: any[];
+  offset?: number; // Current display offset (for "换一批" functionality)
+  onRefresh?: () => void; // Callback for "换一批" button
 }
 
-export default function ShowsCarousel({ shows }: ShowsCarouselProps) {
+export default function ShowsCarousel({ shows, offset = 0, onRefresh }: ShowsCarouselProps) {
   if (shows.length === 0) {
     return null;
   }
 
   // Map shows to display format (supports both TMDB and YouTube formats)
   // No limit - show all shows
-  const displayShows = shows.map((show: any) => ({
+  const allDisplayShows = shows.map((show: any) => ({
     id: String(show.id || show.videoId || Date.now()),
     title: show.title || show.name || '',
     description: show.description || show.overview || '',
@@ -34,52 +34,72 @@ export default function ShowsCarousel({ shows }: ShowsCarouselProps) {
     url: show.url || `https://www.youtube.com/watch?v=${show.id}`,
   }));
 
+  // Display 4 videos at a time (for "换一批" functionality)
+  const VIDEOS_PER_BATCH = 4;
+  const displayShows = allDisplayShows.slice(offset, offset + VIDEOS_PER_BATCH);
+  
+  // If we've reached the end, wrap around to the beginning
+  const hasMore = allDisplayShows.length > VIDEOS_PER_BATCH;
+
   return (
-    <Carousel
-      opts={{
-        align: "start",
-        loop: false,
-        dragFree: true,
-      }}
-      className="w-full relative"
-    >
-      <CarouselContent className="-ml-2 min-w-0">
-        {displayShows.map((show) => (
-          <CarouselItem key={show.id} className="pl-2 snap-start shrink-0 w-[70%] max-w-[280px] min-w-0">
-            <a
-              href={show.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full rounded-lg overflow-hidden bg-card/50 border border-border/50 hover:border-primary/50 transition-all group"
-            >
-              <div className="relative w-full aspect-video bg-muted overflow-hidden">
-                <img
-                  src={show.poster}
-                  alt={show.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                  <h4 className="text-sm font-semibold text-white mb-1 line-clamp-1">{show.title}</h4>
-                  <div className="flex items-center gap-2 text-xs text-white/80">
-                    {show.rating > 0 && (
-                      <>
-                        <span>⭐ {show.rating.toFixed(1)}</span>
-                        <span>•</span>
-                      </>
-                    )}
-                    <span>{show.platform}</span>
+    <div className="w-full">
+      {/* "换一批" button (header is now in SectionHeader) */}
+      {onRefresh && hasMore && (
+        <div className="mb-2 flex justify-end">
+          <button
+            onClick={onRefresh}
+            className="text-xs opacity-70 hover:opacity-100 transition-opacity font-mono px-2 py-0.5 rounded hover:bg-primary/10 border border-primary/20 hover:border-primary/40"
+            title="换一批"
+          >
+            换一批
+          </button>
+        </div>
+      )}
+      
+      <Carousel
+        opts={{
+          align: "start",
+          loop: false,
+          dragFree: true,
+        }}
+        className="w-full relative"
+      >
+        <CarouselContent className="-ml-2 min-w-0">
+          {displayShows.map((show) => (
+            <CarouselItem key={show.id} className="pl-2 snap-start shrink-0 w-[70%] max-w-[280px] min-w-0">
+              <a
+                href={show.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full rounded-lg overflow-hidden bg-card/50 border border-border/50 hover:border-primary/50 transition-all group"
+              >
+                <div className="relative w-full aspect-video bg-muted overflow-hidden">
+                  <img
+                    src={show.poster}
+                    alt={show.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
+                    <h4 className="text-sm font-semibold text-white mb-1 line-clamp-1">{show.title}</h4>
+                    <div className="flex items-center gap-2 text-xs text-white/80">
+                      {show.rating > 0 && (
+                        <>
+                          <span>⭐ {show.rating.toFixed(1)}</span>
+                          <span>•</span>
+                        </>
+                      )}
+                      <span>{show.platform}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </a>
-          </CarouselItem>
-        ))}
-      </CarouselContent>
-      <CarouselPrevious className="left-2 md:left-4" />
-      <CarouselNext className="right-2 md:right-4" />
-    </Carousel>
+              </a>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
+    </div>
   );
 }
