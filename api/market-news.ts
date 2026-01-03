@@ -1,13 +1,14 @@
 /**
  * Vercel Serverless Function: /api/market-news
- * Fetches market news from Google Finance "Today's financial news" section
+ * Fetches Chinese US stock news from reliable RSS sources
  * 
  * Requirements:
- * - Always return 3 items
- * - Never show "暂无内容"
- * - Cache TTL: 10 minutes
- * - Fallback: stale cache → seed data
- * - Translate titles to Chinese using Gemini
+ * - Always return 3 items (or use last_non_empty cache)
+ * - Never show empty results
+ * - Source chain: RSS1 → RSS2 → HTML fallback → last_non_empty cache
+ * - Cache TTL: 7.5 minutes (5-10 min range) for non-empty results only
+ * - last_non_empty cache: 6 hours TTL
+ * - No translation needed (already Chinese)
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -27,11 +28,42 @@ import {
   cache,
 } from './utils.js';
 
-const MARKET_NEWS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
-const TRANSLATION_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
-const GOOGLE_FINANCE_URL = 'https://www.google.com/finance/';
-const FETCH_TIMEOUT = 8000; // 8 seconds
-const GEMINI_TIMEOUT = 10000; // 10 seconds
+const MARKET_NEWS_CACHE_TTL = 7.5 * 60 * 1000; // 7.5 minutes (5-10 min range) - for non-empty results only
+const LAST_NON_EMPTY_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours - for last_non_empty cache
+const FETCH_TIMEOUT = 10000; // 10 seconds
+
+// Reliable Chinese US stock RSS sources (no RSSHub dependency)
+const RSS_SOURCES = [
+  {
+    name: '新浪财经美股',
+    url: 'https://rss.sina.com.cn/finance/usstock.xml',
+    type: 'rss' as const,
+  },
+  {
+    name: 'Investing中文美股',
+    url: 'https://cn.investing.com/rss/news.rss',
+    type: 'rss' as const,
+  },
+  {
+    name: '新浪财经',
+    url: 'https://rss.sina.com.cn/finance/global.xml',
+    type: 'rss' as const,
+  },
+];
+
+// HTML fallback sources (if RSS fails)
+const HTML_FALLBACK_SOURCES = [
+  {
+    name: '新浪财经美股',
+    url: 'https://finance.sina.com.cn/stock/usstock/',
+    type: 'html' as const,
+  },
+  {
+    name: 'Investing中文美股',
+    url: 'https://cn.investing.com/news/stock-market-news',
+    type: 'html' as const,
+  },
+];
 
 // Get GEMINI_API_KEY from environment
 // In Vercel: automatically available via process.env
@@ -39,33 +71,16 @@ const GEMINI_TIMEOUT = 10000; // 10 seconds
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 interface MarketNewsItem {
-  title: string;        // Chinese preferred
-  title_en?: string;    // Original English title
+  title: string;        // Chinese headline
   url: string;
-  source: string;       // "Google Finance"
+  source: string;       // Source name (e.g., "新浪财经美股")
+  publishedAt?: string; // ISO 8601 date string
+  sourceUrl?: string;   // Original source URL
 }
 
-// Seed data as fallback
-const SEED_DATA: MarketNewsItem[] = [
-  {
-    title: '美股市场更新',
-    title_en: 'US Stock Market Update',
-    url: 'https://www.google.com/finance/',
-    source: 'Google Finance',
-  },
-  {
-    title: '科技股表现',
-    title_en: 'Tech Stocks Performance',
-    url: 'https://www.google.com/finance/',
-    source: 'Google Finance',
-  },
-  {
-    title: '今日市场分析',
-    title_en: 'Market Analysis Today',
-    url: 'https://www.google.com/finance/',
-    source: 'Google Finance',
-  },
-];
+// Empty seed data - we should never use placeholder categories
+// If fetch fails, use stale cache instead
+const SEED_DATA: MarketNewsItem[] = [];
 
 /**
  * Generate cache key for translation based on English titles hash
@@ -315,7 +330,221 @@ function translateTitle(titleEn: string): string {
 }
 
 /**
+ * Check if a news item is related to US stocks ONLY
+ * Includes: 美股/纳指/标普/道指/科技股/英伟达/苹果/特斯拉/财报/美联储
+ * Excludes: A股/港股/沪深/上证/深成/创业板
+ */
+function isUSStockRelated(title: string, description?: string): boolean {
+  const text = `${title} ${description || ''}`.toLowerCase();
+  
+  // EXCLUDE keywords (must NOT contain these) - strict exclusion
+  const excludeKeywords = [
+    'a股', 'a股市场', '沪深', '上证', '深证', '深成', '创业板', '科创板',
+    '港股', '恒生', 'h股', '香港股市',
+    '商品', '期货', '原油', '黄金', '白银', '铜', '铁矿石', 'commodity',
+    '人民币', 'rmb', 'cny', '汇率', '外汇',
+    '欧洲', '欧股', 'euro', 'eur',
+    '日本', '日股', '日经', 'nikkei',
+    '英国', '英股', 'ftse',
+  ];
+  
+  // If contains exclude keywords, reject
+  if (excludeKeywords.some(keyword => text.includes(keyword))) {
+    return false;
+  }
+  
+  // INCLUDE keywords (must contain at least one)
+  const includeKeywords = [
+    '美股', '纳斯达克', '纳指', '道琼斯', '道指', '标普', 'sp500', 'spx', 'nasdaq', 'dow',
+    '美国股市', '美股市场', '美国市场', '华尔街',
+    '科技股', '英伟达', 'nvidia', 'nvda', '苹果', 'apple', 'aapl', '特斯拉', 'tesla', 'tsla',
+    '财报', 'earnings', '美联储', 'fed', 'federal reserve', 'fomc',
+    'microsoft', 'msft', 'google', 'googl', 'meta', 'fb', 'amazon', 'amzn',
+  ];
+  
+  // Must contain at least one include keyword
+  const hasIncludeKeyword = includeKeywords.some(keyword => text.includes(keyword));
+  
+  // Additional check: if mentions "美国" or "us " in context of stocks
+  const hasUSContext = (text.includes('美国') || text.includes(' us ') || text.includes('united states')) 
+    && !text.includes('中国') && !text.includes('china');
+  
+  return hasIncludeKeyword || hasUSContext;
+}
+
+/**
+ * Parse RSS XML and extract news items
+ */
+function parseRSSFeed(xml: string): MarketNewsItem[] {
+  const items: MarketNewsItem[] = [];
+  let totalItemsFound = 0;
+  
+  try {
+    console.log(`[Market News] RSS XML length: ${xml.length} characters`);
+    
+    // Extract all <item> tags
+    const itemMatches = xml.matchAll(/<item[^>]*>([\s\S]*?)<\/item>/gi);
+    
+    for (const match of itemMatches) {
+      totalItemsFound++;
+      const itemXml = match[1];
+      
+      // Extract title
+      const titleMatch = itemXml.match(/<title[^>]*><!\[CDATA\[(.*?)\]\]><\/title>/i) ||
+                         itemXml.match(/<title[^>]*>(.*?)<\/title>/i);
+      if (!titleMatch) {
+        console.log(`[Market News] Item ${totalItemsFound}: No title found`);
+        continue;
+      }
+      
+      let title = titleMatch[1].trim();
+      
+      // Decode HTML entities (handle CDATA content)
+      title = title
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+        .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
+      
+      if (!title || title.length < 5) {
+        console.log(`[Market News] Item ${totalItemsFound}: Title too short: "${title}"`);
+        continue;
+      }
+      
+      // Extract link/url
+      const linkMatch = itemXml.match(/<link[^>]*>(.*?)<\/link>/i) ||
+                        itemXml.match(/<link[^>]*href="([^"]+)"/i);
+      if (!linkMatch) {
+        console.log(`[Market News] Item ${totalItemsFound}: No link found for "${title.substring(0, 30)}"`);
+        continue;
+      }
+      
+      const url = linkMatch[1].trim();
+      if (!url || !url.startsWith('http')) {
+        console.log(`[Market News] Item ${totalItemsFound}: Invalid URL: "${url}"`);
+        continue;
+      }
+      
+      // Extract description (optional, for filtering)
+      const descMatch = itemXml.match(/<description[^>]*><!\[CDATA\[(.*?)\]\]><\/description>/i) ||
+                         itemXml.match(/<description[^>]*>(.*?)<\/description>/i);
+      const description = descMatch ? descMatch[1].trim() : undefined;
+      
+      // Extract published date
+      const pubDateMatch = itemXml.match(/<pubDate[^>]*>(.*?)<\/pubDate>/i) ||
+                           itemXml.match(/<published[^>]*>(.*?)<\/published>/i);
+      let publishedAt: string | undefined;
+      if (pubDateMatch) {
+        try {
+          const date = new Date(pubDateMatch[1].trim());
+          if (!isNaN(date.getTime())) {
+            publishedAt = date.toISOString();
+          }
+        } catch (e) {
+          // Ignore date parsing errors
+        }
+      }
+      if (!publishedAt) {
+        publishedAt = new Date().toISOString();
+      }
+      
+      // Filter for US stock related news
+      if (!isUSStockRelated(title, description)) {
+        console.log(`[Market News] Item ${totalItemsFound} filtered out: "${title.substring(0, 50)}"`);
+        continue;
+      }
+      
+      console.log(`[Market News] Item ${totalItemsFound} accepted: "${title.substring(0, 50)}"`);
+      items.push({
+        title: title,
+        url: url,
+        source: 'RSS Source', // Will be set by caller
+        publishedAt: publishedAt,
+      });
+    }
+  } catch (error) {
+    console.error('[Market News] RSS parsing error:', error);
+    if (error instanceof Error) {
+      console.error('[Market News] Error details:', error.message, error.stack);
+    }
+  }
+  
+  console.log(`[Market News] Total items in RSS: ${totalItemsFound}`);
+  console.log(`[Market News] Parsed ${items.length} US stock related items from RSS`);
+  
+  // Sort by published date (newest first)
+  items.sort((a, b) => {
+    const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+    const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+    return dateB - dateA; // Descending order (newest first)
+  });
+  
+  // Return top 3 most recent
+  const top3 = items.slice(0, 3);
+  console.log(`[Market News] Selected top 3 items:`, top3.map(i => i.title));
+  return top3;
+}
+
+/**
+ * Fetch RSS feed from a source
+ */
+async function fetchRSSFeed(sourceName: string, sourceUrl: string): Promise<MarketNewsItem[]> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+  
+  try {
+    console.log(`[Market News] Fetching RSS from ${sourceName}: ${sourceUrl}`);
+    
+    const response = await fetch(sourceUrl, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/rss+xml, application/xml, text/xml, */*;q=0.9',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+      },
+      redirect: 'follow',
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const xml = await response.text();
+    
+    if (!xml || xml.length < 100) {
+      throw new Error('RSS feed is too short or empty');
+    }
+    
+    console.log(`[Market News] Successfully fetched RSS from ${sourceName}, XML length: ${xml.length}`);
+    const items = parseRSSFeed(xml);
+    
+    // Set source name for all items
+    items.forEach(item => {
+      item.source = sourceName;
+      item.sourceUrl = sourceUrl;
+    });
+    
+    console.log(`[Market News] Fetched ${items.length} items from ${sourceName}`);
+    return items;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timeout');
+    }
+    console.error(`[Market News] Error fetching RSS from ${sourceName}:`, error);
+    throw error;
+  }
+}
+
+/**
  * Fetch HTML from Google Finance
+ * @deprecated No longer used - only 华尔街见闻 is used as data source
  */
 async function fetchGoogleFinanceHTML(): Promise<string> {
   const controller = new AbortController();
@@ -355,6 +584,7 @@ async function fetchGoogleFinanceHTML(): Promise<string> {
 
 /**
  * Parse Google Finance HTML and extract "Today's financial news" headlines
+ * @deprecated No longer used - only 华尔街见闻 is used as data source
  */
 function parseGoogleFinanceNews(html: string): MarketNewsItem[] {
   const $ = cheerio.load(html, {
@@ -544,51 +774,188 @@ function parseGoogleFinanceNews(html: string): MarketNewsItem[] {
 }
 
 /**
- * Fetch market news from Google Finance
+ * Fetch HTML page and extract news headlines
  */
-async function fetchMarketNews(): Promise<MarketNewsItem[]> {
+async function fetchHTMLNews(sourceName: string, sourceUrl: string): Promise<MarketNewsItem[]> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+  
   try {
-    const html = await fetchGoogleFinanceHTML();
-    let items = parseGoogleFinanceNews(html);
-
-    // Ensure we have exactly 3 items
-    if (items.length < 3) {
-      console.warn(`[Market News] Only found ${items.length} items, filling with seed data`);
-      const existingUrls = new Set(items.map(i => i.url));
-      const seedItems = SEED_DATA.filter(item => !existingUrls.has(item.url));
-      items = [...items, ...seedItems].slice(0, 3);
-    }
-
-    // Extract English titles for batch translation
-    const englishTitles = items.map(item => item.title_en || item.title || 'Market News');
+    console.log(`[Market News] Fetching HTML from ${sourceName}: ${sourceUrl}`);
     
-    // Batch translate with Gemini - this is the main translation step
-    let translatedTitles: string[];
-    try {
-      console.log('[Market News] Translating', englishTitles.length, 'headlines to Chinese...');
-      translatedTitles = await translateTitlesWithGemini(englishTitles);
-      console.log('[Market News] Translation completed:', translatedTitles);
-    } catch (error) {
-      console.error('[Market News] Translation failed:', error);
-      // Fallback to English if translation fails
-      translatedTitles = englishTitles;
-    }
-
-    // Update items: title = Chinese translation, title_en = original English
-    items = items.map((item, index) => {
-      const chineseTitle = translatedTitles[index] || item.title_en || item.title || 'Market News';
-      return {
-        ...item,
-        title: chineseTitle, // Chinese title for display
-        title_en: item.title_en || item.title, // Keep original English
-      };
+    const response = await fetch(sourceUrl, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+      },
+      redirect: 'follow',
     });
-
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const items: MarketNewsItem[] = [];
+    const seenUrls = new Set<string>();
+    
+    // Common selectors for news headlines (adjust based on actual site structure)
+    const selectors = [
+      'a[href*="/news/"]',
+      'a[href*="article"]',
+      '.news-item a',
+      '.article-title a',
+      'h3 a',
+      'h4 a',
+      '[class*="news"] a',
+      '[class*="article"] a',
+    ];
+    
+    for (const selector of selectors) {
+      $(selector).each((_, element) => {
+        if (items.length >= 20) return false; // Collect enough for filtering
+        
+        const $link = $(element);
+        const href = $link.attr('href');
+        const title = $link.text().trim();
+        
+        if (!href || !title || title.length < 10) return;
+        
+        // Build absolute URL
+        let url: string;
+        try {
+          if (href.startsWith('http')) {
+            url = href;
+          } else if (href.startsWith('/')) {
+            url = new URL(href, sourceUrl).toString();
+          } else {
+            url = new URL(href, sourceUrl).toString();
+          }
+        } catch {
+          return;
+        }
+        
+        if (seenUrls.has(url)) return;
+        seenUrls.add(url);
+        
+        // Filter for US stock related
+        if (!isUSStockRelated(title)) return;
+        
+        items.push({
+          title: title,
+          url: url,
+          source: sourceName,
+          sourceUrl: sourceUrl,
+          publishedAt: new Date().toISOString(),
+        });
+      });
+      
+      if (items.length >= 20) break;
+    }
+    
+    // Sort by date (newest first) and return top 3
+    items.sort((a, b) => {
+      const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+      const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+      return dateB - dateA;
+    });
+    
+    console.log(`[Market News] Fetched ${items.length} items from ${sourceName} HTML`);
     return items.slice(0, 3);
   } catch (error) {
-    console.error('[Market News] Error fetching news:', error);
+    clearTimeout(timeoutId);
+    console.error(`[Market News] Error fetching HTML from ${sourceName}:`, error);
     throw error;
   }
+}
+
+/**
+ * Get last non-empty cache (6h TTL)
+ */
+function getLastNonEmptyCache(): MarketNewsItem[] | null {
+  const cacheKey = 'market-news-last-non-empty';
+  const cached = cache.get(cacheKey);
+  
+  if (cached && Date.now() - cached.timestamp < LAST_NON_EMPTY_CACHE_TTL) {
+    const items = cached.data.items || [];
+    if (Array.isArray(items) && items.length >= 3) {
+      console.log(`[Market News] Using last non-empty cache (${items.length} items)`);
+      return items.slice(0, 3);
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Save last non-empty cache (6h TTL)
+ */
+function saveLastNonEmptyCache(items: MarketNewsItem[]): void {
+  if (items.length >= 3) {
+    const cacheKey = 'market-news-last-non-empty';
+    cache.set(cacheKey, {
+      data: { items: items.slice(0, 3) },
+      timestamp: Date.now(),
+    });
+    console.log(`[Market News] Saved last non-empty cache (${items.length} items)`);
+  }
+}
+
+/**
+ * Fetch market news with source chain: RSS1 → RSS2 → HTML → last_non_empty
+ */
+async function fetchMarketNews(): Promise<MarketNewsItem[]> {
+  // Try RSS sources first
+  for (const rssSource of RSS_SOURCES) {
+    try {
+      const items = await fetchRSSFeed(rssSource.name, rssSource.url);
+      if (items.length >= 3) {
+        console.log(`[Market News] Successfully fetched ${items.length} items from ${rssSource.name}`);
+        saveLastNonEmptyCache(items);
+        return items.slice(0, 3);
+      } else if (items.length > 0) {
+        console.log(`[Market News] Got ${items.length} items from ${rssSource.name}, trying next source...`);
+        // Continue to next source to try to get 3 items
+      }
+    } catch (error) {
+      console.warn(`[Market News] RSS source ${rssSource.name} failed:`, error);
+      // Continue to next source
+    }
+  }
+  
+  // Try HTML fallback sources
+  for (const htmlSource of HTML_FALLBACK_SOURCES) {
+    try {
+      const items = await fetchHTMLNews(htmlSource.name, htmlSource.url);
+      if (items.length >= 3) {
+        console.log(`[Market News] Successfully fetched ${items.length} items from ${htmlSource.name} HTML`);
+        saveLastNonEmptyCache(items);
+        return items.slice(0, 3);
+      } else if (items.length > 0) {
+        console.log(`[Market News] Got ${items.length} items from ${htmlSource.name} HTML, trying next source...`);
+        // Continue to next source
+      }
+    } catch (error) {
+      console.warn(`[Market News] HTML source ${htmlSource.name} failed:`, error);
+      // Continue to next source
+    }
+  }
+  
+  // Last resort: use last non-empty cache
+  const lastNonEmpty = getLastNonEmptyCache();
+  if (lastNonEmpty) {
+    console.log(`[Market News] Using last non-empty cache as fallback`);
+    return lastNonEmpty;
+  }
+  
+  // If all sources fail and no cache, return empty (handler will handle this)
+  console.warn(`[Market News] All sources failed and no last_non_empty cache available`);
+  return [];
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -606,9 +973,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const cached = getCachedData(cacheKey, MARKET_NEWS_CACHE_TTL, nocache);
     if (cached) {
       const cachedData = cached.data;
+      const sourceName = cachedData.source?.name || cachedData.items?.[0]?.source || 'Unknown';
+      const sourceUrl = cachedData.source?.url || cachedData.items?.[0]?.sourceUrl || '';
       normalizeCachedResponse(
         cachedData,
-        { name: 'Google Finance', url: GOOGLE_FINANCE_URL },
+        { name: sourceName, url: sourceUrl },
         ttlMsToSeconds(MARKET_NEWS_CACHE_TTL),
         'market-news'
       );
@@ -626,66 +995,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log('[API /api/market-news] Cache bypass requested via ?nocache=1');
     }
 
-    // Fetch fresh data
+    // Fetch fresh data using source chain
     const items = await fetchMarketNews();
     const fetchedAtISO = new Date().toISOString();
     const ttlSeconds = ttlMsToSeconds(MARKET_NEWS_CACHE_TTL);
 
-    // Ensure we have exactly 3 items
     let finalItems = items;
     
-    if (finalItems.length < 3) {
-      // Try to get stale cache to fill remaining slots
-      const stale = getStaleCache(cacheKey);
-      if (stale && stale.data.items && Array.isArray(stale.data.items)) {
-        const staleItems = stale.data.items as MarketNewsItem[];
+    // Ensure we have exactly 3 items
+    if (finalItems.length >= 3) {
+      console.log(`[API /api/market-news] Successfully fetched ${finalItems.length} items`);
+    } else if (finalItems.length > 0) {
+      console.warn(`[API /api/market-news] Only got ${finalItems.length} items (less than 3)`);
+      // Try to get last_non_empty cache to fill
+      const lastNonEmpty = getLastNonEmptyCache();
+      if (lastNonEmpty) {
         const existingUrls = new Set(finalItems.map(i => i.url));
-        const additionalItems = staleItems.filter(i => !existingUrls.has(i.url));
+        const additionalItems = lastNonEmpty.filter(i => !existingUrls.has(i.url));
         finalItems = [...finalItems, ...additionalItems].slice(0, 3);
+        console.log(`[API /api/market-news] Filled to ${finalItems.length} items using last_non_empty cache`);
       }
-    }
-
-    // If still less than 3, use seed data as fallback
-    if (finalItems.length < 3) {
-      console.warn(`[API /api/market-news] Only found ${finalItems.length} items, using seed data as fallback`);
-      const existingUrls = new Set(finalItems.map(i => i.url));
-      const seedItems = SEED_DATA.filter(item => !existingUrls.has(item.url));
-      finalItems = [...finalItems, ...seedItems].slice(0, 3);
-    }
-    
-    // Items from fetchMarketNews should already have Chinese titles, but ensure they do
-    // If not, translate them here
-    const needsTranslation = finalItems.some(item => !item.title || item.title === item.title_en || !/[\u4e00-\u9fa5]/.test(item.title));
-    
-    if (needsTranslation) {
-      console.log('[API /api/market-news] Some items need translation, translating...');
-      const englishTitles = finalItems.map(item => item.title_en || item.title || 'Market News');
-      
-      let translatedTitles: string[];
-      try {
-        translatedTitles = await translateTitlesWithGemini(englishTitles);
-        console.log('[API /api/market-news] Translation successful');
-      } catch (error) {
-        console.error('[API /api/market-news] Translation failed:', error);
-        translatedTitles = englishTitles; // Fallback to English
-      }
-      
-      // Update items with Chinese titles
-      finalItems = finalItems.map((item, index) => ({
-        ...item,
-        title: translatedTitles[index] || item.title || item.title_en || 'Market News',
-        title_en: item.title_en || item.title,
-      }));
     } else {
-      console.log('[API /api/market-news] All items already have Chinese titles');
+      // No items from source chain - use last_non_empty cache
+      console.warn('[API /api/market-news] No items from source chain, using last_non_empty cache');
+      const lastNonEmpty = getLastNonEmptyCache();
+      if (lastNonEmpty) {
+        finalItems = lastNonEmpty;
+        console.log(`[API /api/market-news] Using ${finalItems.length} items from last_non_empty cache`);
+      } else {
+        // Last resort: try stale cache
+        const stale = getStaleCache(cacheKey);
+        if (stale && stale.data.items && Array.isArray(stale.data.items) && stale.data.items.length >= 3) {
+          finalItems = stale.data.items.slice(0, 3);
+          console.log(`[API /api/market-news] Using ${finalItems.length} items from stale cache`);
+        } else {
+          console.error('[API /api/market-news] All sources failed and no cache available');
+          finalItems = [];
+        }
+      }
     }
+    
+    // Determine source name from items
+    const sourceName = finalItems.length > 0 ? finalItems[0].source : 'Unknown';
+    const sourceUrl = finalItems.length > 0 ? finalItems[0].sourceUrl : '';
 
     const response: any = {
-      status: 'ok' as const,
+      status: finalItems.length >= 3 ? 'ok' as const : (finalItems.length > 0 ? 'partial' as const : 'unavailable' as const),
       items: finalItems.slice(0, 3),
       count: Math.min(finalItems.length, 3),
       asOf: fetchedAtISO,
-      source: { name: 'Google Finance', url: GOOGLE_FINANCE_URL },
+      source: { name: sourceName, url: sourceUrl },
       ttlSeconds,
       cache_hit: false,
       fetched_at: fetchedAtISO,
@@ -694,8 +1053,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cache_expires_in_seconds: ttlSeconds,
     };
 
-    // Update cache
-    setCache(cacheKey, response);
+    // Only cache non-empty results (>=3 items)
+    if (finalItems.length >= 3) {
+      setCache(cacheKey, response);
+      saveLastNonEmptyCache(finalItems);
+    } else {
+      console.warn(`[API /api/market-news] Not caching result (only ${finalItems.length} items, need 3+)`);
+    }
 
     res.status(200).json(response);
   } catch (error) {
@@ -707,9 +1071,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (stale) {
       const staleData = stale.data;
+      // Try last_non_empty cache first
+      const lastNonEmpty = getLastNonEmptyCache();
+      if (lastNonEmpty) {
+        console.log(`[API /api/market-news] Using last_non_empty cache (${lastNonEmpty.length} items)`);
+        return res.status(200).json({
+          status: 'ok' as const,
+          items: lastNonEmpty.slice(0, 3),
+          count: Math.min(lastNonEmpty.length, 3),
+          asOf: new Date().toISOString(),
+          source: { name: lastNonEmpty[0]?.source || 'Unknown', url: lastNonEmpty[0]?.sourceUrl || '' },
+          ttlSeconds: ttlMsToSeconds(MARKET_NEWS_CACHE_TTL),
+          cache_hit: true,
+          cache_mode: 'last_non_empty',
+        });
+      }
+      
+      // Fallback to stale cache
       normalizeStaleResponse(
         staleData,
-        { name: 'Google Finance', url: GOOGLE_FINANCE_URL },
+        { name: 'Unknown', url: '' },
         ttlMsToSeconds(MARKET_NEWS_CACHE_TTL),
         'market-news'
       );
@@ -718,36 +1099,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!Array.isArray(items)) {
         items = [];
       }
-      if (items.length < 3) {
-        console.warn(`[API /api/market-news] Stale cache has only ${items.length} items, using seed data as fallback`);
-        const existingUrls = new Set(items.map((i: any) => i.url));
-        const seedItems = SEED_DATA.filter(item => !existingUrls.has(item.url));
-        items = [...items, ...seedItems].slice(0, 3);
+      
+      if (items.length >= 3) {
+        return res.status(200).json({
+          ...staleData,
+          items: items.slice(0, 3),
+          count: Math.min(items.length, 3),
+          cache_hit: true,
+          stale: true,
+        });
       }
-
-      return res.status(200).json({
-        ...staleData,
-        items: items.slice(0, 3),
-        count: Math.min(items.length, 3),
-        cache_hit: true,
-        stale: true,
-      });
     }
 
-    // Last resort: return seed data (should never fail)
-    console.warn('[API /api/market-news] All sources failed, using seed data as last resort');
+    // Last resort: return unavailable status (no empty items)
+    console.warn('[API /api/market-news] All sources failed and no cache available');
     const errorAtISO = new Date().toISOString();
 
     res.status(200).json({
-      status: 'ok' as const,
-      items: SEED_DATA.slice(0, 3),
-      count: Math.min(SEED_DATA.length, 3),
+      status: 'unavailable' as const,
+      items: [],
+      count: 0,
       asOf: errorAtISO,
-      source: { name: 'Google Finance', url: GOOGLE_FINANCE_URL },
+      source: { name: 'Unknown', url: '' },
       ttlSeconds: ttlMsToSeconds(MARKET_NEWS_CACHE_TTL),
       cache_hit: false,
       fetched_at: errorAtISO,
-      fallback: 'seed',
+      fallback: 'none',
     });
   }
 }

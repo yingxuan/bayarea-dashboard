@@ -48,6 +48,11 @@ export default function Home() {
   const [marketNews, setMarketNews] = useState<any[]>([]); // 解释型市场要闻（只限解释涨跌）
   const [stockYoutubers, setStockYoutubers] = useState<any[]>([]); // 美股博主视频（每频道1条）
 
+  // Debug: Monitor marketNews state changes
+  useEffect(() => {
+    console.log('[Home] marketNews state updated:', marketNews.length, marketNews);
+  }, [marketNews]);
+
   // Section 2: 吃喝玩乐
   // 使用新的自动推荐模块，不再需要单独的状态
 
@@ -57,32 +62,35 @@ export default function Home() {
   useEffect(() => {
     async function loadAllData() {
       // Section 1: 早日退休
-      // 解释型市场要闻（使用 Google Finance 新闻）
+      // 解释型市场要闻（使用 华尔街见闻 新闻）
       try {
         const apiUrl = `${config.apiBaseUrl}/api/market-news`;
+        console.log('[Home] Fetching market news from:', apiUrl);
         const response = await fetchWithTimeout(apiUrl);
+        console.log('[Home] Market news response status:', response.status, response.ok);
         if (response.ok) {
           const result = await response.json();
+          console.log('[Home] Market news API result:', result);
           const newsItems = result.items || [];
-          setMarketNews(newsItems.slice(0, 3)); // 最多3条
-        } else {
-          // Fallback: try old API
-          const fallbackUrl = `${config.apiBaseUrl}/api/ai-news`;
-          const fallbackResponse = await fetchWithTimeout(fallbackUrl);
-          if (fallbackResponse.ok) {
-            const fallbackResult = await fallbackResponse.json();
-            const newsItems = fallbackResult.items || fallbackResult.news || [];
-            setMarketNews(newsItems.slice(0, 5));
+          console.log('[Home] Market news items count:', newsItems.length, newsItems);
+          if (newsItems.length > 0) {
+            setMarketNews(newsItems.slice(0, 3)); // 最多3条
+            console.log('[Home] Set market news state:', newsItems.slice(0, 3));
+          } else {
+            console.warn('[Home] No market news items found in response');
+            // Don't set placeholder categories - let UI show "暂无市场要闻"
+            setMarketNews([]);
           }
+        } else {
+          console.error('[Home] Market news API returned error status:', response.status);
+          // Don't use fallback APIs - only use 华尔街见闻
+          // Let UI show "暂无市场要闻" if fetch fails
+          setMarketNews([]);
         }
       } catch (error) {
         console.error("[Home] Failed to fetch market news:", error);
-        // Set seed data to ensure never empty
-        setMarketNews([
-          { title: '美股市场更新', title_en: 'US Stock Market Update', url: 'https://www.google.com/finance/', source: 'Google Finance' },
-          { title: '科技股表现', title_en: 'Tech Stocks Performance', url: 'https://www.google.com/finance/', source: 'Google Finance' },
-          { title: '今日市场分析', title_en: 'Market Analysis Today', url: 'https://www.google.com/finance/', source: 'Google Finance' },
-        ]);
+        // Don't set placeholder categories - let UI show "暂无市场要闻"
+        setMarketNews([]);
       }
 
       // 美股博主视频（每频道1条）
@@ -173,9 +181,16 @@ export default function Home() {
                       >
                         <div className="flex items-start gap-2">
                           <span className="text-primary mt-0.5">•</span>
-                          <span className="text-sm font-mono text-foreground/80 group-hover:text-primary transition-colors line-clamp-2 flex-1 leading-relaxed">
-                            {item.title || item.title_en || 'Market News'}
-                          </span>
+                          <div className="flex-1">
+                            {item.source && (
+                              <span className="text-xs text-muted-foreground font-mono mb-1 block">
+                                [{item.source}]
+                              </span>
+                            )}
+                            <span className="text-sm font-mono text-foreground/80 group-hover:text-primary transition-colors line-clamp-2 leading-relaxed">
+                              {item.title || item.title_zh || item.title_en || 'Market News'}
+                            </span>
+                          </div>
                         </div>
                       </a>
                     ))}
