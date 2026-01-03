@@ -545,6 +545,10 @@ async function fetchARKK(): Promise<MarketDataItem> {
       source_name: 'Stooq',
       source_url: 'https://stooq.com/q/?s=arkk',
       as_of: now,
+      debug: {
+        data_source: 'stooq_csv',
+        api_response: { price, prevClose, change, changePercent },
+      },
     };
   };
   

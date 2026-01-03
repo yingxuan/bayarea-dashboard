@@ -11,7 +11,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import * as cheerio from 'cheerio';
-import * as iconv from 'iconv-lite';
+import iconv from 'iconv-lite';
 import { CACHE_TTL, ttlMsToSeconds } from '../../shared/config.js';
 import {
   setCorsHeaders,
@@ -131,7 +131,7 @@ async function fetchBlogHTML(): Promise<string> {
     if (html.includes('') || html.match(/[\uFFFD]/)) {
       console.warn('[Blog Community] HTML contains replacement characters, trying GBK');
       try {
-        html = iconv.decode(buf, 'gbk').toString();
+        html = iconv.decode(buf, 'gbk');
         encodingUsed = 'gbk';
         console.log('[Blog Community] Successfully re-decoded HTML using GBK');
       } catch (error) {
@@ -207,15 +207,19 @@ function parseBlogPosts(html: string): BlogItem[] {
     
     if (headerText === '博文' || headerText.includes('博文')) {
       // Found the section, get the next sibling or parent's next content
-      $blogSection = $header.nextUntil('h1, h2, h3, h4, h5, h6, .pagination, [class*="pagination"]');
+      const $nextSiblings = $header.nextUntil('h1, h2, h3, h4, h5, h6, .pagination, [class*="pagination"]');
       
       // If no next siblings, try parent's children after this header
-      if ($blogSection.length === 0) {
+      if ($nextSiblings.length === 0) {
         const $parent = $header.parent();
         const headerIndex = $parent.children().toArray().findIndex(el => el === element);
         if (headerIndex >= 0) {
           $blogSection = $parent.children().slice(headerIndex + 1);
+        } else {
+          $blogSection = $nextSiblings;
         }
+      } else {
+        $blogSection = $nextSiblings;
       }
       
       // Stop searching
