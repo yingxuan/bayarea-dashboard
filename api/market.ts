@@ -214,6 +214,55 @@ async function fetchSPY(): Promise<MarketDataItem> {
     };
   };
   
+  const fallbackFn = async (): Promise<MarketDataItem> => {
+    const response = await fetch('https://stooq.com/q/l/?s=spy&f=sd2t2ohlcv&h&e=csv');
+    
+    if (!response.ok) {
+      throw new Error(`Stooq API error: ${response.statusText}`);
+    }
+    
+    const text = await response.text();
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) {
+      throw new Error('Invalid CSV data from Stooq');
+    }
+    
+    const data = lines[1].split(',');
+    const price = parseFloat(data[5]); // Close price
+    const prevClose = parseFloat(data[3]); // Open price (approximation)
+    
+    if (isNaN(price) || price <= 0) {
+      throw new Error('Invalid price data from Stooq');
+    }
+    
+    const change = !isNaN(prevClose) ? price - prevClose : undefined;
+    const changePercent = prevClose && change !== undefined ? (change / prevClose) * 100 : undefined;
+    
+    return {
+      name: 'SPY',
+      value: price,
+      change,
+      change_percent: changePercent,
+      prevClose: !isNaN(prevClose) ? prevClose : undefined,
+      prevDayValue: !isNaN(prevClose) ? prevClose : undefined,
+      unit: 'USD',
+      status: 'ok' as const,
+      asOf: now,
+      source: {
+        name: 'Stooq',
+        url: 'https://stooq.com/q/?s=spy',
+      },
+      ttlSeconds: 600,
+      source_name: 'Stooq',
+      source_url: 'https://stooq.com/q/?s=spy',
+      as_of: now,
+      debug: {
+        data_source: 'stooq_csv',
+        api_response: { price, prevClose, change, changePercent },
+      },
+    };
+  };
+  
   try {
     return await tryPrimaryThenFallback(
       () => withTimeout(primaryFn, FETCH_TIMEOUT_MS, 'fetchSPY (Yahoo Finance)'),
@@ -292,8 +341,8 @@ async function fetchQQQ(): Promise<MarketDataItem> {
       value: price,
       change,
       change_percent: changePercent,
-      prevClose: previousClose,
-      prevDayValue: previousClose,
+      prevClose: previousClose as number | undefined,
+      prevDayValue: previousClose as number | undefined,
       unit: 'USD',
       status: 'ok' as const,
       asOf: now,
@@ -434,8 +483,8 @@ async function fetchARKK(): Promise<MarketDataItem> {
       value: price,
       change,
       change_percent: changePercent,
-      prevClose: previousClose,
-      prevDayValue: previousClose,
+      prevClose: previousClose as number | undefined,
+      prevDayValue: previousClose as number | undefined,
       unit: 'USD',
       status: 'ok' as const,
       asOf: now,
@@ -454,7 +503,7 @@ async function fetchARKK(): Promise<MarketDataItem> {
     };
   };
   
-  const fallbackFn = async () => {
+  const fallbackFn = async (): Promise<MarketDataItem> => {
     const response = await fetch('https://stooq.com/q/l/?s=arkk&f=sd2t2ohlcv&h&e=csv');
     
     if (!response.ok) {
@@ -578,8 +627,8 @@ async function fetchGold(): Promise<MarketDataItem> {
       value: price,
       change,
       change_percent: changePercent,
-      prevClose: previousClose, // Add prevClose field
-      prevDayValue: previousClose, // Alias for prevClose
+      prevClose: previousClose as number | undefined, // Add prevClose field
+      prevDayValue: previousClose as number | undefined, // Alias for prevClose
       unit: 'USD/oz',
       status: 'ok' as const,
       asOf: now,
@@ -595,6 +644,55 @@ async function fetchGold(): Promise<MarketDataItem> {
       debug: {
         data_source: 'yahoo_finance_api',
         api_response: { price, previousClose, change, changePercent },
+      },
+    };
+  };
+  
+  const fallbackFn = async (): Promise<MarketDataItem> => {
+    const response = await fetch('https://stooq.com/q/l/?s=xauusd&f=sd2t2ohlcv&h&e=csv');
+    
+    if (!response.ok) {
+      throw new Error(`Stooq API error: ${response.statusText}`);
+    }
+    
+    const text = await response.text();
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) {
+      throw new Error('Invalid CSV data from Stooq');
+    }
+    
+    const data = lines[1].split(',');
+    const price = parseFloat(data[5]); // Close price
+    const prevClose = parseFloat(data[3]); // Open price (approximation)
+    
+    if (isNaN(price) || price <= 0) {
+      throw new Error('Invalid price data from Stooq');
+    }
+    
+    const change = !isNaN(prevClose) ? price - prevClose : undefined;
+    const changePercent = prevClose && change !== undefined ? (change / prevClose) * 100 : undefined;
+    
+    return {
+      name: 'Gold',
+      value: price,
+      change,
+      change_percent: changePercent,
+      prevClose: !isNaN(prevClose) ? prevClose : undefined,
+      prevDayValue: !isNaN(prevClose) ? prevClose : undefined,
+      unit: 'USD/oz',
+      status: 'ok' as const,
+      asOf: now,
+      source: {
+        name: 'Stooq',
+        url: 'https://stooq.com/q/?s=xauusd',
+      },
+      ttlSeconds: 600,
+      source_name: 'Stooq',
+      source_url: 'https://stooq.com/q/?s=xauusd',
+      as_of: now,
+      debug: {
+        data_source: 'stooq_csv',
+        api_response: { price, prevClose, change, changePercent },
       },
     };
   };

@@ -117,7 +117,7 @@ async function fetchBlogHTML(): Promise<string> {
       if (detectedCharset === 'utf-8' || detectedCharset === 'utf8') {
         html = buf.toString('utf-8');
       } else {
-        html = iconv.decode(buf, detectedCharset);
+        html = iconv.decode(buf, detectedCharset).toString();
       }
       console.log(`[Blog Community] Successfully decoded HTML using ${encodingUsed}`);
     } catch (decodeError) {
@@ -131,7 +131,7 @@ async function fetchBlogHTML(): Promise<string> {
     if (html.includes('') || html.match(/[\uFFFD]/)) {
       console.warn('[Blog Community] HTML contains replacement characters, trying GBK');
       try {
-        html = iconv.decode(buf, 'gbk');
+        html = iconv.decode(buf, 'gbk').toString();
         encodingUsed = 'gbk';
         console.log('[Blog Community] Successfully re-decoded HTML using GBK');
       } catch (error) {
@@ -158,7 +158,7 @@ async function fetchBlogHTML(): Promise<string> {
 /**
  * Extract published date from text near the link
  */
-function extractPublishedAt($link: cheerio.Cheerio): string | undefined {
+function extractPublishedAt($link: cheerio.Cheerio<any>): string | undefined {
   // Look for date patterns like (2025-01-15 12:30:45) or 2025-01-15
   const $parent = $link.parent();
   const $siblings = $link.siblings();
@@ -192,16 +192,13 @@ function extractPublishedAt($link: cheerio.Cheerio): string | undefined {
  * Parse HTML and extract blog posts from the "博文" section
  */
 function parseBlogPosts(html: string): BlogItem[] {
-  const $ = cheerio.load(html, {
-    decodeEntities: true,
-    normalizeWhitespace: false,
-  });
+  const $ = cheerio.load(html);
   
   const items: BlogItem[] = [];
   const seenUrls = new Set<string>();
   
   // Step 1: Find the "博文" section header
-  let $blogSection: cheerio.Cheerio | null = null;
+  let $blogSection: cheerio.Cheerio<any> | null = null;
   
   // Try to find header with text "博文"
   $('h1, h2, h3, h4, h5, h6, .title, .header, [class*="title"], [class*="header"]').each((_, element) => {
@@ -235,7 +232,7 @@ function parseBlogPosts(html: string): BlogItem[] {
   console.log(`[Blog Community] Found "博文" section, scanning ${$blogSection.length} elements`);
   
   // Step 2: Find all links in the blog section that match the real post URL pattern
-  $blogSection.find('a').each((_, element) => {
+  $blogSection.find('a').each((_: number, element: any) => {
     const $link = $(element);
     const href = $link.attr('href');
     

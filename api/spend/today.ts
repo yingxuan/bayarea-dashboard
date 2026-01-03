@@ -638,9 +638,7 @@ async function fetchPlacesForCategory(
 
         // Determine city name from coordinates (approximate)
         let cityName = city.charAt(0).toUpperCase() + city.slice(1).replace(' ', ' ');
-        if (city === 'sanjose') {
-          cityName = 'San Jose';
-        }
+        // Note: city is 'cupertino' | 'sunnyvale', so 'sanjose' check is not needed
         
         // Get Google Places ranking (lower = better, from placeOrderMap)
         const googlePlacesRank = placeOrderMap.get(result.place_id) ?? Infinity;

@@ -32,6 +32,8 @@ const MARKET_NEWS_CACHE_TTL = 7.5 * 60 * 1000; // 7.5 minutes (5-10 min range) -
 const LAST_NON_EMPTY_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours - for last_non_empty cache
 const FETCH_TIMEOUT = 10000; // 10 seconds
 const GOOGLE_FINANCE_URL = 'https://www.google.com/finance'; // @deprecated - no longer used
+const TRANSLATION_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const GEMINI_TIMEOUT = 30000; // 30 seconds
 
 // Reliable Chinese US stock RSS sources (only 新浪财经美股)
 const RSS_SOURCES = [
@@ -566,16 +568,14 @@ async function fetchGoogleFinanceHTML(): Promise<string> {
  * @deprecated No longer used - only 华尔街见闻 is used as data source
  */
 function parseGoogleFinanceNews(html: string): MarketNewsItem[] {
-  const $ = cheerio.load(html, {
-    normalizeWhitespace: false,
-  });
+  const $ = cheerio.load(html);
 
   const items: MarketNewsItem[] = [];
   const seenUrls = new Set<string>();
 
   // Look for "Today's financial news" section
   // Try to find section header first
-  let $newsSection: cheerio.Cheerio<cheerio.Element> | null = null;
+  let $newsSection: cheerio.Cheerio<any> | null = null;
   
   // Common selectors for news section
   const sectionSelectors = [
@@ -620,7 +620,7 @@ function parseGoogleFinanceNews(html: string): MarketNewsItem[] {
   ];
 
   for (const selector of linkSelectors) {
-    $searchArea.find(selector).each((_: number, element: cheerio.Element) => {
+    $searchArea.find(selector).each((_: number, element: any) => {
       if (items.length >= 10) {
         return false; // Collect more for filtering
       }

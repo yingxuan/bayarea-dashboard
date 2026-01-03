@@ -20,6 +20,7 @@ import {
   getCachedData,
   setCache,
   getStaleCache,
+  cache,
 } from '../utils.js';
 import { ModulePayload } from '../../shared/types.js';
 import { ttlMsToSeconds } from '../../shared/config.js';
@@ -393,12 +394,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const cacheKey = 'portfolio-value-series';
     const stale = getStaleCache(cacheKey);
     if (stale) {
+      const cached = cache.get(cacheKey);
       const payload = stale.data as ModulePayload<ValueDataPoint>;
       return res.status(200).json({
         ...payload,
         cache_hit: true,
         cache_mode: 'stale',
-        cache_age_seconds: Math.floor((Date.now() - stale.timestamp) / 1000),
+        cache_age_seconds: cached ? Math.floor((Date.now() - cached.timestamp) / 1000) : 0,
         cache_expires_in_seconds: 0,
       });
     }

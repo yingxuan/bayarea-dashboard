@@ -451,13 +451,7 @@ async function fetch1P3A(nocache: boolean = false): Promise<ModulePayload<Gossip
     }
     
     // Parse HTML using the same approach as leeks.ts
-    const $ = cheerio.load(html, {
-      decodeEntities: true,
-      normalizeWhitespace: false,
-      xml: {
-        decodeEntities: true,
-      },
-    });
+    const $ = cheerio.load(html);
     
     const items: GossipItem[] = [];
     const seenUrls = new Set<string>();

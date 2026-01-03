@@ -98,7 +98,7 @@ function isRelevant(post: {
       (post.replyCount && post.replyCount >= 10) ||
       (post.viewCount && post.viewCount >= 100) ||
       (post.hotScore && post.hotScore >= 20);
-    return hasEngagement;
+    return Boolean(hasEngagement);
   }
   
   // Older than 7 days: only high heat posts
@@ -106,7 +106,7 @@ function isRelevant(post: {
     (post.replyCount && post.replyCount >= 50) ||
     (post.viewCount && post.viewCount >= 500) ||
     (post.hotScore && post.hotScore >= 80);
-  return hasHighHeat;
+  return Boolean(hasHighHeat);
 }
 
 /**
@@ -367,10 +367,7 @@ async function fetchHuarenGossip(): Promise<ChineseGossipItem[]> {
     console.log(`[Chinese Gossip] 📝 Detected encoding: ${encoding}`);
     const html = iconv.decode(buf, encoding);
     
-    const $ = cheerio.load(html, {
-      decodeEntities: true,
-      normalizeWhitespace: false,
-    });
+    const $ = cheerio.load(html);
     
     const items: ChineseGossipItem[] = [];
     const seenUrls = new Set<string>();

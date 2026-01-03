@@ -222,13 +222,7 @@ async function fetchForumHTML(): Promise<string> {
  * Robust parsing with filtering for sticky posts, navigation links, etc.
  */
 function parseForumPosts(html: string): CommunityItem[] {
-  const $ = cheerio.load(html, {
-    decodeEntities: true,
-    normalizeWhitespace: false,
-    xml: {
-      decodeEntities: true,
-    },
-  });
+  const $ = cheerio.load(html);
   
   const items: CommunityItem[] = [];
   const seenTitles = new Set<string>();
@@ -259,7 +253,7 @@ function parseForumPosts(html: string): CommunityItem[] {
   /**
    * Extract post from a tbody element
    */
-  function extractPostFromTbody($tbody: cheerio.Cheerio): CommunityItem | null {
+  function extractPostFromTbody($tbody: cheerio.Cheerio<any>): CommunityItem | null {
     // D) Extract titles robustly (MANDATORY)
     // 1) Find title anchor:
     //    - const a = $(tbody).find("a.s.xst").first();
@@ -352,7 +346,7 @@ function parseForumPosts(html: string): CommunityItem[] {
     // Strategy 4: direct text nodes (contents with nodeType 3)
     if (!title || title.length === 0) {
       const textNodes: string[] = [];
-      $titleLink.contents().each((_, node) => {
+      $titleLink.contents().each((_: number, node: any) => {
         // Cheerio node type: 'text' for text nodes
         if (node.type === 'text' || (node as any).nodeType === 3) {
           const text = (node as any).data || (node as any).nodeValue;
@@ -694,10 +688,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log('[API /api/community/leeks] Cache bypass requested via ?nocache=1');
     }
 
-    // Fetch fresh data
-    const result1point3acres = cached1point3acres 
-      ? Promise.resolve({ items: cached1point3acres.data.items || [], status: 'ok' as const }) 
-      : fetch1point3acresPosts();
+    // Fetch fresh data (cached1point3acres is falsy here since we returned early if it existed)
+    const result1point3acres = fetch1point3acresPosts();
 
     const result = await result1point3acres;
     const fetchedAtISO = new Date().toISOString();
