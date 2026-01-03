@@ -21,8 +21,8 @@ import ChineseGossip from "@/components/ChineseGossip";
 import PortfolioHero from "@/components/PortfolioHero";
 import MarketSnapshotCarousel from "@/components/MarketSnapshotCarousel";
 import CommunityVideoCarousel from "@/components/CommunityVideoCarousel";
-import ShowsCarousel from "@/components/ShowsCarousel";
 import DealsCarousel from "@/components/DealsCarousel";
+import ShowsCarousel from "@/components/ShowsCarousel";
 import { useHoldings } from "@/hooks/useHoldings";
 import { QuoteData } from "@/hooks/usePortfolioSummary";
 import { config } from "@/config";
@@ -115,7 +115,7 @@ export default function Home() {
   }, [holdings, holdingsLoaded]);
 
   // Section 3: 追剧吃瓜薅羊毛
-  const [shows, setShows] = useState<any[]>([]); // 电视剧
+  const [shows, setShows] = useState<any[]>([]); // 追剧
   const [deals, setDeals] = useState<any[]>([]); // 薅羊毛
 
   useEffect(() => {
@@ -170,18 +170,32 @@ export default function Home() {
         setStockYoutubers([]);
       }
 
-      // Section 3: 追剧吃瓜薅羊毛 - 电视剧
+      // Section 3: 追剧吃瓜薅羊毛 - 追剧
       try {
-        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/shows`);
+        // Build API URL - handle both absolute URLs and relative paths
+        let apiUrl: string;
+        if (config.apiBaseUrl && !config.apiBaseUrl.startsWith('/')) {
+          // Absolute URL
+          apiUrl = `${config.apiBaseUrl}/api/shows`;
+        } else {
+          // Relative path
+          const baseUrl = config.apiBaseUrl || '';
+          apiUrl = `${baseUrl}/api/shows`;
+        }
+        
+        console.log('[Home] Fetching shows from:', apiUrl);
+        const response = await fetchWithTimeout(apiUrl);
         if (response.ok) {
           const result = await response.json();
           const showsItems = result.items || result.shows || [];
-          setShows(showsItems.slice(0, 3)); // Top 3 shows
+          console.log('[Home] ✅ Fetched shows:', showsItems.length, 'items');
+          setShows(showsItems); // All videos, no limit
         } else {
+          console.warn('[Home] Shows API returned:', response.status, response.statusText);
           setShows([]);
         }
       } catch (error) {
-        console.error("[Home] Failed to fetch shows:", error);
+        console.error("[Home] ❌ Failed to fetch shows:", error);
         setShows([]);
       }
 
@@ -269,7 +283,7 @@ export default function Home() {
               </h1>
             </div>
 
-            {/* 1) Horizontal carousel: 追剧 (swipe) */}
+            {/* 1) Horizontal carousel: 追剧 */}
             {shows.length > 0 && (
               <div className="w-full min-w-0 overflow-hidden">
                 <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">追剧</h3>
@@ -277,19 +291,56 @@ export default function Home() {
               </div>
             )}
 
-            {/* 2) Vertical feed: 吃瓜 */}
-            <div className="w-full min-w-0">
-              <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">吃瓜</h3>
-              <ChineseGossip maxItems={10} />
-            </div>
-
-            {/* 3) Horizontal carousel: 薅羊毛 */}
-            {deals.length > 0 && (
-              <div className="w-full min-w-0 overflow-hidden">
-                <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">薅羊毛</h3>
-                <DealsCarousel deals={deals} />
+            {/* 2) Horizontal row: 吃瓜 and 薅羊毛 */}
+            <div className="w-full min-w-0 flex flex-col md:flex-row gap-3">
+              {/* 吃瓜 - Left side */}
+              <div className="w-full md:w-1/2 min-w-0">
+                <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">吃瓜</h3>
+                <ChineseGossip maxItems={3} />
               </div>
-            )}
+
+              {/* 薅羊毛 - Right side - Vertical 3 cards */}
+              {deals.length > 0 && (
+                <div className="w-full md:w-1/2 min-w-0">
+                  <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">薅羊毛</h3>
+                  <div className="space-y-3">
+                    {deals.slice(0, 3).map((deal) => (
+                      <a
+                        key={deal.id}
+                        href={deal.external_url || deal.url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block p-3 rounded-sm bg-card/50 border border-border/50 hover:bg-card/80 hover:border-primary/50 transition-all group"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-xs text-muted-foreground font-mono">{deal.store || 'Deal'}</span>
+                              <span className="text-xs text-muted-foreground">•</span>
+                              <span className="text-xs text-muted-foreground">{deal.time_ago || ''}</span>
+                              {deal.score > 0 && (
+                                <>
+                                  <span className="text-xs text-muted-foreground">•</span>
+                                  <span className="text-xs text-primary font-mono font-bold">↑{deal.score}</span>
+                                </>
+                              )}
+                            </div>
+                            <h4 className="text-sm font-semibold group-hover:text-primary transition-colors line-clamp-2 flex-1 leading-relaxed">
+                              {deal.title}
+                            </h4>
+                            {deal.comments > 0 && (
+                              <div className="mt-1.5 text-xs text-muted-foreground font-mono">
+                                💬 {deal.comments} 评论
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </section>
         </div>
       </main>

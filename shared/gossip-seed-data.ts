@@ -14,28 +14,28 @@ export interface GossipSeedItem {
 
 /**
  * Seed data for Chinese gossip
- * These are example topics that are always relevant to Bay Area Chinese community
+ * Only huaren.us items as fallback
  */
 export const GOSSIP_SEED_DATA: GossipSeedItem[] = [
   {
     id: 'seed_1',
-    title: '湾区科技公司最新裁员动态',
-    url: 'https://www.reddit.com/r/bayarea',
-    source: 'reddit',
+    title: '华人闲话版块最新讨论',
+    url: 'https://huaren.us/showforum.html?forumid=398',
+    source: 'huaren',
     publishedAt: new Date().toISOString(),
   },
   {
     id: 'seed_2',
-    title: 'H1B 和绿卡政策最新变化',
-    url: 'https://www.reddit.com/r/cscareerquestions',
-    source: 'reddit',
+    title: '湾区华人社区热门话题',
+    url: 'https://huaren.us/showforum.html?forumid=398',
+    source: 'huaren',
     publishedAt: new Date().toISOString(),
   },
   {
     id: 'seed_3',
-    title: 'AI 行业薪资和跳槽趋势',
-    url: 'https://news.ycombinator.com',
-    source: 'hn',
+    title: '查看华人闲话版块',
+    url: 'https://huaren.us/showforum.html?forumid=398',
+    source: 'huaren',
     publishedAt: new Date().toISOString(),
   },
 ];

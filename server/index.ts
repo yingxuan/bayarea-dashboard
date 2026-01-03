@@ -17,7 +17,8 @@ import {
   spendTodayRoute,
   leekCommunityRoute,
   blogCommunityRoute,
-  marketNewsRoute
+  marketNewsRoute,
+  chineseGossipRoute
 } from "./local-api-adapter.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -66,6 +67,8 @@ async function startServer() {
   app.options('/api/community/blogs', (_req, res) => res.sendStatus(200));
   app.get('/api/market-news', marketNewsRoute);
   app.options('/api/market-news', (_req, res) => res.sendStatus(200));
+  app.get('/api/chinese-gossip', chineseGossipRoute);
+  app.options('/api/chinese-gossip', (_req, res) => res.sendStatus(200));
   
   // Mount legacy API routes (if any)
   app.use(apiRouter);
@@ -99,7 +102,8 @@ async function startServer() {
             "/api/spend/today",
             "/api/community/leeks",
             "/api/community/blogs",
-            "/api/market-news"
+            "/api/market-news",
+            "/api/chinese-gossip"
           ]
         });
       }

@@ -18,6 +18,7 @@ import spendTodayHandler from '../api/spend/today.js';
 import leekCommunityHandler from '../api/community/leeks.js';
 import marketNewsHandler from '../api/market-news.js';
 import blogCommunityHandler from '../api/community/blogs.js';
+import chineseGossipHandler from '../api/chinese-gossip.js';
 
 /**
  * Convert Express Request/Response to Vercel Request/Response
@@ -240,6 +241,22 @@ export async function blogCommunityRoute(req: Request, res: Response) {
     await blogCommunityHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Blog Community route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Chinese Gossip API route
+ */
+export async function chineseGossipRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await chineseGossipHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Chinese Gossip route error:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

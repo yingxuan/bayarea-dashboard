@@ -35,10 +35,10 @@ import {
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
 const SPEND_TODAY_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
-// Maximum distance in miles (HARD LIMIT)
-const MAX_DISTANCE_MILES = 10;
+// Maximum distance in miles from city center (Cupertino or Sunnyvale)
+const MAX_DISTANCE_MILES = 8; // 8 miles from city center
 
-// City coordinates (latitude, longitude) - used as fallback if user location not provided
+// City coordinates (latitude, longitude) - only Cupertino and Sunnyvale
 const CITY_COORDS = {
   cupertino: { lat: 37.3230, lng: -122.0322 },
   sunnyvale: { lat: 37.3688, lng: -122.0363 },
@@ -49,10 +49,10 @@ const DEFAULT_CENTER = CITY_COORDS.cupertino;
 
 // Category to keyword mapping for Nearby Search
 const CATEGORY_KEYWORDS = {
-  '奶茶': ['bubble tea', 'boba', '奶茶'],
+  '奶茶': ['bubble tea', 'boba', 'milk tea', '奶茶', 'chinese bubble tea', 'chinese boba', '珍珠奶茶', '台式奶茶', '港式奶茶', 'bubble tea 奶茶'],
   '中餐': ['chinese restaurant', '中餐'],
   '咖啡': ['coffee', 'cafe'],
-  '夜宵': ['late night food', 'night snack', 'open late', '24 hours', '烧烤', '串串', '火锅', '宵夜'],
+  '夜宵': ['烤串', '火锅', '串串', '烧烤', 'hot pot', 'bbq', 'chinese bbq', 'chinese hot pot', '烧烤店', '火锅店', '串串店'],
 } as const;
 
 // Category to type mapping (for Nearby Search)
@@ -60,7 +60,7 @@ const CATEGORY_TYPES = {
   '奶茶': 'cafe', // Use cafe as base type for bubble tea
   '中餐': 'restaurant',
   '咖啡': 'cafe',
-  '夜宵': 'restaurant', // Use restaurant as base type for night snacks
+  '夜宵': 'restaurant', // Use restaurant as base type for BBQ and hot pot
 } as const;
 
 interface GooglePlaceResult {
@@ -95,6 +95,7 @@ interface SpendPlace {
   city: string;
   score: number;
   distance_miles?: number; // Optional, calculated from coordinates
+  googlePlacesRank?: number; // Google Places ranking (lower = better, from placeOrderMap)
 }
 
 /**
@@ -107,12 +108,42 @@ function calculatePopularityScore(rating: number, userRatingsTotal: number): num
 }
 
 /**
+ * Calculate combined ranking score considering:
+ * 1. Google Places ranking (lower = better)
+ * 2. New business indicator (fewer reviews = newer = better)
+ * 
+ * Returns a score where lower = better ranking
+ */
+function calculateCombinedRankingScore(
+  googlePlacesRank: number,
+  userRatingsTotal: number
+): number {
+  // Google Places rank weight: 70% (primary factor)
+  const googleRankWeight = 0.7;
+  
+  // New business bonus: 30% (fewer reviews = newer = better)
+  // Normalize review count: 0-100 reviews = bonus, 100+ reviews = no bonus
+  // Use log scale to give more bonus to very new places (0-20 reviews)
+  const maxReviewsForBonus = 100;
+  const normalizedReviewCount = Math.min(userRatingsTotal, maxReviewsForBonus) / maxReviewsForBonus;
+  const newBusinessBonus = (1 - normalizedReviewCount) * 100; // 0-100 bonus points
+  
+  // Combine: Google Places rank (lower is better) + new business bonus (lower is better)
+  // We want to minimize the combined score
+  const combinedScore = (googlePlacesRank * googleRankWeight) + (newBusinessBonus * (1 - googleRankWeight));
+  
+  return combinedScore;
+}
+
+/**
  * Search Google Places using Nearby Search API
  * Returns places within radius, filtered by keyword
+ * Google Places API returns results sorted by relevance (best matches first)
+ * Maximum radius: 50000 meters (~31 miles)
  */
 async function searchGooglePlacesNearby(
   location: { lat: number; lng: number },
-  radius: number = 8047, // 5 miles in meters
+  radius: number = 50000, // Maximum allowed: 50000 meters (~31 miles)
   type?: string,
   keyword?: string
 ): Promise<GooglePlaceResult[]> {
@@ -156,10 +187,20 @@ async function searchGooglePlacesNearby(
 /**
  * Get place details (for photos, URL, and opening hours)
  */
+interface OpeningHoursPeriod {
+  open: { day: number; time: string };
+  close?: { day: number; time: string };
+}
+
 async function getPlaceDetails(placeId: string): Promise<{
   photo_reference?: string;
   url?: string;
-  opening_hours?: { open_now?: boolean };
+  opening_hours?: { 
+    open_now?: boolean;
+    periods?: OpeningHoursPeriod[];
+    weekday_text?: string[];
+  };
+  types?: string[];
 }> {
   if (!GOOGLE_PLACES_API_KEY) {
     return {};
@@ -168,7 +209,7 @@ async function getPlaceDetails(placeId: string): Promise<{
   try {
     const params = new URLSearchParams({
       place_id: placeId,
-      fields: 'photos,url,opening_hours',
+      fields: 'photos,url,opening_hours,types',
       key: GOOGLE_PLACES_API_KEY,
     });
 
@@ -181,7 +222,16 @@ async function getPlaceDetails(placeId: string): Promise<{
     }
 
     const data = await response.json();
-    const result: { photo_reference?: string; url?: string; opening_hours?: { open_now?: boolean } } = {};
+    const result: { 
+      photo_reference?: string; 
+      url?: string; 
+      opening_hours?: { 
+        open_now?: boolean;
+        periods?: OpeningHoursPeriod[];
+        weekday_text?: string[];
+      }; 
+      types?: string[] 
+    } = {};
     
     if (data.result?.photos && data.result.photos.length > 0) {
       result.photo_reference = data.result.photos[0].photo_reference;
@@ -192,7 +242,15 @@ async function getPlaceDetails(placeId: string): Promise<{
     }
     
     if (data.result?.opening_hours) {
-      result.opening_hours = data.result.opening_hours;
+      result.opening_hours = {
+        open_now: data.result.opening_hours.open_now,
+        periods: data.result.opening_hours.periods,
+        weekday_text: data.result.opening_hours.weekday_text,
+      };
+    }
+    
+    if (data.result?.types && Array.isArray(data.result.types)) {
+      result.types = data.result.types;
     }
 
     return result;
@@ -201,6 +259,38 @@ async function getPlaceDetails(placeId: string): Promise<{
   }
 
   return {};
+}
+
+/**
+ * Check if restaurant opens till 11pm or later
+ * Returns true if at least one day closes at 11pm (23:00) or later
+ */
+function opensTill11pmOrLater(openingHours?: { periods?: OpeningHoursPeriod[] }): boolean {
+  if (!openingHours?.periods || openingHours.periods.length === 0) {
+    return false; // No opening hours data, can't verify
+  }
+  
+  // Check each period (each day's opening hours)
+  for (const period of openingHours.periods) {
+    if (period.close) {
+      const closeTime = period.close.time; // Format: "2300" (24-hour format, string)
+      const closeHour = parseInt(closeTime.substring(0, 2), 10);
+      const closeMinute = parseInt(closeTime.substring(2, 4), 10);
+      
+      // Check if closes at 11pm (23:00) or later
+      // 11pm = 23:00 = 2300
+      if (closeHour >= 23) {
+        return true;
+      }
+      
+      // Also check if closes at 10:30pm or later (some places close at 10:30pm, which is close enough)
+      if (closeHour === 22 && closeMinute >= 30) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
 }
 
 /**
@@ -229,8 +319,7 @@ function calculateDistanceMiles(
  */
 async function fetchPlacesForCategory(
   city: keyof typeof CITY_COORDS,
-  category: keyof typeof CATEGORY_KEYWORDS,
-  userLocation?: { lat: number; lng: number }
+  category: keyof typeof CATEGORY_KEYWORDS
 ): Promise<SpendPlace[]> {
   // IMPORTANT: Use English category values to avoid encoding issues
   // Frontend will map these back to Chinese for display
@@ -253,15 +342,20 @@ async function fetchPlacesForCategory(
   const categoryChinese = categoryToChinese[categoryEnglish] || category;
   console.log(`[fetchPlacesForCategory] Category: "${category}" -> English: "${categoryEnglish}", Chinese: "${categoryChinese}"`);
   
-  // Use user location if provided, otherwise use city center
-  const searchCenter = userLocation || CITY_COORDS[city];
+  // Use city center (not user location) to ensure consistent results
+  // This ensures we only get places near Cupertino or Sunnyvale
+  const searchCenter = CITY_COORDS[city];
   const keywords = CATEGORY_KEYWORDS[category];
   const type = CATEGORY_TYPES[category];
-  // Search radius: 10 miles in meters (16093 meters)
-  const RADIUS_METERS = 16093; // ~10 miles
+  // Search radius: 8 miles in meters (12874 meters)
+  // This limits results to Cupertino and Sunnyvale area only
+  const RADIUS_METERS = 12874; // ~8 miles
   
   const allPlaces: SpendPlace[] = [];
   const seenPlaceIds = new Set<string>();
+  // Track original order from Google Places API (results are already sorted by relevance)
+  const placeOrderMap = new Map<string, number>();
+  let globalOrderIndex = 0;
 
       for (const keyword of keywords) {
     try {
@@ -274,10 +368,19 @@ async function fetchPlacesForCategory(
 
       console.log(`[Spend Today] Found ${results.length} results for ${category} in ${city} with keyword "${keyword}"`);
 
-      for (const result of results) {
+      // Google Places API returns results sorted by relevance (best matches first)
+      // We preserve this order by tracking the index
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        
         // Skip if already seen (from previous keyword)
         if (seenPlaceIds.has(result.place_id)) continue;
         seenPlaceIds.add(result.place_id);
+        
+        // Track original order from Google Places ranking
+        if (!placeOrderMap.has(result.place_id)) {
+          placeOrderMap.set(result.place_id, globalOrderIndex++);
+        }
 
         // Very lenient filtering - accept places even without ratings
         const rating = result.rating || 0;
@@ -291,7 +394,7 @@ async function fetchPlacesForCategory(
         // If no geometry, skip (we need location data)
         if (!result.geometry?.location) continue;
         
-        // Calculate distance from user location (or city center)
+        // Calculate distance from city center
         const distanceMiles = calculateDistanceMiles(
           searchCenter.lat,
           searchCenter.lng,
@@ -299,41 +402,103 @@ async function fetchPlacesForCategory(
           result.geometry.location.lng
         );
         
-        // HARD LIMIT: Discard places > 10 miles
+        // HARD LIMIT: Only keep places within 8 miles of city center (Cupertino or Sunnyvale)
         if (distanceMiles > MAX_DISTANCE_MILES) {
-          console.log(`[Spend Today] Discarding "${result.name}" - distance ${distanceMiles.toFixed(1)} miles > ${MAX_DISTANCE_MILES} miles`);
+          console.log(`[Spend Today] ❌ FILTERED OUT ${category}: "${result.name}" - Reason: distance ${distanceMiles.toFixed(1)} miles > ${MAX_DISTANCE_MILES} miles from ${city}`);
           continue;
         }
 
         // Get place details for photos, URL, and opening hours
         const details = await getPlaceDetails(result.place_id);
         
-        // Special filtering for 夜宵 category
-        if (category === '夜宵') {
-          const isNightTime = (() => {
-            const now = new Date();
-            const localHour = now.getHours();
-            const localMinute = now.getMinutes();
-            const localTimeMinutes = localHour * 60 + localMinute;
-            // 8:30 PM = 20:30 = 20 * 60 + 30 = 1230 minutes
-            return localTimeMinutes >= 1230;
-          })();
-          
-          const hasOpeningHours = details.opening_hours?.open_now === true;
+        // Special filtering for 奶茶 category - accept bubble tea shops
+        // Since we're searching with bubble tea/boba keywords, Google Places already filters for bubble tea shops
+        // We just need to ensure it's a cafe/restaurant type, not filter by Chinese keywords too strictly
+        if (category === '奶茶') {
           const nameLower = result.name.toLowerCase();
-          const hasNightKeywords = 
-            nameLower.includes('夜宵') ||
-            nameLower.includes('open late') ||
-            nameLower.includes('24 hours') ||
-            nameLower.includes('24hr') ||
-            nameLower.includes('midnight') ||
-            nameLower.includes('late night');
+          const placeTypes = details.types || [];
           
-          // Must satisfy: (open_now AND night time) OR has night keywords
-          if (!((hasOpeningHours && isNightTime) || hasNightKeywords)) {
-            console.log(`[Spend Today] Discarding "${result.name}" from 夜宵 - doesn't meet night snack criteria`);
+          // Check each condition and log why it's being filtered
+          const hasCafeType = placeTypes.includes('cafe');
+          const hasRestaurantType = placeTypes.includes('restaurant');
+          const hasFoodType = placeTypes.includes('food');
+          const hasBubbleTeaInName = nameLower.includes('bubble tea');
+          const hasBobaInName = nameLower.includes('boba');
+          const hasMilkTeaInName = nameLower.includes('奶茶');
+          const hasZhenzhuInName = nameLower.includes('珍珠奶茶');
+          const hasTapiocaInName = nameLower.includes('tapioca');
+          const hasMilkTeaKeyword = nameLower.includes('milk tea');
+          
+          // Accept if it's a cafe or restaurant (Google Places already filtered by bubble tea/boba keywords)
+          // Also accept if name contains bubble tea related keywords
+          const isBubbleTeaShop = 
+            hasCafeType ||
+            hasRestaurantType ||
+            hasFoodType ||
+            hasBubbleTeaInName ||
+            hasBobaInName ||
+            hasMilkTeaInName ||
+            hasZhenzhuInName ||
+            hasTapiocaInName ||
+            hasMilkTeaKeyword;
+          
+          // Only reject if it's clearly not a bubble tea shop
+          if (!isBubbleTeaShop) {
+            const reasons = [];
+            if (!hasCafeType && !hasRestaurantType && !hasFoodType) {
+              reasons.push(`no cafe/restaurant/food type (types: ${placeTypes.join(', ') || 'none'})`);
+            }
+            if (!hasBubbleTeaInName && !hasBobaInName && !hasMilkTeaInName && !hasZhenzhuInName && !hasTapiocaInName && !hasMilkTeaKeyword) {
+              reasons.push('no bubble tea keywords in name');
+            }
+            console.log(`[Spend Today] ❌ FILTERED OUT 奶茶: "${result.name}" - Reasons: ${reasons.join('; ')}`);
+            continue;
+          } else {
+            // Log why it was accepted
+            const acceptReasons = [];
+            if (hasCafeType) acceptReasons.push('cafe type');
+            if (hasRestaurantType) acceptReasons.push('restaurant type');
+            if (hasFoodType) acceptReasons.push('food type');
+            if (hasBubbleTeaInName) acceptReasons.push('"bubble tea" in name');
+            if (hasBobaInName) acceptReasons.push('"boba" in name');
+            if (hasMilkTeaInName) acceptReasons.push('"奶茶" in name');
+            if (hasZhenzhuInName) acceptReasons.push('"珍珠奶茶" in name');
+            if (hasTapiocaInName) acceptReasons.push('"tapioca" in name');
+            if (hasMilkTeaKeyword) acceptReasons.push('"milk tea" in name');
+            console.log(`[Spend Today] ✅ ACCEPTED 奶茶: "${result.name}" - Reasons: ${acceptReasons.join(', ')}`);
+          }
+        }
+        
+        // Special filtering for 夜宵 category
+        // Requirements: 烤串/火锅 AND opens till 11pm or later
+        if (category === '夜宵') {
+          const nameLower = result.name.toLowerCase();
+          
+          // Step 1: Check if it's 烤串 or 火锅 (BBQ skewers or hot pot)
+          const isBBQSkewersOrHotPot = 
+            nameLower.includes('烤串') ||
+            nameLower.includes('串串') ||
+            nameLower.includes('火锅') ||
+            nameLower.includes('hot pot') ||
+            nameLower.includes('bbq') ||
+            nameLower.includes('烧烤') ||
+            nameLower.includes('烤肉');
+          
+          if (!isBBQSkewersOrHotPot) {
+            console.log(`[Spend Today] ❌ FILTERED OUT 夜宵: "${result.name}" - Reason: not 烤串/火锅 (BBQ skewers/hot pot)`);
             continue;
           }
+          
+          // Step 2: Check if opens till 11pm or later
+          const opensLate = opensTill11pmOrLater(details.opening_hours);
+          
+          if (!opensLate) {
+            console.log(`[Spend Today] ❌ FILTERED OUT 夜宵: "${result.name}" - Reason: does not open till 11pm or later`);
+            continue;
+          }
+          
+          // Both conditions met
+          console.log(`[Spend Today] ✅ ACCEPTED 夜宵: "${result.name}" - Reasons: 烤串/火锅, opens till 11pm+`);
         }
         
         let photoUrl: string | undefined;
@@ -347,6 +512,15 @@ async function fetchPlacesForCategory(
         // Use Chinese category for the place object (for frontend display)
         console.log(`[Spend Today] Setting place category to: "${categoryChinese}" for place: ${result.name}`);
         
+        // Determine city name from coordinates (approximate)
+        let cityName = city.charAt(0).toUpperCase() + city.slice(1).replace(' ', ' ');
+        if (city === 'sanjose') {
+          cityName = 'San Jose';
+        }
+        
+        // Get Google Places ranking (lower = better, from placeOrderMap)
+        const googlePlacesRank = placeOrderMap.get(result.place_id) ?? Infinity;
+        
         const place: SpendPlace = {
           id: result.place_id,
           name: result.name,
@@ -356,9 +530,10 @@ async function fetchPlacesForCategory(
           address: result.formatted_address || '',
           maps_url: mapsUrl,
           photo_url: photoUrl,
-          city: city.charAt(0).toUpperCase() + city.slice(1).replace(' ', ' '),
-          score: calculatePopularityScore(finalRating, finalUserRatingsTotal),
+          city: cityName,
+          score: calculatePopularityScore(finalRating, finalUserRatingsTotal), // Keep for backward compatibility
           distance_miles: parseFloat(distanceMiles.toFixed(1)),
+          googlePlacesRank: googlePlacesRank, // Store Google Places ranking
         };
 
         allPlaces.push(place);
@@ -372,23 +547,46 @@ async function fetchPlacesForCategory(
     }
   }
 
+  // Sort by combined ranking: Google Places rank + new business bonus
+  // Lower score = better ranking
+  allPlaces.sort((a, b) => {
+    const rankA = placeOrderMap.get(a.id) ?? Infinity;
+    const rankB = placeOrderMap.get(b.id) ?? Infinity;
+    const scoreA = calculateCombinedRankingScore(rankA, a.user_ratings_total);
+    const scoreB = calculateCombinedRankingScore(rankB, b.user_ratings_total);
+    return scoreA - scoreB; // Lower score = better
+  });
+
   return allPlaces;
 }
 
 /**
  * Fetch all places from all cities and categories, then merge and sort by popularity
  */
-async function fetchAllPlacesFromGoogle(userLocation?: { lat: number; lng: number }): Promise<SpendPlace[]> {
+async function fetchAllPlacesFromGoogle(): Promise<SpendPlace[]> {
+  // Only search in Cupertino and Sunnyvale (no San Jose)
   const cities: Array<keyof typeof CITY_COORDS> = ['cupertino', 'sunnyvale'];
   const categories: Array<keyof typeof CATEGORY_KEYWORDS> = ['奶茶', '中餐', '咖啡', '夜宵'];
   
   const allPlaces: SpendPlace[] = [];
+  // Track global order across all cities/categories to preserve Google Places ranking
+  const globalPlaceOrderMap = new Map<string, number>();
+  let globalOrderIndex = 0;
   
   // Fetch from all combinations
   for (const city of cities) {
     for (const category of categories) {
       try {
-        const places = await fetchPlacesForCategory(city, category, userLocation);
+        // Don't pass userLocation - always use city center to ensure distance filtering works correctly
+        const places = await fetchPlacesForCategory(city, category);
+        // Assign global order indices to preserve Google Places ranking
+        for (const place of places) {
+          if (!globalPlaceOrderMap.has(place.id)) {
+            globalPlaceOrderMap.set(place.id, globalOrderIndex++);
+          }
+          // Store Google Places rank in the place object
+          place.googlePlacesRank = globalPlaceOrderMap.get(place.id);
+        }
         allPlaces.push(...places);
       } catch (error) {
         console.error(`[Spend Today] Error fetching ${category} in ${city}:`, error);
@@ -397,21 +595,31 @@ async function fetchAllPlacesFromGoogle(userLocation?: { lat: number; lng: numbe
     }
   }
   
-  // Remove duplicates by place_id (keep highest score)
+  // Remove duplicates by place_id (keep the one with the earliest order index = best ranking)
   const uniquePlaces = new Map<string, SpendPlace>();
   for (const place of allPlaces) {
     if (!uniquePlaces.has(place.id)) {
       uniquePlaces.set(place.id, place);
     } else {
       const existing = uniquePlaces.get(place.id)!;
-      if (place.score > existing.score) {
+      const existingOrder = existing.googlePlacesRank ?? Infinity;
+      const newOrder = place.googlePlacesRank ?? Infinity;
+      // Keep the one with the better (earlier) ranking
+      if (newOrder < existingOrder) {
         uniquePlaces.set(place.id, place);
       }
     }
   }
   
-  // Sort by popularity score (descending)
-  const sortedPlaces = Array.from(uniquePlaces.values()).sort((a, b) => b.score - a.score);
+  // Sort by combined ranking: Google Places rank + new business bonus
+  // Lower score = better ranking
+  const sortedPlaces = Array.from(uniquePlaces.values()).sort((a, b) => {
+    const rankA = a.googlePlacesRank ?? Infinity;
+    const rankB = b.googlePlacesRank ?? Infinity;
+    const scoreA = calculateCombinedRankingScore(rankA, a.user_ratings_total);
+    const scoreB = calculateCombinedRankingScore(rankB, b.user_ratings_total);
+    return scoreA - scoreB; // Lower score = better
+  });
   
   return sortedPlaces;
 }
@@ -439,7 +647,7 @@ function groupPlacesByCategory(places: SpendPlace[]): Record<string, SpendPlace[
   for (const category of Object.keys(byCategory)) {
     result[category] = byCategory[category]
       .sort((a, b) => b.score - a.score)
-      .slice(0, 6);
+      .slice(0, 50); // Return top 50 places per category (ranked by Google Places)
   }
   
   return result;
@@ -501,8 +709,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error('GOOGLE_PLACES_API_KEY not configured');
     }
 
-    const allPlaces = await fetchAllPlacesFromGoogle(userLocation);
-    console.log(`[Spend Today] Fetched ${allPlaces.length} total places from Google`);
+    // Don't use userLocation - always search from city centers to ensure distance filtering
+    const allPlaces = await fetchAllPlacesFromGoogle();
+    console.log(`[Spend Today] ✅ Fetched ${allPlaces.length} total places from Google Places API`);
+    if (allPlaces.length > 0) {
+      console.log(`[Spend Today] Sample places:`, allPlaces.slice(0, 3).map(p => `${p.name} (${p.category})`).join(', '));
+    }
     
     if (allPlaces.length === 0) {
       console.warn('[Spend Today] No places found from Google Places API. This might indicate:');
@@ -510,6 +722,62 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.warn('  - API quota exceeded');
       console.warn('  - Network issues');
       console.warn('  - No places match the search criteria');
+      console.warn('  - All places were filtered out by category/opening hours criteria');
+      
+      // Try to return stale cache if available
+      const stale = getStaleCache(cacheKey);
+      if (stale && stale.data && (stale.data.items?.length > 0 || Object.keys(stale.data.itemsByCategory || {}).length > 0)) {
+        console.log('[Spend Today] Returning stale cache due to empty fresh fetch');
+        const staleData = stale.data;
+        normalizeStaleResponse(staleData, { name: 'Google Places', url: 'https://maps.google.com' }, ttlMsToSeconds(SPEND_TODAY_CACHE_TTL), 'spend-today');
+        
+        // Handle both new (itemsByCategory) and legacy (items) formats
+        let itemsByCategory: Record<string, SpendPlace[]> = staleData.itemsByCategory || {};
+        let items = staleData.items || [];
+        
+        // If legacy format, convert to new format
+        if (!staleData.itemsByCategory && Array.isArray(items) && items.length > 0) {
+          itemsByCategory = groupPlacesByCategory(items as SpendPlace[]);
+        }
+        
+        // Ensure English keys for itemsByCategory
+        const CATEGORY_KEY_MAP: Record<string, string> = {
+          '奶茶': 'milk_tea',
+          '中餐': 'chinese',
+          '咖啡': 'coffee',
+          '夜宵': 'late_night',
+        };
+        
+        // Convert Chinese keys to English keys if needed
+        const normalizedItemsByCategory: Record<string, SpendPlace[]> = {
+          'milk_tea': [],
+          'chinese': [],
+          'coffee': [],
+          'late_night': [],
+        };
+        
+        for (const [key, places] of Object.entries(itemsByCategory)) {
+          const englishKey = CATEGORY_KEY_MAP[key] || key;
+          if (normalizedItemsByCategory.hasOwnProperty(englishKey)) {
+            normalizedItemsByCategory[englishKey] = places as SpendPlace[];
+          } else if (key === 'milk_tea' || key === 'chinese' || key === 'coffee' || key === 'late_night') {
+            normalizedItemsByCategory[key] = places as SpendPlace[];
+          }
+        }
+        
+        // Rebuild flat items array for backward compatibility
+        items = Object.values(normalizedItemsByCategory).flat();
+        
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        return res.status(200).json({
+          ...staleData,
+          itemsByCategory: normalizedItemsByCategory,
+          items: items.slice(0, 200), // Up to 50 per category * 4 categories
+          count: items.length,
+          cache_hit: true,
+          stale: true,
+        });
+      }
     }
     
     // Group places by the category they were assigned during fetch
@@ -552,9 +820,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
     
-    // Sort each category by score
+    // Sort each category by combined ranking: Google Places rank + new business bonus
+    // Lower score = better ranking
     for (const category of Object.keys(placesByCategoryDirect)) {
-      placesByCategoryDirect[category].sort((a, b) => b.score - a.score);
+      placesByCategoryDirect[category].sort((a, b) => {
+        const rankA = a.googlePlacesRank ?? Infinity;
+        const rankB = b.googlePlacesRank ?? Infinity;
+        const scoreA = calculateCombinedRankingScore(rankA, a.user_ratings_total);
+        const scoreB = calculateCombinedRankingScore(rankB, b.user_ratings_total);
+        return scoreA - scoreB; // Lower score = better
+      });
     }
     
     console.log(`[Spend Today] Places by category (direct grouping):`, Object.keys(placesByCategoryDirect).map(cat => `${cat}: ${placesByCategoryDirect[cat]?.length || 0}`).join(', '));
@@ -630,8 +905,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const existingIds = new Set(categoryPlaces.map(p => p.id));
           const additionalItems = validStaleItems.filter(p => !existingIds.has(p.id));
           categoryPlaces = [...categoryPlaces, ...additionalItems]
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 6);
+            .sort((a, b) => {
+              // Sort by combined ranking: Google Places rank + new business bonus
+              const rankA = a.googlePlacesRank ?? Infinity;
+              const rankB = b.googlePlacesRank ?? Infinity;
+              const scoreA = calculateCombinedRankingScore(rankA, a.user_ratings_total);
+              const scoreB = calculateCombinedRankingScore(rankB, b.user_ratings_total);
+              return scoreA - scoreB; // Lower score = better
+            })
+            .slice(0, 50); // Return top 50 places per category (ranked by combined score)
         } else {
           console.warn(`[Spend Today] No stale cache available for ${category}`);
         }
@@ -641,7 +923,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Use English key for itemsByCategory, but keep Chinese category in each place
       const englishKey = CATEGORY_KEY_MAP[category];
       if (englishKey) {
-        finalPlacesByCategory[englishKey] = categoryPlaces.slice(0, 6);
+        // Keep top 50 places per category, sorted by Google Places ranking (already sorted by placeOrderMap)
+        finalPlacesByCategory[englishKey] = categoryPlaces.slice(0, 50);
         console.log(`[Spend Today] Final count for ${category} (key: ${englishKey}): ${finalPlacesByCategory[englishKey].length}`);
       } else {
         console.error(`[Spend Today] ERROR: No English key mapping for category ${category}`);
@@ -653,10 +936,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     // Log final structure before sending
+    console.log('[Spend Today] ✅ Final response structure:');
     console.log('[Spend Today] FinalPlacesByCategory keys:', Object.keys(finalPlacesByCategory));
-    console.log('[Spend Today] FinalPlacesByCategory key bytes:', Object.keys(finalPlacesByCategory).map(k => Buffer.from(k, 'utf8').toString('hex')));
+    const totalCount = Object.values(finalPlacesByCategory).reduce((sum, arr) => sum + arr.length, 0);
+    console.log('[Spend Today] Total places count:', totalCount);
     for (const [key, places] of Object.entries(finalPlacesByCategory)) {
-      console.log(`[Spend Today] FinalPlacesByCategory["${key}"]: ${places.length} places`);
+      console.log(`[Spend Today]   "${key}": ${places.length} places`);
+      if (places.length > 0) {
+        console.log(`[Spend Today]     Sample: ${places[0].name} (${places[0].city})`);
+      }
     }
     
     const response: any = {
@@ -730,11 +1018,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.warn('[API /api/spend/today] All sources failed, returning empty result (no fake data)');
     const errorAtISO = new Date().toISOString();
     
+    // Use English keys to match normal response format
     const emptyByCategory: Record<string, SpendPlace[]> = {
-      '奶茶': [],
-      '中餐': [],
-      '咖啡': [],
-      '夜宵': [],
+      'milk_tea': [],
+      'chinese': [],
+      'coffee': [],
+      'late_night': [],
     };
 
     // Ensure proper encoding for JSON response

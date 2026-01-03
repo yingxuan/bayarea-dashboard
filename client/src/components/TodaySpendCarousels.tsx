@@ -62,27 +62,73 @@ export default function TodaySpendCarousels() {
         }
         
         // Build API URL with user location if available
-        const apiUrl = new URL(`${config.apiBaseUrl}/api/spend/today`);
-        if (userLocation) {
-          apiUrl.searchParams.set('lat', userLocation.lat.toString());
-          apiUrl.searchParams.set('lng', userLocation.lng.toString());
+        // Handle both absolute URLs and relative paths
+        let apiUrl: string;
+        if (config.apiBaseUrl && !config.apiBaseUrl.startsWith('/')) {
+          // Absolute URL - use URL constructor
+          const url = new URL(`${config.apiBaseUrl}/api/spend/today`);
+          if (userLocation) {
+            url.searchParams.set('lat', userLocation.lat.toString());
+            url.searchParams.set('lng', userLocation.lng.toString());
+          }
+          apiUrl = url.toString();
+        } else {
+          // Relative path - use string concatenation
+          const baseUrl = config.apiBaseUrl || '';
+          const path = `${baseUrl}/api/spend/today`;
+          if (userLocation) {
+            const params = new URLSearchParams({
+              lat: userLocation.lat.toString(),
+              lng: userLocation.lng.toString(),
+            });
+            apiUrl = `${path}?${params.toString()}`;
+          } else {
+            apiUrl = path;
+          }
         }
         
-        console.log('[TodaySpendCarousels] Fetching from:', apiUrl.toString());
+        console.log('[TodaySpendCarousels] Fetching from:', apiUrl);
         
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        let timeoutId: NodeJS.Timeout | null = setTimeout(() => {
+          console.warn('[TodaySpendCarousels] Request timeout after 10 seconds, aborting...');
+          controller.abort();
+        }, 10000);
 
-        const response = await fetch(apiUrl.toString(), {
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
+        let response: Response;
+        try {
+          response = await fetch(apiUrl, {
+            signal: controller.signal,
+          });
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+          }
+        } catch (error) {
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+          }
+          // Check if it's an abort error (timeout or manual abort)
+          if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('aborted'))) {
+            console.warn('[TodaySpendCarousels] Request was aborted (likely timeout or component unmount)');
+            // Don't throw - just return empty state
+            setPlacesByCategory({
+              '奶茶': [],
+              '中餐': [],
+              '夜宵': [],
+              '甜品': [],
+            });
+            return;
+          }
+          throw error;
+        }
 
         console.log('[TodaySpendCarousels] Response status:', response.status, response.statusText);
 
         if (response.ok) {
           const result: SpendResponse = await response.json();
+          console.log('[TodaySpendCarousels] ✅ API Response received');
           console.log('[TodaySpendCarousels] Full API response:', result);
           console.log('[TodaySpendCarousels] API response summary:', {
             hasItemsByCategory: !!result.itemsByCategory,
@@ -90,6 +136,8 @@ export default function TodaySpendCarousels() {
             itemsByCategoryCounts: result.itemsByCategory ? Object.entries(result.itemsByCategory).map(([k, v]) => `${k}: ${v.length}`) : [],
             itemsCount: result.items?.length || 0,
             status: result.status,
+            cache_hit: result.cache_hit,
+            error: result.error,
           });
           
           // Prefer using items array - it's more reliable because each place has the correct category field
@@ -106,19 +154,28 @@ export default function TodaySpendCarousels() {
             result.items.forEach(place => {
               const placeCategory = place.category;
               
-              // Frontend filter: Never render cards >10 miles (additional safety check)
-              if (place.distance_miles !== undefined && place.distance_miles > 10) {
-                console.warn(`[TodaySpendCarousels] Filtering out "${place.name}" - distance ${place.distance_miles} miles > 10 miles`);
-                return;
-              }
+              // No distance filtering - show all results from Google Places (sorted by relevance)
               
               console.log(`[TodaySpendCarousels] Place: ${place.name}, category: "${placeCategory}", distance: ${place.distance_miles} miles`);
               
-              // Try exact match
-              if (CATEGORIES.includes(placeCategory as any)) {
-                grouped[placeCategory].push(place);
+              // Map API categories to expected categories
+              // API might return: 奶茶, 中餐, 咖啡, 夜宵
+              // Frontend expects: 奶茶, 中餐, 夜宵, 甜品
+              const categoryMap: Record<string, string> = {
+                '奶茶': '奶茶',
+                '中餐': '中餐',
+                '咖啡': '甜品', // Map coffee to 甜品
+                '夜宵': '夜宵',
+                '甜品': '甜品',
+              };
+              
+              const mappedCategory = categoryMap[placeCategory] || placeCategory;
+              
+              // Try exact match with mapped category
+              if (CATEGORIES.includes(mappedCategory as any)) {
+                grouped[mappedCategory].push({ ...place, category: mappedCategory });
               } else {
-                console.warn(`[TodaySpendCarousels] Unknown category: "${placeCategory}" for place "${place.name}"`);
+                console.warn(`[TodaySpendCarousels] Unknown category: "${placeCategory}" (mapped: "${mappedCategory}") for place "${place.name}"`);
               }
             });
             
@@ -130,12 +187,12 @@ export default function TodaySpendCarousels() {
             console.log('[TodaySpendCarousels] Grouped items:', Object.entries(grouped).map(([k, v]) => `${k}: ${v.length}`));
             setPlacesByCategory(grouped);
           } else if (result.itemsByCategory && Object.keys(result.itemsByCategory).length > 0) {
-            // Fallback: try to use itemsByCategory (might have English keys or encoding issues)
+            // Fallback: try to use itemsByCategory (API returns English keys: milk_tea, chinese, coffee, late_night)
             const keys = Object.keys(result.itemsByCategory);
             console.log('[TodaySpendCarousels] Using itemsByCategory with keys:', keys);
             console.log('[TodaySpendCarousels] Expected categories:', CATEGORIES);
             
-            // Map English keys to Chinese categories if needed
+            // Map English keys from API to Chinese categories
             const keyMap: Record<string, string> = {
               'milk_tea': '奶茶',
               'chinese': '中餐',
@@ -154,8 +211,20 @@ export default function TodaySpendCarousels() {
             // Try to map itemsByCategory to normalized structure
             for (const [key, places] of Object.entries(result.itemsByCategory)) {
               const chineseCategory = keyMap[key] || key; // Use keyMap or try direct match
+              console.log(`[TodaySpendCarousels] Mapping key "${key}" to category "${chineseCategory}"`);
+              
               if (CATEGORIES.includes(chineseCategory as any)) {
-                normalized[chineseCategory] = places as SpendPlace[];
+                const placesArray = places as SpendPlace[];
+                // Also check place.category field in case it has the correct Chinese category
+                placesArray.forEach(place => {
+                  // Use place.category if it matches expected categories, otherwise use mapped category
+                  if (CATEGORIES.includes(place.category as any)) {
+                    normalized[place.category].push(place);
+                  } else if (chineseCategory && CATEGORIES.includes(chineseCategory as any)) {
+                    // Override place.category with mapped category
+                    normalized[chineseCategory].push({ ...place, category: chineseCategory });
+                  }
+                });
               } else {
                 // If key doesn't match, try to infer from place.category fields
                 console.log(`[TodaySpendCarousels] Key "${key}" doesn't match expected categories, inferring from place.category`);
@@ -163,6 +232,9 @@ export default function TodaySpendCarousels() {
                 placesArray.forEach(place => {
                   if (CATEGORIES.includes(place.category as any)) {
                     normalized[place.category].push(place);
+                  } else if (chineseCategory && CATEGORIES.includes(chineseCategory as any)) {
+                    // Use mapped category as fallback
+                    normalized[chineseCategory].push({ ...place, category: chineseCategory });
                   }
                 });
               }
@@ -173,42 +245,83 @@ export default function TodaySpendCarousels() {
               normalized[category].sort((a, b) => (b.score || 0) - (a.score || 0));
             }
             
-            console.log('[TodaySpendCarousels] Normalized counts:', Object.entries(normalized).map(([k, v]) => `${k}: ${v.length}`));
+            const normalizedSummary = Object.entries(normalized).map(([k, v]) => `${k}: ${v.length}`).join(', ');
+            console.log('[TodaySpendCarousels] ✅ Normalized counts:', normalizedSummary);
+            console.log('[TodaySpendCarousels] Setting placesByCategory with', Object.keys(normalized).length, 'categories');
             setPlacesByCategory(normalized);
           } else {
             console.warn('[TodaySpendCarousels] No items or itemsByCategory found in response');
             console.warn('[TodaySpendCarousels] Response:', result);
+            // Set empty state but still render placeholders
+            setPlacesByCategory({
+              '奶茶': [],
+              '中餐': [],
+              '夜宵': [],
+              '甜品': [],
+            });
           }
         } else {
           const errorText = await response.text();
-          console.error(`[TodaySpendCarousels] API error: ${response.status} ${response.statusText}`);
+          console.error(`[TodaySpendCarousels] ❌ API error: ${response.status} ${response.statusText}`);
           console.error(`[TodaySpendCarousels] Error response:`, errorText);
+          // Set empty state on error
+          setPlacesByCategory({
+            '奶茶': [],
+            '中餐': [],
+            '烧烤火锅': [],
+            '甜品': [],
+          });
         }
       } catch (error) {
-        console.error("[TodaySpendCarousels] Failed to fetch:", error);
+        console.error("[TodaySpendCarousels] ❌ Failed to fetch:", error);
         console.error("[TodaySpendCarousels] Error details:", error instanceof Error ? error.message : String(error));
+        console.error("[TodaySpendCarousels] Error stack:", error instanceof Error ? error.stack : 'N/A');
+        // Set empty state on exception
+        setPlacesByCategory({
+          '奶茶': [],
+          '中餐': [],
+          '夜宵': [],
+          '甜品': [],
+        });
       } finally {
         setLoading(false);
+        console.log('[TodaySpendCarousels] Loading completed, loading state:', false);
       }
     }
 
-    loadRecommendations();
-    const interval = setInterval(loadRecommendations, 30 * 60 * 1000);
-    return () => clearInterval(interval);
+    let timeoutId: NodeJS.Timeout | null = null;
+    let intervalId: NodeJS.Timeout | null = null;
+    
+    const loadWithCleanup = async () => {
+      // Clean up any pending timeouts
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      await loadRecommendations();
+    };
+    
+    loadWithCleanup();
+    intervalId = setInterval(loadWithCleanup, 30 * 60 * 1000);
+    
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, []);
 
   if (loading) {
     return (
-      <div className="grid grid-cols-2 gap-4">
+      <div className="flex flex-col md:grid md:grid-cols-2 gap-4 min-w-0">
         {CATEGORIES.map((category) => (
-          <div key={category} className="glow-border rounded-sm p-4 bg-card">
+          <div key={category} className="rounded-sm p-2 bg-card border border-border/50 h-24">
             <div className="animate-pulse">
-              <div className="h-6 bg-muted rounded w-1/3 mb-4"></div>
-              <div className="flex gap-4 overflow-x-auto">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="w-48 h-36 bg-muted rounded flex-shrink-0"></div>
-                ))}
-              </div>
+              <div className="h-4 bg-muted rounded w-1/3 mb-2"></div>
+              <div className="h-16 bg-muted rounded"></div>
             </div>
           </div>
         ))}
