@@ -31,6 +31,7 @@ import {
 const MARKET_NEWS_CACHE_TTL = 7.5 * 60 * 1000; // 7.5 minutes (5-10 min range) - for non-empty results only
 const LAST_NON_EMPTY_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours - for last_non_empty cache
 const FETCH_TIMEOUT = 10000; // 10 seconds
+const GOOGLE_FINANCE_URL = 'https://www.google.com/finance'; // @deprecated - no longer used
 
 // Reliable Chinese US stock RSS sources (only 新浪财经美股)
 const RSS_SOURCES = [
@@ -257,16 +258,10 @@ function translateTitle(titleEn: string): string {
     'breaking': '突发',
     'news': '新闻',
     'drops': '下跌',
-    'drops': '下跌',
-    'rises': '上涨',
     'rises': '上涨',
     'gains': '上涨',
-    'gains': '上涨',
-    'falls': '下跌',
     'falls': '下跌',
     'surges': '飙升',
-    'surges': '飙升',
-    'plunges': '暴跌',
     'plunges': '暴跌',
   };
 
@@ -392,8 +387,8 @@ function parseRSSFeed(xml: string): MarketNewsItem[] {
         .replace(/&quot;/g, '"')
         .replace(/&#39;/g, "'")
         .replace(/&nbsp;/g, ' ')
-        .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-        .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
+        .replace(/&#x([0-9a-fA-F]+);/g, (_: string, hex: string) => String.fromCharCode(parseInt(hex, 16)))
+        .replace(/&#(\d+);/g, (_: string, dec: string) => String.fromCharCode(parseInt(dec, 10)));
       
       if (!title || title.length < 5) {
         console.log(`[Market News] Item ${totalItemsFound}: Title too short: "${title}"`);
@@ -572,7 +567,6 @@ async function fetchGoogleFinanceHTML(): Promise<string> {
  */
 function parseGoogleFinanceNews(html: string): MarketNewsItem[] {
   const $ = cheerio.load(html, {
-    decodeEntities: true,
     normalizeWhitespace: false,
   });
 
@@ -581,7 +575,7 @@ function parseGoogleFinanceNews(html: string): MarketNewsItem[] {
 
   // Look for "Today's financial news" section
   // Try to find section header first
-  let $newsSection: cheerio.Cheerio | null = null;
+  let $newsSection: cheerio.Cheerio<cheerio.Element> | null = null;
   
   // Common selectors for news section
   const sectionSelectors = [
@@ -626,7 +620,7 @@ function parseGoogleFinanceNews(html: string): MarketNewsItem[] {
   ];
 
   for (const selector of linkSelectors) {
-    $searchArea.find(selector).each((_, element) => {
+    $searchArea.find(selector).each((_: number, element: cheerio.Element) => {
       if (items.length >= 10) {
         return false; // Collect more for filtering
       }
@@ -680,7 +674,6 @@ function parseGoogleFinanceNews(html: string): MarketNewsItem[] {
       // Don't translate here - will batch translate later
       items.push({
         title: titleEn, // Will be translated in batch
-        title_en: titleEn,
         url,
         source: 'Google Finance',
       });
@@ -744,7 +737,6 @@ function parseGoogleFinanceNews(html: string): MarketNewsItem[] {
       // Don't translate here - will batch translate later
       items.push({
         title: titleEn, // Will be translated in batch
-        title_en: titleEn,
         url,
         source: 'Google Finance',
       });

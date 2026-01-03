@@ -338,7 +338,7 @@ export default function Home() {
               {/* 吃瓜 - Left side */}
               <div className="w-full md:w-1/2 min-w-0">
                 <SectionHeader title="吃瓜" />
-                <ChineseGossip maxItems={3} />
+                <ChineseGossip maxItemsPerSource={3} />
               </div>
 
               {/* 薅羊毛 - Right side - Vertical 3 cards */}

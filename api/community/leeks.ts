@@ -496,7 +496,7 @@ function parseForumPosts(html: string): CommunityItem[] {
     } else if (!firstFailureLogged) {
       // Debug first failure: log why it was filtered
       firstFailureLogged = true;
-      const $titleLink = $tbody.find('a.s.xst').first();
+      let $titleLink = $tbody.find('a.s.xst').first();
       if ($titleLink.length === 0) {
         $titleLink = $tbody.find('a[href*="thread-"][class*="xst"]').first();
       }
