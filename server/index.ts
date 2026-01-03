@@ -64,6 +64,8 @@ async function startServer() {
   app.options('/api/community/leeks', (_req, res) => res.sendStatus(200));
   app.get('/api/community/blogs', blogCommunityRoute);
   app.options('/api/community/blogs', (_req, res) => res.sendStatus(200));
+  app.get('/api/market-news', marketNewsRoute);
+  app.options('/api/market-news', (_req, res) => res.sendStatus(200));
   
   // Mount legacy API routes (if any)
   app.use(apiRouter);
