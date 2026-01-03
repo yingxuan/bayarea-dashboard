@@ -1,9 +1,9 @@
 /**
  * Leek Community Component
- * Displays latest discussions from community sources (1point3acres + Wenxuecity)
+ * Displays latest discussions from 1point3acres
  * 
  * Requirements:
- * - Shows 8 items total: 5 from 1point3acres + 3 from Wenxuecity
+ * - Shows 5 items from 1point3acres
  * - Never shows "暂无内容"
  * - Click to open in new window
  * - "查看更多" link to forum
@@ -14,8 +14,8 @@ import { ExternalLink, ArrowRight } from "lucide-react";
 import { config } from "@/config";
 
 interface CommunityItem {
-  source: '1point3acres' | 'wenxuecity';
-  sourceLabel: string; // "一亩三分地" or "文学城"
+  source: '1point3acres';
+  sourceLabel: string; // "一亩三分地"
   title: string;
   url: string;
   publishedAt?: string;
@@ -33,12 +33,9 @@ interface LeekCommunityProps {
 
 const FORUM_URL = 'https://www.1point3acres.com/bbs/forum.php?mod=forumdisplay&fid=291&filter=author&orderby=dateline';
 
-export default function LeekCommunity({ maxItems = 8 }: LeekCommunityProps) {
+export default function LeekCommunity({ maxItems = 5 }: LeekCommunityProps) {
   const [items, setItems] = useState<CommunityItem[]>([]);
-  const [sourceStatus, setSourceStatus] = useState<{
-    '1point3acres'?: SourceStatus;
-    'wenxuecity'?: SourceStatus;
-  }>({});
+  const [sourceStatus, setSourceStatus] = useState<SourceStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,11 +57,8 @@ export default function LeekCommunity({ maxItems = 8 }: LeekCommunityProps) {
           setItems(communityItems.slice(0, maxItems));
           
           // Store source status for placeholder display
-          if (result.sources) {
-            setSourceStatus({
-              '1point3acres': result.sources['1point3acres'],
-              'wenxuecity': result.sources['wenxuecity'],
-            });
+          if (result.sources && result.sources['1point3acres']) {
+            setSourceStatus(result.sources['1point3acres']);
           }
         } else {
           console.error(`[LeekCommunity] API error: ${response.status} ${response.statusText}`);
@@ -90,7 +84,7 @@ export default function LeekCommunity({ maxItems = 8 }: LeekCommunityProps) {
         <div className="animate-pulse">
           <div className="h-6 bg-muted rounded w-1/3 mb-4"></div>
           <div className="space-y-3">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="h-12 bg-muted rounded"></div>
             ))}
           </div>
@@ -125,8 +119,7 @@ export default function LeekCommunity({ maxItems = 8 }: LeekCommunityProps) {
       <div className="space-y-2">
         {/* 1point3acres items (up to 5) */}
         {items
-          .filter(item => item.source === '1point3acres')
-          .slice(0, 5)
+          .slice(0, maxItems)
           .map((item, index) => (
             <a
               key={`1point3acres-${index}`}
@@ -144,44 +137,12 @@ export default function LeekCommunity({ maxItems = 8 }: LeekCommunityProps) {
             </a>
           ))}
         
-        {/* Placeholder for 1point3acres if unavailable */}
-        {(sourceStatus['1point3acres']?.status === 'unavailable' || items.filter(item => item.source === '1point3acres').length === 0) && (
+        {/* Placeholder if unavailable */}
+        {items.length === 0 && (
           <div className="block p-2 rounded-sm bg-card/50 border border-border/50">
             <div className="flex items-start gap-3">
               <span className="text-sm font-mono text-muted-foreground line-clamp-2 flex-1 leading-relaxed">
-                • [一亩三分地] 暂时无法获取
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Wenxuecity items (up to 3) */}
-        {items
-          .filter(item => item.source === 'wenxuecity')
-          .slice(0, 3)
-          .map((item, index) => (
-            <a
-              key={`wenxuecity-${index}`}
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block p-2 rounded-sm bg-card/50 border border-border/50 hover:bg-card/80 hover:border-primary/50 transition-all group"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <span className="text-sm font-mono text-foreground/80 group-hover:text-primary transition-colors line-clamp-2 flex-1 leading-relaxed">
-                  • [{item.sourceLabel}] {item.title}
-                </span>
-                <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0 group-hover:text-primary transition-colors mt-0.5" />
-              </div>
-            </a>
-          ))}
-        
-        {/* Placeholder for Wenxuecity if unavailable */}
-        {(sourceStatus['wenxuecity']?.status === 'unavailable' || items.filter(item => item.source === 'wenxuecity').length === 0) && (
-          <div className="block p-2 rounded-sm bg-card/50 border border-border/50">
-            <div className="flex items-start gap-3">
-              <span className="text-sm font-mono text-muted-foreground line-clamp-2 flex-1 leading-relaxed">
-                • [文学城] 暂时无法获取
+                • 社区暂时不可用，稍后刷新
               </span>
             </div>
           </div>

@@ -32,21 +32,11 @@ const MARKET_NEWS_CACHE_TTL = 7.5 * 60 * 1000; // 7.5 minutes (5-10 min range) -
 const LAST_NON_EMPTY_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours - for last_non_empty cache
 const FETCH_TIMEOUT = 10000; // 10 seconds
 
-// Reliable Chinese US stock RSS sources (no RSSHub dependency)
+// Reliable Chinese US stock RSS sources (only 新浪财经美股)
 const RSS_SOURCES = [
   {
     name: '新浪财经美股',
     url: 'https://rss.sina.com.cn/finance/usstock.xml',
-    type: 'rss' as const,
-  },
-  {
-    name: 'Investing中文美股',
-    url: 'https://cn.investing.com/rss/news.rss',
-    type: 'rss' as const,
-  },
-  {
-    name: '新浪财经',
-    url: 'https://rss.sina.com.cn/finance/global.xml',
     type: 'rss' as const,
   },
 ];
@@ -56,11 +46,6 @@ const HTML_FALLBACK_SOURCES = [
   {
     name: '新浪财经美股',
     url: 'https://finance.sina.com.cn/stock/usstock/',
-    type: 'html' as const,
-  },
-  {
-    name: 'Investing中文美股',
-    url: 'https://cn.investing.com/news/stock-market-news',
     type: 'html' as const,
   },
 ];

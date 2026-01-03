@@ -182,11 +182,6 @@ export default function Home() {
                         <div className="flex items-start gap-2">
                           <span className="text-primary mt-0.5">•</span>
                           <div className="flex-1">
-                            {item.source && (
-                              <span className="text-xs text-muted-foreground font-mono mb-1 block">
-                                [{item.source}]
-                              </span>
-                            )}
                             <span className="text-sm font-mono text-foreground/80 group-hover:text-primary transition-colors line-clamp-2 leading-relaxed">
                               {item.title || item.title_zh || item.title_en || 'Market News'}
                             </span>
@@ -205,7 +200,7 @@ export default function Home() {
               </div>
 
               {/* 韭菜社区 (5条一亩三分地 + 3条文学城) */}
-              <LeekCommunity maxItems={8} />
+              <LeekCommunity maxItems={5} />
             </div>
 
             {/* 右侧：美股博主视频（每频道1条） */}
