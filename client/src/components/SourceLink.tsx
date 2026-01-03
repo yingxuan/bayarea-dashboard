@@ -22,7 +22,7 @@ export default function SourceLink({
     return null;
   }
 
-  const baseClasses = "text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 font-mono";
+  const baseClasses = "text-xs opacity-60 text-blue-400 hover:text-blue-300 hover:opacity-100 flex items-center gap-1 font-mono font-normal";
 
   if (position === "title-row") {
     return (

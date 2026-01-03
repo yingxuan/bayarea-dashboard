@@ -33,7 +33,7 @@ export default function VideoGrid({ videos, maxItems = 6 }: VideoGridProps) {
           href={video.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="glow-border rounded-sm overflow-hidden bg-card hover:bg-card/80 transition-all group"
+          className="rounded-sm overflow-hidden bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
         >
           {/* Thumbnail */}
           <div className="relative aspect-video bg-muted overflow-hidden">
@@ -48,7 +48,7 @@ export default function VideoGrid({ videos, maxItems = 6 }: VideoGridProps) {
           </div>
 
           {/* Info */}
-          <div className="p-3">
+          <div className="p-3 md:p-4">
             <h3 className="text-sm font-medium line-clamp-2 mb-2 group-hover:text-primary transition-colors">
               {video.title}
             </h3>

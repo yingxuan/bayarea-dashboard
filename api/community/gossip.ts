@@ -498,13 +498,13 @@ async function fetch1P3A(nocache: boolean = false): Promise<ModulePayload<Gossip
         return;
       }
       
-      // Only accept thread URLs
-      const isValidThreadUrl = (href.includes('thread-') || 
-                               href.includes('mod=viewthread') || 
-                               href.includes('viewthread')) &&
-                               !href.includes('forumdisplay');
+      // Only accept thread URLs (check href pattern first)
+      const isThreadHref = (href.includes('thread-') || 
+                           href.includes('mod=viewthread') || 
+                           href.includes('viewthread')) &&
+                           !href.includes('forumdisplay');
       
-      if (!isValidThreadUrl) {
+      if (!isThreadHref) {
         return;
       }
       
@@ -522,7 +522,7 @@ async function fetch1P3A(nocache: boolean = false): Promise<ModulePayload<Gossip
         }
       }
       
-      // Double-check URL validation
+      // Double-check URL validation using the global function
       if (!isValidThreadUrl(url)) {
         return;
       }

@@ -21,6 +21,7 @@ import blogCommunityHandler from '../api/community/blogs.js';
 import huarenCommunityHandler from '../api/community/huaren.js';
 import gossipCommunityHandler from '../api/community/gossip.js';
 import chineseGossipHandler from '../api/chinese-gossip.js';
+import portfolioValueSeriesHandler from '../api/portfolio/value-series.js';
 
 /**
  * Convert Express Request/Response to Vercel Request/Response
@@ -291,6 +292,22 @@ export async function chineseGossipRoute(req: Request, res: Response) {
     await chineseGossipHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Chinese Gossip route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Portfolio Value Series API route
+ */
+export async function portfolioValueSeriesRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await portfolioValueSeriesHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Portfolio Value Series route error:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

@@ -87,7 +87,7 @@ export default function DealsGrid({ deals, maxItems = 12 }: DealsGridProps) {
           href={deal.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="glow-border rounded-sm p-4 bg-card hover:bg-card/80 transition-all group"
+          className="rounded-sm p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
         >
           {/* Header with score and source */}
           <div className="flex items-start justify-between mb-3">
@@ -100,16 +100,16 @@ export default function DealsGrid({ deals, maxItems = 12 }: DealsGridProps) {
                   e.currentTarget.style.display = "none";
                 }}
               />
-              <span className="text-xs text-muted-foreground font-mono">
+              <span className="text-xs opacity-60 text-muted-foreground font-mono font-normal">
                 {deal.source}
               </span>
             </div>
             <div
-              className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-mono font-bold ${
+              className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-mono font-semibold tabular-nums ${
                 deal.score >= 90
                   ? "bg-primary/20 text-primary"
                   : deal.score >= 80
-                  ? "bg-green-400/20 text-green-400"
+                  ? "bg-green-500/20 text-green-500/70"
                   : "bg-muted text-muted-foreground"
               }`}
             >
@@ -119,41 +119,41 @@ export default function DealsGrid({ deals, maxItems = 12 }: DealsGridProps) {
           </div>
 
           {/* Title */}
-          <h3 className="text-sm font-semibold mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+          <h3 className="text-[14px] font-medium mb-2 line-clamp-2 group-hover:text-primary transition-colors" style={{ lineHeight: '1.4' }}>
             {deal.title}
           </h3>
 
           {/* Description */}
-          <p className="text-xs text-foreground/70 mb-3 line-clamp-2">
+          <p className="text-xs font-normal text-foreground/70 mb-3 line-clamp-2" style={{ lineHeight: '1.4' }}>
             {deal.description}
           </p>
 
           {/* Discount Badge */}
           <div className="mb-3">
-            <span className="inline-block px-3 py-1 bg-primary/20 text-primary text-sm font-bold font-mono rounded">
+            <span className="inline-block px-3 py-1 bg-primary/20 text-primary text-[14px] font-semibold font-mono rounded tabular-nums">
               {formatDiscount(deal.discountInfo)}
             </span>
           </div>
 
           {/* Score Breakdown */}
-          <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
+          <div className="grid grid-cols-2 gap-2 mb-3 text-xs opacity-60">
             <div className="flex items-center gap-1">
               <TrendingUp className="w-3 h-3 text-muted-foreground" />
-              <span className="text-muted-foreground">实用:</span>
-              <span className={getScoreColor(deal.practicalityScore)}>
+              <span className="text-muted-foreground font-normal">实用:</span>
+              <span className={`font-medium tabular-nums ${getScoreColor(deal.practicalityScore)}`}>
                 {deal.practicalityScore}
               </span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-muted-foreground">折扣:</span>
-              <span className={getScoreColor(deal.discountScore)}>
+              <span className="text-muted-foreground font-normal">折扣:</span>
+              <span className={`font-medium tabular-nums ${getScoreColor(deal.discountScore)}`}>
                 {deal.discountScore}
               </span>
             </div>
           </div>
 
           {/* Expiry and Source */}
-          <div className="flex items-center justify-between gap-1 text-xs text-muted-foreground">
+          <div className="flex items-center justify-between gap-1 text-xs opacity-60 text-muted-foreground font-normal">
             <div className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
               <span>{formatTimeRemaining(deal.expiresAt)}</span>

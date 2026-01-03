@@ -34,7 +34,7 @@ export default function ShowsCard({ shows, maxItems = 3 }: ShowsCardProps) {
           href={show.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex gap-4 glow-border rounded-sm p-4 bg-card hover:bg-card/80 transition-all group"
+          className="flex gap-4 rounded-sm p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
         >
           {/* Poster */}
           <div className="flex-shrink-0 w-24 aspect-[2/3] bg-muted rounded overflow-hidden">
@@ -47,21 +47,21 @@ export default function ShowsCard({ shows, maxItems = 3 }: ShowsCardProps) {
 
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-base font-semibold mb-2 group-hover:text-primary transition-colors">
+            <h3 className="text-[14px] font-medium mb-2 group-hover:text-primary transition-colors">
               {show.title}
             </h3>
 
-            <p className="text-sm text-foreground/70 mb-3 line-clamp-2">
+            <p className="text-[14px] font-normal text-foreground/70 mb-3 line-clamp-2" style={{ lineHeight: '1.4' }}>
               {show.description}
             </p>
 
-            <div className="flex items-center gap-3 text-sm">
+            <div className="flex items-center gap-3 text-xs opacity-60">
               <div className="flex items-center gap-1">
-                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                <span className="font-mono font-semibold">{show.rating}</span>
+                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                <span className="font-mono font-normal tabular-nums">{show.rating}</span>
               </div>
               <span className="text-muted-foreground">•</span>
-              <span className="text-muted-foreground font-mono">
+              <span className="text-muted-foreground font-mono font-normal">
                 {show.platform}
               </span>
               <SourceLink

@@ -57,7 +57,7 @@ export default function TimeAgo({ isoString, className = "" }: TimeAgoProps) {
 
   return (
     <span
-      className={`text-xs text-muted-foreground font-mono ${className}`}
+      className={`text-xs opacity-60 text-muted-foreground font-mono font-normal ${className}`}
       title={`${isoTime} (${isoString})`}
     >
       {relativeTime}

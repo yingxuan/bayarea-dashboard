@@ -20,7 +20,8 @@ import {
   huarenCommunityRoute,
   gossipCommunityRoute,
   marketNewsRoute,
-  chineseGossipRoute
+  chineseGossipRoute,
+  portfolioValueSeriesRoute
 } from "./local-api-adapter.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -75,6 +76,8 @@ async function startServer() {
   app.options('/api/market-news', (_req, res) => res.sendStatus(200));
   app.get('/api/chinese-gossip', chineseGossipRoute);
   app.options('/api/chinese-gossip', (_req, res) => res.sendStatus(200));
+  app.get('/api/portfolio/value-series', portfolioValueSeriesRoute);
+  app.options('/api/portfolio/value-series', (_req, res) => res.sendStatus(200));
   
   // Mount legacy API routes (if any)
   app.use(apiRouter);

@@ -147,10 +147,88 @@ export default function TodaySpendCarousels() {
             error: result.error,
           });
           
-          // Prefer using items array - it's more reliable because each place has the correct category field
-          // itemsByCategory keys might have encoding issues (even with English keys, we still prefer items)
-          if (result.items && Array.isArray(result.items) && result.items.length > 0) {
-            console.log('[TodaySpendCarousels] Using items array format (most reliable), grouping by place.category');
+          // Prefer using itemsByCategory if available (API returns English keys: milk_tea, chinese, coffee, late_night)
+          // Then fallback to items array if itemsByCategory is empty
+          if (result.itemsByCategory && Object.keys(result.itemsByCategory).length > 0) {
+            console.log('[TodaySpendCarousels] Using itemsByCategory format (primary)');
+            console.log('[TodaySpendCarousels] itemsByCategory keys:', Object.keys(result.itemsByCategory));
+            console.log('[TodaySpendCarousels] itemsByCategory structure:', Object.entries(result.itemsByCategory).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.length : 'not array'}`));
+            
+            // Map English keys from API to Chinese categories
+            const keyMap: Record<string, string> = {
+              'milk_tea': '奶茶',
+              'chinese': '中餐',
+              'coffee': '甜品', // Map coffee to 甜品 for 2×2 grid
+              'late_night': '夜宵',
+              'dessert': '甜品',
+            };
+            
+            const normalized: Record<string, SpendPlace[]> = {
+              '奶茶': [],
+              '中餐': [],
+              '夜宵': [],
+              '甜品': [],
+            };
+            
+            // Try to map itemsByCategory to normalized structure
+            for (const [key, places] of Object.entries(result.itemsByCategory)) {
+              const chineseCategory = keyMap[key]; // Use keyMap to get Chinese category
+              console.log(`[TodaySpendCarousels] Processing key "${key}" -> category "${chineseCategory}"`);
+              
+              if (!chineseCategory) {
+                console.warn(`[TodaySpendCarousels] No mapping for key "${key}", skipping`);
+                continue;
+              }
+              
+              if (!CATEGORIES.includes(chineseCategory as any)) {
+                console.warn(`[TodaySpendCarousels] Category "${chineseCategory}" not in expected categories, skipping`);
+                continue;
+              }
+              
+              const placesArray = Array.isArray(places) ? places : [];
+              console.log(`[TodaySpendCarousels] Found ${placesArray.length} places for key "${key}" (category: "${chineseCategory}")`);
+              
+              if (placesArray.length > 0) {
+                console.log(`[TodaySpendCarousels] Sample place from "${key}":`, placesArray[0]);
+              }
+              
+              // Add all places to the mapped category
+              placesArray.forEach((place, idx) => {
+                // Ensure place has the correct category field
+                const placeWithCategory = { ...place, category: chineseCategory };
+                normalized[chineseCategory].push(placeWithCategory);
+                if (idx === 0) {
+                  console.log(`[TodaySpendCarousels] Added place "${place.name}" to category "${chineseCategory}"`);
+                }
+              });
+            }
+            
+            // Sort each category by score
+            for (const category of CATEGORIES) {
+              normalized[category].sort((a, b) => (b.score || 0) - (a.score || 0));
+            }
+            
+            const normalizedSummary = Object.entries(normalized).map(([k, v]) => `${k}: ${v.length}`).join(', ');
+            console.log('[TodaySpendCarousels] ✅ Normalized counts:', normalizedSummary);
+            console.log('[TodaySpendCarousels] Detailed breakdown:');
+            for (const [category, places] of Object.entries(normalized)) {
+              console.log(`  ${category}: ${places.length} places`);
+              if (places.length > 0) {
+                console.log(`    Sample: ${places[0].name}`);
+              }
+            }
+            console.log('[TodaySpendCarousels] Setting placesByCategory with', Object.keys(normalized).length, 'categories');
+            setPlacesByCategory(normalized);
+            // Reset offsets when new data is loaded
+            setCategoryOffsets({
+              '奶茶': 0,
+              '中餐': 0,
+              '夜宵': 0,
+              '甜品': 0,
+            });
+          } else if (result.items && Array.isArray(result.items) && result.items.length > 0) {
+            // Fallback: use items array format - group by place.category
+            console.log('[TodaySpendCarousels] Using items array format (fallback), grouping by place.category');
             const grouped: Record<string, SpendPlace[]> = {
               '奶茶': [],
               '中餐': [],
@@ -161,9 +239,7 @@ export default function TodaySpendCarousels() {
             result.items.forEach(place => {
               const placeCategory = place.category;
               
-              // No distance filtering - show all results from Google Places (sorted by relevance)
-              
-              console.log(`[TodaySpendCarousels] Place: ${place.name}, category: "${placeCategory}", distance: ${place.distance_miles} miles`);
+              console.log(`[TodaySpendCarousels] Place: ${place.name}, category: "${placeCategory}"`);
               
               // Map API categories to expected categories
               // API might return: 奶茶, 中餐, 咖啡, 夜宵
@@ -193,76 +269,6 @@ export default function TodaySpendCarousels() {
             
             console.log('[TodaySpendCarousels] Grouped items:', Object.entries(grouped).map(([k, v]) => `${k}: ${v.length}`));
             setPlacesByCategory(grouped);
-            // Reset offsets when new data is loaded
-            setCategoryOffsets({
-              '奶茶': 0,
-              '中餐': 0,
-              '夜宵': 0,
-              '甜品': 0,
-            });
-          } else if (result.itemsByCategory && Object.keys(result.itemsByCategory).length > 0) {
-            // Fallback: try to use itemsByCategory (API returns English keys: milk_tea, chinese, coffee, late_night)
-            const keys = Object.keys(result.itemsByCategory);
-            console.log('[TodaySpendCarousels] Using itemsByCategory with keys:', keys);
-            console.log('[TodaySpendCarousels] Expected categories:', CATEGORIES);
-            
-            // Map English keys from API to Chinese categories
-            const keyMap: Record<string, string> = {
-              'milk_tea': '奶茶',
-              'chinese': '中餐',
-              'coffee': '甜品', // Map coffee to 甜品 for 2×2 grid
-              'late_night': '夜宵',
-              'dessert': '甜品',
-            };
-            
-            const normalized: Record<string, SpendPlace[]> = {
-              '奶茶': [],
-              '中餐': [],
-              '夜宵': [],
-              '甜品': [],
-            };
-            
-            // Try to map itemsByCategory to normalized structure
-            for (const [key, places] of Object.entries(result.itemsByCategory)) {
-              const chineseCategory = keyMap[key] || key; // Use keyMap or try direct match
-              console.log(`[TodaySpendCarousels] Mapping key "${key}" to category "${chineseCategory}"`);
-              
-              if (CATEGORIES.includes(chineseCategory as any)) {
-                const placesArray = places as SpendPlace[];
-                // Also check place.category field in case it has the correct Chinese category
-                placesArray.forEach(place => {
-                  // Use place.category if it matches expected categories, otherwise use mapped category
-                  if (CATEGORIES.includes(place.category as any)) {
-                    normalized[place.category].push(place);
-                  } else if (chineseCategory && CATEGORIES.includes(chineseCategory as any)) {
-                    // Override place.category with mapped category
-                    normalized[chineseCategory].push({ ...place, category: chineseCategory });
-                  }
-                });
-              } else {
-                // If key doesn't match, try to infer from place.category fields
-                console.log(`[TodaySpendCarousels] Key "${key}" doesn't match expected categories, inferring from place.category`);
-                const placesArray = places as SpendPlace[];
-                placesArray.forEach(place => {
-                  if (CATEGORIES.includes(place.category as any)) {
-                    normalized[place.category].push(place);
-                  } else if (chineseCategory && CATEGORIES.includes(chineseCategory as any)) {
-                    // Use mapped category as fallback
-                    normalized[chineseCategory].push({ ...place, category: chineseCategory });
-                  }
-                });
-              }
-            }
-            
-            // Sort each category by score
-            for (const category of CATEGORIES) {
-              normalized[category].sort((a, b) => (b.score || 0) - (a.score || 0));
-            }
-            
-            const normalizedSummary = Object.entries(normalized).map(([k, v]) => `${k}: ${v.length}`).join(', ');
-            console.log('[TodaySpendCarousels] ✅ Normalized counts:', normalizedSummary);
-            console.log('[TodaySpendCarousels] Setting placesByCategory with', Object.keys(normalized).length, 'categories');
-            setPlacesByCategory(normalized);
             // Reset offsets when new data is loaded
             setCategoryOffsets({
               '奶茶': 0,
@@ -339,7 +345,7 @@ export default function TodaySpendCarousels() {
     return (
       <div className="flex flex-col md:grid md:grid-cols-2 gap-4 min-w-0">
         {CATEGORIES.map((category) => (
-          <div key={category} className="rounded-sm p-2 bg-card border border-border/50 h-24">
+          <div key={category} className="rounded-sm p-3 md:p-4 bg-card border border-border/40 shadow-md min-h-[120px]">
             <div className="animate-pulse">
               <div className="h-4 bg-muted rounded w-1/3 mb-2"></div>
               <div className="h-16 bg-muted rounded"></div>

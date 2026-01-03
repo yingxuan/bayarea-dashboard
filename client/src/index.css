@@ -44,12 +44,12 @@
 
 /* Data Punk Theme - Cyberpunk inspired dark theme with neon accents */
 :root {
-  /* Base colors - Deep space background */
+  /* Base colors - Deep space background (最暗) */
   --background: oklch(0.12 0.02 265);
   --foreground: oklch(0.95 0.01 265);
   
-  /* Card colors - Slightly lighter than background */
-  --card: oklch(0.16 0.02 265);
+  /* Card colors - 比背景亮一点，拉开层级 (lightness +2~3%) */
+  --card: oklch(0.19 0.02 265);
   --card-foreground: oklch(0.95 0.01 265);
   
   /* Popover colors */
@@ -60,8 +60,8 @@
   --primary: oklch(0.65 0.25 230);
   --primary-foreground: oklch(0.12 0.02 265);
   
-  /* Secondary - Darker variant */
-  --secondary: oklch(0.20 0.02 265);
+  /* Secondary - Section 背景层级 (略亮于页面背景) */
+  --secondary: oklch(0.14 0.02 265);
   --secondary-foreground: oklch(0.85 0.01 265);
   
   /* Muted - For less important text */
@@ -113,7 +113,13 @@
   
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Ensure font-mono uses monospace font */
+  .font-mono {
+    font-family: 'JetBrains Mono', 'Roboto Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
   }
   
   /* Scrollbar styling for cyberpunk feel */
@@ -211,15 +217,15 @@
   }
   
   .neon-text-blue {
-    color: oklch(0.65 0.25 230);
-    text-shadow: 0 0 10px oklch(0.65 0.25 230 / 0.5);
+    color: oklch(0.65 0.18 230);
+    text-shadow: 0 0 8px oklch(0.65 0.18 230 / 0.4);
   }
   
-  /* Grid background pattern - reduced opacity for less prominence */
+  /* Grid background pattern - 降低 opacity，避免长时间视觉疲劳 */
   .grid-bg {
     background-image: 
-      linear-gradient(oklch(0.25 0.02 265 / 0.15) 0.5px, transparent 0.5px),
-      linear-gradient(90deg, oklch(0.25 0.02 265 / 0.15) 0.5px, transparent 0.5px);
+      linear-gradient(oklch(0.25 0.02 265 / 0.08) 0.5px, transparent 0.5px),
+      linear-gradient(90deg, oklch(0.25 0.02 265 / 0.08) 0.5px, transparent 0.5px);
     background-size: 20px 20px;
   }
   

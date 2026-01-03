@@ -3,7 +3,7 @@
  * Fetches Chinese US stock news from reliable RSS sources
  * 
  * Requirements:
- * - Always return 3 items (or use last_non_empty cache)
+ * - Return all available items (no limit)
  * - Never show empty results
  * - Source chain: RSS1 → RSS2 → HTML fallback → last_non_empty cache
  * - Cache TTL: 7.5 minutes (5-10 min range) for non-empty results only
@@ -468,10 +468,9 @@ function parseRSSFeed(xml: string): MarketNewsItem[] {
     return dateB - dateA; // Descending order (newest first)
   });
   
-  // Return top 3 most recent
-  const top3 = items.slice(0, 3);
-  console.log(`[Market News] Selected top 3 items:`, top3.map(i => i.title));
-  return top3;
+  // Return all items (no limit)
+  console.log(`[Market News] Selected ${items.length} items:`, items.map(i => i.title));
+  return items;
 }
 
 /**
@@ -700,9 +699,6 @@ function parseGoogleFinanceNews(html: string): MarketNewsItem[] {
     
     // Try to find any links with financial keywords
     $('a').each((_, element) => {
-      if (items.length >= 3) {
-        return false;
-      }
 
       const $link = $(element);
       const href = $link.attr('href');
@@ -755,7 +751,7 @@ function parseGoogleFinanceNews(html: string): MarketNewsItem[] {
     });
   }
   
-  return items.slice(0, 3); // Return top 3 only
+  return items; // Return all items (no limit)
 }
 
 /**
@@ -851,7 +847,7 @@ async function fetchHTMLNews(sourceName: string, sourceUrl: string): Promise<Mar
     });
     
     console.log(`[Market News] Fetched ${items.length} items from ${sourceName} HTML`);
-    return items.slice(0, 3);
+    return items;
   } catch (error) {
     clearTimeout(timeoutId);
     console.error(`[Market News] Error fetching HTML from ${sourceName}:`, error);
@@ -868,9 +864,9 @@ function getLastNonEmptyCache(): MarketNewsItem[] | null {
   
   if (cached && Date.now() - cached.timestamp < LAST_NON_EMPTY_CACHE_TTL) {
     const items = cached.data.items || [];
-    if (Array.isArray(items) && items.length >= 3) {
+    if (Array.isArray(items) && items.length > 0) {
       console.log(`[Market News] Using last non-empty cache (${items.length} items)`);
-      return items.slice(0, 3);
+      return items;
     }
   }
   
@@ -881,10 +877,10 @@ function getLastNonEmptyCache(): MarketNewsItem[] | null {
  * Save last non-empty cache (6h TTL)
  */
 function saveLastNonEmptyCache(items: MarketNewsItem[]): void {
-  if (items.length >= 3) {
+  if (items.length > 0) {
     const cacheKey = 'market-news-last-non-empty';
     cache.set(cacheKey, {
-      data: { items: items.slice(0, 3) },
+      data: { items: items },
       timestamp: Date.now(),
     });
     console.log(`[Market News] Saved last non-empty cache (${items.length} items)`);
@@ -899,13 +895,10 @@ async function fetchMarketNews(): Promise<MarketNewsItem[]> {
   for (const rssSource of RSS_SOURCES) {
     try {
       const items = await fetchRSSFeed(rssSource.name, rssSource.url);
-      if (items.length >= 3) {
+      if (items.length > 0) {
         console.log(`[Market News] Successfully fetched ${items.length} items from ${rssSource.name}`);
         saveLastNonEmptyCache(items);
-        return items.slice(0, 3);
-      } else if (items.length > 0) {
-        console.log(`[Market News] Got ${items.length} items from ${rssSource.name}, trying next source...`);
-        // Continue to next source to try to get 3 items
+        return items;
       }
     } catch (error) {
       console.warn(`[Market News] RSS source ${rssSource.name} failed:`, error);
@@ -917,13 +910,10 @@ async function fetchMarketNews(): Promise<MarketNewsItem[]> {
   for (const htmlSource of HTML_FALLBACK_SOURCES) {
     try {
       const items = await fetchHTMLNews(htmlSource.name, htmlSource.url);
-      if (items.length >= 3) {
+      if (items.length > 0) {
         console.log(`[Market News] Successfully fetched ${items.length} items from ${htmlSource.name} HTML`);
         saveLastNonEmptyCache(items);
-        return items.slice(0, 3);
-      } else if (items.length > 0) {
-        console.log(`[Market News] Got ${items.length} items from ${htmlSource.name} HTML, trying next source...`);
-        // Continue to next source
+        return items;
       }
     } catch (error) {
       console.warn(`[Market News] HTML source ${htmlSource.name} failed:`, error);
@@ -987,21 +977,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let finalItems = items;
     
-    // Ensure we have exactly 3 items
-    if (finalItems.length >= 3) {
-      console.log(`[API /api/market-news] Successfully fetched ${finalItems.length} items`);
-    } else if (finalItems.length > 0) {
-      console.warn(`[API /api/market-news] Only got ${finalItems.length} items (less than 3)`);
-      // Try to get last_non_empty cache to fill
-      const lastNonEmpty = getLastNonEmptyCache();
-      if (lastNonEmpty) {
-        const existingUrls = new Set(finalItems.map(i => i.url));
-        const additionalItems = lastNonEmpty.filter(i => !existingUrls.has(i.url));
-        finalItems = [...finalItems, ...additionalItems].slice(0, 3);
-        console.log(`[API /api/market-news] Filled to ${finalItems.length} items using last_non_empty cache`);
-      }
-    } else {
-      // No items from source chain - use last_non_empty cache
+    // If no items from source chain, try last_non_empty cache
+    if (finalItems.length === 0) {
       console.warn('[API /api/market-news] No items from source chain, using last_non_empty cache');
       const lastNonEmpty = getLastNonEmptyCache();
       if (lastNonEmpty) {
@@ -1010,14 +987,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } else {
         // Last resort: try stale cache
         const stale = getStaleCache(cacheKey);
-        if (stale && stale.data.items && Array.isArray(stale.data.items) && stale.data.items.length >= 3) {
-          finalItems = stale.data.items.slice(0, 3);
+        if (stale && stale.data.items && Array.isArray(stale.data.items) && stale.data.items.length > 0) {
+          finalItems = stale.data.items;
           console.log(`[API /api/market-news] Using ${finalItems.length} items from stale cache`);
         } else {
           console.error('[API /api/market-news] All sources failed and no cache available');
           finalItems = [];
         }
       }
+    } else {
+      console.log(`[API /api/market-news] Successfully fetched ${finalItems.length} items`);
     }
     
     // Determine source name from items
@@ -1025,9 +1004,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const sourceUrl = finalItems.length > 0 ? finalItems[0].sourceUrl : '';
 
     const response: any = {
-      status: finalItems.length >= 3 ? 'ok' as const : (finalItems.length > 0 ? 'partial' as const : 'unavailable' as const),
-      items: finalItems.slice(0, 3),
-      count: Math.min(finalItems.length, 3),
+      status: finalItems.length > 0 ? 'ok' as const : 'unavailable' as const,
+      items: finalItems,
+      count: finalItems.length,
       asOf: fetchedAtISO,
       source: { name: sourceName, url: sourceUrl },
       ttlSeconds,
@@ -1038,12 +1017,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cache_expires_in_seconds: ttlSeconds,
     };
 
-    // Only cache non-empty results (>=3 items)
-    if (finalItems.length >= 3) {
+    // Cache non-empty results
+    if (finalItems.length > 0) {
       setCache(cacheKey, response);
       saveLastNonEmptyCache(finalItems);
     } else {
-      console.warn(`[API /api/market-news] Not caching result (only ${finalItems.length} items, need 3+)`);
+      console.warn(`[API /api/market-news] Not caching result (no items)`);
     }
 
     res.status(200).json(response);
@@ -1062,8 +1041,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.log(`[API /api/market-news] Using last_non_empty cache (${lastNonEmpty.length} items)`);
         return res.status(200).json({
           status: 'ok' as const,
-          items: lastNonEmpty.slice(0, 3),
-          count: Math.min(lastNonEmpty.length, 3),
+          items: lastNonEmpty,
+          count: lastNonEmpty.length,
           asOf: new Date().toISOString(),
           source: { name: lastNonEmpty[0]?.source || 'Unknown', url: lastNonEmpty[0]?.sourceUrl || '' },
           ttlSeconds: ttlMsToSeconds(MARKET_NEWS_CACHE_TTL),
@@ -1085,11 +1064,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         items = [];
       }
       
-      if (items.length >= 3) {
+      if (items.length > 0) {
         return res.status(200).json({
           ...staleData,
-          items: items.slice(0, 3),
-          count: Math.min(items.length, 3),
+          items: items,
+          count: items.length,
           cache_hit: true,
           stale: true,
         });

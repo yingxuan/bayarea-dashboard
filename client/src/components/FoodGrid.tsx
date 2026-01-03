@@ -46,7 +46,7 @@ export default function FoodGrid({
           href={place.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="glow-border rounded-sm overflow-hidden bg-card hover:bg-card/80 transition-all group"
+          className="rounded-sm overflow-hidden bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
         >
           {/* Photo */}
           <div className="relative aspect-[4/3] bg-muted overflow-hidden">

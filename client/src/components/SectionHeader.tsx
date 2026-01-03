@@ -14,11 +14,11 @@ export default function SectionHeader({ title, href, linkText = "查看更多" }
   return (
     <div className="mb-2">
       <div className="flex items-baseline justify-between mb-2">
-        <h3 className="text-sm font-semibold font-mono text-foreground/90">{title}</h3>
+        <h3 className="text-[13px] font-mono font-medium text-foreground/80">{title}</h3>
         {href && (
           <a
             href={href}
-            className="text-xs opacity-70 font-mono hover:opacity-100 transition-opacity"
+            className="text-xs opacity-60 font-mono font-normal hover:opacity-100 transition-opacity"
           >
             {linkText}
           </a>

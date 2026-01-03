@@ -115,7 +115,7 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
 
   if (loading && !source1P3A && !sourceBlind) {
     return (
-      <div className="glow-border rounded-sm p-4 bg-card">
+      <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md">
         <div className="animate-pulse">
           <div className="h-6 bg-muted rounded w-1/3 mb-4"></div>
           <div className="space-y-3">
@@ -136,9 +136,9 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
   ) => {
     if (!payload || !payload.items || payload.items.length === 0) {
       return (
-        <div className="rounded-sm p-3 bg-card/50 border border-border/50">
+        <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md">
           <div className="text-center">
-            <p className="text-xs text-muted-foreground font-mono">
+            <p className="text-xs opacity-60 text-muted-foreground font-mono font-normal">
               暂时抓不到，点这里去看原帖
             </p>
           </div>
@@ -153,9 +153,9 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
       <div className="space-y-2">
         {/* Header with status */}
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold font-mono text-foreground/90">{title}</h3>
+          <h3 className="text-[13px] font-mono font-medium text-foreground/80">{title}</h3>
           {showStatusMessage && (
-            <span className="text-xs opacity-70 font-mono">
+            <span className="text-xs opacity-60 font-mono font-normal">
               {payload.source === 'seed' ? '备用' : payload.status === 'failed' ? '暂时抓不到，已用备用' : '已显示上次结果'}
             </span>
           )}
@@ -168,16 +168,16 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="block p-3 md:p-4 rounded-sm bg-card/50 border border-border/50 hover:bg-card/80 hover:border-primary/50 transition-all group"
+            className="block rounded-sm p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
           >
             <div className="flex items-start justify-between gap-2">
               {/* Title */}
-              <h4 className="text-sm font-semibold group-hover:text-primary transition-colors line-clamp-2 flex-1 leading-relaxed">
+              <h4 className="text-[14px] font-normal group-hover:text-primary transition-colors line-clamp-2 flex-1" style={{ lineHeight: '1.4' }}>
                 {item.title}
               </h4>
               
               {/* External Link */}
-              <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0 group-hover:text-primary transition-colors mt-0.5" />
+              <ExternalLink className="w-4 h-4 opacity-60 text-muted-foreground flex-shrink-0 group-hover:text-primary group-hover:opacity-100 transition-colors mt-0.5" />
             </div>
           </a>
         ))}

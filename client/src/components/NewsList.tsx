@@ -42,11 +42,11 @@ export default function NewsList({
           href={item.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="block glow-border rounded-sm p-4 bg-card hover:bg-card/80 transition-all group"
+          className="block rounded-sm p-3 md:p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
         >
           <div className="flex items-start justify-between gap-4 mb-3">
             {/* Chinese Summary - PRIMARY CONTENT */}
-            <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors flex-1 leading-relaxed">
+            <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors flex-1 leading-relaxed">
               {item.summary_zh}
             </h3>
             

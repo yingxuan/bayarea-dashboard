@@ -81,7 +81,7 @@ export default function LeekCommunity({ maxItems = 5, hideTitle = false }: LeekC
 
   if (loading && items.length === 0) {
     return (
-      <div className="glow-border rounded-sm p-4 bg-card">
+      <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md">
         <div className="animate-pulse">
           <div className="h-6 bg-muted rounded w-1/3 mb-4"></div>
           <div className="space-y-3">
@@ -99,18 +99,18 @@ export default function LeekCommunity({ maxItems = 5, hideTitle = false }: LeekC
   // This ensures the block is always visible
 
   return (
-    <div className={hideTitle ? "p-1.5 h-auto" : "glow-border rounded-sm p-4 bg-card h-auto"}>
+    <div className={hideTitle ? "p-1.5 h-auto" : "rounded-sm p-4 bg-card border border-border/40 shadow-md h-auto"}>
       {/* Header */}
       {!hideTitle && (
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-base font-semibold font-mono text-foreground/90">
+          <h3 className="text-[13px] font-mono font-medium text-foreground/80">
             韭菜社区
           </h3>
           <a
             href={FORUM_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-muted-foreground hover:text-primary transition-colors font-mono flex items-center gap-1"
+            className="text-xs opacity-60 hover:opacity-100 transition-opacity font-mono font-normal flex items-center gap-1"
           >
             查看更多
             <ArrowRight className="w-3 h-3" />
@@ -132,10 +132,10 @@ export default function LeekCommunity({ maxItems = 5, hideTitle = false }: LeekC
               className={`block ${hideTitle ? 'p-1.5' : 'p-2'} rounded-sm bg-card/50 border border-border/50 hover:bg-card/80 hover:border-primary/50 transition-all group`}
             >
               <div className="flex items-start justify-between gap-2">
-                <span className={`${hideTitle ? 'text-xs' : 'text-sm'} font-mono text-foreground/80 group-hover:text-primary transition-colors line-clamp-2 flex-1 leading-tight`}>
-                  • [{item.sourceLabel}] {item.title}
+                <span className={`${hideTitle ? 'text-xs' : 'text-[14px]'} font-mono font-normal text-foreground/80 group-hover:text-primary transition-colors line-clamp-2 flex-1`} style={{ lineHeight: '1.4' }}>
+                  <span className="text-[10px] mr-1">•</span>{item.title}
                 </span>
-                <ExternalLink className={`${hideTitle ? 'w-3 h-3' : 'w-4 h-4'} text-muted-foreground flex-shrink-0 group-hover:text-primary transition-colors mt-0.5`} />
+                <ExternalLink className={`${hideTitle ? 'w-3 h-3' : 'w-4 h-4'} opacity-60 text-muted-foreground flex-shrink-0 group-hover:text-primary group-hover:opacity-100 transition-colors mt-0.5`} />
               </div>
             </a>
           ))}
@@ -144,8 +144,8 @@ export default function LeekCommunity({ maxItems = 5, hideTitle = false }: LeekC
         {items.length === 0 && (
           <div className={`block ${hideTitle ? 'p-1.5' : 'p-2'} rounded-sm bg-card/50 border border-border/50`}>
             <div className="flex items-start gap-2">
-              <span className={`${hideTitle ? 'text-xs' : 'text-sm'} font-mono text-muted-foreground line-clamp-2 flex-1 leading-tight`}>
-                • 社区暂时不可用，稍后刷新
+              <span className={`${hideTitle ? 'text-xs' : 'text-[14px]'} font-mono font-normal opacity-60 text-muted-foreground line-clamp-2 flex-1`} style={{ lineHeight: '1.4' }}>
+                <span className="text-[10px] mr-1">•</span>社区暂时不可用，稍后刷新
               </span>
             </div>
           </div>

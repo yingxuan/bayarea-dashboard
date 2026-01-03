@@ -61,15 +61,15 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
   if (places.length < 2) {
     console.warn(`[SpendCarousel] Category "${category}" has only ${places.length} places, showing compact placeholder`);
     return (
-      <div className="rounded-sm p-2 bg-card border border-border/50 flex flex-col h-24">
-        <div className="mb-1 flex-shrink-0 flex items-center justify-between">
-          <h3 className="text-xs font-semibold font-mono text-foreground/90">
+      <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md flex flex-col min-h-[120px]">
+        <div className="mb-2 flex-shrink-0 flex items-center justify-between">
+          <h3 className="text-[28px] md:text-[32px] font-mono font-semibold text-foreground">
             {category}
           </h3>
         </div>
         <div className="flex-1 flex items-center justify-center min-h-0">
-          <p className="text-xs text-muted-foreground font-mono text-center line-clamp-2">
-            暂时无法获取附近热门店
+          <p className="text-xs opacity-60 font-mono font-normal text-center line-clamp-2">
+            {places.length === 0 ? '暂无推荐' : '数据不足'}
           </p>
         </div>
       </div>
@@ -117,16 +117,16 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
   const finalRandomPool = randomPool.length > 0 ? randomPool : places.slice(0, 1);
 
   return (
-    <div className="rounded-sm p-2 bg-card border border-border/50 flex flex-col h-auto min-h-0">
+    <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md flex flex-col h-auto min-h-0">
       {/* Category Header - Top-left with Refresh Button */}
       <div className="mb-2 flex-shrink-0 flex items-center justify-between">
-        <h3 className="text-xs font-semibold font-mono text-foreground/90">
+        <h3 className="text-[13px] font-mono font-medium text-foreground/80">
           {category}
         </h3>
         {onRefresh && places.length > 2 && (
           <button
             onClick={onRefresh}
-            className="text-xs text-primary hover:text-primary/80 transition-colors font-mono px-2 py-0.5 rounded hover:bg-primary/10 border border-primary/20 hover:border-primary/40"
+            className="text-xs opacity-60 hover:opacity-100 transition-opacity font-mono font-normal px-2 py-0.5 rounded hover:bg-primary/10 border border-primary/20 hover:border-primary/40"
             title="换一批"
           >
             换一批
@@ -143,14 +143,14 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
         }}
         className="w-full min-w-0"
       >
-        <CarouselContent className="-ml-2 min-w-0">
+        <CarouselContent className="-ml-2 min-w-0 items-stretch">
           {/* Card 1-2: Real places */}
           {top2Places.map((place) => {
             const photoUrl = place.photo_url || getFallbackImage();
             const isFallback = (place as any).isFallback;
             
             return (
-              <CarouselItem key={place.id} className="pl-2 basis-auto">
+              <CarouselItem key={place.id} className="pl-2 basis-auto flex items-center">
                 <a
                   href={isFallback ? '#' : place.maps_url}
                   target={isFallback ? undefined : "_blank"}
@@ -176,15 +176,15 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
                     
                     {/* Overlay: Name + Rating + Distance (bottom-left) */}
                     <div className="absolute bottom-0 left-0 right-0 p-2 text-white z-10">
-                      <h4 className="text-sm font-semibold mb-1 truncate drop-shadow-lg">{place.name}</h4>
-                      <div className="flex items-center gap-1.5 text-xs drop-shadow-md">
+                      <h4 className="text-[14px] font-medium mb-1 truncate drop-shadow-lg">{place.name}</h4>
+                      <div className="flex items-center gap-1.5 text-xs opacity-70 drop-shadow-md">
                         <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                        <span className="font-medium">{place.rating.toFixed(1)}</span>
+                        <span className="font-normal tabular-nums">{place.rating.toFixed(1)}</span>
                         {place.distance_miles !== undefined && (
                           <>
-                            <span className="text-white/70">•</span>
+                            <span className="text-white/60">•</span>
                             <MapPin className="w-3 h-3" />
-                            <span>{place.distance_miles.toFixed(1)} mi</span>
+                            <span className="font-normal tabular-nums">{place.distance_miles.toFixed(1)} mi</span>
                           </>
                         )}
                       </div>
@@ -195,8 +195,8 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
             );
           })}
 
-          {/* Card 3: Blind Box */}
-          <CarouselItem className="pl-2 basis-auto">
+          {/* Card 3: Blind Box - 确保完整显示，垂直居中 */}
+          <CarouselItem className="pl-2 basis-auto flex items-center">
             <BlindBoxCard
               randomPool={finalRandomPool}
               fallbackImage={getFallbackImage()}

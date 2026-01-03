@@ -248,6 +248,290 @@ async function fetchSPY(): Promise<MarketDataItem> {
 }
 
 /**
+ * Fetch QQQ price from Yahoo Finance API (primary) with Stooq fallback
+ */
+async function fetchQQQ(): Promise<MarketDataItem> {
+  const now = new Date().toISOString();
+  
+  const primaryFn = async () => {
+    const response = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/QQQ?interval=1d&range=1d');
+    
+    if (!response.ok) {
+      throw new Error(`Yahoo Finance API error: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Robust parsing with multiple fallback paths (same as SPY)
+    const result = data?.chart?.result?.[0];
+    if (!result) {
+      throw new Error('Invalid response structure from Yahoo Finance');
+    }
+    
+    const meta = result.meta;
+    const price = meta?.regularMarketPrice || meta?.previousClose || meta?.chartPreviousClose;
+    
+    if (!price || typeof price !== 'number' || price <= 0) {
+      throw new Error(`Invalid price from Yahoo Finance: ${price}`);
+    }
+    
+    // Calculate change if available (same as SPY)
+    const previousClose = meta?.previousClose || meta?.chartPreviousClose;
+    let change: number | undefined;
+    let changePercent: number | undefined;
+    
+    if (previousClose && typeof previousClose === 'number' && previousClose > 0) {
+      change = price - previousClose;
+      changePercent = (change / previousClose) * 100;
+    }
+    
+    console.log(`[fetchQQQ] Yahoo Finance primary returned: $${price}, prevClose: ${previousClose}, change: ${changePercent?.toFixed(2)}%`);
+    
+    return {
+      name: 'QQQ',
+      value: price,
+      change,
+      change_percent: changePercent,
+      prevClose: previousClose,
+      prevDayValue: previousClose,
+      unit: 'USD',
+      status: 'ok' as const,
+      asOf: now,
+      source: {
+        name: 'Yahoo Finance',
+        url: 'https://finance.yahoo.com/quote/QQQ/',
+      },
+      ttlSeconds: 600,
+      source_name: 'Yahoo Finance',
+      source_url: 'https://finance.yahoo.com/quote/QQQ/',
+      as_of: now,
+      debug: {
+        data_source: 'yahoo_finance_api',
+        api_response: { price, previousClose, change, changePercent },
+      },
+    };
+  };
+  
+  const fallbackFn = async () => {
+    const response = await fetch('https://stooq.com/q/l/?s=qqq&f=sd2t2ohlcv&h&e=csv');
+    
+    if (!response.ok) {
+      throw new Error(`Stooq API error: ${response.statusText}`);
+    }
+    
+    const text = await response.text();
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) {
+      throw new Error('Invalid CSV data from Stooq');
+    }
+    
+    const data = lines[1].split(',');
+    const price = parseFloat(data[5]); // Close price
+    const prevClose = parseFloat(data[3]); // Open price (approximation)
+    
+    if (isNaN(price) || price <= 0) {
+      throw new Error('Invalid price data from Stooq');
+    }
+    
+    const change = !isNaN(prevClose) ? price - prevClose : undefined;
+    const changePercent = prevClose && change !== undefined ? (change / prevClose) * 100 : undefined;
+    
+    return {
+      name: 'QQQ',
+      value: price,
+      change,
+      change_percent: changePercent,
+      prevClose: !isNaN(prevClose) ? prevClose : undefined,
+      prevDayValue: !isNaN(prevClose) ? prevClose : undefined,
+      unit: 'USD',
+      status: 'ok' as const,
+      asOf: now,
+      source: {
+        name: 'Stooq',
+        url: 'https://stooq.com/q/?s=qqq',
+      },
+      ttlSeconds: 600,
+      source_name: 'Stooq',
+      source_url: 'https://stooq.com/q/?s=qqq',
+      as_of: now,
+    };
+  };
+  
+  try {
+    return await tryPrimaryThenFallback(
+      () => withTimeout(primaryFn, FETCH_TIMEOUT_MS, 'fetchQQQ (Yahoo Finance)'),
+      () => withTimeout(fallbackFn, FETCH_TIMEOUT_MS, 'fetchQQQ (Stooq)'),
+      'fetchQQQ'
+    );
+  } catch (error) {
+    console.error('[fetchQQQ] Both primary and fallback failed:', error);
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      name: 'QQQ',
+      value: 'Unavailable',
+      unit: 'USD',
+      status: 'unavailable' as const,
+      asOf: now,
+      source: {
+        name: 'Stooq / Yahoo Finance',
+        url: 'https://finance.yahoo.com/quote/QQQ/',
+      },
+      ttlSeconds: 600,
+      error: errorMsg,
+      source_name: 'Stooq / Yahoo Finance',
+      source_url: 'https://finance.yahoo.com/quote/QQQ/',
+      as_of: now,
+      debug: {
+        data_source: 'both_failed',
+        error: errorMsg,
+      },
+    };
+  }
+}
+
+/**
+ * Fetch ARKK price from Yahoo Finance API (primary) with Stooq fallback
+ */
+async function fetchARKK(): Promise<MarketDataItem> {
+  const now = new Date().toISOString();
+  
+  const primaryFn = async () => {
+    const response = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/ARKK?interval=1d&range=1d');
+    
+    if (!response.ok) {
+      throw new Error(`Yahoo Finance API error: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Robust parsing with multiple fallback paths (same as SPY)
+    const result = data?.chart?.result?.[0];
+    if (!result) {
+      throw new Error('Invalid response structure from Yahoo Finance');
+    }
+    
+    const meta = result.meta;
+    const price = meta?.regularMarketPrice || meta?.previousClose || meta?.chartPreviousClose;
+    
+    if (!price || typeof price !== 'number' || price <= 0) {
+      throw new Error(`Invalid price from Yahoo Finance: ${price}`);
+    }
+    
+    // Calculate change if available (same as SPY)
+    const previousClose = meta?.previousClose || meta?.chartPreviousClose;
+    let change: number | undefined;
+    let changePercent: number | undefined;
+    
+    if (previousClose && typeof previousClose === 'number' && previousClose > 0) {
+      change = price - previousClose;
+      changePercent = (change / previousClose) * 100;
+    }
+    
+    console.log(`[fetchARKK] Yahoo Finance primary returned: $${price}, prevClose: ${previousClose}, change: ${changePercent?.toFixed(2)}%`);
+    
+    return {
+      name: 'ARKK',
+      value: price,
+      change,
+      change_percent: changePercent,
+      prevClose: previousClose,
+      prevDayValue: previousClose,
+      unit: 'USD',
+      status: 'ok' as const,
+      asOf: now,
+      source: {
+        name: 'Yahoo Finance',
+        url: 'https://finance.yahoo.com/quote/ARKK/',
+      },
+      ttlSeconds: 600,
+      source_name: 'Yahoo Finance',
+      source_url: 'https://finance.yahoo.com/quote/ARKK/',
+      as_of: now,
+      debug: {
+        data_source: 'yahoo_finance_api',
+        api_response: { price, previousClose, change, changePercent },
+      },
+    };
+  };
+  
+  const fallbackFn = async () => {
+    const response = await fetch('https://stooq.com/q/l/?s=arkk&f=sd2t2ohlcv&h&e=csv');
+    
+    if (!response.ok) {
+      throw new Error(`Stooq API error: ${response.statusText}`);
+    }
+    
+    const text = await response.text();
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) {
+      throw new Error('Invalid CSV data from Stooq');
+    }
+    
+    const data = lines[1].split(',');
+    const price = parseFloat(data[5]); // Close price
+    const prevClose = parseFloat(data[3]); // Open price (approximation)
+    
+    if (isNaN(price) || price <= 0) {
+      throw new Error('Invalid price data from Stooq');
+    }
+    
+    const change = !isNaN(prevClose) ? price - prevClose : undefined;
+    const changePercent = prevClose && change !== undefined ? (change / prevClose) * 100 : undefined;
+    
+    return {
+      name: 'ARKK',
+      value: price,
+      change,
+      change_percent: changePercent,
+      prevClose: !isNaN(prevClose) ? prevClose : undefined,
+      prevDayValue: !isNaN(prevClose) ? prevClose : undefined,
+      unit: 'USD',
+      status: 'ok' as const,
+      asOf: now,
+      source: {
+        name: 'Stooq',
+        url: 'https://stooq.com/q/?s=arkk',
+      },
+      ttlSeconds: 600,
+      source_name: 'Stooq',
+      source_url: 'https://stooq.com/q/?s=arkk',
+      as_of: now,
+    };
+  };
+  
+  try {
+    return await tryPrimaryThenFallback(
+      () => withTimeout(primaryFn, FETCH_TIMEOUT_MS, 'fetchARKK (Yahoo Finance)'),
+      () => withTimeout(fallbackFn, FETCH_TIMEOUT_MS, 'fetchARKK (Stooq)'),
+      'fetchARKK'
+    );
+  } catch (error) {
+    console.error('[fetchARKK] Both primary and fallback failed:', error);
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      name: 'ARKK',
+      value: 'Unavailable',
+      unit: 'USD',
+      status: 'unavailable' as const,
+      asOf: now,
+      source: {
+        name: 'Stooq / Yahoo Finance',
+        url: 'https://finance.yahoo.com/quote/ARKK/',
+      },
+      ttlSeconds: 600,
+      error: errorMsg,
+      source_name: 'Stooq / Yahoo Finance',
+      source_url: 'https://finance.yahoo.com/quote/ARKK/',
+      as_of: now,
+      debug: {
+        data_source: 'both_failed',
+        error: errorMsg,
+      },
+    };
+  }
+}
+
+/**
  * Fetch Gold (XAUUSD) price from Yahoo Finance API (primary) with Stooq fallback
  */
 async function fetchGold(): Promise<MarketDataItem> {
@@ -440,10 +724,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     // Fetch fresh data from APIs
-    const [spy, gold, btc, mortgage, powerball] = await Promise.all([
+    const [spy, gold, btc, qqq, arkk, mortgage, powerball] = await Promise.all([
       fetchSPY(),
       fetchGold(),
       fetchBTC(),
+      fetchQQQ(),
+      fetchARKK(),
       fetchMortgageRate(),
       fetchPowerball(),
     ]);
@@ -454,6 +740,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         spy,
         gold,
         btc,
+        qqq,
+        arkk,
         mortgage,
         powerball,
       },

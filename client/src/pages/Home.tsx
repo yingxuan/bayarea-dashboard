@@ -20,7 +20,8 @@ import TodaySpendCarousels from "@/components/TodaySpendCarousels";
 import ChineseGossip from "@/components/ChineseGossip";
 import PortfolioHero from "@/components/PortfolioHero";
 import MarketHighlights from "@/components/MarketHighlights";
-import CommunityVideoCarousel from "@/components/CommunityVideoCarousel";
+import USStockYouTubers from "@/components/USStockYouTubers";
+import IndicesCard from "@/components/IndicesCard";
 import DealsCarousel from "@/components/DealsCarousel";
 import ShowsCarousel from "@/components/ShowsCarousel";
 import SectionHeader from "@/components/SectionHeader";
@@ -48,7 +49,9 @@ async function fetchWithTimeout(url: string, timeoutMs = 10000): Promise<Respons
 export default function Home() {
   // Section 1: 打工耽误赚钱
   const [marketNews, setMarketNews] = useState<any[]>([]); // 市场要闻
+  const [chineseNews, setChineseNews] = useState<any[]>([]); // Top 3 中文美股新闻
   const [stockYoutubers, setStockYoutubers] = useState<any[]>([]); // 美股博主视频（每频道1条）
+  const [stockYoutubersOffset, setStockYoutubersOffset] = useState(0); // Offset for "换一批" functionality
   const { holdings, isLoaded: holdingsLoaded, ytdBaseline, updateYtdBaseline } = useHoldings();
   
   // Fetch quotes for PortfolioHero
@@ -122,7 +125,7 @@ export default function Home() {
 
   useEffect(() => {
     async function loadAllData() {
-      // Section 1: 打工耽误赚钱 - 市场要闻
+      // Section 1: 打工耽误赚钱 - 市场要闻 + 中文美股新闻
       try {
         const apiUrl = `${config.apiBaseUrl}/api/market-news`;
         const response = await fetchWithTimeout(apiUrl);
@@ -130,19 +133,25 @@ export default function Home() {
           const result = await response.json();
           const newsItems = result.items || [];
           if (newsItems.length > 0) {
-            setMarketNews(newsItems.slice(0, 3)); // Top 3 for market news card
+            // 前3条作为市场看点中的新闻
+            setMarketNews(newsItems.slice(0, 3)); // Top 3 for market news
+            // chineseNews 不再使用（已整合到 marketNews）
+            setChineseNews([]);
           } else {
             setMarketNews([]);
+            setChineseNews([]);
           }
         } else {
           setMarketNews([]);
+          setChineseNews([]);
         }
       } catch (error) {
         console.error("[Home] Failed to fetch market news:", error);
         setMarketNews([]);
+        setChineseNews([]);
       }
 
-      // Section 1: 打工耽误赚钱 - 美股博主视频（每频道1条）
+      // Section 1: 打工耽误赚钱 - 美股博主视频（每频道1条，至少获取6个用于轮换）
       try {
         const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/youtubers?category=stock`);
         if (response.ok) {
@@ -165,11 +174,14 @@ export default function Home() {
               }
             }
           });
-          setStockYoutubers(Array.from(channelMap.values()).slice(0, 5));
+          // 获取至少8个用于轮换（桌面显示4个，移动端carousel）
+          setStockYoutubers(Array.from(channelMap.values()).slice(0, 8));
+          setStockYoutubersOffset(0); // Reset offset when new data is loaded
         }
       } catch (error) {
         console.error("[Home] Failed to fetch stock youtubers:", error);
         setStockYoutubers([]);
+        setStockYoutubersOffset(0);
       }
 
       // Section 3: 追剧吃瓜薅羊毛 - 追剧
@@ -232,40 +244,58 @@ export default function Home() {
         <div className="mx-auto w-full max-w-6xl px-4 md:px-6 py-3 space-y-4">
           {/* SECTION 1: 打工耽误赚钱 */}
           <section className="flex flex-col gap-4 min-w-0">
-            <div className="mb-2">
-              <h1 className="text-sm font-semibold font-mono">
+            <div className="mb-3">
+              <h1 className="text-base font-semibold font-mono">
                 <span className="neon-text-blue">打工耽误赚钱</span>
               </h1>
             </div>
 
-            {/* 1) Hero (compact, full width) */}
-            <PortfolioHero
-              quotesData={quotesData}
-              holdings={holdings}
-              holdingsLoaded={holdingsLoaded}
-              ytdBaseline={ytdBaseline}
-              onYtdBaselineChange={updateYtdBaseline}
-            />
+            {/* 1) First Row: Portfolio Summary + Indices (Desktop: 2 columns, Mobile: stack) */}
+            <div className="grid grid-cols-1 md:grid-cols-[2.2fr_1fr] gap-4">
+              {/* Left: Portfolio Summary Card */}
+              <div className="min-w-0">
+                <PortfolioHero
+                  quotesData={quotesData}
+                  holdings={holdings}
+                  holdingsLoaded={holdingsLoaded}
+                  ytdBaseline={ytdBaseline}
+                  onYtdBaselineChange={updateYtdBaseline}
+                />
+              </div>
 
-            {/* 2) 市场看点 (Market Highlights: 快照 + 要闻) */}
+              {/* Right: Indices Card */}
+              <div className="min-w-0">
+                <IndicesCard />
+              </div>
+            </div>
+
+            {/* 2) 市场看点 (Market Highlights: 新闻/一亩三分地) */}
             <div className="w-full min-w-0">
               <SectionHeader title="市场看点" />
               <MarketHighlights marketNews={marketNews} />
             </div>
 
-            {/* 3) Horizontal carousel: 社区 & 视频 (2 cards, swipe) */}
+            {/* 3) 美股博主 (独立整行，桌面4个，移动端carousel) */}
             <div className="w-full min-w-0">
-              <SectionHeader title="社区 & 视频" />
-              <div className="w-full min-w-0 overflow-hidden">
-                <CommunityVideoCarousel stockYoutubers={stockYoutubers} />
-              </div>
+              <USStockYouTubers 
+                stockYoutubers={stockYoutubers}
+                offset={stockYoutubersOffset}
+                onRefresh={() => {
+                  const VIDEOS_PER_BATCH = 4;
+                  setStockYoutubersOffset(prev => {
+                    const nextOffset = prev + VIDEOS_PER_BATCH;
+                    // Wrap around if we've reached the end
+                    return nextOffset >= stockYoutubers.length ? 0 : nextOffset;
+                  });
+                }}
+              />
             </div>
           </section>
 
           {/* SECTION 2: 民以食为天 */}
-          <section className="flex flex-col gap-4 min-w-0">
-            <div className="mb-2">
-              <h1 className="text-sm font-semibold font-mono">
+          <section className="flex flex-col gap-4 min-w-0 mt-8">
+            <div className="mb-3">
+              <h1 className="text-base font-semibold font-mono">
                 <span className="neon-text-blue">民以食为天</span>
               </h1>
             </div>
@@ -277,9 +307,9 @@ export default function Home() {
           </section>
 
           {/* SECTION 3: 追剧吃瓜薅羊毛 */}
-          <section className="flex flex-col gap-4 min-w-0">
-            <div className="mb-2">
-              <h1 className="text-sm font-semibold font-mono">
+          <section className="flex flex-col gap-4 min-w-0 mt-8">
+            <div className="mb-3">
+              <h1 className="text-base font-semibold font-mono">
                 <span className="neon-text-blue">追剧吃瓜薅羊毛</span>
               </h1>
             </div>
@@ -322,7 +352,7 @@ export default function Home() {
                         href={deal.external_url || deal.url || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block p-3 rounded-sm bg-card/50 border border-border/50 hover:bg-card/80 hover:border-primary/50 transition-all group"
+                        className="block rounded-sm p-3 md:p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">

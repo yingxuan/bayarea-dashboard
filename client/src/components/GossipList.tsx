@@ -43,7 +43,7 @@ export default function GossipList({ posts, maxItems = 10 }: GossipListProps) {
           href={post.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="block glow-border rounded-sm p-4 bg-card hover:bg-card/80 transition-all group"
+          className="block rounded-sm p-3 md:p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
         >
           <div className="flex items-start gap-3">
             {/* Index */}

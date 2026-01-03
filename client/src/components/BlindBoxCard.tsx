@@ -250,10 +250,10 @@ export default function BlindBoxCard({ randomPool, fallbackImage, onReveal }: Bl
     <button
       onClick={handleClick}
       disabled={isRolling || randomPool.length === 0}
-      className="block w-44 rounded-lg overflow-hidden bg-card/50 border border-border/50 hover:border-primary/50 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+      className="block w-44 rounded-lg bg-card/50 border border-border/50 hover:border-primary/50 transition-all group disabled:opacity-50 disabled:cursor-not-allowed flex flex-col"
     >
-      {/* Dice Image/Icon */}
-      <div className="relative w-full h-32 bg-gradient-to-br from-primary/20 to-primary/5 overflow-hidden flex items-center justify-center">
+      {/* Dice Image/Icon - 确保完整显示，不裁切 */}
+      <div className="relative w-full h-32 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center" style={{ minHeight: '128px' }}>
         {isRolling ? (
           // Dice animation with rotation
           <DiceAnimation />
@@ -276,7 +276,7 @@ export default function BlindBoxCard({ randomPool, fallbackImage, onReveal }: Bl
       </div>
 
       {/* Info placeholder */}
-      <div className="p-2">
+      <div className="p-2 flex-shrink-0">
         <div className="text-xs text-muted-foreground font-mono">
           {isRolling ? '...' : ''}
         </div>

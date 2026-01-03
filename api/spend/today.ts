@@ -1,24 +1,26 @@
 /**
  * Vercel Serverless Function: /api/spend/today
- * Returns food recommendations using Google Places API
+ * Returns food recommendations using Google Places API (New)
  * 
  * Requirements:
  * - Cities: Cupertino / Sunnyvale
  * - Categories: 奶茶 / 中餐 / 咖啡 / 夜宵
- * - Always return 6 items per category (2 real places + 1 blind box pool)
- * - Filter: rating >= 4.2 & user_ratings_total >= 50
- * - Sort: rating * log(user_ratings_total)
+ * - Always return >= 3 items per category (live or cache/seed)
+ * - Sort: "popular" = userRatingCount desc, then rating desc
  * - 24h cache: success → write cache; fail → read cache; cache fail → seed fallback
- * - Never show "暂无推荐"
+ * - Never show empty UI (items always >= 3 per category)
  * 
  * Strategy:
- * - Use Google Places Text Search API
+ * - Use Google Places API (New) - places:searchNearby (POST)
  * - Cache for 24 hours
+ * - Fallback to stale cache if API fails
  * - Fallback to local seed data if all fails
+ * - All errors (legacy/billing/quota/key restrictions) trigger fallback
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { CACHE_TTL, ttlMsToSeconds } from '../../shared/config.js';
+import { getFoodRecommendationsFromSeed, type FoodPlace } from '../../shared/food-seed-data.js';
 import {
   cache,
   setCorsHeaders,
@@ -63,6 +65,38 @@ const CATEGORY_TYPES = {
   '夜宵': 'restaurant', // Use restaurant as base type for BBQ and hot pot
 } as const;
 
+// New Places API (New) response types
+interface NewPlacesPlace {
+  id: string;
+  displayName?: {
+    text: string;
+    languageCode: string;
+  };
+  rating?: number;
+  userRatingCount?: number;
+  formattedAddress?: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+  };
+  photos?: Array<{
+    name: string;
+    widthPx?: number;
+    heightPx?: number;
+  }>;
+  regularOpeningHours?: {
+    openNow?: boolean;
+    weekdayDescriptions?: string[];
+  };
+  types?: string[];
+  googleMapsUri?: string;
+}
+
+interface NewPlacesSearchNearbyResponse {
+  places?: NewPlacesPlace[];
+}
+
+// Legacy interface for backward compatibility (used internally)
 interface GooglePlaceResult {
   place_id: string;
   name: string;
@@ -136,10 +170,9 @@ function calculateCombinedRankingScore(
 }
 
 /**
- * Search Google Places using Nearby Search API
+ * Search Google Places using Places API (New) - searchNearby
  * Returns places within radius, filtered by keyword
- * Google Places API returns results sorted by relevance (best matches first)
- * Maximum radius: 50000 meters (~31 miles)
+ * Uses POST method with proper headers
  */
 async function searchGooglePlacesNearby(
   location: { lat: number; lng: number },
@@ -151,40 +184,130 @@ async function searchGooglePlacesNearby(
     throw new Error('GOOGLE_PLACES_API_KEY environment variable is not set');
   }
 
-  const params = new URLSearchParams({
-    location: `${location.lat},${location.lng}`,
-    radius: radius.toString(),
-    key: GOOGLE_PLACES_API_KEY,
-  });
+  try {
+    // For keyword-based searches, use searchText instead of searchNearby
+    // searchNearby is better for type-based searches, searchText for keyword searches
+    let url: string;
+    let requestBody: any;
+    
+    if (keyword) {
+      // Use searchText for keyword searches
+      url = 'https://places.googleapis.com/v1/places:searchText';
+      requestBody = {
+        textQuery: keyword,
+        maxResultCount: 20,
+        locationBias: {
+          circle: {
+            center: {
+              latitude: location.lat,
+              longitude: location.lng,
+            },
+            radius: radius,
+          },
+        },
+        includedType: type, // Optional: filter by type
+      };
+    } else {
+      // Use searchNearby for type-based searches
+      url = 'https://places.googleapis.com/v1/places:searchNearby';
+      requestBody = {
+        includedTypes: type ? [type] : undefined,
+        maxResultCount: 20,
+        locationRestriction: {
+          circle: {
+            center: {
+              latitude: location.lat,
+              longitude: location.lng,
+            },
+            radius: radius,
+          },
+        },
+      };
+    }
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.photos,places.regularOpeningHours,places.types,places.googleMapsUri',
+      },
+      body: JSON.stringify(requestBody),
+    });
 
-  if (type) {
-    params.append('type', type);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Spend Today] Places API (New) HTTP error: ${response.status} ${response.statusText}`);
+      console.error(`[Spend Today] Error response: ${errorText}`);
+      throw new Error(`Places API (New) error: ${response.status} ${response.statusText}`);
+    }
+
+    const data: NewPlacesSearchNearbyResponse = await response.json();
+    
+    // Check for API-level errors
+    if ((data as any).error) {
+      const error = (data as any).error;
+      const errorMessage = error.message || JSON.stringify(error);
+      const errorCode = error.code || error.status || 'UNKNOWN';
+      
+      console.error(`[Spend Today] Places API (New) error: ${errorCode} - ${errorMessage}`);
+      
+      // Always throw for API errors to trigger fallback
+      // This includes: legacy API, billing, quota, key restrictions, etc.
+      const apiError = new Error(`Places API (New) error: ${errorCode} - ${errorMessage}`);
+      (apiError as any).code = errorCode;
+      throw apiError;
+    }
+
+    const places = data.places || [];
+    
+    // No need to filter by keyword if we used searchText (it already filters)
+    // But we can still do a light filter for searchNearby results if needed
+    let filteredPlaces = places;
+    if (keyword && !url.includes('searchText')) {
+      // Only filter if we used searchNearby (shouldn't happen now, but keep as safety)
+      const keywordLower = keyword.toLowerCase();
+      filteredPlaces = places.filter(place => {
+        const name = place.displayName?.text?.toLowerCase() || '';
+        const address = place.formattedAddress?.toLowerCase() || '';
+        return name.includes(keywordLower) || address.includes(keywordLower);
+      });
+    }
+    
+    // Convert new API format to legacy format for backward compatibility
+    const legacyResults: GooglePlaceResult[] = filteredPlaces.map(place => ({
+      place_id: place.id,
+      name: place.displayName?.text || '',
+      rating: place.rating,
+      user_ratings_total: place.userRatingCount,
+      formatted_address: place.formattedAddress,
+      geometry: place.location ? {
+        location: {
+          lat: place.location.latitude,
+          lng: place.location.longitude,
+        },
+      } : undefined,
+      photos: place.photos?.map(photo => ({
+        photo_reference: photo.name, // New API uses name instead of photo_reference
+      })),
+      opening_hours: place.regularOpeningHours ? {
+        open_now: place.regularOpeningHours.openNow,
+      } : undefined,
+    }));
+
+    return legacyResults;
+  } catch (error: any) {
+    // Log detailed error information
+    console.error(`[Spend Today] Error in searchGooglePlacesNearby:`, error);
+    if (error.message) {
+      console.error(`[Spend Today] Error message: ${error.message}`);
+    }
+    throw error; // Re-throw to trigger fallback
   }
-  if (keyword) {
-    params.append('keyword', keyword);
-  }
-
-  const response = await fetch(
-    `https://maps.googleapis.com/maps/api/place/nearbysearch/json?${params}`
-  );
-
-  if (!response.ok) {
-    throw new Error(`Google Places API error: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-
-  if (data.status === 'REQUEST_DENIED' || data.status === 'INVALID_REQUEST') {
-    console.error(`[Spend Today] Google Places API error: ${data.status} - ${data.error_message || ''}`);
-    throw new Error(`Google Places API error: ${data.status} - ${data.error_message || ''}`);
-  }
-
-  const results = data.results || [];
-  return results;
 }
 
 /**
- * Get place details (for photos, URL, and opening hours)
+ * Get place details using Places API (New) - GET /places/{placeId}
  */
 interface OpeningHoursPeriod {
   open: { day: number; time: string };
@@ -206,21 +329,34 @@ async function getPlaceDetails(placeId: string): Promise<{
   }
 
   try {
-    const params = new URLSearchParams({
-      place_id: placeId,
-      fields: 'photos,url,opening_hours,types',
-      key: GOOGLE_PLACES_API_KEY,
+    // Use new Places API (New) - GET /places/{placeId}
+    const url = `https://places.googleapis.com/v1/places/${placeId}`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+        'X-Goog-FieldMask': 'photos,googleMapsUri,regularOpeningHours,types',
+      },
     });
 
-    const response = await fetch(
-      `https://maps.googleapis.com/maps/api/place/details/json?${params}`
-    );
-
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Spend Today] Places API (New) details error: ${response.status} ${response.statusText}`);
+      console.error(`[Spend Today] Error response: ${errorText}`);
       return {};
     }
 
-    const data = await response.json();
+    const place: NewPlacesPlace = await response.json();
+    
+    // Check for API-level errors
+    if ((place as any).error) {
+      const error = (place as any).error;
+      console.error(`[Spend Today] Places API (New) details error: ${error.code || 'UNKNOWN'} - ${error.message || JSON.stringify(error)}`);
+      return {};
+    }
+    
     const result: { 
       photo_reference?: string; 
       url?: string; 
@@ -232,24 +368,26 @@ async function getPlaceDetails(placeId: string): Promise<{
       types?: string[] 
     } = {};
     
-    if (data.result?.photos && data.result.photos.length > 0) {
-      result.photo_reference = data.result.photos[0].photo_reference;
+    // Convert new API format to legacy format
+    if (place.photos && place.photos.length > 0) {
+      result.photo_reference = place.photos[0].name; // New API uses name instead of photo_reference
     }
     
-    if (data.result?.url) {
-      result.url = data.result.url;
+    if (place.googleMapsUri) {
+      result.url = place.googleMapsUri;
     }
     
-    if (data.result?.opening_hours) {
+    if (place.regularOpeningHours) {
       result.opening_hours = {
-        open_now: data.result.opening_hours.open_now,
-        periods: data.result.opening_hours.periods,
-        weekday_text: data.result.opening_hours.weekday_text,
+        open_now: place.regularOpeningHours.openNow,
+        weekday_text: place.regularOpeningHours.weekdayDescriptions,
+        // Note: New API doesn't provide periods in the same format, so we'll skip it
+        // periods: undefined,
       };
     }
     
-    if (data.result?.types && Array.isArray(data.result.types)) {
-      result.types = data.result.types;
+    if (place.types && Array.isArray(place.types)) {
+      result.types = place.types;
     }
 
     return result;
@@ -363,7 +501,11 @@ async function fetchPlacesForCategory(
         RADIUS_METERS,
         type,
         keyword
-      );
+      ).catch((error: any) => {
+        // Log error but don't throw - continue with other keywords
+        console.error(`[Spend Today] Error searching for keyword "${keyword}":`, error);
+        return [];
+      });
 
       // Google Places API returns results sorted by relevance (best matches first)
       // We preserve this order by tracking the index
@@ -480,7 +622,15 @@ async function fetchPlacesForCategory(
         
         let photoUrl: string | undefined;
         if (details.photo_reference) {
-          photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${details.photo_reference}&key=${GOOGLE_PLACES_API_KEY}`;
+          // New API uses photo name (format: places/{place_id}/photos/{photo_id})
+          // For photo URL, we need to use the new Photo API endpoint
+          // Format: https://places.googleapis.com/v1/{photo_name}/media?maxWidthPx=400&key=API_KEY
+          if (details.photo_reference.startsWith('places/')) {
+            photoUrl = `https://places.googleapis.com/v1/${details.photo_reference}/media?maxWidthPx=400&key=${GOOGLE_PLACES_API_KEY}`;
+          } else {
+            // Fallback to legacy format if it's still a photo_reference
+            photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${details.photo_reference}&key=${GOOGLE_PLACES_API_KEY}`;
+          }
         }
 
         // Use Google Maps URL from details, or construct from place_id
@@ -520,9 +670,18 @@ async function fetchPlacesForCategory(
     }
   }
 
-  // Sort by combined ranking: Google Places rank + new business bonus
-  // Lower score = better ranking
+  // Sort by "popular" ranking: userRatingCount desc, then rating desc
+  // This matches the requirement: "popular" = 先按 userRatingCount desc，再按 rating desc
   allPlaces.sort((a, b) => {
+    // First sort by user_ratings_total (descending)
+    if (b.user_ratings_total !== a.user_ratings_total) {
+      return b.user_ratings_total - a.user_ratings_total;
+    }
+    // Then sort by rating (descending)
+    if (b.rating !== a.rating) {
+      return b.rating - a.rating;
+    }
+    // Finally use combined ranking score as tiebreaker
     const rankA = placeOrderMap.get(a.id) ?? Infinity;
     const rankB = placeOrderMap.get(b.id) ?? Infinity;
     const scoreA = calculateCombinedRankingScore(rankA, a.user_ratings_total);
@@ -583,9 +742,18 @@ async function fetchAllPlacesFromGoogle(): Promise<SpendPlace[]> {
     }
   }
   
-  // Sort by combined ranking: Google Places rank + new business bonus
-  // Lower score = better ranking
+  // Sort by "popular" ranking: userRatingCount desc, then rating desc
+  // This matches the requirement: "popular" = 先按 userRatingCount desc，再按 rating desc
   const sortedPlaces = Array.from(uniquePlaces.values()).sort((a, b) => {
+    // First sort by user_ratings_total (descending)
+    if (b.user_ratings_total !== a.user_ratings_total) {
+      return b.user_ratings_total - a.user_ratings_total;
+    }
+    // Then sort by rating (descending)
+    if (b.rating !== a.rating) {
+      return b.rating - a.rating;
+    }
+    // Finally use combined ranking score as tiebreaker
     const rankA = a.googlePlacesRank ?? Infinity;
     const rankB = b.googlePlacesRank ?? Infinity;
     const scoreA = calculateCombinedRankingScore(rankA, a.user_ratings_total);
@@ -671,7 +839,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Don't use userLocation - always search from city centers to ensure distance filtering
-    const allPlaces = await fetchAllPlacesFromGoogle();
+    let allPlaces: SpendPlace[] = [];
+    try {
+      allPlaces = await fetchAllPlacesFromGoogle();
+    } catch (apiError: any) {
+      console.error('[Spend Today] Error fetching from Google Places API:', apiError);
+      // If API fails (e.g., REQUEST_DENIED, billing issue), continue to stale cache or seed data fallback
+      allPlaces = [];
+    }
     
     if (allPlaces.length === 0) {
       // Try to return stale cache if available
@@ -862,10 +1037,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
       
-      // NO seed data fallback - only return real places
       // Use English key for itemsByCategory, but keep Chinese category in each place
       const englishKey = CATEGORY_KEY_MAP[category];
       if (englishKey) {
+        // If we have < 2 places, try seed data fallback for this category
+        if (categoryPlaces.length < 2) {
+          console.log(`[Spend Today] Category ${category} has < 2 places, trying seed data fallback`);
+          const seedPlaces = getFoodRecommendationsFromSeed();
+          const seedForCategory = seedPlaces.filter(p => p.category === category);
+          if (seedForCategory.length > 0) {
+            const seedSpendPlaces: SpendPlace[] = seedForCategory.map(p => ({
+              id: p.id,
+              name: p.name,
+              category: p.category,
+              rating: p.rating,
+              user_ratings_total: p.review_count,
+              address: p.address,
+              maps_url: p.url,
+              photo_url: p.photo_url,
+              city: p.city,
+              score: p.score,
+              distance_miles: p.distance_miles,
+            }));
+            categoryPlaces = [...categoryPlaces, ...seedSpendPlaces].slice(0, 50);
+            console.log(`[Spend Today] Added ${seedSpendPlaces.length} seed places for ${category}`);
+          }
+        }
+        
         // Keep top 50 places per category, sorted by Google Places ranking (already sorted by placeOrderMap)
         finalPlacesByCategory[englishKey] = categoryPlaces.slice(0, 50);
         console.log(`[Spend Today] Final count for ${category} (key: ${englishKey}): ${finalPlacesByCategory[englishKey].length}`);
@@ -911,8 +1109,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Ensure proper encoding for JSON response
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.status(200).json(response);
-  } catch (error) {
+  } catch (error: any) {
     console.error('[API /api/spend/today] Error:', error);
+    
+    // Log specific error types for debugging
+    if (error?.message) {
+      console.error('[API /api/spend/today] Error message:', error.message);
+    }
+    if (error?.code) {
+      console.error('[API /api/spend/today] Error code:', error.code);
+    }
+    
+    // Check for specific error types that should trigger fallback
+    const errorMessage = error?.message || '';
+    const shouldFallback = 
+      errorMessage.includes('LegacyApiNotActivated') ||
+      errorMessage.includes('REQUEST_DENIED') ||
+      errorMessage.includes('billing') ||
+      errorMessage.includes('quota') ||
+      errorMessage.includes('API key') ||
+      errorMessage.includes('Permission denied') ||
+      error?.code === 403 ||
+      error?.code === 400;
+    
+    if (shouldFallback) {
+      console.log('[API /api/spend/today] Detected API error requiring fallback, attempting cache/seed fallback...');
+    }
     
     // Try to return stale cache (yesterday's data)
     const cacheKey = 'spend-today';
@@ -957,30 +1179,60 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Last resort: return empty (NO fake data)
-    const errorAtISO = new Date().toISOString();
+    // Last resort: use seed data as fallback
+    console.log('[Spend Today] All attempts failed, using seed data as fallback');
+    const seedPlaces = getFoodRecommendationsFromSeed();
     
-    // Use English keys to match normal response format
-    const emptyByCategory: Record<string, SpendPlace[]> = {
+    // Convert seed data to SpendPlace format and group by category
+    const seedByCategory: Record<string, SpendPlace[]> = {
       'milk_tea': [],
       'chinese': [],
       'coffee': [],
       'late_night': [],
     };
+    
+    const categoryMap: Record<string, string> = {
+      '奶茶': 'milk_tea',
+      '中餐': 'chinese',
+      '咖啡': 'coffee',
+      '甜品': 'coffee', // Map dessert to coffee for seed data
+    };
+    
+    seedPlaces.forEach((place: FoodPlace) => {
+      const englishKey = categoryMap[place.category] || 'milk_tea';
+      if (seedByCategory[englishKey]) {
+        seedByCategory[englishKey].push({
+          id: place.id,
+          name: place.name,
+          category: place.category,
+          rating: place.rating,
+          user_ratings_total: place.review_count,
+          address: place.address,
+          maps_url: place.url,
+          photo_url: place.photo_url,
+          city: place.city,
+          score: place.score,
+          distance_miles: place.distance_miles,
+        });
+      }
+    });
+    
+    const errorAtISO = new Date().toISOString();
+    const allSeedItems = Object.values(seedByCategory).flat();
 
     // Ensure proper encoding for JSON response
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.status(200).json({
-      status: 'unavailable' as const,
-      itemsByCategory: emptyByCategory,
-      items: [],
-      count: 0,
+      status: 'ok' as const,
+      itemsByCategory: seedByCategory,
+      items: allSeedItems,
+      count: allSeedItems.length,
       asOf: errorAtISO,
-      source: { name: 'Google Places', url: 'https://maps.google.com' },
+      source: { name: 'Local Seed Data', url: 'https://maps.google.com' },
       ttlSeconds: ttlMsToSeconds(SPEND_TODAY_CACHE_TTL),
       cache_hit: false,
       fetched_at: errorAtISO,
-      error: 'No places found',
+      note: 'Using seed data fallback',
     });
   }
 }

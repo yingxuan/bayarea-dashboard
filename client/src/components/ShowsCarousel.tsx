@@ -8,6 +8,8 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
 } from "@/components/ui/carousel";
 import ShowsCard from "@/components/ShowsCard";
 
@@ -48,7 +50,7 @@ export default function ShowsCarousel({ shows, offset = 0, onRefresh }: ShowsCar
         <div className="mb-2 flex justify-end">
           <button
             onClick={onRefresh}
-            className="text-xs opacity-70 hover:opacity-100 transition-opacity font-mono px-2 py-0.5 rounded hover:bg-primary/10 border border-primary/20 hover:border-primary/40"
+            className="text-xs opacity-60 hover:opacity-100 transition-opacity font-mono font-normal px-2 py-0.5 rounded hover:bg-primary/10 border border-primary/20 hover:border-primary/40"
             title="换一批"
           >
             换一批
@@ -56,22 +58,25 @@ export default function ShowsCarousel({ shows, offset = 0, onRefresh }: ShowsCar
         </div>
       )}
       
-      <Carousel
-        opts={{
-          align: "start",
-          loop: false,
-          dragFree: true,
-        }}
-        className="w-full relative"
-      >
-        <CarouselContent className="-ml-2 min-w-0">
-          {displayShows.map((show) => (
-            <CarouselItem key={show.id} className="pl-2 snap-start shrink-0 w-[70%] max-w-[280px] min-w-0">
+      <div className="relative">
+        <Carousel
+          opts={{
+            align: "start",
+            loop: false,
+            dragFree: true,
+          }}
+          className="w-full"
+        >
+          <CarouselPrevious className="hidden md:flex -left-12" />
+          <CarouselNext className="hidden md:flex -right-12" />
+          <CarouselContent className="-ml-2 md:-ml-4 min-w-0">
+            {displayShows.map((show) => (
+              <CarouselItem key={show.id} className="pl-2 md:pl-4 snap-start shrink-0 w-[70%] md:w-[25%] max-w-[280px] md:max-w-none min-w-0">
               <a
                 href={show.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block w-full rounded-lg overflow-hidden bg-card/50 border border-border/50 hover:border-primary/50 transition-all group"
+                className="block w-full rounded-sm overflow-hidden bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
               >
                 <div className="relative w-full aspect-video bg-muted overflow-hidden">
                   <img
@@ -83,23 +88,24 @@ export default function ShowsCarousel({ shows, offset = 0, onRefresh }: ShowsCar
                     }}
                   />
                   <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                    <h4 className="text-sm font-semibold text-white mb-1 line-clamp-1">{show.title}</h4>
-                    <div className="flex items-center gap-2 text-xs text-white/80">
+                    <h4 className="text-[14px] font-medium text-white mb-1 line-clamp-1">{show.title}</h4>
+                    <div className="flex items-center gap-2 text-xs opacity-70 text-white/80">
                       {show.rating > 0 && (
                         <>
-                          <span>⭐ {show.rating.toFixed(1)}</span>
+                          <span className="font-normal tabular-nums">⭐ {show.rating.toFixed(1)}</span>
                           <span>•</span>
                         </>
                       )}
-                      <span>{show.platform}</span>
+                      <span className="font-normal">{show.platform}</span>
                     </div>
                   </div>
                 </div>
               </a>
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-      </Carousel>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+      </div>
     </div>
   );
 }
