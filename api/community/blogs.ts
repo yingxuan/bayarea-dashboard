@@ -233,10 +233,13 @@ function parseBlogPosts(html: string): BlogItem[] {
     return parseBlogPostsFallback($);
   }
   
-  console.log(`[Blog Community] Found "博文" section, scanning ${$blogSection.length} elements`);
+  // TypeScript type narrowing: at this point $blogSection is guaranteed to be non-null and have length > 0
+  const blogSection = $blogSection;
+  
+  console.log(`[Blog Community] Found "博文" section, scanning ${blogSection.length} elements`);
   
   // Step 2: Find all links in the blog section that match the real post URL pattern
-  $blogSection.find('a').each((_: number, element: any) => {
+  blogSection.find('a').each((_: number, element: any) => {
     const $link = $(element);
     const href = $link.attr('href');
     

@@ -444,7 +444,7 @@ async function fetchQQQ(): Promise<MarketDataItem> {
 async function fetchARKK(): Promise<MarketDataItem> {
   const now = new Date().toISOString();
   
-  const primaryFn = async () => {
+  const primaryFn = async (): Promise<MarketDataItem> => {
     const response = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/ARKK?interval=1d&range=1d');
     
     if (!response.ok) {
