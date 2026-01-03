@@ -140,7 +140,8 @@ async function fetchForumHTML(): Promise<string> {
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const statusText = response.status === 403 ? 'Forbidden (403) - Site may be blocking requests' : response.statusText;
+      throw new Error(`HTTP error! status: ${response.status} - ${statusText}`);
     }
 
     // 1) Fetch raw bytes (MANDATORY)
@@ -555,14 +556,28 @@ function getLastNonEmptyCache(sourceKey: string): CommunityItem[] | null {
   const cacheKey = `leek-community-${sourceKey}-last-non-empty`;
   const cached = cache.get(cacheKey);
   
-  if (cached && Date.now() - cached.timestamp < LAST_NON_EMPTY_CACHE_TTL) {
-    const items = cached.data.items || [];
-    if (Array.isArray(items) && items.length > 0) {
-      console.log(`[Leek Community] Using last non-empty cache for ${sourceKey} (${items.length} items)`);
-      return items;
-    }
+  if (!cached) {
+    console.warn(`[Leek Community] No last non-empty cache found for ${sourceKey} (key: ${cacheKey})`);
+    return null;
   }
   
+  const cacheAge = Date.now() - cached.timestamp;
+  const cacheAgeMinutes = Math.floor(cacheAge / 1000 / 60);
+  const ttlMinutes = Math.floor(LAST_NON_EMPTY_CACHE_TTL / 1000 / 60);
+  
+  if (cacheAge >= LAST_NON_EMPTY_CACHE_TTL) {
+    console.warn(`[Leek Community] Last non-empty cache for ${sourceKey} expired (age: ${cacheAgeMinutes} minutes, TTL: ${ttlMinutes} minutes)`);
+    return null;
+  }
+  
+  // Handle both cached.data.items and cached.data (direct array) formats
+  const items = cached.data?.items || (Array.isArray(cached.data) ? cached.data : []);
+  if (Array.isArray(items) && items.length > 0) {
+    console.log(`[Leek Community] ✅ Using last non-empty cache for ${sourceKey} (${items.length} items, age: ${cacheAgeMinutes} minutes)`);
+    return items;
+  }
+  
+  console.warn(`[Leek Community] Last non-empty cache for ${sourceKey} exists but has no valid items (cached.data type: ${typeof cached.data})`);
   return null;
 }
 
@@ -635,16 +650,19 @@ async function fetch1point3acresPosts(): Promise<{ items: CommunityItem[]; statu
       };
     }
     
-    // Try last_non_empty cache on other errors (network, parsing, etc.)
+    // Try last_non_empty cache on other errors (network, parsing, HTTP errors like 403, etc.)
+    console.warn(`[1point3acres] Fetch failed (${errorMessage}), trying last non-empty cache...`);
     const lastNonEmpty = getLastNonEmptyCache('1point3acres');
-    if (lastNonEmpty) {
-      console.log(`[1point3acres] Fetch failed (non-mojibake error), using last non-empty cache (${lastNonEmpty.length} items)`);
+    if (lastNonEmpty && lastNonEmpty.length > 0) {
+      console.log(`[1point3acres] ✅ Using last non-empty cache (${lastNonEmpty.length} items) due to: ${errorMessage}`);
       return {
         items: lastNonEmpty.slice(0, 5),
         status: 'ok',
+        reason: `Using cached data due to: ${errorMessage}`,
       };
     }
     
+    console.warn(`[1point3acres] ❌ No last non-empty cache available, returning empty result`);
     return {
       items: [],
       status: 'unavailable',

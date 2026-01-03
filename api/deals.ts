@@ -1,17 +1,17 @@
 /**
  * Vercel Serverless Function: /api/deals
- * Fetches real deals from Reddit r/deals using official JSON endpoint
+ * Returns deals (currently disabled - Reddit API removed)
+ * 
+ * Note: Reddit API has been removed. This endpoint now returns empty data or stale cache.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { CACHE_TTL, API_URLS, SOURCE_INFO, ttlMsToSeconds } from '../shared/config.js';
+import { CACHE_TTL, ttlMsToSeconds } from '../shared/config.js';
 import {
-  cache,
   setCorsHeaders,
   handleOptions,
   isCacheBypass,
   getCachedData,
-  setCache,
   getStaleCache,
   normalizeCachedResponse,
   normalizeStaleResponse,
@@ -23,71 +23,12 @@ const DEALS_CACHE_TTL = CACHE_TTL.DEALS;
 interface Deal {
   id: string;
   title: string;
-  url: string; // Reddit post URL
-  external_url?: string; // Deal link (if available)
+  url: string;
+  external_url?: string;
   store: string;
   score: number;
   comments: number;
   time_ago: string;
-}
-
-async function fetchRedditDeals(): Promise<Deal[]> {
-  // Fetch hot deals from r/deals
-  // Use a more browser-like User-Agent to avoid blocking
-  const response = await fetch(`${API_URLS.REDDIT}/r/deals/hot.json?limit=20`, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'application/json',
-      'Accept-Language': 'en-US,en;q=0.9',
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
-    console.error(`[Deals] Reddit API error: ${response.status} ${response.statusText}`, errorText.substring(0, 200));
-    throw new Error(`Reddit API error: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  
-  // Calculate time ago
-  const getTimeAgo = (timestamp: number) => {
-    const now = Date.now() / 1000;
-    const diff = now - timestamp;
-    const hours = Math.floor(diff / 3600);
-    if (hours < 1) return `${Math.floor(diff / 60)}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
-  };
-  
-  // Extract store name from title (common patterns: [Store], Store:, etc.)
-  const extractStore = (title: string): string => {
-    const match = title.match(/\[([^\]]+)\]|^([^:]+):/);
-    if (match) return match[1] || match[2];
-    
-    // Common store names
-    const stores = ['Amazon', 'Target', 'Walmart', 'Best Buy', 'Costco', 'eBay', 'Newegg'];
-    for (const store of stores) {
-      if (title.toLowerCase().includes(store.toLowerCase())) {
-        return store;
-      }
-    }
-    
-    return 'Various';
-  };
-  
-  return (data.data?.children || [])
-    .filter((post: any) => !post.data.stickied) // Remove stickied posts
-    .map((post: any) => ({
-      id: post.data.id,
-      title: post.data.title,
-      url: `https://www.reddit.com${post.data.permalink}`, // Reddit discussion URL
-      external_url: post.data.url?.startsWith('http') ? post.data.url : undefined,
-      store: extractStore(post.data.title),
-      score: post.data.score || 0,
-      comments: post.data.num_comments || 0,
-      time_ago: getTimeAgo(post.data.created_utc),
-    }));
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -105,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const cached = getCachedData(cacheKey, DEALS_CACHE_TTL, nocache);
     if (cached) {
       const cachedData = cached.data;
-      normalizeCachedResponse(cachedData, SOURCE_INFO.REDDIT, ttlMsToSeconds(DEALS_CACHE_TTL), 'deals');
+      normalizeCachedResponse(cachedData, { name: 'Cached Data', url: '' }, ttlMsToSeconds(DEALS_CACHE_TTL), 'deals');
       return res.status(200).json({
         ...cachedData,
         cache_hit: true,
@@ -120,53 +61,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log('[API /api/deals] Cache bypass requested via ?nocache=1');
     }
 
-    // Fetch fresh data with error handling
-    let deals: Deal[] = [];
-    try {
-      deals = await fetchRedditDeals();
-    } catch (fetchError: any) {
-      console.error('[API /api/deals] Failed to fetch from Reddit:', fetchError);
-      // If fetch fails, try stale cache first before throwing
-      const stale = getStaleCache(cacheKey);
-      if (stale && stale.data && stale.data.items && stale.data.items.length > 0) {
-        console.log('[API /api/deals] Using stale cache due to fetch failure');
-        const staleData = stale.data;
-        normalizeStaleResponse(staleData, SOURCE_INFO.REDDIT, ttlMsToSeconds(DEALS_CACHE_TTL), 'deals');
-        return res.status(200).json({
-          ...staleData,
-          cache_hit: true,
-          stale: true,
-          note: 'Using stale cache due to Reddit API error',
-        });
-      }
-      // Re-throw to be caught by outer catch block
-      throw fetchError;
+    // Reddit API has been removed - try to return stale cache if available
+    console.log('[API /api/deals] Reddit API removed, checking for stale cache');
+    const stale = getStaleCache(cacheKey);
+    
+    if (stale && stale.data && stale.data.items && stale.data.items.length > 0) {
+      console.log('[API /api/deals] Returning stale cache (Reddit API disabled)');
+      const staleData = stale.data;
+      normalizeStaleResponse(staleData, { name: 'Cached Data', url: '' }, ttlMsToSeconds(DEALS_CACHE_TTL), 'deals');
+      return res.status(200).json({
+        ...staleData,
+        cache_hit: true,
+        stale: true,
+        note: 'Reddit API has been removed. Showing cached data.',
+      });
     }
+
+    // No cache available - return empty response
     const fetchedAtISO = new Date().toISOString();
     const ttlSeconds = ttlMsToSeconds(DEALS_CACHE_TTL);
     
     const response: any = {
-      // Standard response structure
-      status: 'ok' as const,
-      items: deals.slice(0, 8), // Top 8 deals
-      count: deals.slice(0, 8).length,
+      status: 'unavailable' as const,
+      items: [],
+      count: 0,
       asOf: fetchedAtISO,
-      source: SOURCE_INFO.REDDIT,
-      ttlSeconds,
+      source: { name: 'Disabled', url: '' },
+      ttlSeconds: 0,
       cache_hit: false,
       fetched_at: fetchedAtISO,
+      note: 'Reddit API has been removed. No data available.',
       // Legacy fields for backward compatibility
-      deals: deals.slice(0, 8),
+      deals: [],
       updated_at: formatUpdatedAt(),
-      cache_mode: nocache ? 'bypass' : 'normal',
+      cache_mode: 'normal',
       cache_age_seconds: 0,
-      cache_expires_in_seconds: ttlSeconds,
+      cache_expires_in_seconds: 0,
       age: 0,
-      expiry: ttlSeconds,
+      expiry: 0,
     };
-
-    // Update cache
-    setCache(cacheKey, response);
 
     res.status(200).json(response);
   } catch (error) {
@@ -178,11 +111,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     if (stale) {
       const staleData = stale.data;
-      normalizeStaleResponse(staleData, SOURCE_INFO.REDDIT, ttlMsToSeconds(DEALS_CACHE_TTL), 'deals');
+      normalizeStaleResponse(staleData, { name: 'Cached Data', url: '' }, ttlMsToSeconds(DEALS_CACHE_TTL), 'deals');
       return res.status(200).json({
         ...staleData,
         cache_hit: true,
         stale: true,
+        note: 'Reddit API has been removed. Showing cached data.',
       });
     }
 
@@ -192,11 +126,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       items: [],
       count: 0,
       asOf: errorAtISO,
-      source: SOURCE_INFO.REDDIT,
+      source: { name: 'Disabled', url: '' },
       ttlSeconds: 0,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: 'Reddit API has been removed',
       cache_hit: false,
       fetched_at: errorAtISO,
+      note: 'Reddit API has been removed. No data available.',
       // Legacy fields
       deals: [],
       updated_at: formatUpdatedAt(),
