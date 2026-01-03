@@ -146,61 +146,13 @@ async function fetchBTC(): Promise<MarketDataItem> {
 }
 
 /**
- * Fetch SPY price from Stooq API (primary) with Yahoo Finance fallback
+ * Fetch SPY price from Yahoo Finance API (primary) with Stooq fallback
  */
 async function fetchSPY(): Promise<MarketDataItem> {
   const now = new Date().toISOString();
   
-  // Primary: Stooq API (CSV)
+  // Primary: Yahoo Finance API (includes change data)
   const primaryFn = async (): Promise<MarketDataItem> => {
-    const response = await fetch('https://stooq.com/q/l/?s=spy.us&f=sd2t2ohlcv&h&e=csv');
-    
-    if (!response.ok) {
-      throw new Error(`Stooq API error: ${response.statusText}`);
-    }
-    
-    const csv = await response.text();
-    const lines = csv.trim().split('\n');
-    
-    if (lines.length < 2) {
-      throw new Error('Invalid CSV response from Stooq');
-    }
-    
-    // Parse CSV: Symbol,Date,Time,Open,High,Low,Close,Volume
-    const dataLine = lines[1];
-    const fields = dataLine.split(',');
-    const closePrice = parseFloat(fields[6]); // Close price is 7th field (index 6)
-    
-    if (isNaN(closePrice) || closePrice <= 0) {
-      throw new Error(`Invalid close price: ${fields[6]}`);
-    }
-    
-    console.log(`[fetchSPY] Stooq API returned: $${closePrice}`);
-    
-    return {
-      name: 'SPY',
-      value: closePrice,
-      unit: 'USD',
-      status: 'ok' as const,
-      asOf: now,
-      source: {
-        name: 'Stooq',
-        url: 'https://finance.yahoo.com/quote/SPY/',
-      },
-      ttlSeconds: 600, // 10 minutes
-      // Legacy fields for backward compatibility
-      source_name: 'Stooq',
-      source_url: 'https://finance.yahoo.com/quote/SPY/',
-      as_of: now,
-      debug: {
-        data_source: 'stooq_api',
-        api_response: { close: closePrice, raw_csv: dataLine },
-      },
-    };
-  };
-  
-  // Fallback: Yahoo Finance API (no key required, but may be rate-limited)
-  const fallbackFn = async (): Promise<MarketDataItem> => {
     // Yahoo Finance v8 API - no key required, but may be rate-limited
     // Risk: Rate limiting, but robust JSON parsing with error handling
     const response = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=1d');
@@ -234,7 +186,7 @@ async function fetchSPY(): Promise<MarketDataItem> {
       changePercent = (change / previousClose) * 100;
     }
     
-    console.log(`[fetchSPY] Yahoo Finance fallback returned: $${price}, prevClose: ${previousClose}, change: ${changePercent?.toFixed(2)}%`);
+    console.log(`[fetchSPY] Yahoo Finance primary returned: $${price}, prevClose: ${previousClose}, change: ${changePercent?.toFixed(2)}%`);
     
     return {
       name: 'SPY',
@@ -264,8 +216,8 @@ async function fetchSPY(): Promise<MarketDataItem> {
   
   try {
     return await tryPrimaryThenFallback(
-      () => withTimeout(primaryFn, FETCH_TIMEOUT_MS, 'fetchSPY (Stooq)'),
-      () => withTimeout(fallbackFn, FETCH_TIMEOUT_MS, 'fetchSPY (Yahoo Finance)'),
+      () => withTimeout(primaryFn, FETCH_TIMEOUT_MS, 'fetchSPY (Yahoo Finance)'),
+      () => withTimeout(fallbackFn, FETCH_TIMEOUT_MS, 'fetchSPY (Stooq)'),
       'fetchSPY'
     );
   } catch (error) {
@@ -296,64 +248,13 @@ async function fetchSPY(): Promise<MarketDataItem> {
 }
 
 /**
- * Fetch Gold (XAUUSD) price from Stooq API (primary) with Yahoo Finance fallback
+ * Fetch Gold (XAUUSD) price from Yahoo Finance API (primary) with Stooq fallback
  */
 async function fetchGold(): Promise<MarketDataItem> {
   const now = new Date().toISOString();
   
-  // Primary: Stooq API (CSV) - Note: Stooq doesn't provide prevClose, so we'll use Yahoo Finance fallback for delta
+  // Primary: Yahoo Finance API (includes change data)
   const primaryFn = async (): Promise<MarketDataItem> => {
-    const response = await fetch('https://stooq.com/q/l/?s=xauusd&f=sd2t2ohlcv&h&e=csv');
-    
-    if (!response.ok) {
-      throw new Error(`Stooq API error: ${response.statusText}`);
-    }
-    
-    const csv = await response.text();
-    const lines = csv.trim().split('\n');
-    
-    if (lines.length < 2) {
-      throw new Error('Invalid CSV response from Stooq');
-    }
-    
-    // Parse CSV: Symbol,Date,Time,Open,High,Low,Close,Volume
-    const dataLine = lines[1];
-    const fields = dataLine.split(',');
-    const closePrice = parseFloat(fields[6]); // Close price is 7th field (index 6)
-    
-    if (isNaN(closePrice) || closePrice <= 0) {
-      throw new Error(`Invalid close price: ${fields[6]}`);
-    }
-    
-    console.log(`[fetchGold] Stooq API returned: $${closePrice} (no prevClose available)`);
-    
-    // Stooq doesn't provide prevClose, so we return without delta
-    // Yahoo Finance fallback will provide prevClose and delta
-    return {
-      name: 'Gold',
-      value: closePrice,
-      unit: 'USD/oz',
-      status: 'ok' as const,
-      asOf: now,
-      source: {
-        name: 'Stooq',
-        url: 'https://www.lbma.org.uk/prices-and-data/precious-metal-prices',
-      },
-      ttlSeconds: 600, // 10 minutes
-      // Legacy fields for backward compatibility
-      source_name: 'Stooq',
-      source_url: 'https://www.lbma.org.uk/prices-and-data/precious-metal-prices',
-      as_of: now,
-      debug: {
-        data_source: 'stooq_api',
-        api_response: { close: closePrice, raw_csv: dataLine },
-      },
-    };
-  };
-  
-  // Fallback: Yahoo Finance API (GC=F gold futures, no key required)
-  // Risk: Rate limiting, but robust JSON parsing with error handling
-  const fallbackFn = async (): Promise<MarketDataItem> => {
     // Yahoo Finance v8 API for gold futures (GC=F)
     const response = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=1d');
     
@@ -386,7 +287,7 @@ async function fetchGold(): Promise<MarketDataItem> {
       changePercent = (change / previousClose) * 100;
     }
     
-    console.log(`[fetchGold] Yahoo Finance fallback returned: $${price}, prevClose: ${previousClose}, change: ${changePercent?.toFixed(2)}%`);
+    console.log(`[fetchGold] Yahoo Finance primary returned: $${price}, prevClose: ${previousClose}, change: ${changePercent?.toFixed(2)}%`);
     
     return {
       name: 'Gold',
@@ -416,8 +317,8 @@ async function fetchGold(): Promise<MarketDataItem> {
   
   try {
     return await tryPrimaryThenFallback(
-      () => withTimeout(primaryFn, FETCH_TIMEOUT_MS, 'fetchGold (Stooq)'),
-      () => withTimeout(fallbackFn, FETCH_TIMEOUT_MS, 'fetchGold (Yahoo Finance)'),
+      () => withTimeout(primaryFn, FETCH_TIMEOUT_MS, 'fetchGold (Yahoo Finance)'),
+      () => withTimeout(fallbackFn, FETCH_TIMEOUT_MS, 'fetchGold (Stooq)'),
       'fetchGold'
     );
   } catch (error) {

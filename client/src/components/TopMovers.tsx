@@ -79,41 +79,32 @@ export default function TopMovers({ quotesData, holdings }: TopMoversProps) {
 
   if (topMovers.length === 0) {
     return (
-      <div className="glow-border rounded-sm p-4 bg-card">
-        <h2 className="text-xl font-bold text-primary mb-3">Top 3 Movers</h2>
-        <div className="text-muted-foreground text-sm text-center py-4">暂无涨跌数据</div>
+      <div className="rounded-sm p-2 bg-card border border-border/50">
+        <div className="text-muted-foreground text-xs text-center py-2">暂无涨跌数据</div>
       </div>
     );
   }
 
   return (
-    <div className="glow-border rounded-sm p-4 bg-card">
-      <h2 className="text-xl font-bold text-primary mb-3">Top 3 Movers</h2>
-      <div className="space-y-3">
+    <div className="rounded-sm p-2 bg-card border border-border/50 w-full h-auto">
+      <div className="space-y-1.5">
         {topMovers.map((mover) => {
           const isPositive = mover.dailyChangeAmount >= 0;
           return (
             <div
               key={mover.ticker}
-              className="flex items-center justify-between p-3 rounded-sm bg-card/50 border border-border/50"
+              className="flex items-center justify-between py-1"
             >
-              <div className="font-mono font-bold text-lg">{mover.ticker}</div>
-              <div className="flex items-center gap-3">
-                <div className={`text-right ${isPositive ? "text-green-400" : "text-red-400"}`}>
-                  <div className="flex items-center gap-1">
-                    {isPositive ? (
-                      <TrendingUp className="w-4 h-4" />
-                    ) : (
-                      <TrendingDown className="w-4 h-4" />
-                    )}
-                    <span className="font-mono font-bold">
-                      {isPositive ? "+" : ""}${mover.dailyChangeAmount.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className={`text-xs font-mono ${isPositive ? "text-green-400" : "text-red-400"}`}>
-                    {isPositive ? "+" : ""}{mover.dailyChangePercent.toFixed(2)}%
-                  </div>
-                </div>
+              <div className="font-mono font-bold text-sm">{mover.ticker}</div>
+              <div className={`flex items-center gap-1 font-mono text-sm ${isPositive ? "text-green-400" : "text-red-400"}`}>
+                {isPositive ? (
+                  <TrendingUp className="w-3 h-3" />
+                ) : (
+                  <TrendingDown className="w-3 h-3" />
+                )}
+                <span className="font-bold">
+                  {isPositive ? "+" : ""}${mover.dailyChangeAmount.toLocaleString()}
+                </span>
               </div>
             </div>
           );

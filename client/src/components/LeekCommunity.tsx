@@ -29,11 +29,12 @@ interface SourceStatus {
 
 interface LeekCommunityProps {
   maxItems?: number;
+  hideTitle?: boolean;
 }
 
 const FORUM_URL = 'https://www.1point3acres.com/bbs/forum.php?mod=forumdisplay&fid=291&filter=author&orderby=dateline';
 
-export default function LeekCommunity({ maxItems = 5 }: LeekCommunityProps) {
+export default function LeekCommunity({ maxItems = 5, hideTitle = false }: LeekCommunityProps) {
   const [items, setItems] = useState<CommunityItem[]>([]);
   const [sourceStatus, setSourceStatus] = useState<SourceStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,26 +99,28 @@ export default function LeekCommunity({ maxItems = 5 }: LeekCommunityProps) {
   // This ensures the block is always visible
 
   return (
-    <div className="glow-border rounded-sm p-4 bg-card">
+    <div className={hideTitle ? "p-1.5 h-auto" : "glow-border rounded-sm p-4 bg-card h-auto"}>
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-base font-semibold font-mono text-foreground/90">
-          韭菜社区
-        </h3>
-        <a
-          href={FORUM_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-muted-foreground hover:text-primary transition-colors font-mono flex items-center gap-1"
-        >
-          查看更多
-          <ArrowRight className="w-3 h-3" />
-        </a>
-      </div>
+      {!hideTitle && (
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-base font-semibold font-mono text-foreground/90">
+            韭菜社区
+          </h3>
+          <a
+            href={FORUM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-muted-foreground hover:text-primary transition-colors font-mono flex items-center gap-1"
+          >
+            查看更多
+            <ArrowRight className="w-3 h-3" />
+          </a>
+        </div>
+      )}
 
       {/* Posts List */}
-      <div className="space-y-2">
-        {/* 1point3acres items (up to 5) */}
+      <div className="space-y-1">
+        {/* 1point3acres items */}
         {items
           .slice(0, maxItems)
           .map((item, index) => (
@@ -126,22 +129,22 @@ export default function LeekCommunity({ maxItems = 5 }: LeekCommunityProps) {
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block p-2 rounded-sm bg-card/50 border border-border/50 hover:bg-card/80 hover:border-primary/50 transition-all group"
+              className={`block ${hideTitle ? 'p-1.5' : 'p-2'} rounded-sm bg-card/50 border border-border/50 hover:bg-card/80 hover:border-primary/50 transition-all group`}
             >
-              <div className="flex items-start justify-between gap-3">
-                <span className="text-sm font-mono text-foreground/80 group-hover:text-primary transition-colors line-clamp-2 flex-1 leading-relaxed">
+              <div className="flex items-start justify-between gap-2">
+                <span className={`${hideTitle ? 'text-xs' : 'text-sm'} font-mono text-foreground/80 group-hover:text-primary transition-colors line-clamp-2 flex-1 leading-tight`}>
                   • [{item.sourceLabel}] {item.title}
                 </span>
-                <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0 group-hover:text-primary transition-colors mt-0.5" />
+                <ExternalLink className={`${hideTitle ? 'w-3 h-3' : 'w-4 h-4'} text-muted-foreground flex-shrink-0 group-hover:text-primary transition-colors mt-0.5`} />
               </div>
             </a>
           ))}
         
         {/* Placeholder if unavailable */}
         {items.length === 0 && (
-          <div className="block p-2 rounded-sm bg-card/50 border border-border/50">
-            <div className="flex items-start gap-3">
-              <span className="text-sm font-mono text-muted-foreground line-clamp-2 flex-1 leading-relaxed">
+          <div className={`block ${hideTitle ? 'p-1.5' : 'p-2'} rounded-sm bg-card/50 border border-border/50`}>
+            <div className="flex items-start gap-2">
+              <span className={`${hideTitle ? 'text-xs' : 'text-sm'} font-mono text-muted-foreground line-clamp-2 flex-1 leading-tight`}>
                 • 社区暂时不可用，稍后刷新
               </span>
             </div>

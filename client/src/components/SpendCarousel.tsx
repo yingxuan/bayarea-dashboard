@@ -55,18 +55,18 @@ export default function SpendCarousel({ category, places, fallbackImage }: Spend
     console.log(`[SpendCarousel] First place:`, places[0]);
   }
 
-  // If we have < 2 real places, show placeholder instead of fake data
+  // If we have < 2 real places, show compact placeholder instead of huge empty area
   if (places.length < 2) {
-    console.warn(`[SpendCarousel] Category "${category}" has only ${places.length} places, showing placeholder`);
+    console.warn(`[SpendCarousel] Category "${category}" has only ${places.length} places, showing compact placeholder`);
     return (
-      <div className="glow-border rounded-sm p-3 bg-card h-full flex flex-col">
-        <div className="mb-3 flex-shrink-0">
-          <h3 className="text-sm font-semibold font-mono text-foreground/90">
+      <div className="rounded-sm p-2 bg-card border border-border/50 flex flex-col h-auto">
+        <div className="mb-2 flex-shrink-0">
+          <h3 className="text-xs font-semibold font-mono text-foreground/90">
             {category}
           </h3>
         </div>
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-xs text-muted-foreground font-mono text-center">
+        <div className="h-[50px] flex items-center justify-center">
+          <p className="text-xs text-muted-foreground font-mono text-center line-clamp-2">
             暂时无法获取附近热门店
           </p>
         </div>

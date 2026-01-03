@@ -1,9 +1,9 @@
 /**
  * 湾区华人每日生存与机会面板
- * 核心回答3个问题：
- * 1) 早日退休
- * 2) 吃喝玩乐
- * 3) 吃瓜追剧
+ * 3个主要垂直部分：
+ * 1) 打工耽误赚钱 - 股票/市场/投资内容
+ * 2) 民以食为天 - 食物推荐
+ * 3) 追剧吃瓜薅羊毛 - 娱乐/八卦/优惠
  * 
  * 全局原则：
  * - 一切内容必须可转化为：钱 / 行动 / 社交话题
@@ -16,14 +16,15 @@
 
 import { useEffect, useState } from "react";
 import Navigation from "@/components/Navigation";
-import FinanceOverview from "@/components/FinanceOverview";
-import NewsList from "@/components/NewsList";
-import FoodGrid from "@/components/FoodGrid";
-import GossipList from "@/components/GossipList";
-import YouTubersList from "@/components/YouTubersList";
 import TodaySpendCarousels from "@/components/TodaySpendCarousels";
 import ChineseGossip from "@/components/ChineseGossip";
-import LeekCommunity from "@/components/LeekCommunity";
+import PortfolioHero from "@/components/PortfolioHero";
+import MarketSnapshotCarousel from "@/components/MarketSnapshotCarousel";
+import CommunityVideoCarousel from "@/components/CommunityVideoCarousel";
+import ShowsCarousel from "@/components/ShowsCarousel";
+import DealsCarousel from "@/components/DealsCarousel";
+import { useHoldings } from "@/hooks/useHoldings";
+import { QuoteData } from "@/hooks/usePortfolioSummary";
 import { config } from "@/config";
 
 // Helper function for API requests with timeout
@@ -44,58 +45,104 @@ async function fetchWithTimeout(url: string, timeoutMs = 10000): Promise<Respons
 }
 
 export default function Home() {
-  // Section 1: 早日退休
-  const [marketNews, setMarketNews] = useState<any[]>([]); // 解释型市场要闻（只限解释涨跌）
+  // Section 1: 打工耽误赚钱
+  const [marketNews, setMarketNews] = useState<any[]>([]); // 市场要闻
   const [stockYoutubers, setStockYoutubers] = useState<any[]>([]); // 美股博主视频（每频道1条）
-
-  // Debug: Monitor marketNews state changes
+  const { holdings, isLoaded: holdingsLoaded, ytdBaseline, updateYtdBaseline } = useHoldings();
+  
+  // Fetch quotes for PortfolioHero
+  const [quotesData, setQuotesData] = useState<Record<string, QuoteData>>({});
+  
+  // Fetch quotes when holdings change
   useEffect(() => {
-    console.log('[Home] marketNews state updated:', marketNews.length, marketNews);
-  }, [marketNews]);
+    if (!holdingsLoaded || holdings.length === 0) {
+      setQuotesData({});
+      return;
+    }
 
-  // Section 2: 吃喝玩乐
-  // 使用新的自动推荐模块，不再需要单独的状态
+    const fetchQuotes = async () => {
+      try {
+        const tickers = holdings.map(h => h.ticker.toUpperCase()).join(',');
+        const apiUrl = `${config.apiBaseUrl}/api/quotes?tickers=${encodeURIComponent(tickers)}`;
+        
+        const response = await fetch(apiUrl, {
+          signal: AbortSignal.timeout(10000),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Quotes API error: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        const quotes: Array<{
+          ticker: string;
+          status: 'ok' | 'stale' | 'unavailable';
+          price: number;
+          prevClose?: number;
+          change?: number;
+          changePercent?: number;
+          error?: string;
+        }> = result.quotes || [];
+        
+        const quotesMap: Record<string, QuoteData> = {};
+        quotes.forEach(quote => {
+          const price = Number(quote.price);
+          const prevClose = quote.prevClose !== undefined ? Number(quote.prevClose) : undefined;
+          const change = quote.change !== undefined ? Number(quote.change) : undefined;
+          const changePercent = quote.changePercent !== undefined ? Number(quote.changePercent) : undefined;
+          
+          if (isNaN(price) || price <= 0) {
+            return;
+          }
+          
+          quotesMap[quote.ticker.toUpperCase()] = {
+            price,
+            prevClose,
+            change,
+            changePercent,
+            status: quote.status,
+          };
+        });
+        
+        setQuotesData(quotesMap);
+      } catch (error) {
+        console.error('[Home] Failed to fetch quotes:', error);
+        setQuotesData({});
+      }
+    };
 
-  // Section 3: 吃瓜追剧
-  // 使用新的中文八卦模块，不再需要单独的状态
+    fetchQuotes();
+  }, [holdings, holdingsLoaded]);
+
+  // Section 3: 追剧吃瓜薅羊毛
+  const [shows, setShows] = useState<any[]>([]); // 电视剧
+  const [deals, setDeals] = useState<any[]>([]); // 薅羊毛
 
   useEffect(() => {
     async function loadAllData() {
-      // Section 1: 早日退休
-      // 解释型市场要闻（使用 华尔街见闻 新闻）
+      // Section 1: 打工耽误赚钱 - 市场要闻
       try {
         const apiUrl = `${config.apiBaseUrl}/api/market-news`;
-        console.log('[Home] Fetching market news from:', apiUrl);
         const response = await fetchWithTimeout(apiUrl);
-        console.log('[Home] Market news response status:', response.status, response.ok);
         if (response.ok) {
           const result = await response.json();
-          console.log('[Home] Market news API result:', result);
           const newsItems = result.items || [];
-          console.log('[Home] Market news items count:', newsItems.length, newsItems);
           if (newsItems.length > 0) {
-            setMarketNews(newsItems.slice(0, 3)); // 最多3条
-            console.log('[Home] Set market news state:', newsItems.slice(0, 3));
+            setMarketNews(newsItems.slice(0, 3)); // Top 3 for market news card
           } else {
-            console.warn('[Home] No market news items found in response');
-            // Don't set placeholder categories - let UI show "暂无市场要闻"
             setMarketNews([]);
           }
         } else {
-          console.error('[Home] Market news API returned error status:', response.status);
-          // Don't use fallback APIs - only use 华尔街见闻
-          // Let UI show "暂无市场要闻" if fetch fails
           setMarketNews([]);
         }
       } catch (error) {
         console.error("[Home] Failed to fetch market news:", error);
-        // Don't set placeholder categories - let UI show "暂无市场要闻"
         setMarketNews([]);
       }
 
-      // 美股博主视频（每频道1条）
+      // Section 1: 打工耽误赚钱 - 美股博主视频（每频道1条）
       try {
-        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/youtubers?category=stock&nocache=1`);
+        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/youtubers?category=stock`);
         if (response.ok) {
           const result = await response.json();
           const items = result.items || result.youtubers || [];
@@ -107,7 +154,6 @@ export default function Home() {
               if (!channelMap.has(channelName)) {
                 channelMap.set(channelName, item);
               } else {
-                // 如果已有，比较发布时间，保留最新的
                 const existing = channelMap.get(channelName);
                 const existingTime = new Date(existing.publishedAt || 0).getTime();
                 const currentTime = new Date(item.publishedAt || 0).getTime();
@@ -117,20 +163,42 @@ export default function Home() {
               }
             }
           });
-          setStockYoutubers(Array.from(channelMap.values()).slice(0, 5)); // 最多5个频道
+          setStockYoutubers(Array.from(channelMap.values()).slice(0, 5));
         }
       } catch (error) {
         console.error("[Home] Failed to fetch stock youtubers:", error);
         setStockYoutubers([]);
       }
 
-      // Section 2: 吃喝玩乐
-      // 使用新的自动推荐模块 (TodaySpendRecommendations)
-      // 数据由组件内部获取，无需在这里处理
+      // Section 3: 追剧吃瓜薅羊毛 - 电视剧
+      try {
+        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/shows`);
+        if (response.ok) {
+          const result = await response.json();
+          const showsItems = result.items || result.shows || [];
+          setShows(showsItems.slice(0, 3)); // Top 3 shows
+        } else {
+          setShows([]);
+        }
+      } catch (error) {
+        console.error("[Home] Failed to fetch shows:", error);
+        setShows([]);
+      }
 
-      // Section 3: 吃瓜追剧
-      // 使用新的中文八卦模块 (ChineseGossip)
-      // 数据由组件内部获取，无需在这里处理
+      // Section 3: 追剧吃瓜薅羊毛 - 薅羊毛
+      try {
+        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/deals`);
+        if (response.ok) {
+          const result = await response.json();
+          const dealsItems = result.items || result.deals || [];
+          setDeals(dealsItems.slice(0, 6)); // Top 6 deals
+        } else {
+          setDeals([]);
+        }
+      } catch (error) {
+        console.error("[Home] Failed to fetch deals:", error);
+        setDeals([]);
+      }
     }
     
     loadAllData();
@@ -143,115 +211,82 @@ export default function Home() {
     <div className="min-h-screen bg-background grid-bg">
       <Navigation />
 
-      <main className="container py-6 space-y-12">
-        {/* Section 1: 早日退休 */}
-        <section>
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold font-mono mb-2">
-              <span className="neon-text-blue">早日退休</span>
+      <main className="container py-3 space-y-6 max-w-full overflow-x-hidden min-w-0">
+        {/* SECTION 1: 打工耽误赚钱 */}
+        <section className="space-y-3 flex flex-col min-w-0">
+          <div className="mb-2">
+            <h1 className="text-2xl font-bold font-mono">
+              <span className="neon-text-blue">打工耽误赚钱</span>
             </h1>
-            <p className="text-sm text-muted-foreground font-mono">
-              持仓总览 • Top Movers • 市场要闻 • 美股博主
-            </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* 左侧：我的持仓总览 + Top Movers */}
-            <div className="lg:col-span-1 space-y-6">
-              <FinanceOverview />
+          {/* 1) Hero (compact, full width) */}
+          <PortfolioHero
+            quotesData={quotesData}
+            holdings={holdings}
+            holdingsLoaded={holdingsLoaded}
+            ytdBaseline={ytdBaseline}
+            onYtdBaselineChange={updateYtdBaseline}
+          />
+
+          {/* 2) Horizontal carousel: 市场快照 (3 cards, swipe) */}
+          <div className="w-full min-w-0">
+            <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5 px-1">市场快照</h3>
+            <div className="w-full overflow-hidden">
+              <MarketSnapshotCarousel marketNews={marketNews} />
             </div>
+          </div>
 
-            {/* 中间：解释型市场要闻（只限解释涨跌）+ 韭菜社区 */}
-            <div className="lg:col-span-1 space-y-6">
-              <div>
-                <div className="mb-3">
-                  <h2 className="text-lg font-bold font-mono flex items-center gap-2 mb-1">
-                    <span className="neon-text-blue">市场要闻</span>
-                  </h2>
-                </div>
-                {marketNews.length > 0 ? (
-                  <div className="space-y-2">
-                    {marketNews.slice(0, 3).map((item: any, index: number) => (
-                      <a
-                        key={index}
-                        href={item.url || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block glow-border rounded-sm p-3 bg-card hover:bg-card/80 transition-all group"
-                      >
-                        <div className="flex items-start gap-2">
-                          <span className="text-primary mt-0.5">•</span>
-                          <div className="flex-1">
-                            <span className="text-sm font-mono text-foreground/80 group-hover:text-primary transition-colors line-clamp-2 leading-relaxed">
-                              {item.title || item.title_zh || item.title_en || 'Market News'}
-                            </span>
-                          </div>
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="glow-border rounded-sm p-4 bg-card">
-                    <div className="text-sm text-muted-foreground font-mono text-center py-4">
-                      暂无市场要闻
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* 韭菜社区 (5条一亩三分地 + 3条文学城) */}
-              <LeekCommunity maxItems={5} />
-            </div>
-
-            {/* 右侧：美股博主视频（每频道1条） */}
-            <div className="lg:col-span-1">
-              <div className="mb-3">
-                <h2 className="text-lg font-bold font-mono flex items-center gap-2 mb-1">
-                  <span className="neon-text-blue">美股博主</span>
-                </h2>
-                <p className="text-xs text-muted-foreground font-mono">
-                  每频道1条最新视频
-                </p>
-              </div>
-              {stockYoutubers.length > 0 ? (
-                <YouTubersList items={stockYoutubers} maxItems={5} />
-              ) : (
-                <div className="glow-border rounded-sm p-4 bg-card">
-                  <div className="text-sm text-muted-foreground font-mono text-center py-4">
-                    暂无更新
-                  </div>
-                </div>
-              )}
+          {/* 3) Horizontal carousel: 社区 & 视频 (2 cards, swipe) */}
+          <div className="w-full min-w-0">
+            <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5 px-1">社区 & 视频</h3>
+            <div className="w-full overflow-hidden">
+              <CommunityVideoCarousel stockYoutubers={stockYoutubers} />
             </div>
           </div>
         </section>
 
-        {/* Section 2: 吃喝玩乐 */}
-        <section>
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold font-mono mb-2">
-              <span className="neon-text-blue">吃喝玩乐</span>
+        {/* SECTION 2: 民以食为天 */}
+        <section className="space-y-3">
+          <div className="mb-2">
+            <h1 className="text-2xl font-bold font-mono">
+              <span className="neon-text-blue">民以食为天</span>
             </h1>
-            <p className="text-sm text-muted-foreground font-mono">
-              新开/热门奶茶、中餐、咖啡、夜宵 • 基于湾区位置（Cupertino/Sunnyvale/SJ）• 今天或这周能去
-            </p>
           </div>
 
+          {/* Fixed 2×2 grid: 奶茶/中餐, 夜宵/甜品 */}
           <TodaySpendCarousels />
         </section>
 
-        {/* Section 3: 吃瓜追剧 */}
-        <section>
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold font-mono mb-2">
-              <span className="neon-text-blue">吃瓜追剧</span>
+        {/* SECTION 3: 追剧吃瓜薅羊毛 */}
+        <section className="space-y-3">
+          <div className="mb-2">
+            <h1 className="text-2xl font-bold font-mono">
+              <span className="neon-text-blue">追剧吃瓜薅羊毛</span>
             </h1>
-            <p className="text-sm text-muted-foreground font-mono">
-              中文八卦 · 华人优先 • 固定3条 • 只显示标题
-            </p>
           </div>
 
-          <ChineseGossip maxItems={3} />
+          {/* 1) Horizontal carousel: 追剧 (swipe) */}
+          {shows.length > 0 && (
+            <div className="w-full overflow-hidden">
+              <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">追剧</h3>
+              <ShowsCarousel shows={shows} />
+            </div>
+          )}
+
+          {/* 2) Vertical feed: 吃瓜 */}
+          <div className="w-full">
+            <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">吃瓜</h3>
+            <ChineseGossip maxItems={10} />
+          </div>
+
+          {/* 3) Horizontal carousel: 薅羊毛 */}
+          {deals.length > 0 && (
+            <div className="w-full overflow-hidden">
+              <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">薅羊毛</h3>
+              <DealsCarousel deals={deals} />
+            </div>
+          )}
         </section>
       </main>
 

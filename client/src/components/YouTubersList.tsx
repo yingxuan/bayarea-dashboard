@@ -38,18 +38,18 @@ export default function YouTubersList({ items, maxItems = 10 }: YouTubersListPro
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-1.5">
       {displayItems.map((item, index) => (
         <a
           key={`${item.channelName}-${index}`}
           href={item.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="block glow-border rounded-sm p-3 bg-card hover:bg-card/80 transition-all group"
+          className="block p-1.5 bg-card hover:bg-card/80 transition-all group rounded-sm"
         >
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-2">
             {/* Thumbnail */}
-            <div className="flex-shrink-0 w-24 h-16 rounded overflow-hidden bg-muted">
+            <div className="flex-shrink-0 w-20 h-14 rounded overflow-hidden bg-muted">
               <img
                 src={item.thumbnail}
                 alt={item.title}
@@ -60,14 +60,14 @@ export default function YouTubersList({ items, maxItems = 10 }: YouTubersListPro
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2 mb-1">
-                <h3 className="text-sm font-semibold group-hover:text-primary transition-colors line-clamp-2 flex-1">
+              <div className="flex items-start justify-between gap-2 mb-0.5">
+                <h3 className="text-xs font-semibold group-hover:text-primary transition-colors line-clamp-2 flex-1 leading-tight">
                   {item.title}
                 </h3>
                 <ExternalLink className="w-3 h-3 text-muted-foreground flex-shrink-0 mt-0.5" />
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
                 <span className="text-foreground/70">{item.channelName}</span>
                 <span>•</span>
                 <TimeAgo isoString={item.publishedAt} />

@@ -136,8 +136,16 @@ function CarouselContent({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       ref={carouselRef}
-      className="overflow-hidden"
+      className={cn(
+        "overflow-hidden min-w-0",
+        orientation === "horizontal" ? "overflow-x-auto" : "overflow-y-auto",
+        "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+      )}
       data-slot="carousel-content"
+      style={{ 
+        scrollSnapType: orientation === "horizontal" ? "x mandatory" : "y mandatory",
+        WebkitOverflowScrolling: "touch"
+      }}
     >
       <div
         className={cn(
@@ -160,10 +168,14 @@ function CarouselItem({ className, ...props }: React.ComponentProps<"div">) {
       aria-roledescription="slide"
       data-slot="carousel-item"
       className={cn(
-        "min-w-0 shrink-0 grow-0 basis-full",
+        "min-w-0 shrink-0 grow-0",
         orientation === "horizontal" ? "pl-4" : "pt-4",
         className
       )}
+      style={{
+        scrollSnapAlign: "start",
+        scrollSnapStop: "always"
+      }}
       {...props}
     />
   );

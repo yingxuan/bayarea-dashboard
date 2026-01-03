@@ -1,6 +1,6 @@
 /**
  * Today Spend Carousels Component
- * Displays 4 category carousels: 奶茶, 中餐, 咖啡, 夜宵
+ * Displays 2×2 grid: 奶茶/中餐, 夜宵/甜品
  * 
  * Requirements:
  * - 4 horizontal image carousels
@@ -29,7 +29,8 @@ interface SpendResponse {
   items?: SpendPlace[]; // Legacy format
 }
 
-const CATEGORIES = ['奶茶', '中餐', '咖啡', '夜宵'] as const;
+// 2×2 grid: 奶茶/中餐, 夜宵/甜品
+const CATEGORIES = ['奶茶', '中餐', '夜宵', '甜品'] as const;
 
 export default function TodaySpendCarousels() {
   const [placesByCategory, setPlacesByCategory] = useState<Record<string, SpendPlace[]>>({});
@@ -98,8 +99,8 @@ export default function TodaySpendCarousels() {
             const grouped: Record<string, SpendPlace[]> = {
               '奶茶': [],
               '中餐': [],
-              '咖啡': [],
               '夜宵': [],
+              '甜品': [],
             };
             
             result.items.forEach(place => {
@@ -138,15 +139,16 @@ export default function TodaySpendCarousels() {
             const keyMap: Record<string, string> = {
               'milk_tea': '奶茶',
               'chinese': '中餐',
-              'coffee': '咖啡',
+              'coffee': '甜品', // Map coffee to 甜品 for 2×2 grid
               'late_night': '夜宵',
+              'dessert': '甜品',
             };
             
             const normalized: Record<string, SpendPlace[]> = {
               '奶茶': [],
               '中餐': [],
-              '咖啡': [],
               '夜宵': [],
+              '甜品': [],
             };
             
             // Try to map itemsByCategory to normalized structure
@@ -237,7 +239,7 @@ export default function TodaySpendCarousels() {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="flex flex-col md:grid md:grid-cols-2 gap-4">
       {CATEGORIES.map((category) => {
         const places = placesByCategory[category] || [];
         console.log(`[TodaySpendCarousels] Rendering category "${category}" with ${places.length} places`);

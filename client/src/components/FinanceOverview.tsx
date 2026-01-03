@@ -42,7 +42,17 @@ interface MarketDataItem {
 
 // FinanceData interface removed - calculations now handled by PortfolioSummary and TopMovers components
 
-export default function FinanceOverview() {
+interface FinanceOverviewProps {
+  compactMode?: boolean;
+  showMarketTemperatureOnly?: boolean;
+  showTopMoversOnly?: boolean;
+}
+
+export default function FinanceOverview({ 
+  compactMode = false, 
+  showMarketTemperatureOnly = false,
+  showTopMoversOnly = false 
+}: FinanceOverviewProps = {}) {
   const [marketData, setMarketData] = useState<{
     spy: MarketDataItem;
     gold: MarketDataItem;
@@ -83,6 +93,13 @@ export default function FinanceOverview() {
           mortgage: MarketDataItem;
           powerball: MarketDataItem;
         } = result.data;
+        
+        // Debug: Log change data
+        console.log('[FinanceOverview] Market data received:', {
+          spy: { value: data.spy.value, change: data.spy.change, change_percent: data.spy.change_percent },
+          gold: { value: data.gold.value, change: data.gold.change, change_percent: data.gold.change_percent },
+          btc: { value: data.btc.value, change: data.btc.change, change_percent: data.btc.change_percent },
+        });
         
         setMarketData(data);
         
@@ -247,33 +264,14 @@ export default function FinanceOverview() {
     return movers.slice(0, 3).map(m => m.ticker);
   }, [holdings, quotesData]);
 
-  if (loading) {
-    return (
-      <div className="glow-border rounded-sm p-6 bg-card">
-        <div className="animate-pulse">
-          <div className="h-8 bg-muted rounded w-1/3 mb-4"></div>
-          <div className="h-12 bg-muted rounded w-1/2"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!marketData) {
-    return (
-      <div className="glow-border rounded-sm p-6 bg-card">
-        <div className="text-red-400">Failed to load market data</div>
-      </div>
-    );
-  }
-
-  // Prepare indices data (only SPY, GOLD, BTC)
-  const indices = [
+  // Prepare indices data (only SPY, GOLD, BTC) - need this for compactMode market temperature
+  const indices = marketData ? [
     {
       code: "SPY",
       name: "S&P 500 ETF",
       value: getStatus(marketData.spy) === "ok" ? getNumericValue(marketData.spy) : "Unavailable",
-      change: getStatus(marketData.spy) === "ok" && marketData.spy.change !== undefined ? Number(marketData.spy.change) : undefined,
-      changePercent: getStatus(marketData.spy) === "ok" && marketData.spy.change_percent !== undefined ? Number(marketData.spy.change_percent) : undefined,
+      change: getStatus(marketData.spy) === "ok" && marketData.spy.change !== undefined && !isNaN(Number(marketData.spy.change)) ? Number(marketData.spy.change) : undefined,
+      changePercent: getStatus(marketData.spy) === "ok" && marketData.spy.change_percent !== undefined && !isNaN(Number(marketData.spy.change_percent)) ? Number(marketData.spy.change_percent) : undefined,
       status: getStatus(marketData.spy),
       source: getSourceInfo(marketData.spy).name,
       sourceUrl: getSourceInfo(marketData.spy).url,
@@ -283,8 +281,8 @@ export default function FinanceOverview() {
       code: "GOLD",
       name: "Gold",
       value: getStatus(marketData.gold) === "ok" ? getNumericValue(marketData.gold) : "Unavailable",
-      change: getStatus(marketData.gold) === "ok" && marketData.gold.change !== undefined ? Number(marketData.gold.change) : undefined,
-      changePercent: getStatus(marketData.gold) === "ok" && marketData.gold.change_percent !== undefined ? Number(marketData.gold.change_percent) : undefined,
+      change: getStatus(marketData.gold) === "ok" && marketData.gold.change !== undefined && !isNaN(Number(marketData.gold.change)) ? Number(marketData.gold.change) : undefined,
+      changePercent: getStatus(marketData.gold) === "ok" && marketData.gold.change_percent !== undefined && !isNaN(Number(marketData.gold.change_percent)) ? Number(marketData.gold.change_percent) : undefined,
       status: getStatus(marketData.gold),
       source: getSourceInfo(marketData.gold).name,
       sourceUrl: getSourceInfo(marketData.gold).url,
@@ -301,8 +299,116 @@ export default function FinanceOverview() {
       sourceUrl: getSourceInfo(marketData.btc).url,
       error: marketData.btc.error,
     },
-  ];
+  ] : [];
 
+  // If compactMode and showMarketTemperatureOnly, return only market temperature
+  if (compactMode && showMarketTemperatureOnly) {
+    if (loading || !marketData || indices.length === 0) {
+      return (
+        <div className="rounded-sm p-2 bg-card border border-border/50">
+          <div className="text-xs text-muted-foreground text-center py-2">
+            {loading ? "加载中..." : "暂无数据"}
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="rounded-sm p-2 bg-card border border-border/50 w-full h-auto">
+        <div className="space-y-1">
+          {indices.map((index) => {
+          const isUnavailable = index.status === "unavailable";
+          const isOk = index.status === "ok";
+          
+          return (
+            <div
+              key={index.code}
+              className={`flex items-center justify-between py-0.5 ${
+                isUnavailable ? "opacity-75" : ""
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <div className="text-xs font-mono text-muted-foreground w-10">
+                  {index.code}
+                </div>
+                {isUnavailable ? (
+                  <div className="text-xs font-mono text-muted-foreground">
+                    不可用
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs font-mono font-bold text-foreground">
+                      {typeof index.value === "number"
+                        ? index.value.toLocaleString()
+                        : index.value}
+                    </div>
+                    {isOk && (index.change !== undefined || index.changePercent !== undefined) && (
+                      <div
+                        className={`text-xs font-mono flex items-center gap-0.5 ${
+                          (index.changePercent !== undefined && Number(index.changePercent) >= 0) || 
+                          (index.change !== undefined && Number(index.change) >= 0) ||
+                          (index.changePercent === undefined && index.change === undefined)
+                            ? "text-green-400" 
+                            : "text-red-400"
+                        }`}
+                      >
+                        {(index.changePercent !== undefined && Number(index.changePercent) !== 0) ? (
+                          Number(index.changePercent) >= 0 ? (
+                            <TrendingUp className="w-2.5 h-2.5" />
+                          ) : (
+                            <TrendingDown className="w-2.5 h-2.5" />
+                          )
+                        ) : (index.change !== undefined && Number(index.change) !== 0) ? (
+                          Number(index.change) >= 0 ? (
+                            <TrendingUp className="w-2.5 h-2.5" />
+                          ) : (
+                            <TrendingDown className="w-2.5 h-2.5" />
+                          )
+                        ) : null}
+                        {index.change !== undefined && !isNaN(Number(index.change)) && Number(index.change) !== 0 && (
+                          <>
+                            {Number(index.change) >= 0 ? "+" : ""}
+                            {typeof index.change === 'number' ? index.change.toFixed(2) : index.change}
+                          </>
+                        )}
+                        {index.changePercent !== undefined && !isNaN(Number(index.changePercent)) && Number(index.changePercent) !== 0 && (
+                          <span className={index.change !== undefined && Number(index.change) !== 0 ? "ml-0.5" : ""}>
+                            ({Number(index.changePercent) >= 0 ? "+" : ""}{Number(index.changePercent).toFixed(2)}%)
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        </div>
+      </div>
+    );
+  }
+
+  // If compactMode and showTopMoversOnly, return only top movers
+  if (compactMode && showTopMoversOnly) {
+    return holdingsLoaded && holdings.length > 0 ? (
+      <TopMovers quotesData={quotesData} holdings={holdings} />
+    ) : null;
+  }
+
+  // If compactMode, return only PortfolioSummary (for ROW 1)
+  if (compactMode) {
+    return holdingsLoaded ? (
+      <PortfolioSummary
+        quotesData={quotesData}
+        holdings={holdings}
+        holdingsLoaded={holdingsLoaded}
+        ytdBaseline={ytdBaseline}
+        onYtdBaselineChange={updateYtdBaseline}
+      />
+    ) : null;
+  }
+
+  // Full mode (original layout)
   return (
     <div className="space-y-4">
       {/* A) Portfolio Summary */}
