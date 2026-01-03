@@ -198,7 +198,7 @@ function parseBlogPosts(html: string): BlogItem[] {
   const seenUrls = new Set<string>();
   
   // Step 1: Find the "博文" section header
-  let $blogSection: cheerio.Cheerio<any> | null = null;
+  let foundSection: cheerio.Cheerio<any> | null = null;
   
   // Try to find header with text "博文"
   $('h1, h2, h3, h4, h5, h6, .title, .header, [class*="title"], [class*="header"]').each((_, element) => {
@@ -214,12 +214,12 @@ function parseBlogPosts(html: string): BlogItem[] {
         const $parent = $header.parent();
         const headerIndex = $parent.children().toArray().findIndex(el => el === element);
         if (headerIndex >= 0) {
-          $blogSection = $parent.children().slice(headerIndex + 1);
+          foundSection = $parent.children().slice(headerIndex + 1);
         } else {
-          $blogSection = $nextSiblings;
+          foundSection = $nextSiblings;
         }
       } else {
-        $blogSection = $nextSiblings;
+        foundSection = $nextSiblings;
       }
       
       // Stop searching
@@ -228,18 +228,18 @@ function parseBlogPosts(html: string): BlogItem[] {
   });
   
   // If "博文" section not found, try fallback: scan entire page for URL pattern
-  if (!$blogSection || $blogSection.length === 0) {
+  if (!foundSection || foundSection.length === 0) {
     console.warn('[Blog Community] "博文" section not found, using fallback: URL-pattern-only scan');
     return parseBlogPostsFallback($);
   }
   
-  // TypeScript type narrowing: at this point $blogSection is guaranteed to be non-null and have length > 0
-  const blogSection = $blogSection;
+  // At this point, foundSection is guaranteed to be non-null and have length > 0
+  const $blogSection = foundSection;
   
-  console.log(`[Blog Community] Found "博文" section, scanning ${blogSection.length} elements`);
+  console.log(`[Blog Community] Found "博文" section, scanning ${$blogSection.length} elements`);
   
   // Step 2: Find all links in the blog section that match the real post URL pattern
-  blogSection.find('a').each((_: number, element: any) => {
+  $blogSection.find('a').each((_: number, element: any) => {
     const $link = $(element);
     const href = $link.attr('href');
     
