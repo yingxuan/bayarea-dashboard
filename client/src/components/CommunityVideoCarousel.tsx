@@ -28,9 +28,9 @@ export default function CommunityVideoCarousel({ stockYoutubers }: CommunityVide
       }}
       className="w-full"
     >
-      <CarouselContent className="-ml-2">
+      <CarouselContent className="-ml-2 min-w-0">
         {/* Card A: 一亩三分地讨论 */}
-        <CarouselItem className="pl-2 basis-[85%] flex-shrink-0 min-w-0">
+        <CarouselItem className="pl-2 snap-start shrink-0 w-[85%] max-w-[420px] min-w-0">
           <div className="h-auto w-full flex flex-col">
             <div className="flex items-center justify-between mb-1.5">
               <h3 className="text-xs font-semibold font-mono text-foreground/70">一亩三分地</h3>
@@ -51,7 +51,7 @@ export default function CommunityVideoCarousel({ stockYoutubers }: CommunityVide
         </CarouselItem>
 
         {/* Card B: 美股 YouTube */}
-        <CarouselItem className="pl-2 basis-[85%] flex-shrink-0 min-w-0">
+        <CarouselItem className="pl-2 snap-start shrink-0 w-[85%] max-w-[420px] min-w-0">
           <div className="h-auto w-full flex flex-col">
             <div className="flex items-center justify-between mb-1.5">
               <h3 className="text-xs font-semibold font-mono text-foreground/70">美股博主</h3>

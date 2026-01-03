@@ -239,17 +239,18 @@ export default function TodaySpendCarousels() {
   }
 
   return (
-    <div className="flex flex-col md:grid md:grid-cols-2 gap-4">
+    <div className="flex flex-col md:grid md:grid-cols-2 gap-4 min-w-0">
       {CATEGORIES.map((category) => {
         const places = placesByCategory[category] || [];
         console.log(`[TodaySpendCarousels] Rendering category "${category}" with ${places.length} places`);
         // Always render, even if empty (will show fallback cards)
         return (
-          <SpendCarousel
-            key={category}
-            category={category}
-            places={places}
-          />
+          <div key={category} className="min-w-0">
+            <SpendCarousel
+              category={category}
+              places={places}
+            />
+          </div>
         );
       })}
     </div>

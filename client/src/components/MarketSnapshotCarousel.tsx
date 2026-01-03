@@ -26,23 +26,23 @@ export default function MarketSnapshotCarousel({ marketNews }: MarketSnapshotCar
       }}
       className="w-full"
     >
-      <CarouselContent className="-ml-2">
+      <CarouselContent className="-ml-2 min-w-0">
         {/* Card A: 市场温度 */}
-        <CarouselItem className="pl-2 basis-[85%] flex-shrink-0 min-w-0">
+        <CarouselItem className="pl-2 snap-start shrink-0 w-[85%] max-w-[420px] min-w-0">
           <div className="h-auto w-full">
             <FinanceOverview compactMode={true} showMarketTemperatureOnly={true} />
           </div>
         </CarouselItem>
 
         {/* Card B: Top Movers */}
-        <CarouselItem className="pl-2 basis-[85%] flex-shrink-0 min-w-0">
+        <CarouselItem className="pl-2 snap-start shrink-0 w-[85%] max-w-[420px] min-w-0">
           <div className="h-auto w-full">
             <FinanceOverview compactMode={true} showTopMoversOnly={true} />
           </div>
         </CarouselItem>
 
         {/* Card C: 市场要闻 */}
-        <CarouselItem className="pl-2 basis-[85%] flex-shrink-0 min-w-0">
+        <CarouselItem className="pl-2 snap-start shrink-0 w-[85%] max-w-[420px] min-w-0">
           <div className="h-auto w-full rounded-sm p-2 bg-card border border-border/50">
             <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">市场要闻</h3>
             {marketNews.length > 0 ? (

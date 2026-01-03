@@ -211,9 +211,10 @@ export default function Home() {
     <div className="min-h-screen bg-background grid-bg">
       <Navigation />
 
-      <main className="container py-3 space-y-6 max-w-full overflow-x-hidden min-w-0">
-        {/* SECTION 1: 打工耽误赚钱 */}
-        <section className="space-y-3 flex flex-col min-w-0">
+      <main className="w-full min-w-0">
+        <div className="mx-auto w-full max-w-6xl px-4 md:px-6 py-3 space-y-6">
+          {/* SECTION 1: 打工耽误赚钱 */}
+          <section className="flex flex-col gap-3 min-w-0">
           <div className="mb-2">
             <h1 className="text-2xl font-bold font-mono">
               <span className="neon-text-blue">打工耽误赚钱</span>
@@ -229,70 +230,73 @@ export default function Home() {
             onYtdBaselineChange={updateYtdBaseline}
           />
 
-          {/* 2) Horizontal carousel: 市场快照 (3 cards, swipe) */}
-          <div className="w-full min-w-0">
-            <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5 px-1">市场快照</h3>
-            <div className="w-full overflow-hidden">
-              <MarketSnapshotCarousel marketNews={marketNews} />
+            {/* 2) Horizontal carousel: 市场快照 (3 cards, swipe) */}
+            <div className="w-full min-w-0">
+              <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">市场快照</h3>
+              <div className="w-full min-w-0 overflow-hidden">
+                <MarketSnapshotCarousel marketNews={marketNews} />
+              </div>
             </div>
-          </div>
 
-          {/* 3) Horizontal carousel: 社区 & 视频 (2 cards, swipe) */}
-          <div className="w-full min-w-0">
-            <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5 px-1">社区 & 视频</h3>
-            <div className="w-full overflow-hidden">
-              <CommunityVideoCarousel stockYoutubers={stockYoutubers} />
+            {/* 3) Horizontal carousel: 社区 & 视频 (2 cards, swipe) */}
+            <div className="w-full min-w-0">
+              <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">社区 & 视频</h3>
+              <div className="w-full min-w-0 overflow-hidden">
+                <CommunityVideoCarousel stockYoutubers={stockYoutubers} />
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* SECTION 2: 民以食为天 */}
-        <section className="space-y-3">
-          <div className="mb-2">
-            <h1 className="text-2xl font-bold font-mono">
-              <span className="neon-text-blue">民以食为天</span>
-            </h1>
-          </div>
-
-          {/* Fixed 2×2 grid: 奶茶/中餐, 夜宵/甜品 */}
-          <TodaySpendCarousels />
-        </section>
-
-        {/* SECTION 3: 追剧吃瓜薅羊毛 */}
-        <section className="space-y-3">
-          <div className="mb-2">
-            <h1 className="text-2xl font-bold font-mono">
-              <span className="neon-text-blue">追剧吃瓜薅羊毛</span>
-            </h1>
-          </div>
-
-          {/* 1) Horizontal carousel: 追剧 (swipe) */}
-          {shows.length > 0 && (
-            <div className="w-full overflow-hidden">
-              <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">追剧</h3>
-              <ShowsCarousel shows={shows} />
+          {/* SECTION 2: 民以食为天 */}
+          <section className="flex flex-col gap-3 min-w-0">
+            <div>
+              <h1 className="text-2xl font-bold font-mono">
+                <span className="neon-text-blue">民以食为天</span>
+              </h1>
             </div>
-          )}
 
-          {/* 2) Vertical feed: 吃瓜 */}
-          <div className="w-full">
-            <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">吃瓜</h3>
-            <ChineseGossip maxItems={10} />
-          </div>
-
-          {/* 3) Horizontal carousel: 薅羊毛 */}
-          {deals.length > 0 && (
-            <div className="w-full overflow-hidden">
-              <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">薅羊毛</h3>
-              <DealsCarousel deals={deals} />
+            {/* Fixed 2×2 grid: 奶茶/中餐, 夜宵/甜品 */}
+            <div className="w-full min-w-0">
+              <TodaySpendCarousels />
             </div>
-          )}
-        </section>
+          </section>
+
+          {/* SECTION 3: 追剧吃瓜薅羊毛 */}
+          <section className="flex flex-col gap-3 min-w-0">
+            <div>
+              <h1 className="text-2xl font-bold font-mono">
+                <span className="neon-text-blue">追剧吃瓜薅羊毛</span>
+              </h1>
+            </div>
+
+            {/* 1) Horizontal carousel: 追剧 (swipe) */}
+            {shows.length > 0 && (
+              <div className="w-full min-w-0 overflow-hidden">
+                <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">追剧</h3>
+                <ShowsCarousel shows={shows} />
+              </div>
+            )}
+
+            {/* 2) Vertical feed: 吃瓜 */}
+            <div className="w-full min-w-0">
+              <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">吃瓜</h3>
+              <ChineseGossip maxItems={10} />
+            </div>
+
+            {/* 3) Horizontal carousel: 薅羊毛 */}
+            {deals.length > 0 && (
+              <div className="w-full min-w-0 overflow-hidden">
+                <h3 className="text-xs font-semibold font-mono text-foreground/70 mb-1.5">薅羊毛</h3>
+                <DealsCarousel deals={deals} />
+              </div>
+            )}
+          </section>
+        </div>
       </main>
 
       {/* Footer */}
       <footer className="border-t border-border py-6 mt-12">
-        <div className="container">
+        <div className="mx-auto w-full max-w-6xl px-4 md:px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground font-mono">
             <div>
               <span className="neon-text-blue font-bold">湾区华人每日生存与机会面板</span>

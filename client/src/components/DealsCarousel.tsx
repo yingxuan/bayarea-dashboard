@@ -39,9 +39,9 @@ export default function DealsCarousel({ deals }: DealsCarouselProps) {
       }}
       className="w-full"
     >
-      <CarouselContent className="-ml-2">
+      <CarouselContent className="-ml-2 min-w-0">
         {deals.slice(0, 6).map((deal) => (
-          <CarouselItem key={deal.id} className="pl-2 basis-[85%] flex-shrink-0 min-w-0">
+          <CarouselItem key={deal.id} className="pl-2 snap-start shrink-0 w-[85%] max-w-[420px] min-w-0">
             <a
               href={deal.external_url || deal.url || '#'}
               target="_blank"

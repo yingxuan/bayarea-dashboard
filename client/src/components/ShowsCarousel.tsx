@@ -41,9 +41,9 @@ export default function ShowsCarousel({ shows }: ShowsCarouselProps) {
       }}
       className="w-full"
     >
-      <CarouselContent className="-ml-2">
+      <CarouselContent className="-ml-2 min-w-0">
         {displayShows.map((show) => (
-          <CarouselItem key={show.id} className="pl-2 basis-[85%] flex-shrink-0 min-w-0">
+          <CarouselItem key={show.id} className="pl-2 snap-start shrink-0 w-[85%] max-w-[420px] min-w-0">
             <a
               href={show.url}
               target="_blank"

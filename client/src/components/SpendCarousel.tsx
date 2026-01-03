@@ -59,13 +59,13 @@ export default function SpendCarousel({ category, places, fallbackImage }: Spend
   if (places.length < 2) {
     console.warn(`[SpendCarousel] Category "${category}" has only ${places.length} places, showing compact placeholder`);
     return (
-      <div className="rounded-sm p-2 bg-card border border-border/50 flex flex-col h-auto">
-        <div className="mb-2 flex-shrink-0">
+      <div className="rounded-sm p-2 bg-card border border-border/50 flex flex-col h-24">
+        <div className="mb-1 flex-shrink-0">
           <h3 className="text-xs font-semibold font-mono text-foreground/90">
             {category}
           </h3>
         </div>
-        <div className="h-[50px] flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center min-h-0">
           <p className="text-xs text-muted-foreground font-mono text-center line-clamp-2">
             暂时无法获取附近热门店
           </p>
@@ -82,10 +82,10 @@ export default function SpendCarousel({ category, places, fallbackImage }: Spend
   const finalRandomPool = randomPool.length > 0 ? randomPool : places.slice(2, 3);
 
   return (
-    <div className="glow-border rounded-sm p-3 bg-card h-full flex flex-col">
+    <div className="rounded-sm p-2 bg-card border border-border/50 flex flex-col h-auto min-h-0">
       {/* Category Header - Top-left */}
-      <div className="mb-3 flex-shrink-0">
-        <h3 className="text-sm font-semibold font-mono text-foreground/90">
+      <div className="mb-2 flex-shrink-0">
+        <h3 className="text-xs font-semibold font-mono text-foreground/90">
           {category}
         </h3>
       </div>
@@ -97,9 +97,9 @@ export default function SpendCarousel({ category, places, fallbackImage }: Spend
           loop: false,
           dragFree: true,
         }}
-        className="w-full flex-1"
+        className="w-full min-w-0"
       >
-        <CarouselContent className="-ml-2">
+        <CarouselContent className="-ml-2 min-w-0">
           {/* Card 1-2: Real places */}
           {top2Places.map((place) => {
             const photoUrl = place.photo_url || getFallbackImage();
