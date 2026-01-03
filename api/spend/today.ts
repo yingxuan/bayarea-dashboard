@@ -16,7 +16,12 @@
  * - Fallback to stale cache if API fails
  * - Fallback to local seed data if all fails
  * - All errors (legacy/billing/quota/key restrictions) trigger fallback
+ * 
+ * Runtime: Node.js (required for process.env access)
  */
+
+// Ensure Node.js runtime (not Edge runtime) for environment variable access
+export const runtime = 'nodejs';
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { CACHE_TTL, ttlMsToSeconds } from '../../shared/config.js';
@@ -36,6 +41,12 @@ import {
 
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
 const SPEND_TODAY_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+// Debug: Log environment variable status (without exposing the key)
+if (process.env.NODE_ENV !== 'production' || process.env.VERCEL_ENV) {
+  console.log('[Spend Today] GOOGLE_PLACES_API_KEY status:', GOOGLE_PLACES_API_KEY ? `Set (length: ${GOOGLE_PLACES_API_KEY.length})` : 'Not set');
+  console.log('[Spend Today] Available env vars with GOOGLE:', Object.keys(process.env).filter(k => k.includes('GOOGLE')).join(', ') || 'None');
+}
 
 // Maximum distance in miles from city center (Cupertino or Sunnyvale)
 const MAX_DISTANCE_MILES = 8; // 8 miles from city center
@@ -181,7 +192,8 @@ async function searchGooglePlacesNearby(
   keyword?: string
 ): Promise<GooglePlaceResult[]> {
   if (!GOOGLE_PLACES_API_KEY) {
-    throw new Error('GOOGLE_PLACES_API_KEY environment variable is not set');
+    console.warn('[Spend Today] GOOGLE_PLACES_API_KEY not set in searchPlacesByKeyword, returning empty results');
+    return [];
   }
 
   try {
@@ -792,6 +804,13 @@ function groupPlacesByCategory(places: SpendPlace[]): Record<string, SpendPlace[
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Security logging at handler start (without exposing the key)
+  console.log('[Spend Today] Handler started');
+  console.log('[Spend Today] VERCEL_ENV:', process.env.VERCEL_ENV || 'local');
+  console.log('[Spend Today] GOOGLE_PLACES_API_KEY exists:', !!process.env.GOOGLE_PLACES_API_KEY);
+  console.log('[Spend Today] GOOGLE_PLACES_API_KEY length:', process.env.GOOGLE_PLACES_API_KEY?.length || 0);
+  console.log('[Spend Today] All env vars containing "GOOGLE":', Object.keys(process.env).filter(k => k.toUpperCase().includes('GOOGLE')).join(', ') || 'None');
+  
   setCorsHeaders(res);
   
   if (handleOptions(req, res)) {
@@ -832,18 +851,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Fetch from Google Places API
-    if (!GOOGLE_PLACES_API_KEY) {
-      throw new Error('GOOGLE_PLACES_API_KEY not configured');
-    }
-
-    // Don't use userLocation - always search from city centers to ensure distance filtering
+    // If API key is not configured, skip API call and go directly to stale cache or seed data fallback
     let allPlaces: SpendPlace[] = [];
-    try {
-      allPlaces = await fetchAllPlacesFromGoogle();
-    } catch (apiError: any) {
-      console.error('[Spend Today] Error fetching from Google Places API:', apiError);
-      // If API fails (e.g., REQUEST_DENIED, billing issue), continue to stale cache or seed data fallback
+    if (!GOOGLE_PLACES_API_KEY) {
+      console.warn('[Spend Today] GOOGLE_PLACES_API_KEY not configured, skipping API call and using fallback');
+      console.warn('[Spend Today] Debug: process.env.GOOGLE_PLACES_API_KEY =', process.env.GOOGLE_PLACES_API_KEY ? `[Set, length: ${process.env.GOOGLE_PLACES_API_KEY.length}]` : '[Not set]');
+      console.warn('[Spend Today] All env vars containing "GOOGLE":', Object.keys(process.env).filter(k => k.toUpperCase().includes('GOOGLE')).join(', ') || 'None found');
       allPlaces = [];
+    } else {
+      // Don't use userLocation - always search from city centers to ensure distance filtering
+      try {
+        allPlaces = await fetchAllPlacesFromGoogle();
+      } catch (apiError: any) {
+        console.error('[Spend Today] Error fetching from Google Places API:', apiError);
+        // If API fails (e.g., REQUEST_DENIED, billing issue), continue to stale cache or seed data fallback
+        allPlaces = [];
+      }
     }
     
     if (allPlaces.length === 0) {
@@ -1099,6 +1122,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cache_mode: nocache ? 'bypass' : 'normal',
       cache_age_seconds: 0,
       cache_expires_in_seconds: ttlSeconds,
+      // Debug info (only if ?debug=1 is in query or in development)
+      ...(req.query.debug === '1' || process.env.VERCEL_ENV === 'development' ? {
+        _debug: {
+          hasApiKey: !!GOOGLE_PLACES_API_KEY,
+          apiKeyLength: GOOGLE_PLACES_API_KEY?.length || 0,
+          apiKeyPrefix: GOOGLE_PLACES_API_KEY ? GOOGLE_PLACES_API_KEY.substring(0, 10) + '...' : 'N/A',
+          env: process.env.VERCEL_ENV || 'local',
+          allGoogleEnvVars: Object.keys(process.env).filter(k => k.toUpperCase().includes('GOOGLE')),
+          placesFromApi: allPlaces.length,
+          placesFromCache: 0, // Will be set if using cache
+        },
+      } : {}),
     };
 
     // Update cache (24 hours)
@@ -1126,6 +1161,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       errorMessage.includes('billing') ||
       errorMessage.includes('quota') ||
       errorMessage.includes('API key') ||
+      errorMessage.includes('GOOGLE_PLACES_API_KEY') ||
+      errorMessage.includes('not configured') ||
       errorMessage.includes('Permission denied') ||
       error?.code === 403 ||
       error?.code === 400;
@@ -1231,6 +1268,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cache_hit: false,
       fetched_at: errorAtISO,
       note: 'Using seed data fallback',
+      // Debug info (only if ?debug=1 is in query or in development)
+      ...(req.query.debug === '1' || process.env.VERCEL_ENV === 'development' ? {
+        _debug: {
+          hasApiKey: !!GOOGLE_PLACES_API_KEY,
+          apiKeyLength: GOOGLE_PLACES_API_KEY?.length || 0,
+          apiKeyPrefix: GOOGLE_PLACES_API_KEY ? GOOGLE_PLACES_API_KEY.substring(0, 10) + '...' : 'N/A',
+          env: process.env.VERCEL_ENV || 'local',
+          allGoogleEnvVars: Object.keys(process.env).filter(k => k.toUpperCase().includes('GOOGLE')),
+          error: error?.message || 'Unknown error',
+          fallbackReason: 'API key not configured or API call failed',
+        },
+      } : {}),
     });
   }
 }

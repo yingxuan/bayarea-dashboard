@@ -238,12 +238,23 @@ TMDB_API_KEY=your_tmdb_key_here
 # Google CSE (optional, for search)
 GOOGLE_CSE_API_KEY=your_google_cse_key_here
 GOOGLE_CSE_ID=your_google_cse_id_here
+
+# Google Places API (for food recommendations - REQUIRED for /api/spend/today)
+GOOGLE_PLACES_API_KEY=your_google_places_api_key_here
+
+# Google Gemini API (for market news translation)
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
 **Required for Holdings Feature:**
 - `FINNHUB_API_KEY`: Get a free key at https://finnhub.io/ (see `FINNHUB_SETUP.md` for details)
   - **Security:** Server-side only - never exposed to frontend bundle (no `VITE_` prefix)
   - **Missing key:** API will return `status="unavailable"` with `error="Missing FINNHUB_API_KEY"`
+
+**Required for Food Recommendations:**
+- `GOOGLE_PLACES_API_KEY`: Get a key at https://console.cloud.google.com/ (enable Places API (New))
+  - **Security:** Server-side only - never exposed to frontend bundle
+  - **Missing key:** API will use seed data fallback
 
 **Security Note:** All API keys are server-side only. They are never exposed to the frontend bundle or client-side code. The `.env` and `.env.local` files are automatically ignored by `.gitignore`.
 
@@ -403,6 +414,40 @@ The dashboard is built with a **mobile-first** approach:
 ---
 
 ## Deployment
+
+### Vercel Deployment
+
+#### Environment Variables Setup
+
+1. **Add Environment Variables in Vercel Dashboard:**
+   - Go to your project → Settings → Environment Variables
+   - Add all required API keys (see Environment Variables section above)
+   - **Important:** Select the correct environments (Production, Preview, Development)
+
+2. **⚠️ Critical: Redeploy After Environment Variable Changes**
+   - **After adding or modifying environment variables, you MUST redeploy for changes to take effect**
+   - Environment variables are only loaded during deployment, not at runtime
+   - **How to redeploy:**
+     - Option 1: Go to Deployments → Latest deployment → "..." → "Redeploy"
+     - Option 2: Push a new commit to trigger automatic deployment
+     - Option 3: Use Vercel CLI: `vercel --prod`
+
+3. **Verify Environment Variables:**
+   - After redeploy, check function logs to verify variables are loaded
+   - Or use debug mode: Add `?debug=1` to API endpoints to see `_debug` field in response
+
+#### Common Issues
+
+- **"API key not configured" error after adding it:**
+  - ✅ Solution: Redeploy the project (see step 2 above)
+  
+- **Environment variable not found in Preview but works in Production:**
+  - ✅ Solution: Ensure the variable is added to "Preview" environment in Vercel settings
+
+- **Edge Runtime vs Node.js Runtime:**
+  - Some APIs require Node.js runtime for `process.env` access
+  - Check API files for `export const runtime = 'nodejs'` declaration
+  - If missing, add it to ensure environment variables are accessible
 
 ### Static Hosting (Current)
 

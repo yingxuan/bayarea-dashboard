@@ -33,13 +33,18 @@ interface Deal {
 
 async function fetchRedditDeals(): Promise<Deal[]> {
   // Fetch hot deals from r/deals
+  // Use a more browser-like User-Agent to avoid blocking
   const response = await fetch(`${API_URLS.REDDIT}/r/deals/hot.json?limit=20`, {
     headers: {
-      'User-Agent': 'BayAreaDashboard/1.0',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'application/json',
+      'Accept-Language': 'en-US,en;q=0.9',
     },
   });
 
   if (!response.ok) {
+    const errorText = await response.text().catch(() => response.statusText);
+    console.error(`[Deals] Reddit API error: ${response.status} ${response.statusText}`, errorText.substring(0, 200));
     throw new Error(`Reddit API error: ${response.statusText}`);
   }
 
@@ -115,8 +120,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log('[API /api/deals] Cache bypass requested via ?nocache=1');
     }
 
-    // Fetch fresh data
-    const deals = await fetchRedditDeals();
+    // Fetch fresh data with error handling
+    let deals: Deal[] = [];
+    try {
+      deals = await fetchRedditDeals();
+    } catch (fetchError: any) {
+      console.error('[API /api/deals] Failed to fetch from Reddit:', fetchError);
+      // If fetch fails, try stale cache first before throwing
+      const stale = getStaleCache(cacheKey);
+      if (stale && stale.data && stale.data.items && stale.data.items.length > 0) {
+        console.log('[API /api/deals] Using stale cache due to fetch failure');
+        const staleData = stale.data;
+        normalizeStaleResponse(staleData, SOURCE_INFO.REDDIT, ttlMsToSeconds(DEALS_CACHE_TTL), 'deals');
+        return res.status(200).json({
+          ...staleData,
+          cache_hit: true,
+          stale: true,
+          note: 'Using stale cache due to Reddit API error',
+        });
+      }
+      // Re-throw to be caught by outer catch block
+      throw fetchError;
+    }
     const fetchedAtISO = new Date().toISOString();
     const ttlSeconds = ttlMsToSeconds(DEALS_CACHE_TTL);
     
