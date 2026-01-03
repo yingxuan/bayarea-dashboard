@@ -7,20 +7,14 @@ import apiRouter from "./api.js";
 // Use production API functions (Vercel serverless functions) for local dev
 import { 
   marketRoute, 
-  aiNewsRoute, 
-  gossipRoute, 
   dealsRoute, 
-  restaurantsRoute, 
   showsRoute,
   youtubersRoute,
   quotesRoute,
   spendTodayRoute,
   leekCommunityRoute,
-  blogCommunityRoute,
-  huarenCommunityRoute,
   gossipCommunityRoute,
   marketNewsRoute,
-  chineseGossipRoute,
   portfolioValueSeriesRoute
 } from "./local-api-adapter.js";
 
@@ -48,14 +42,8 @@ async function startServer() {
   // Mount production API routes (Vercel serverless functions)
   app.get('/api/market', marketRoute);
   app.options('/api/market', (_req, res) => res.sendStatus(200));
-  app.get('/api/ai-news', aiNewsRoute);
-  app.options('/api/ai-news', (_req, res) => res.sendStatus(200));
-  app.get('/api/gossip', gossipRoute);
-  app.options('/api/gossip', (_req, res) => res.sendStatus(200));
   app.get('/api/deals', dealsRoute);
   app.options('/api/deals', (_req, res) => res.sendStatus(200));
-  app.get('/api/restaurants', restaurantsRoute);
-  app.options('/api/restaurants', (_req, res) => res.sendStatus(200));
   app.get('/api/shows', showsRoute);
   app.options('/api/shows', (_req, res) => res.sendStatus(200));
   app.get('/api/youtubers', youtubersRoute);
@@ -66,16 +54,10 @@ async function startServer() {
   app.options('/api/spend/today', (_req, res) => res.sendStatus(200));
   app.get('/api/community/leeks', leekCommunityRoute);
   app.options('/api/community/leeks', (_req, res) => res.sendStatus(200));
-  app.get('/api/community/blogs', blogCommunityRoute);
-  app.options('/api/community/blogs', (_req, res) => res.sendStatus(200));
-  app.get('/api/community/huaren', huarenCommunityRoute);
-  app.options('/api/community/huaren', (_req, res) => res.sendStatus(200));
   app.get('/api/community/gossip', gossipCommunityRoute);
   app.options('/api/community/gossip', (_req, res) => res.sendStatus(200));
   app.get('/api/market-news', marketNewsRoute);
   app.options('/api/market-news', (_req, res) => res.sendStatus(200));
-  app.get('/api/chinese-gossip', chineseGossipRoute);
-  app.options('/api/chinese-gossip', (_req, res) => res.sendStatus(200));
   app.get('/api/portfolio/value-series', portfolioValueSeriesRoute);
   app.options('/api/portfolio/value-series', (_req, res) => res.sendStatus(200));
   
@@ -101,19 +83,15 @@ async function startServer() {
           message: "Development mode: Frontend is served by Vite dev server on port 3000",
           api_endpoints: [
             "/api/market",
-            "/api/ai-news",
-            "/api/gossip",
             "/api/deals",
-            "/api/restaurants",
             "/api/shows",
             "/api/youtubers",
             "/api/quotes",
             "/api/spend/today",
             "/api/community/leeks",
-            "/api/community/blogs",
-            "/api/community/huaren",
+            "/api/community/gossip",
             "/api/market-news",
-            "/api/chinese-gossip"
+            "/api/portfolio/value-series"
           ]
         });
       }

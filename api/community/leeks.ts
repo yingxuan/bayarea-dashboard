@@ -459,7 +459,7 @@ function parseForumPosts(html: string): CommunityItem[] {
   let processedCount = 0;
   let firstFailureLogged = false;
   
-  postBodies.each((_, element) => {
+  postBodies.each((_: number, element: any) => {
     if (items.length >= 5) {
       return false; // Stop at 5
     }

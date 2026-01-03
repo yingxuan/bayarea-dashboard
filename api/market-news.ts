@@ -691,7 +691,7 @@ function parseGoogleFinanceNews(html: string): MarketNewsItem[] {
     console.log(`[Market News] Only found ${items.length} items, trying more generic selectors`);
     
     // Try to find any links with financial keywords
-    $('a').each((_, element) => {
+    $('a').each((_: number, element: any) => {
 
       const $link = $(element);
       const href = $link.attr('href');
@@ -790,7 +790,7 @@ async function fetchHTMLNews(sourceName: string, sourceUrl: string): Promise<Mar
     ];
     
     for (const selector of selectors) {
-      $(selector).each((_, element) => {
+      $(selector).each((_: number, element: any) => {
         if (items.length >= 20) return false; // Collect enough for filtering
         
         const $link = $(element);
