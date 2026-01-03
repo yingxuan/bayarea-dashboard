@@ -34,9 +34,19 @@ interface Deal {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
   
+  // Debug: Add Cache-Control: no-store to prevent edge/CDN caching during debugging
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  
   if (handleOptions(req, res)) {
     return;
   }
+  
+  // Get build version fingerprint for debugging
+  const buildId = process.env.VERCEL_GIT_COMMIT_SHA 
+    ? process.env.VERCEL_GIT_COMMIT_SHA.substring(0, 7)
+    : process.env.VERCEL_DEPLOYMENT_ID || 'local';
 
   try {
     const nocache = isCacheBypass(req);
@@ -53,6 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         cache_mode: 'normal',
         cache_age_seconds: cached.cacheAgeSeconds,
         cache_expires_in_seconds: cached.cacheExpiresInSeconds,
+        build: buildId, // Build fingerprint for debugging
       });
     }
 
@@ -74,6 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         cache_hit: true,
         stale: true,
         note: 'Reddit API has been removed. Showing cached data.',
+        build: buildId, // Build fingerprint for debugging
       });
     }
 
@@ -91,6 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cache_hit: false,
       fetched_at: fetchedAtISO,
       note: 'Reddit API has been removed. No data available.',
+      build: buildId, // Build fingerprint for debugging
       // Legacy fields for backward compatibility
       deals: [],
       updated_at: formatUpdatedAt(),
@@ -117,6 +130,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         cache_hit: true,
         stale: true,
         note: 'Reddit API has been removed. Showing cached data.',
+        build: buildId, // Build fingerprint for debugging
       });
     }
 
@@ -132,6 +146,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cache_hit: false,
       fetched_at: errorAtISO,
       note: 'Reddit API has been removed. No data available.',
+      build: buildId, // Build fingerprint for debugging
       // Legacy fields
       deals: [],
       updated_at: formatUpdatedAt(),
