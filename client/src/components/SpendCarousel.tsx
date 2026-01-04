@@ -17,7 +17,6 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel";
-import BlindBoxCard from "./BlindBoxCard";
 
 interface SpendPlace {
   id: string;
@@ -57,8 +56,8 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
     console.log(`[SpendCarousel] First place:`, places[0]);
   }
 
-  // If we have < 2 real places, show compact placeholder instead of huge empty area
-  if (places.length < 2) {
+  // If we have < 5 places, show compact placeholder instead of huge empty area
+  if (places.length < 5) {
     console.warn(`[SpendCarousel] Category "${category}" has only ${places.length} places, showing compact placeholder`);
     return (
       <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md flex flex-col min-h-[120px]">
@@ -76,45 +75,26 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
     );
   }
 
-  // Select 2 places starting from offset (for "换一批" functionality)
+  // Select 5 places starting from offset (for "换一批" functionality)
   // Use modulo to cycle through places if offset exceeds array length
   const normalizedOffset = Math.max(0, Math.min(offset, places.length - 1));
-  let top2Places: SpendPlace[] = [];
+  let top5Places: SpendPlace[] = [];
   
-  if (normalizedOffset + 2 <= places.length) {
+  if (normalizedOffset + 5 <= places.length) {
     // Normal case: we have enough places from current offset
-    top2Places = places.slice(normalizedOffset, normalizedOffset + 2);
+    top5Places = places.slice(normalizedOffset, normalizedOffset + 5);
   } else {
     // Wrap around: take remaining from current offset + take from start
     const fromEnd = places.slice(normalizedOffset);
-    const fromStart = places.slice(0, 2 - fromEnd.length);
-    top2Places = [...fromEnd, ...fromStart];
+    const fromStart = places.slice(0, 5 - fromEnd.length);
+    top5Places = [...fromEnd, ...fromStart];
   }
   
-  // For blind box pool, use places that are not currently displayed
-  // Exclude the current 2 places and take next 4
-  const excludedIndices = new Set<number>();
-  if (normalizedOffset + 2 <= places.length) {
-    excludedIndices.add(normalizedOffset);
-    excludedIndices.add(normalizedOffset + 1);
-  } else {
-    // Handle wrap-around case
-    for (let i = normalizedOffset; i < places.length; i++) {
-      excludedIndices.add(i);
-    }
-    for (let i = 0; i < 2 - (places.length - normalizedOffset); i++) {
-      excludedIndices.add(i);
-    }
-  }
+  // Find the random place (marked with "随机选店" in category)
+  const randomPlace = places.find(p => p.category.includes('随机选店'));
   
-  const randomPool = places
-    .map((place, index) => ({ place, index }))
-    .filter(({ index }) => !excludedIndices.has(index))
-    .slice(0, 4)
-    .map(({ place }) => place);
-
-  // Ensure random pool has at least 1 item
-  const finalRandomPool = randomPool.length > 0 ? randomPool : places.slice(0, 1);
+  // If no random place found, use the 6th place (if available)
+  const displayRandomPlace = randomPlace || (places.length > 5 ? places[5] : null);
 
   return (
     <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md flex flex-col h-auto min-h-0">
@@ -123,7 +103,7 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
         <h3 className="text-[13px] font-mono font-medium text-foreground/80">
           {category}
         </h3>
-        {onRefresh && places.length > 2 && (
+        {onRefresh && places.length > 5 && (
           <button
             onClick={onRefresh}
             className="text-xs opacity-60 hover:opacity-100 transition-opacity font-mono font-normal px-2 py-0.5 rounded hover:bg-primary/10 border border-primary/20 hover:border-primary/40"
@@ -134,7 +114,7 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
         )}
       </div>
 
-      {/* Horizontal Carousel - Compact for grid: 2 real places + 1 blind box */}
+      {/* Horizontal Carousel - 6 cards: 5 normal places + 1 random */}
       <Carousel
         opts={{
           align: "start",
@@ -144,8 +124,8 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
         className="w-full min-w-0"
       >
         <CarouselContent className="-ml-2 min-w-0 items-stretch">
-          {/* Card 1-2: Real places */}
-          {top2Places.map((place) => {
+          {/* Card 1-5: Normal places */}
+          {top5Places.map((place) => {
             const photoUrl = place.photo_url || getFallbackImage();
             const isFallback = (place as any).isFallback;
             
@@ -195,13 +175,55 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
             );
           })}
 
-          {/* Card 3: Blind Box - 确保完整显示，垂直居中 */}
-          <CarouselItem className="pl-2 basis-auto flex items-center">
-            <BlindBoxCard
-              randomPool={finalRandomPool}
-              fallbackImage={getFallbackImage()}
-            />
-          </CarouselItem>
+          {/* Card 6: Random place (随机选店) */}
+          {displayRandomPlace && (
+            <CarouselItem className="pl-2 basis-auto flex items-center">
+              <a
+                href={displayRandomPlace.maps_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-44 rounded-lg overflow-hidden bg-card/50 border border-border/50 hover:border-primary/50 transition-all group"
+              >
+                {/* Large Image - Compact for grid with dark gradient overlay */}
+                <div className="relative w-full h-32 bg-muted overflow-hidden">
+                  <img
+                    src={displayRandomPlace.photo_url || getFallbackImage()}
+                    alt={displayRandomPlace.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onError={(e) => {
+                      // Fallback to category image if photo fails to load
+                      const target = e.target as HTMLImageElement;
+                      if (target.src !== getFallbackImage()) {
+                        target.src = getFallbackImage();
+                      }
+                    }}
+                  />
+                  {/* Dark gradient overlay for better text readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+                  
+                  {/* Overlay: Name + Rating + Distance (bottom-left) */}
+                  <div className="absolute bottom-0 left-0 right-0 p-2 text-white z-10">
+                    <h4 className="text-[13px] font-medium mb-0.5 truncate drop-shadow-lg leading-tight">{displayRandomPlace.name}</h4>
+                    <div className="flex items-baseline gap-1.5 text-[11px] opacity-70 drop-shadow-md font-mono font-normal">
+                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 flex-shrink-0" />
+                      <span className="tabular-nums">{displayRandomPlace.rating.toFixed(1)}</span>
+                      {displayRandomPlace.distance_miles !== undefined && (
+                        <>
+                          <span className="text-white/60">•</span>
+                          <MapPin className="w-3 h-3 flex-shrink-0" />
+                          <span className="tabular-nums">{displayRandomPlace.distance_miles.toFixed(1)} mi</span>
+                        </>
+                      )}
+                    </div>
+                    {/* Random label */}
+                    <div className="mt-1 text-[10px] opacity-80 font-mono font-normal">
+                      随机选店
+                    </div>
+                  </div>
+                </div>
+              </a>
+            </CarouselItem>
+          )}
         </CarouselContent>
       </Carousel>
     </div>

@@ -339,11 +339,11 @@ export default function Home() {
                   shows={shows} 
                   offset={showsOffset}
                   onRefresh={() => {
-                    const VIDEOS_PER_BATCH = 4;
+                    // For "换一批", increment offset to rotate shows within each platform
                     setShowsOffset(prev => {
-                      const nextOffset = prev + VIDEOS_PER_BATCH;
-                      // Wrap around if we've reached the end
-                      return nextOffset >= shows.length ? 0 : nextOffset;
+                      const nextOffset = prev + 1;
+                      // Wrap around after reasonable number of rotations
+                      return nextOffset >= 10 ? 0 : nextOffset;
                     });
                   }}
                 />

@@ -383,9 +383,9 @@ export default function TodaySpendCarousels() {
     setCategoryOffsets(prev => {
       const currentOffset = prev[category] || 0;
       const places = placesByCategory[category] || [];
-      // Move to next batch (2 places at a time)
+      // Move to next batch (5 places at a time)
       // If we've reached the end, cycle back to start
-      const nextOffset = (currentOffset + 2) % Math.max(places.length, 2);
+      const nextOffset = (currentOffset + 5) % Math.max(places.length, 5);
       return {
         ...prev,
         [category]: nextOffset,

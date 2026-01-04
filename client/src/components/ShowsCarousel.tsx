@@ -25,7 +25,6 @@ export default function ShowsCarousel({ shows, offset = 0, onRefresh }: ShowsCar
   }
 
   // Map shows to display format (supports both TMDB and YouTube formats)
-  // No limit - show all shows
   const allDisplayShows = shows.map((show: any) => ({
     id: String(show.id || show.videoId || Date.now()),
     title: show.title || show.name || '',
@@ -36,12 +35,48 @@ export default function ShowsCarousel({ shows, offset = 0, onRefresh }: ShowsCar
     url: show.url || `https://www.youtube.com/watch?v=${show.id}`,
   }));
 
-  // Display 4 videos at a time (for "换一批" functionality)
-  const VIDEOS_PER_BATCH = 4;
-  const displayShows = allDisplayShows.slice(offset, offset + VIDEOS_PER_BATCH);
+  // Group shows by platform (channel)
+  const showsByPlatform: Record<string, typeof allDisplayShows> = {};
+  allDisplayShows.forEach(show => {
+    const platform = show.platform || '其他';
+    if (!showsByPlatform[platform]) {
+      showsByPlatform[platform] = [];
+    }
+    showsByPlatform[platform].push(show);
+  });
+
+  // Get platforms in order (prefer: 腾讯视频, 优酷, 芒果TV, then others)
+  const platformOrder = ['腾讯视频', '优酷', '芒果TV'];
+  const orderedPlatforms = [
+    ...platformOrder.filter(p => showsByPlatform[p]?.length > 0),
+    ...Object.keys(showsByPlatform).filter(p => !platformOrder.includes(p))
+  ];
+
+  // Select 2 shows per platform, up to 4 platforms (8 total)
+  // Use offset to rotate through shows within each platform
+  const displayShows: typeof allDisplayShows = [];
+  const SHOWS_PER_PLATFORM = 2;
+  const MAX_PLATFORMS = 4;
   
-  // If we've reached the end, wrap around to the beginning
-  const hasMore = allDisplayShows.length > VIDEOS_PER_BATCH;
+  for (let i = 0; i < Math.min(orderedPlatforms.length, MAX_PLATFORMS); i++) {
+    const platform = orderedPlatforms[i];
+    const platformShows = showsByPlatform[platform] || [];
+    if (platformShows.length === 0) continue;
+    
+    // Use offset to rotate: start from offset, take 2 shows
+    // Each platform rotates independently based on offset
+    const startIdx = (offset * SHOWS_PER_PLATFORM) % Math.max(platformShows.length, 1);
+    const selectedShows = [];
+    for (let j = 0; j < SHOWS_PER_PLATFORM && j < platformShows.length; j++) {
+      const idx = (startIdx + j) % platformShows.length;
+      selectedShows.push(platformShows[idx]);
+    }
+    displayShows.push(...selectedShows);
+  }
+  
+  // If we have more platforms or more shows per platform, enable "换一批"
+  const hasMore = orderedPlatforms.length > MAX_PLATFORMS || 
+                  Object.values(showsByPlatform).some(shows => shows.length > SHOWS_PER_PLATFORM);
 
   return (
     <div className="w-full">
