@@ -193,11 +193,15 @@ export default function TodaySpendCarousels() {
               
               // Add all places to the mapped category
               placesArray.forEach((place, idx) => {
-                // Ensure place has the correct category field
-                const placeWithCategory = { ...place, category: chineseCategory };
+                // Preserve "随机选店" marker if present, otherwise set category
+                // API may return places with category like "奶茶 (随机选店)"
+                const hasRandomMarker = place.category && place.category.includes('随机选店');
+                const placeWithCategory = hasRandomMarker 
+                  ? place // Keep original category with "随机选店" marker
+                  : { ...place, category: chineseCategory }; // Set category for normal places
                 normalized[chineseCategory].push(placeWithCategory);
                 if (idx === 0) {
-                  console.log(`[TodaySpendCarousels] Added place "${place.name}" to category "${chineseCategory}"`);
+                  console.log(`[TodaySpendCarousels] Added place "${place.name}" to category "${chineseCategory}" (category field: "${placeWithCategory.category}")`);
                 }
               });
             }

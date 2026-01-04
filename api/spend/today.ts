@@ -66,7 +66,7 @@ const DEFAULT_CENTER = CITY_COORDS.cupertino;
 // Category to keyword mapping for Nearby Search
 // COST OPTIMIZATION: Reduced to primary keywords only (fewer API calls)
 const CATEGORY_KEYWORDS = {
-  '奶茶': ['bubble tea', 'boba'], // Reduced from 10 to 2 keywords
+  '奶茶': ['bubble tea', 'boba', 'milk tea', 'tapioca'], // Increased keywords for better coverage
   '中餐': ['chinese restaurant'], // Reduced from 2 to 1 keyword
   '新店打卡': ['chinese restaurant', 'bubble tea'], // New category: Chinese restaurants + bubble tea
   '夜宵': ['hot pot', 'bbq'], // Reduced from 10 to 2 keywords
@@ -214,7 +214,8 @@ async function searchGooglePlacesNearby(
   type?: string,
   keyword?: string,
   debugMode: boolean = false,
-  enableDebugLog: boolean = false // Only enable detailed debug logs for 新店打卡
+  enableDebugLog: boolean = false, // Only enable detailed debug logs for 新店打卡
+  customMaxResultCount?: number // Optional: override maxResultCount
 ): Promise<GooglePlaceResult[]> {
   if (!GOOGLE_PLACES_API_KEY) {
     console.warn('[Spend Today] GOOGLE_PLACES_API_KEY not set in searchPlacesByKeyword, returning empty results');
@@ -243,7 +244,7 @@ async function searchGooglePlacesNearby(
       url = 'https://places.googleapis.com/v1/places:searchText';
       requestBody = {
         textQuery: keyword,
-        maxResultCount: enableDebugLog ? 20 : 8, // Google Places API (New) limit: 1-20
+        maxResultCount: customMaxResultCount ?? (enableDebugLog ? 20 : 8), // Google Places API (New) limit: 1-20
         locationBias: {
           circle: {
             center: {
@@ -268,7 +269,7 @@ async function searchGooglePlacesNearby(
       // Use searchNearby for type-based searches
       url = 'https://places.googleapis.com/v1/places:searchNearby';
       requestBody = {
-        maxResultCount: enableDebugLog ? 20 : 6, // Google Places API (New) limit: 1-20
+        maxResultCount: customMaxResultCount ?? (enableDebugLog ? 20 : 6), // Google Places API (New) limit: 1-20
         locationRestriction: {
           circle: {
             center: {
@@ -658,91 +659,97 @@ async function fetchPlacesForCategory(
   const placeOrderMap = new Map<string, number>();
   let globalOrderIndex = 0;
   
-  // STEP 0: Debug snapshot for 夜宵
-  const debugSnapshot: any = category === '夜宵' && debugMode ? {
-    key: 'night_snack',
+  // STEP 0: Debug snapshot for 夜宵 and 奶茶
+  const isDebugCategory = (category === '夜宵' || category === '奶茶') && debugMode;
+  const bubbleTeaMaxResultCount = category === '奶茶' ? 20 : 8;
+  const debugSnapshot: any = isDebugCategory ? {
+    key: category === '夜宵' ? 'night_snack' : 'bubble_tea',
     city: city,
-    requests: [] as any[],
-    responses: [] as any[],
-    pipeline: {
-      afterKeywordFilterCount: 0,
-      afterDistanceFilterCount: 0,
-      afterRatingFilterCount: 0,
-      afterDedupCount: 0,
-      finalCount: 0,
+    requestPlan: {
+      cities: [city],
+      endpoint: keywords.length > 0 ? 'places:searchText' : 'places:searchNearby',
+      keywords: keywords,
+      includedTypes: type ? [type] : undefined,
+      radiusMeters: RADIUS_METERS,
+      rankPreference: 'RELEVANCE',
+      maxResultCount: bubbleTeaMaxResultCount,
     },
-    drops: {
-      drop_keywordMismatch: 0,
-      drop_distanceTooFar: 0,
-      drop_ratingTooLow: 0,
-      drop_missingFields: 0,
+    perQuery: [] as any[],
+    pipelineCounts: {
+      mergedRawCount: 0,
+      dedupByPlaceIdCount: 0,
+      afterDistanceCount: 0,
+      afterTypeHeuristicCount: 0,
+      afterQualityCount: 0,
+      finalPoolCount: 0,
+      finalDisplayedCount: 0,
+    },
+    dropReasons: {
       drop_dedup: 0,
+      drop_distance: 0,
+      drop_missingFields: 0,
+      drop_notBobaHeuristic: 0,
+      drop_ratingTooLow: 0,
       drop_other: 0,
     },
     samples: {
-      rawTop20: [] as any[],
-      filteredTop20: [] as any[],
+      finalPoolTop10: [] as any[],
+      displayed: [] as any[],
     },
-    cache: { cacheHit: false, cacheAgeSec: 0, cacheWrite: false },
+    cache: { cacheHit: false, cacheAgeSec: 0, cacheWrite: false, mode: 'live' as const },
   } : null;
 
-      for (const keyword of keywords) {
+  // Track raw results before any filtering
+  let mergedRawCount = 0;
+  
+  for (const keyword of keywords) {
     try {
-      // STEP 0: Log request details for 夜宵 debug
-      const requestInfo = category === '夜宵' && debugMode ? {
-        endpoint: 'places:searchText', // searchGooglePlacesNearby uses searchText when keyword is provided
-        includedTypes: type ? [type] : undefined,
-        keyword,
-        radiusMeters: RADIUS_METERS,
-        maxResultCount: 8, // Default in searchGooglePlacesNearby
-        rankPreference: 'RELEVANCE',
-        centerLatLng: { lat: searchCenter.lat, lng: searchCenter.lng },
-      } : null;
-      
-      if (requestInfo && debugSnapshot) {
-        debugSnapshot.requests.push(requestInfo);
-      }
-      
+      // Use maxResultCount=20 for 奶茶 to get more results
+      const maxResultCount = category === '奶茶' ? 20 : 8;
       const results = await searchGooglePlacesNearby(
         searchCenter,
         RADIUS_METERS,
         type,
         keyword,
         false, // debugMode
-        category === '夜宵' && debugMode // enableDebugLog for 夜宵
+        isDebugCategory, // enableDebugLog for debug categories
+        maxResultCount // customMaxResultCount
       ).catch((error: any) => {
         // Log error but don't throw - continue with other keywords
         console.error(`[Spend Today] Error searching for keyword "${keyword}":`, error);
         
-        // STEP 0: Log error in debug snapshot
-        if (requestInfo && debugSnapshot) {
-          debugSnapshot.responses.push({
+        // Log error in debug snapshot
+        if (debugSnapshot) {
+          debugSnapshot.perQuery.push({
+            city,
+            keyword,
             httpStatus: error.response?.status || 500,
             errorMessage: error.message || String(error),
             rawPlacesCount: 0,
+            top5Names: [],
+            top5PlaceIds: [],
           });
         }
         
         return [];
       });
       
-      // STEP 0: Log response for 夜宵 debug
-      if (requestInfo && debugSnapshot) {
-        debugSnapshot.responses.push({
+      mergedRawCount += results.length;
+      
+      // Log response in debug snapshot
+      if (debugSnapshot) {
+        const top5Names = results.slice(0, 5).map(r => r.name);
+        const top5PlaceIds = results.slice(0, 5).map(r => r.place_id);
+        
+        debugSnapshot.perQuery.push({
+          city,
+          keyword,
           httpStatus: 200,
           errorMessage: null,
           rawPlacesCount: results.length,
+          top5Names,
+          top5PlaceIds,
         });
-        
-        // Store raw top 20
-        const rawTop20 = results.slice(0, 20).map(r => ({
-          placeId: r.place_id,
-          name: r.name,
-          rating: r.rating,
-          userRatingCount: r.user_ratings_total,
-          address: r.formatted_address,
-        }));
-        debugSnapshot.samples.rawTop20.push(...rawTop20);
       }
 
       // Google Places API returns results sorted by relevance (best matches first)
@@ -753,14 +760,14 @@ async function fetchPlacesForCategory(
         // Skip if already seen (from previous keyword)
         if (seenPlaceIds.has(result.place_id)) {
           if (debugSnapshot) {
-            debugSnapshot.drops.drop_dedup++;
+            debugSnapshot.dropReasons.drop_dedup++;
           }
           continue;
         }
         seenPlaceIds.add(result.place_id);
         
         if (debugSnapshot) {
-          debugSnapshot.pipeline.afterDedupCount++;
+          debugSnapshot.pipelineCounts.dedupByPlaceIdCount++;
         }
         
         // Track original order from Google Places ranking
@@ -780,7 +787,7 @@ async function fetchPlacesForCategory(
         // If no geometry, skip (we need location data)
         if (!result.geometry?.location) {
           if (debugSnapshot) {
-            debugSnapshot.drops.drop_missingFields++;
+            debugSnapshot.dropReasons.drop_missingFields++;
           }
           continue;
         }
@@ -796,33 +803,40 @@ async function fetchPlacesForCategory(
         // HARD LIMIT: Only keep places within 15 miles of city center (Cupertino or Sunnyvale)
         if (distanceMiles > MAX_DISTANCE_MILES) {
           if (debugSnapshot) {
-            debugSnapshot.drops.drop_distanceTooFar++;
+            debugSnapshot.dropReasons.drop_distance++;
           }
           continue;
         }
         
         if (debugSnapshot) {
-          debugSnapshot.pipeline.afterDistanceFilterCount++;
+          debugSnapshot.pipelineCounts.afterDistanceCount++;
         }
 
         // COST OPTIMIZATION: Use data from searchNearby directly, NO getPlaceDetails call
         // This saves 1 API call per place (huge cost reduction!)
         
-        // Special filtering for 奶茶 category - accept bubble tea shops
-        // Filter by name only (no types check to avoid getPlaceDetails call)
+        // Special filtering for 奶茶 category - relaxed filtering
+        // Since we're already searching with "bubble tea" or "boba" keywords,
+        // Google Places API should return relevant results. We only do a light check.
         if (category === '奶茶') {
           const nameLower = result.name.toLowerCase();
           const addressLower = (result.formatted_address || '').toLowerCase();
           
-          // Check if name or address contains bubble tea related keywords
-          const hasBubbleTeaInName = nameLower.includes('bubble tea') || nameLower.includes('boba') || 
-                                     nameLower.includes('奶茶') || nameLower.includes('珍珠奶茶') ||
-                                     nameLower.includes('tapioca') || nameLower.includes('milk tea');
-          const hasBubbleTeaInAddress = addressLower.includes('bubble tea') || addressLower.includes('boba');
+          // Light check: if name/address contains common non-bubble-tea terms, skip
+          // But be lenient - if Google returned it for "bubble tea" search, it's likely relevant
+          const clearlyNotBubbleTea = nameLower.includes('coffee shop') && !nameLower.includes('bubble') && !nameLower.includes('boba') && !nameLower.includes('tea');
           
-          if (!hasBubbleTeaInName && !hasBubbleTeaInAddress) {
+          if (clearlyNotBubbleTea) {
+            if (debugSnapshot) {
+              debugSnapshot.dropReasons.drop_notBobaHeuristic++;
+            }
             continue;
           }
+          
+          if (debugSnapshot) {
+            debugSnapshot.pipelineCounts.afterTypeHeuristicCount++;
+          }
+          // Otherwise, accept it (Google's keyword search already filtered)
         }
         
         // Special filtering for 夜宵 category
@@ -865,13 +879,13 @@ async function fetchPlacesForCategory(
           
           if (!isBBQSkewersOrHotPot) {
             if (debugSnapshot) {
-              debugSnapshot.drops.drop_keywordMismatch++;
+              debugSnapshot.dropReasons.drop_notBobaHeuristic++;
             }
             continue;
           }
           
           if (debugSnapshot) {
-            debugSnapshot.pipeline.afterKeywordFilterCount++;
+            debugSnapshot.pipelineCounts.afterTypeHeuristicCount++;
           }
         }
         
@@ -915,6 +929,10 @@ async function fetchPlacesForCategory(
         };
 
         allPlaces.push(place);
+        
+        if (debugSnapshot) {
+          debugSnapshot.pipelineCounts.afterQualityCount++;
+        }
       }
 
       // COST OPTIMIZATION: Reduced delay (fewer keywords = less rate limiting needed)
@@ -943,10 +961,11 @@ async function fetchPlacesForCategory(
     return scoreA - scoreB; // Lower score = better
   });
   
-  // STEP 0: Finalize debug snapshot for 夜宵
+  // STEP 0: Finalize debug snapshot for 夜宵 and 奶茶
   if (debugSnapshot) {
-    debugSnapshot.pipeline.finalCount = allPlaces.length;
-    debugSnapshot.samples.filteredTop20 = allPlaces.slice(0, 20).map(p => ({
+    debugSnapshot.pipelineCounts.mergedRawCount = mergedRawCount;
+    debugSnapshot.pipelineCounts.finalPoolCount = allPlaces.length;
+    debugSnapshot.samples.finalPoolTop10 = allPlaces.slice(0, 10).map(p => ({
       placeId: p.id,
       name: p.name,
       rating: p.rating,
@@ -1876,22 +1895,28 @@ async function fetchAllPlacesFromGoogle(debugMode: boolean = false): Promise<Spe
   const globalPlaceOrderMap = new Map<string, number>();
   let globalOrderIndex = 0;
   
-  // Collect debug snapshots for 夜宵
+  // Collect debug snapshots for 夜宵 and 奶茶
   const nightSnackDebugSnapshots: any[] = [];
+  const bubbleTeaDebugSnapshots: any[] = [];
   
   // Fetch from all combinations (excluding 新店打卡 which is handled separately)
+  console.log(`[Spend Today] 🔍 Starting fetch for ${cities.length} cities × ${categories.length} categories`);
   for (const city of cities) {
     for (const category of categories) {
       try {
+        console.log(`[Spend Today] 🔍 Fetching ${category} in ${city}...`);
         // Don't pass userLocation - always use city center to ensure distance filtering works correctly
         const places = await fetchPlacesForCategory(city, category, debugMode);
+        console.log(`[Spend Today] ✅ ${category} in ${city}: ${places.length} places`);
         
-        // Extract debug snapshot for 夜宵
-        if (category === '夜宵') {
-          const debugSnapshot = (places as any).__debugSnapshot;
-          if (debugSnapshot) {
-            delete (places as any).__debugSnapshot;
+        // Extract debug snapshot for 夜宵 and 奶茶
+        const debugSnapshot = (places as any).__debugSnapshot;
+        if (debugSnapshot) {
+          delete (places as any).__debugSnapshot;
+          if (category === '夜宵') {
             nightSnackDebugSnapshots.push(debugSnapshot);
+          } else if (category === '奶茶') {
+            bubbleTeaDebugSnapshots.push(debugSnapshot);
           }
         }
         
@@ -1905,17 +1930,22 @@ async function fetchAllPlacesFromGoogle(debugMode: boolean = false): Promise<Spe
         }
         allPlaces.push(...places);
       } catch (error) {
+        console.error(`[Spend Today] ❌ Error fetching ${category} in ${city}:`, error);
         // Continue with other cities/categories
       }
     }
   }
+  console.log(`[Spend Today] ✅ Completed fetch for all cities/categories: ${allPlaces.length} total places`);
   
   // Store debug snapshots for handler
   (allPlaces as any).__nightSnackDebugSnapshots = nightSnackDebugSnapshots;
+  (allPlaces as any).__bubbleTeaDebugSnapshots = bubbleTeaDebugSnapshots;
   
   // Fetch "新店打卡" separately (5 cities, Chinese restaurants + bubble tea)
+  console.log(`[Spend Today] 🔍 Fetching 新店打卡...`);
   try {
     const newPlaces = await fetchNewPlaces(debugMode);
+    console.log(`[Spend Today] ✅ 新店打卡: ${newPlaces.length} places`);
     // Extract debug info if present
     const newPlacesDebugInfo = (newPlaces as any).__debugInfo;
     if (newPlacesDebugInfo) {
@@ -1934,9 +1964,10 @@ async function fetchAllPlacesFromGoogle(debugMode: boolean = false): Promise<Spe
     // Store debug info for handler
     (allPlaces as any).__newPlacesDebugInfo = newPlacesDebugInfo;
   } catch (error) {
-    console.error('[Spend Today] Error fetching new places:', error);
+    console.error('[Spend Today] ❌ Error fetching new places:', error);
   }
   
+  console.log(`[Spend Today] 🔍 Removing duplicates from ${allPlaces.length} places...`);
   // Remove duplicates by place_id (keep the one with the earliest order index = best ranking)
   const uniquePlaces = new Map<string, SpendPlace>();
   for (const place of allPlaces) {
@@ -1953,6 +1984,8 @@ async function fetchAllPlacesFromGoogle(debugMode: boolean = false): Promise<Spe
     }
   }
   
+  console.log(`[Spend Today] ✅ After dedup: ${uniquePlaces.size} unique places`);
+  console.log(`[Spend Today] 🔍 Sorting places by popularity...`);
   // Sort by "popular" ranking: userRatingCount desc, then rating desc
   // This matches the requirement: "popular" = 先按 userRatingCount desc，再按 rating desc
   const sortedPlaces = Array.from(uniquePlaces.values()).sort((a, b) => {
@@ -1972,6 +2005,7 @@ async function fetchAllPlacesFromGoogle(debugMode: boolean = false): Promise<Spe
     return scoreA - scoreB; // Lower score = better
   });
   
+  console.log(`[Spend Today] ✅ Sorting completed: ${sortedPlaces.length} places`);
   return sortedPlaces;
 }
 
@@ -2623,6 +2657,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // we can track which category each place belongs to by the order they're returned
     // But the most reliable way is to use the place.category field we set
     
+    console.log(`[Spend Today] 📊 Grouping ${allPlaces.length} places by category...`);
     // Re-group directly by place.category (more reliable than using groupPlacesByCategory which might have encoding issues)
     const placesByCategoryDirect: Record<string, SpendPlace[]> = {
       '奶茶': [],
@@ -2656,6 +2691,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Sort each category by combined ranking: Google Places rank + new business bonus
     // Lower score = better ranking
+    console.log(`[Spend Today] 🔍 Sorting each category...`);
     for (const category of Object.keys(placesByCategoryDirect)) {
       placesByCategoryDirect[category].sort((a, b) => {
         const rankA = a.googlePlacesRank ?? Infinity;
@@ -2664,11 +2700,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const scoreB = calculateCombinedRankingScore(rankB, b.user_ratings_total);
         return scoreA - scoreB; // Lower score = better
       });
+      console.log(`[Spend Today]   ${category}: ${placesByCategoryDirect[category].length} places sorted`);
     }
     
     const fetchedAtISO = new Date().toISOString();
     const ttlSeconds = ttlMsToSeconds(SPEND_TODAY_CACHE_TTL);
     
+    console.log(`[Spend Today] 📋 Processing final categories...`);
     // Group by category - NO fallback data, only real places
     // IMPORTANT: Use English keys for itemsByCategory to avoid JSON encoding issues
     // Each place still has the correct Chinese category field
@@ -2693,7 +2731,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       'late_night': [],
     };
     
+    console.log(`[Spend Today] 🔍 Processing ${categories.length} categories...`);
     for (const category of categories) {
+      console.log(`[Spend Today] 🔍 Processing category: ${category}...`);
       
       // Try to find matching places from placesByCategoryDirect
       // First try exact match
@@ -2778,16 +2818,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const lastPlace = { ...categoryPlaces[4] };
           lastPlace.category = `${category} (随机选店)`;
           top5Places.push(lastPlace);
-        } else {
-          // If < 5, we can't reach 6, but still try to add one more if available
-          if (categoryPlaces.length > top5Places.length) {
-            const extraPlace = categoryPlaces[top5Places.length];
-            extraPlace.category = `${category} (随机选店)`;
-            top5Places.push(extraPlace);
+        } else if (categoryPlaces.length >= 2 && categoryPlaces.length < 5) {
+          // If we have 2-4 places, add one from remaining as random
+          const remainingPlaces = categoryPlaces.slice(top5Places.length);
+          if (remainingPlaces.length > 0) {
+            const randomPlace = remainingPlaces[Math.floor(Math.random() * remainingPlaces.length)];
+            randomPlace.category = `${category} (随机选店)`;
+            top5Places.push(randomPlace);
           }
+        } else if (categoryPlaces.length === 1) {
+          // If we have only 1 place, duplicate it as random to ensure at least 2 items for carousel
+          const singlePlace = { ...categoryPlaces[0] };
+          singlePlace.category = `${category} (随机选店)`;
+          top5Places.push(singlePlace);
         }
         
         finalPlacesByCategory[englishKey] = top5Places;
+        console.log(`[Spend Today] Category ${category} (${englishKey}): Final ${top5Places.length} places assigned`);
       } else {
         console.error(`[Spend Today] ERROR: No English key mapping for category ${category}`);
       }
@@ -2797,11 +2844,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
     
-    // Log final summary (only in debug mode)
-    if (debugMode) {
-      const totalCount = Object.values(finalPlacesByCategory).reduce((sum, arr) => sum + arr.length, 0);
-      console.log(`[Spend Today] Final: ${totalCount} places across ${Object.keys(finalPlacesByCategory).length} categories`);
+    // Log final summary
+    const totalCount = Object.values(finalPlacesByCategory).reduce((sum, arr) => sum + arr.length, 0);
+    console.log(`[Spend Today] ✅ All categories processed: ${totalCount} places across ${Object.keys(finalPlacesByCategory).length} categories`);
+    for (const [key, places] of Object.entries(finalPlacesByCategory)) {
+      console.log(`[Spend Today]   ${key}: ${places.length} places`);
     }
+    
+    console.log(`[Spend Today] 📝 Building response object...`);
     
     // Extract debug info from allPlaces if present
     const newPlacesDebugInfo = (allPlaces as any).__newPlacesDebugInfo;
@@ -2809,17 +2859,92 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       delete (allPlaces as any).__newPlacesDebugInfo;
     }
     
-    // Extract debug snapshots for 夜宵
+    // Extract debug snapshots for 夜宵 and 奶茶
     const nightSnackDebugSnapshots = (allPlaces as any).__nightSnackDebugSnapshots;
     if (nightSnackDebugSnapshots) {
       delete (allPlaces as any).__nightSnackDebugSnapshots;
     }
     
+    const bubbleTeaDebugSnapshots = (allPlaces as any).__bubbleTeaDebugSnapshots;
+    if (bubbleTeaDebugSnapshots) {
+      delete (allPlaces as any).__bubbleTeaDebugSnapshots;
+    }
+    
+    // Merge bubble tea debug snapshots from multiple cities
+    let mergedBubbleTeaDebug: any = null;
+    if (bubbleTeaDebugSnapshots && bubbleTeaDebugSnapshots.length > 0) {
+      // Merge snapshots from all cities
+      const allPerQuery: any[] = [];
+      const mergedPipelineCounts = {
+        mergedRawCount: 0,
+        dedupByPlaceIdCount: 0,
+        afterDistanceCount: 0,
+        afterTypeHeuristicCount: 0,
+        afterQualityCount: 0,
+        finalPoolCount: 0,
+        finalDisplayedCount: 0,
+      };
+      const mergedDropReasons = {
+        drop_dedup: 0,
+        drop_distance: 0,
+        drop_missingFields: 0,
+        drop_notBobaHeuristic: 0,
+        drop_ratingTooLow: 0,
+        drop_other: 0,
+      };
+      
+      for (const snapshot of bubbleTeaDebugSnapshots) {
+        allPerQuery.push(...(snapshot.perQuery || []));
+        mergedPipelineCounts.mergedRawCount += snapshot.pipelineCounts?.mergedRawCount || 0;
+        mergedPipelineCounts.dedupByPlaceIdCount += snapshot.pipelineCounts?.dedupByPlaceIdCount || 0;
+        mergedPipelineCounts.afterDistanceCount += snapshot.pipelineCounts?.afterDistanceCount || 0;
+        mergedPipelineCounts.afterTypeHeuristicCount += snapshot.pipelineCounts?.afterTypeHeuristicCount || 0;
+        mergedPipelineCounts.afterQualityCount += snapshot.pipelineCounts?.afterQualityCount || 0;
+        mergedPipelineCounts.finalPoolCount += snapshot.pipelineCounts?.finalPoolCount || 0;
+        mergedDropReasons.drop_dedup += snapshot.dropReasons?.drop_dedup || 0;
+        mergedDropReasons.drop_distance += snapshot.dropReasons?.drop_distance || 0;
+        mergedDropReasons.drop_missingFields += snapshot.dropReasons?.drop_missingFields || 0;
+        mergedDropReasons.drop_notBobaHeuristic += snapshot.dropReasons?.drop_notBobaHeuristic || 0;
+        mergedDropReasons.drop_ratingTooLow += snapshot.dropReasons?.drop_ratingTooLow || 0;
+        mergedDropReasons.drop_other += snapshot.dropReasons?.drop_other || 0;
+      }
+      
+      // Get final displayed count from finalPlacesByCategory (after all processing)
+      const milkTeaPlaces = finalPlacesByCategory['milk_tea'] || [];
+      mergedPipelineCounts.finalDisplayedCount = milkTeaPlaces.length;
+      
+      // Get final pool top 10 from all bubble tea places (before final selection)
+      const allBubbleTeaPlaces = placesByCategoryDirect['奶茶'] || [];
+      const finalPoolTop10 = allBubbleTeaPlaces.slice(0, 10).map(p => ({
+        placeId: p.id,
+        name: p.name,
+        rating: p.rating,
+        userRatingCount: p.user_ratings_total,
+        address: p.address,
+      }));
+      
+      mergedBubbleTeaDebug = {
+        requestPlan: bubbleTeaDebugSnapshots[0]?.requestPlan || {},
+        perQuery: allPerQuery,
+        pipelineCounts: mergedPipelineCounts,
+        dropReasons: mergedDropReasons,
+        samples: {
+          finalPoolTop10,
+          displayed: milkTeaPlaces.slice(0, 6).map(p => ({ placeId: p.id, name: p.name })),
+        },
+        cache: { cacheHit: false, cacheAgeSec: 0, cacheWrite: false, mode: 'live' as const },
+      };
+    }
+    
+    console.log(`[Spend Today] 📦 Creating response object...`);
+    const flatItems = Object.values(finalPlacesByCategory).flat();
+    console.log(`[Spend Today] 📦 Flat items count: ${flatItems.length}`);
+    
     const response: any = {
       status: 'ok' as const,
       itemsByCategory: finalPlacesByCategory, // New structure: grouped by category
-      items: Object.values(finalPlacesByCategory).flat(), // Legacy: flat array for backward compatibility
-      count: Object.values(finalPlacesByCategory).reduce((sum, arr) => sum + arr.length, 0), // 6 per category * 4 categories = 24 (5 items + 1 random each)
+      items: flatItems, // Legacy: flat array for backward compatibility
+      count: totalCount,
       asOf: fetchedAtISO,
       source: { name: 'Google Places', url: 'https://maps.google.com' },
       ttlSeconds,
@@ -2839,24 +2964,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           placesFromApi: allPlaces.length,
           placesFromCache: 0, // Will be set if using cache
           newPlacesDebug: newPlacesDebugInfo || null, // 新店打卡 debug info
-          nightSnackDebug: nightSnackDebugSnapshots || null, // 夜宵 debug snapshots (STEP 0)
+          nightSnackDebug: nightSnackDebugSnapshots || null, // 夜宵 debug snapshots
+          bubbleTeaDebug: mergedBubbleTeaDebug || null, // 奶茶 debug snapshot
         },
       } : {}),
     };
 
+    console.log(`[Spend Today] 💾 Writing to cache...`);
     // Update cache (24 hours)
     // COST OPTIMIZATION: Cache results for 12 hours (aggressive caching)
     setCache(cacheKey, response);
+    console.log(`[Spend Today] ✅ Cache written successfully`);
     
-    // Log cache write (only in debug mode)
-    if (debugMode) {
-      const totalPlacesCached = response.items?.length || Object.values(response.itemsByCategory || {}).reduce((sum: number, arr: any) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
-      console.log(`[Spend Today] Cache written: ${totalPlacesCached} places`);
-    }
+    // Log cache write
+    const totalPlacesCached = response.items?.length || Object.values(response.itemsByCategory || {}).reduce((sum: number, arr: any) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+    console.log(`[Spend Today] 💾 Cache written: ${totalPlacesCached} places`);
 
+    console.log(`[Spend Today] 📤 Sending response...`);
     // Ensure proper encoding for JSON response
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.status(200).json(response);
+    console.log(`[Spend Today] ✅ Response sent successfully`);
   } catch (error: any) {
     console.error('[API /api/spend/today] Error:', error);
     

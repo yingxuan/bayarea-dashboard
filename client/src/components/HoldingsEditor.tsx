@@ -52,6 +52,30 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
     avgCost: undefined,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [lastImportError, setLastImportError] = useState<string | null>(null);
+
+  // Debug info (dev-only or behind ?debug=1)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const debugMode = urlParams.get('debug') === '1' || import.meta.env.DEV;
+    
+    if (debugMode) {
+      const userAgent = navigator.userAgent;
+      const isIOS = /iPad|iPhone|iPod/.test(userAgent);
+      const isAndroid = /Android/.test(userAgent);
+      
+      console.log('[HoldingsEditor] Debug Info:', {
+        userAgent,
+        isIOS,
+        isAndroid,
+        fileInputSupported: typeof HTMLInputElement !== 'undefined' && 'files' in document.createElement('input'),
+        fileTextSupported: typeof File !== 'undefined' && 'text' in File.prototype,
+        lastImportError,
+      });
+    }
+  }, [lastImportError]);
 
   // Reset form when drawer opens/closes
   useEffect(() => {
@@ -170,52 +194,149 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
     }
   };
 
-  const handleImport = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json";
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
+  const handleImport = async () => {
+    if (typeof window === 'undefined') {
+      toast.error("文件导入仅在客户端可用");
+      return;
+    }
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
+    try {
+      const input = document.createElement("input");
+      input.type = "file";
+      // More permissive accept: .json, application/json, text/plain (iOS may set empty or octet-stream)
+      input.accept = ".json,application/json,text/plain";
+      
+      // Ensure file picker is triggered directly by user click
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) {
+          // Reset input value so selecting same file again works
+          input.value = "";
+          return;
+        }
+
+        // Debug: log file info
+        const urlParams = new URLSearchParams(window.location.search);
+        const debugMode = urlParams.get('debug') === '1' || import.meta.env.DEV;
+        if (debugMode) {
+          console.log('[HoldingsEditor] File selected:', {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+          });
+        }
+
         try {
-          const text = event.target?.result as string;
-          const data = JSON.parse(text);
-          if (!Array.isArray(data)) {
-            throw new Error("Invalid format: expected array");
+          let text: string;
+          
+          // Option A: Use file.text() (preferred modern way, mobile-safe)
+          if (typeof file.text === 'function') {
+            text = await file.text();
+          } else {
+            // Option B: Fallback to FileReader (for older browsers)
+            text = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = (event) => {
+                const result = event.target?.result;
+                if (typeof result === 'string') {
+                  resolve(result);
+                } else {
+                  reject(new Error("读取文件失败：无法读取文件内容"));
+                }
+              };
+              reader.onerror = (error) => {
+                reject(new Error(`读取文件失败：${error.target?.error?.message || '未知错误'}`));
+              };
+              reader.readAsText(file);
+            });
           }
 
-          const merge = confirm("Merge with existing holdings? (Cancel to replace)");
+          // Parse JSON with good error message
+          let data: any;
+          try {
+            data = JSON.parse(text);
+          } catch (parseError) {
+            throw new Error(`JSON 解析失败：${parseError instanceof Error ? parseError.message : '无效的 JSON 格式'}`);
+          }
+
+          // Validate schema (expected keys)
+          if (!Array.isArray(data)) {
+            throw new Error("无效格式：期望数组格式");
+          }
+
+          // Validate each item has required fields
+          const invalidItems = data.filter((item: any) => 
+            !item || typeof item !== 'object' || typeof item.ticker !== 'string' || typeof item.shares !== 'number'
+          );
+          if (invalidItems.length > 0) {
+            throw new Error(`数据格式错误：${invalidItems.length} 个项目缺少必需字段 (ticker, shares)`);
+          }
+
+          const merge = confirm("合并到现有持仓？(取消以替换)");
           importHoldings(data, merge);
-          toast.success(`Holdings ${merge ? "merged" : "imported"}`);
+          setLastImportError(null);
+          toast.success(`持仓${merge ? "已合并" : "已导入"}`);
         } catch (error) {
-          toast.error(error instanceof Error ? error.message : "Failed to import holdings");
+          const errorMessage = error instanceof Error ? error.message : "导入持仓失败";
+          setLastImportError(errorMessage);
+          console.error('[HoldingsEditor] Import error:', error);
+          toast.error(`读取文件失败：${errorMessage}`);
+        } finally {
+          // Reset input value so selecting same file again works
+          input.value = "";
         }
       };
-      reader.readAsText(file);
-    };
-    input.click();
+      
+      // Trigger file picker (must be direct user click)
+      input.click();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "无法打开文件选择器";
+      setLastImportError(errorMessage);
+      console.error('[HoldingsEditor] File picker error:', error);
+      toast.error(`读取文件失败：${errorMessage}`);
+    }
   };
 
-  const handlePaste = () => {
-    navigator.clipboard.readText().then((text) => {
-      try {
-        const data = JSON.parse(text);
-        if (!Array.isArray(data)) {
-          throw new Error("Invalid format: expected array");
-        }
+  const handlePaste = async () => {
+    if (typeof window === 'undefined') {
+      toast.error("粘贴功能仅在客户端可用");
+      return;
+    }
 
-        const merge = confirm("Merge with existing holdings? (Cancel to replace)");
-        importHoldings(data, merge);
-        toast.success(`Holdings ${merge ? "merged" : "imported"}`);
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Failed to import holdings");
+    try {
+      const text = await navigator.clipboard.readText();
+      
+      // Parse JSON with good error message
+      let data: any;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        throw new Error(`JSON 解析失败：${parseError instanceof Error ? parseError.message : '无效的 JSON 格式'}`);
       }
-    }).catch(() => {
-      toast.error("Failed to read clipboard");
-    });
+
+      // Validate schema
+      if (!Array.isArray(data)) {
+        throw new Error("无效格式：期望数组格式");
+      }
+
+      // Validate each item has required fields
+      const invalidItems = data.filter((item: any) => 
+        !item || typeof item !== 'object' || typeof item.ticker !== 'string' || typeof item.shares !== 'number'
+      );
+      if (invalidItems.length > 0) {
+        throw new Error(`数据格式错误：${invalidItems.length} 个项目缺少必需字段 (ticker, shares)`);
+      }
+
+      const merge = confirm("合并到现有持仓？(取消以替换)");
+      importHoldings(data, merge);
+      setLastImportError(null);
+      toast.success(`持仓${merge ? "已合并" : "已导入"}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "读取剪贴板失败";
+      setLastImportError(errorMessage);
+      console.error('[HoldingsEditor] Paste error:', error);
+      toast.error(`读取文件失败：${errorMessage}`);
+    }
   };
 
   if (!isLoaded) {
@@ -240,6 +361,33 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
         </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto px-4 pb-4">
+          {/* Debug Banner (dev-only or behind ?debug=1) */}
+          {typeof window !== 'undefined' && (() => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const debugMode = urlParams.get('debug') === '1' || import.meta.env.DEV;
+            if (!debugMode) return null;
+            
+            const userAgent = navigator.userAgent;
+            const isIOS = /iPad|iPhone|iPod/.test(userAgent);
+            const isAndroid = /Android/.test(userAgent);
+            const fileInputSupported = typeof HTMLInputElement !== 'undefined' && 'files' in document.createElement('input');
+            const fileTextSupported = typeof File !== 'undefined' && 'text' in File.prototype;
+            
+            return (
+              <div className="mb-4 p-3 bg-muted rounded-lg text-xs font-mono space-y-1">
+                <div><strong>Debug Info:</strong></div>
+                <div>UserAgent: {userAgent.substring(0, 50)}...</div>
+                <div>isIOS: {String(isIOS)}, isAndroid: {String(isAndroid)}</div>
+                <div>fileInputSupported: {String(fileInputSupported)}, fileTextSupported: {String(fileTextSupported)}</div>
+                {lastImportError && (
+                  <div className="text-destructive">
+                    Last Error: {lastImportError}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Empty State */}
           {holdings.length === 0 && !editingId && (
             <div className="text-center py-8 text-muted-foreground">

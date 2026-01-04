@@ -17,7 +17,6 @@ export const runtime = 'nodejs';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import * as cheerio from 'cheerio';
 import { XMLParser } from 'fast-xml-parser';
-import * as iconv from 'iconv-lite';
 import { CACHE_TTL, ttlMsToSeconds } from '../../shared/config.js';
 import {
   setCorsHeaders,
@@ -210,94 +209,8 @@ async function fetch1point3acresDirectHTML(): Promise<CommunityItem[]> {
 }
 
 /**
- * Extract charset from Content-Type header
- */
-function extractCharsetFromHeader(contentType: string): string | null {
-  const match = contentType.match(/charset=([^;]+)/i);
-  return match ? match[1].trim().toLowerCase() : null;
-}
-
-/**
- * Extract charset from XML prolog
- */
-function extractCharsetFromProlog(xmlBytes: Buffer): string | null {
-  const prolog = xmlBytes.slice(0, 200).toString('latin1');
-  const match = prolog.match(/encoding\s*=\s*["']([^"']+)["']/i);
-  return match ? match[1].trim().toLowerCase() : null;
-}
-
-/**
- * Count replacement characters () in text
- */
-function countReplacements(text: string, maxLength: number = 2048): number {
-  const sample = text.slice(0, maxLength);
-  return (sample.match(/\uFFFD/g) || []).length;
-}
-
-/**
- * Decode buffer with charset detection and fallback
- * Step 3: Charset detection order + fallback
- */
-function decodeWithCharsetDetection(
-  buffer: Buffer,
-  contentType: string,
-  debugInfo?: any
-): { text: string; chosenCharset: string; replacementCount: number } {
-  // Step 1: charset from content-type header
-  const headerCharset = extractCharsetFromHeader(contentType);
-  
-  // Step 2: charset from XML prolog
-  const prologCharset = extractCharsetFromProlog(buffer);
-  
-  if (debugInfo) {
-    debugInfo.decode.headerCharset = headerCharset || 'none';
-    debugInfo.decode.prologCharset = prologCharset || 'none';
-  }
-  
-  // Try header charset first, then prolog, then default to utf-8
-  let primaryCharset = headerCharset || prologCharset || 'utf-8';
-  
-  // Normalize charset names
-  if (primaryCharset === 'gbk' || primaryCharset === 'gb2312') {
-    primaryCharset = 'gb18030';
-  }
-  
-  // Decode with primary charset
-  let decoded = iconv.decode(buffer, primaryCharset);
-  let replacementCount = countReplacements(decoded);
-  
-  // Step 3: If ANY '' appears, compare utf-8 and gb18030
-  if (replacementCount > 0) {
-    const utf8Decoded = iconv.decode(buffer, 'utf-8');
-    const utf8Replacements = countReplacements(utf8Decoded);
-    
-    const gb18030Decoded = iconv.decode(buffer, 'gb18030');
-    const gb18030Replacements = countReplacements(gb18030Decoded);
-    
-    // Pick the one with fewer replacements
-    if (utf8Replacements < replacementCount && utf8Replacements < gb18030Replacements) {
-      decoded = utf8Decoded;
-      replacementCount = utf8Replacements;
-      primaryCharset = 'utf-8';
-    } else if (gb18030Replacements < replacementCount) {
-      decoded = gb18030Decoded;
-      replacementCount = gb18030Replacements;
-      primaryCharset = 'gb18030';
-    }
-  }
-  
-  if (debugInfo) {
-    debugInfo.decode.selectedEncoding = primaryCharset;
-    debugInfo.decode.replacementCount = replacementCount;
-    debugInfo.decode.first200Chars = decoded.slice(0, 200);
-  }
-  
-  return { text: decoded, chosenCharset: primaryCharset, replacementCount };
-}
-
-/**
  * Try fetching from a single RSSHub instance
- * Use response.text() directly (Node.js runtime handles encoding)
+ * Use response.text() directly (same as gossip.ts - Node.js runtime handles encoding)
  */
 async function tryRSSHubInstance(
   url: string,
@@ -341,10 +254,10 @@ async function tryRSSHubInstance(
       };
     }
     
-    // Use response.text() directly - Node.js runtime handles encoding
+    // Use response.text() directly - same as gossip.ts (Node.js runtime handles encoding)
     const xmlText = await response.text();
     
-    // Step 1: Build debug snapshot
+    // Build debug snapshot
     const snapshot: any = {
       url,
       runtime: 'nodejs',
@@ -355,27 +268,23 @@ async function tryRSSHubInstance(
       textFirst200Chars: xmlText.slice(0, 200),
     };
     
-    // Step 4: NON_XML guard
+    // NON_XML guard
     const looksLikeHtml = xmlText.trim().toLowerCase().startsWith('<!doctype html') ||
                          xmlText.trim().toLowerCase().startsWith('<html') ||
                          contentType.includes('text/html');
     snapshot.looksLikeHtml = looksLikeHtml;
     
     if (debugInfo) {
+      if (!debugInfo.fetch) {
+        debugInfo.fetch = {};
+      }
       Object.assign(debugInfo.fetch, {
         status,
         contentType,
         contentEncoding,
         finalUrl,
+        looksLikeHtml,
       });
-      debugInfo.fetch.looksLikeHtml = looksLikeHtml;
-      debugInfo.decode = {
-        headerCharset: extractCharsetFromHeader(contentType) || 'none',
-        prologCharset: extractCharsetFromProlog(Buffer.from(xmlText, 'utf-8')) || 'none',
-        selectedEncoding: 'utf-8',
-        replacementCount: countReplacements(xmlText),
-        first200Chars: xmlText.slice(0, 200),
-      };
     }
     
     return { 
@@ -475,16 +384,6 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       contentType = result.contentType;
       console.log(`[1point3acres] ❌ Instance ${i + 1} failed: ${lastError}`);
     }
-  }
-  
-  // Update debug info with fetch details
-  if (debugSnapshot) {
-    Object.assign(debugInfo.fetch, {
-      status: debugSnapshot.status,
-      contentType: debugSnapshot.contentType,
-      contentEncoding: debugSnapshot.contentEncoding,
-      finalUrl: debugSnapshot.finalUrl,
-    });
   }
   
   // DEBUG: Log HTTP status and content-type
