@@ -10,7 +10,8 @@
  */
 
 import { useEffect, useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink as ExternalLinkIcon } from "lucide-react";
+import { useExternalLink } from "@/hooks/useExternalLink";
 import { config } from "@/config";
 
 interface GossipItem {
@@ -48,6 +49,7 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
   const [source1P3A, setSource1P3A] = useState<ModulePayload<GossipItem> | null>(null);
   const [sourceBlind, setSourceBlind] = useState<ModulePayload<GossipItem> | null>(null);
   const [loading, setLoading] = useState(true);
+  const { handleExternalLinkClick } = useExternalLink();
 
   useEffect(() => {
     async function loadGossip() {
@@ -185,6 +187,7 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={handleExternalLinkClick}
               className="block rounded-sm p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
             >
               <div className="flex items-start justify-between gap-2">
@@ -202,7 +205,7 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
                 </div>
                 
                 {/* External Link */}
-                <ExternalLink className="w-4 h-4 opacity-60 text-muted-foreground flex-shrink-0 group-hover:text-primary group-hover:opacity-100 transition-colors mt-0.5" />
+                <ExternalLinkIcon className="w-4 h-4 opacity-60 text-muted-foreground flex-shrink-0 group-hover:text-primary group-hover:opacity-100 transition-colors mt-0.5" />
               </div>
             </a>
           );

@@ -25,8 +25,10 @@ import IndicesCard from "@/components/IndicesCard";
 import ShowsCarousel from "@/components/ShowsCarousel";
 import SectionHeader from "@/components/SectionHeader";
 import TimeAgo from "@/components/TimeAgo";
+import ReturnHintToast from "@/components/ReturnHintToast";
 import { useHoldings } from "@/hooks/useHoldings";
 import { QuoteData } from "@/hooks/usePortfolioSummary";
+import { useExternalLink } from "@/hooks/useExternalLink";
 import { config } from "@/config";
 
 // Helper function for API requests with timeout
@@ -47,6 +49,9 @@ async function fetchWithTimeout(url: string, timeoutMs = 10000): Promise<Respons
 }
 
 export default function Home() {
+  // Mobile return hint
+  const { showHint, dismissHint, handleExternalLinkClick, isStandalone } = useExternalLink();
+
   // Section 1: 打工耽误赚钱
   const [marketNews, setMarketNews] = useState<any[]>([]); // 市场要闻
   const [chineseNews, setChineseNews] = useState<any[]>([]); // Top 3 中文美股新闻
@@ -250,6 +255,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background grid-bg">
       <Navigation />
+      <ReturnHintToast show={showHint} onDismiss={dismissHint} isStandalone={isStandalone} />
 
       <main className="w-full min-w-0">
         <div className="mx-auto w-full max-w-6xl px-4 md:px-6 py-3 space-y-4">
@@ -376,6 +382,7 @@ export default function Home() {
                         href={deal.external_url || deal.url || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={handleExternalLinkClick}
                         className="block rounded-sm p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
                       >
                         <div className="flex items-start justify-between gap-3">

@@ -41,8 +41,15 @@ export async function searchGoogle(query: string, numResults: number = 5): Promi
       snippet: item.snippet,
       displayLink: item.displayLink,
     }));
-  } catch (error) {
-    console.error(`Google CSE search failed for query "${query}":`, error);
+  } catch (error: any) {
+    // Log more details about the error
+    if (error?.response?.status === 403) {
+      console.error(`Google CSE search failed with 403 Forbidden for query "${query}". Possible causes: missing/invalid API key, quota exceeded, or permission denied.`);
+    } else if (error?.response?.status === 429) {
+      console.error(`Google CSE search failed with 429 Too Many Requests for query "${query}". Quota exceeded.`);
+    } else {
+      console.error(`Google CSE search failed for query "${query}":`, error?.message || error);
+    }
     return [];
   }
 }

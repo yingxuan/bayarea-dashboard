@@ -586,23 +586,30 @@ async function fetchBlind(nocache: boolean = false): Promise<ModulePayload<Gossi
       const searchResults = await searchGoogle('site:teamblind.com "Trending now on Blind"', 3);
       
       if (searchResults.length === 0) {
-        throw new Error('No search results found for "Trending now on Blind"');
-      }
-      
-      // Use first result (most recent)
-      trendingPageUrl = searchResults[0].link;
-      console.log(`[Gossip Blind] ✅ Found trending page: ${trendingPageUrl}`);
-      
-      // Cache the URL for 6 hours
-      if (!nocache) {
-        setCache(cacheKey, {
-          url: trendingPageUrl,
-          timestamp: Date.now(),
-        });
+        console.warn(`[Gossip Blind] ⚠️ Google CSE search returned no results (may be 403/quota issue). Will use fallback.`);
+        // Don't throw error - let it fall through to use seed data or cached data
+        // This allows the API to still return data from other sources (1P3A) or cache
+      } else {
+        // Use first result (most recent)
+        trendingPageUrl = searchResults[0].link;
+        console.log(`[Gossip Blind] ✅ Found trending page: ${trendingPageUrl}`);
+        
+        // Cache the URL for 6 hours
+        if (!nocache) {
+          setCache(cacheKey, {
+            url: trendingPageUrl,
+            timestamp: Date.now(),
+          });
+        }
       }
     }
     
-    // Step 3: Fetch and parse the trending page
+    // Step 3: Fetch and parse the trending page (only if we have a URL)
+    if (!trendingPageUrl) {
+      console.warn(`[Gossip Blind] ⚠️ No trending page URL available (Google CSE may have failed). Will use fallback.`);
+      throw new Error('No trending page URL available');
+    }
+    
     console.log(`[Gossip Blind] 🔍 Fetching trending page: ${trendingPageUrl}`);
     
     const controller = new AbortController();

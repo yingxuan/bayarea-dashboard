@@ -230,20 +230,11 @@ async function fetch1point3acresDirectHTML(): Promise<CommunityItem[]> {
 }
 
 /**
- * Try fetching from a single RSSHub instance
+ * Try fetching from a single RSSHub instance (SAME as gossip.ts - no encoding handling)
+ * 
+ * IMPORTANT: This must match gossip.ts exactly. DO NOT add encoding handling.
  */
-async function tryRSSHubInstance(url: string, timeout: number): Promise<{ 
-  success: boolean; 
-  xmlText?: string; 
-  contentType?: string; 
-  error?: string;
-  debug?: {
-    status: string;
-    contentType: string;
-    finalUrl: string;
-    first200Chars: string;
-  };
-}> {
+async function tryRSSHubInstance(url: string, timeout: number): Promise<{ success: boolean; xmlText?: string; contentType?: string; error?: string }> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -258,47 +249,16 @@ async function tryRSSHubInstance(url: string, timeout: number): Promise<{
     clearTimeout(timeoutId);
     
     const contentType = response.headers.get('content-type') || 'unknown';
-    const finalUrl = response.url || url;
-    const status = `${response.status} ${response.statusText}`;
     
     if (!response.ok) {
-      return { 
-        success: false, 
-        contentType, 
-        error: `HTTP ${response.status} ${response.statusText}`,
-        debug: {
-          status,
-          contentType,
-          finalUrl,
-          first200Chars: '',
-        },
-      };
+      return { success: false, contentType, error: `HTTP ${response.status} ${response.statusText}` };
     }
     
     const xmlText = await response.text();
-    return { 
-      success: true, 
-      xmlText, 
-      contentType,
-      debug: {
-        status,
-        contentType,
-        finalUrl,
-        first200Chars: xmlText.substring(0, 200),
-      },
-    };
+    return { success: true, xmlText, contentType };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    return { 
-      success: false, 
-      error: errorMsg,
-      debug: {
-        status: 'ERROR',
-        contentType: 'unknown',
-        finalUrl: url,
-        first200Chars: '',
-      },
-    };
+    return { success: false, error: errorMsg };
   }
 }
 
@@ -310,43 +270,59 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
   items: CommunityItem[]; 
   status: 'ok' | 'unavailable'; 
   reason?: string;
-  debug?: {
-    runtime: string;
-    status: string;
-    contentType: string;
-    finalUrl: string;
-    first200Chars: string;
-    parsedItemCount: number;
-    filteredThreadCount: number;
-    fallbackMode: 'live' | 'cache' | 'seed';
-    fallbackReason: string;
-    sampleLinks: string[];
-    sampleTitles: string[];
-  };
+  debug?: any; // Will be populated with comprehensive debug snapshot
 }> {
   const cacheKey = 'leek-community-1point3acres';
   
-  // Initialize debug info
+  // Initialize comprehensive debug snapshot
   const debugInfo: any = {
-    runtime: typeof process !== 'undefined' && process.versions?.node ? 'nodejs' : 'edge',
-    status: '',
-    contentType: '',
-    finalUrl: '',
-    first200Chars: '',
-    parsedItemCount: 0,
-    filteredThreadCount: 0,
-    fallbackMode: 'live' as const,
-    fallbackReason: '',
-    sampleLinks: [] as string[],
-    sampleTitles: [] as string[],
+    mode: 'live' as 'live' | 'cache' | 'seed',
+    reason: '',
+    fetch: {
+      status: '',
+      contentType: '',
+      finalUrl: '',
+    },
+    decode: {
+      headerCharset: '',
+      prologCharset: '',
+      selectedEncoding: '',
+      replacementCount: 0,
+      first200Chars: '',
+    },
+    parse: {
+      rawItemCount: 0,
+      parsedItemCount: 0,
+    },
+    filter: {
+      totalLinksCount: 0,
+      threadMatchCount: 0,
+      forbiddenCount: 0,
+      emptyLinkCount: 0,
+      dedupRemovedCount: 0,
+      filteredThreadCount: 0,
+      sampleLinks: [] as string[],
+      sampleTitles: [] as string[],
+      rawLinksBeforeFilter: [] as string[],
+      rawLinksAfterFilter: [] as string[],
+    },
+    seed: {
+      seedCount: SEED_DATA.length,
+      seedSampleLinks: SEED_DATA.slice(0, 3).map(item => item.url),
+      seedSampleTitles: SEED_DATA.slice(0, 3).map(item => item.title),
+    },
+    cache: {
+      cacheHit: false,
+      cacheAgeSec: undefined as number | undefined,
+    },
+    cacheWrite: false,
   };
   
-  // Try live fetch from RSSHub (try all instances)
+  // Try live fetch from RSSHub (try all instances) - same as gossip.ts
   let xmlText: string | undefined;
   let contentType: string | undefined;
   let lastError: string | undefined;
   let usedInstance: string | undefined;
-  let fetchDebug: any = null;
   
   for (let i = 0; i < RSSHUB_INSTANCES.length; i++) {
     const instanceUrl = RSSHUB_INSTANCES[i];
@@ -358,23 +334,13 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       xmlText = result.xmlText;
       contentType = result.contentType;
       usedInstance = instanceUrl;
-      fetchDebug = result.debug;
       console.log(`[1point3acres] ✅ Successfully fetched from instance ${i + 1}`);
       break;
     } else {
       lastError = result.error;
       contentType = result.contentType;
-      fetchDebug = result.debug;
       console.log(`[1point3acres] ❌ Instance ${i + 1} failed: ${lastError}`);
     }
-  }
-  
-  // Update debug info from fetch
-  if (fetchDebug) {
-    debugInfo.status = fetchDebug.status || '';
-    debugInfo.contentType = fetchDebug.contentType || contentType || '';
-    debugInfo.finalUrl = fetchDebug.finalUrl || usedInstance || '';
-    debugInfo.first200Chars = fetchDebug.first200Chars || '';
   }
   
   // DEBUG: Log HTTP status and content-type
@@ -395,7 +361,7 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       const isXml = !isHtml && (xmlText.trim().startsWith('<?xml') || xmlText.trim().startsWith('<rss') || xmlText.trim().startsWith('<feed'));
       
       if (isHtml || !isXml) {
-        debugInfo.fallbackReason = 'NON_XML';
+        debugInfo.reason = 'NON_XML';
         console.warn(`[1point3acres] ⚠️ NON_XML detected: content-type=${contentType}, startsWith=${xmlText.substring(0, 50)}`);
         // Continue parsing anyway (don't change behavior, just log)
       }
@@ -404,7 +370,12 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       const rssPreview = xmlText.substring(0, 200);
       console.log(`[1point3acres] 🔍 DEBUG - RSS Response Preview (first 200 chars): ${rssPreview}`);
       
-      // Parse XML using fast-xml-parser
+      // Parse XML using fast-xml-parser (same as gossip.ts)
+      // IMPORTANT: This parser configuration is proven to work correctly for 1point3acres RSS.
+      // DO NOT change this configuration without explicit user request.
+      // - Simple configuration (no cdataPropName, no htmlEntities: false)
+      // - Relies on default parser behavior
+      // - This matches the working implementation in gossip.ts
       const parser = new XMLParser({
         ignoreAttributes: false,
         attributeNamePrefix: '@_',
@@ -412,11 +383,12 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       });
       const feed = parser.parse(xmlText);
     
-      // Extract items from channel.item[] (RSS 2.0 format)
+      // Extract items from channel.item[] (RSS 2.0 format) or feed.entry (Atom)
       const rssItems = feed?.rss?.channel?.item || feed?.feed?.entry || [];
       const itemsArray = Array.isArray(rssItems) ? rssItems : [rssItems];
       
-      debugInfo.parsedItemCount = itemsArray.length;
+      debugInfo.parse.rawItemCount = itemsArray.length;
+      debugInfo.parse.parsedItemCount = itemsArray.length;
       console.log(`[1point3acres] ✅ RSS XML parsed, ${itemsArray.length} raw items`);
     
     // Debug: Log first item structure to understand RSS format
@@ -440,12 +412,26 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
     
     const items: CommunityItem[] = [];
     const seenUrls = new Set<string>();
+    const rawLinksBeforeFilter: string[] = [];
+    
+    // Initialize filter counters
+    let totalLinksCount = 0;
+    let threadMatchCount = 0;
+    let forbiddenCount = 0;
+    let emptyLinkCount = 0;
     
     // Parse RSS items
     for (const item of itemsArray) {
       if (!item) continue;
       
-      // Extract link and title (handle different RSS formats)
+      totalLinksCount++;
+      
+      // Extract link and title (handle different RSS formats) - same as gossip.ts
+      // IMPORTANT: This extraction logic is proven to work correctly for 1point3acres RSS.
+      // DO NOT change this logic without explicit user request.
+      // - Simple extraction (no HTML entity decoding, no CDATA special handling)
+      // - Handles: string, #text, @_href patterns
+      // - This matches the working implementation in gossip.ts
       // RSS 2.0: link can be string directly, or object with #text
       let link = '';
       if (typeof item.link === 'string') {
@@ -468,6 +454,7 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       }
       
       if (!link || !title) {
+        emptyLinkCount++;
         console.warn(`[1point3acres] ⚠️ Skipping item: missing link or title (link: ${link ? 'yes' : 'no'}, title: ${title ? 'yes' : 'no'})`);
         continue;
       }
@@ -475,8 +462,8 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       // Normalize URL
       let url = link.trim();
       
-      // Log original link for debugging
-      console.log(`[1point3acres] 🔍 Processing item - original link: ${link.substring(0, 100)}`);
+      // Collect raw link before filtering
+      rawLinksBeforeFilter.push(url);
       
       // Handle relative URLs
       if (!url.startsWith('http')) {
@@ -491,17 +478,23 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       // Convert instant.1point3acres.com URLs to standard format
       url = normalize1p3aUrl(url);
       
-      console.log(`[1point3acres] 🔍 Normalized URL: ${url.substring(0, 100)}`);
+      // Check if it's a thread URL (before filtering)
+      const isThreadUrl = isValid1p3aThreadUrl(url);
+      const isForbidden = url.includes('/forum-') || url.includes('forum.php') || url.includes('/section/');
       
-      // STRICT VALIDATION: Must be a thread detail page
-      if (!isValid1p3aThreadUrl(url)) {
+      if (isThreadUrl) {
+        threadMatchCount++;
+      } else if (isForbidden) {
+        forbiddenCount++;
+        console.warn(`[1point3acres] ❌ Filtered out forbidden URL: ${url.substring(0, 100)}`);
+        console.warn(`[1point3acres]    Title was: "${title.substring(0, 50)}"`);
+        continue;
+      } else {
+        // Not a thread and not explicitly forbidden - might be wrong node
         console.warn(`[1point3acres] ❌ Filtered out non-thread URL: ${url.substring(0, 100)}`);
         console.warn(`[1point3acres]    Title was: "${title.substring(0, 50)}"`);
         continue;
       }
-      
-      console.log(`[1point3acres] ✅ Valid thread URL: ${url.substring(0, 100)}`);
-      console.log(`[1point3acres]    Title: "${title.substring(0, 80)}"`);
       
       // Skip duplicates
       if (seenUrls.has(url)) continue;
@@ -521,6 +514,7 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
     }
     
     // Remove duplicates and validate all URLs are thread URLs
+    const beforeDedupCount = items.length;
     const uniqueItems = Array.from(
       new Map(items.map(item => [item.url, item])).values()
     ).filter(item => {
@@ -531,13 +525,31 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       return true;
     });
     
-    debugInfo.filteredThreadCount = uniqueItems.length;
-    debugInfo.sampleLinks = uniqueItems.slice(0, 3).map(item => item.url);
-    debugInfo.sampleTitles = uniqueItems.slice(0, 3).map(item => item.title);
+    const dedupRemovedCount = beforeDedupCount - uniqueItems.length;
+    const rawLinksAfterFilter = uniqueItems.map(item => item.url);
+    
+    // Update filter debug info
+    debugInfo.filter.totalLinksCount = totalLinksCount;
+    debugInfo.filter.threadMatchCount = threadMatchCount;
+    debugInfo.filter.forbiddenCount = forbiddenCount;
+    debugInfo.filter.emptyLinkCount = emptyLinkCount;
+    debugInfo.filter.dedupRemovedCount = dedupRemovedCount;
+    debugInfo.filter.filteredThreadCount = uniqueItems.length;
+    debugInfo.filter.sampleLinks = uniqueItems.slice(0, 3).map(item => item.url);
+    debugInfo.filter.sampleTitles = uniqueItems.slice(0, 3).map(item => item.title);
+    debugInfo.filter.rawLinksBeforeFilter = rawLinksBeforeFilter.slice(0, 10);
+    debugInfo.filter.rawLinksAfterFilter = rawLinksAfterFilter.slice(0, 10);
+    
+    // Detect WRONG_NODE: parsed items but none match thread whitelist
+    if (debugInfo.parse.parsedItemCount > 0 && threadMatchCount === 0 && uniqueItems.length === 0) {
+      debugInfo.reason = 'WRONG_NODE';
+      console.error(`[1point3acres] ❌ WRONG_NODE detected: parsed ${debugInfo.parse.parsedItemCount} items but NONE match thread whitelist`);
+      console.error(`[1point3acres]    Sample raw links:`, rawLinksBeforeFilter.slice(0, 5));
+    }
     
     console.log(`[1point3acres] ✅ Fetched ${uniqueItems.length} valid thread items from RSS (instance: ${usedInstance})`);
-    console.log(`[1point3acres] 📊 DEBUG - Sample links:`, debugInfo.sampleLinks);
-    console.log(`[1point3acres] 📊 DEBUG - Sample titles:`, debugInfo.sampleTitles);
+    console.log(`[1point3acres] 📊 DEBUG - Sample links:`, debugInfo.filter.sampleLinks);
+    console.log(`[1point3acres] 📊 DEBUG - Sample titles:`, debugInfo.filter.sampleTitles);
       
       // Ensure >= 3 items
       if (uniqueItems.length < 3) {
@@ -546,9 +558,9 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       
       // Ensure >= 3 items (with fallback)
       if (uniqueItems.length >= 3) {
-        debugInfo.fallbackMode = 'live';
-        debugInfo.fallbackReason = 'SUCCESS';
-        console.log(`[1point3acres] 📊 DEBUG Info:`, JSON.stringify(debugInfo, null, 2));
+        debugInfo.mode = 'live';
+        debugInfo.reason = debugInfo.reason || 'SUCCESS';
+        console.log(`[1point3acres] 📊 DEBUG Snapshot:`, JSON.stringify(debugInfo, null, 2));
         return {
           items: uniqueItems.slice(0, 5), // Return top 5
           status: 'ok',
@@ -558,36 +570,36 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       }
       
       // If < 3 items, try cache
-      debugInfo.fallbackMode = 'cache';
-      debugInfo.fallbackReason = 'FILTER_LT3';
+      debugInfo.mode = 'cache';
+      debugInfo.reason = debugInfo.reason || 'FILTER_LT3';
       console.warn(`[1point3acres] ⚠️ Only ${uniqueItems.length} items (< 3), trying cache...`);
-      console.log(`[1point3acres] 📊 DEBUG Info:`, JSON.stringify(debugInfo, null, 2));
+      console.log(`[1point3acres] 📊 DEBUG Snapshot:`, JSON.stringify(debugInfo, null, 2));
     } catch (parseError) {
       const parseErrorMsg = parseError instanceof Error ? parseError.message : String(parseError);
       console.error(`[1point3acres] ❌ RSS parsing failed: ${parseErrorMsg}`);
       lastError = `Parse error: ${parseErrorMsg}`;
-      debugInfo.fallbackMode = 'cache';
-      debugInfo.fallbackReason = 'PARSE_FAIL';
-      console.log(`[1point3acres] 📊 DEBUG Info:`, JSON.stringify(debugInfo, null, 2));
+      debugInfo.mode = 'cache';
+      debugInfo.reason = 'PARSE_FAIL';
+      console.log(`[1point3acres] 📊 DEBUG Snapshot:`, JSON.stringify(debugInfo, null, 2));
     }
   } else {
     // All RSSHub instances failed, try direct HTML scraping
-    debugInfo.fallbackMode = 'cache';
-    debugInfo.fallbackReason = 'FETCH_FAIL';
+    debugInfo.mode = 'cache';
+    debugInfo.reason = 'FETCH_FAIL';
     console.error(`[1point3acres] ❌ All RSSHub instances failed. Last error: ${lastError}`);
-    console.log(`[1point3acres] 📊 DEBUG Info:`, JSON.stringify(debugInfo, null, 2));
+    console.log(`[1point3acres] 📊 DEBUG Snapshot:`, JSON.stringify(debugInfo, null, 2));
     console.log(`[1point3acres] 🔄 Trying direct HTML scraping from 1point3acres...`);
     
     try {
       const htmlItems = await fetch1point3acresDirectHTML();
       if (htmlItems.length >= 3) {
-        debugInfo.fallbackMode = 'live';
-        debugInfo.fallbackReason = 'HTML_SCRAPE_SUCCESS';
-        debugInfo.filteredThreadCount = htmlItems.length;
-        debugInfo.sampleLinks = htmlItems.slice(0, 3).map(item => item.url);
-        debugInfo.sampleTitles = htmlItems.slice(0, 3).map(item => item.title);
+        debugInfo.mode = 'live';
+        debugInfo.reason = 'HTML_SCRAPE_SUCCESS';
+        debugInfo.filter.filteredThreadCount = htmlItems.length;
+        debugInfo.filter.sampleLinks = htmlItems.slice(0, 3).map(item => item.url);
+        debugInfo.filter.sampleTitles = htmlItems.slice(0, 3).map(item => item.title);
         console.log(`[1point3acres] ✅ Successfully scraped ${htmlItems.length} items from HTML`);
-        console.log(`[1point3acres] 📊 DEBUG Info:`, JSON.stringify(debugInfo, null, 2));
+        console.log(`[1point3acres] 📊 DEBUG Snapshot:`, JSON.stringify(debugInfo, null, 2));
         return {
           items: htmlItems.slice(0, 5),
           status: 'ok',
@@ -607,13 +619,15 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
   if (!nocache) {
     const cached = getCachedData(cacheKey, ONEPOINT3ACRES_CACHE_TTL, false);
     if (cached?.data?.items && cached.data.items.length >= 3) {
-      debugInfo.fallbackMode = 'cache';
-      debugInfo.fallbackReason = 'CACHE_HIT';
-      debugInfo.filteredThreadCount = cached.data.items.length;
-      debugInfo.sampleLinks = cached.data.items.slice(0, 3).map((item: CommunityItem) => item.url);
-      debugInfo.sampleTitles = cached.data.items.slice(0, 3).map((item: CommunityItem) => item.title);
-      console.log(`[1point3acres] ✅ Using cache (${cached.data.items.length} items)`);
-      console.log(`[1point3acres] 📊 DEBUG Info:`, JSON.stringify(debugInfo, null, 2));
+      debugInfo.mode = 'cache';
+      debugInfo.reason = 'CACHE_HIT';
+      debugInfo.filter.filteredThreadCount = cached.data.items.length;
+      debugInfo.filter.sampleLinks = cached.data.items.slice(0, 3).map((item: CommunityItem) => item.url);
+      debugInfo.filter.sampleTitles = cached.data.items.slice(0, 3).map((item: CommunityItem) => item.title);
+      debugInfo.cache.cacheHit = true;
+      debugInfo.cache.cacheAgeSec = cached.cacheAgeSeconds;
+      console.log(`[1point3acres] ✅ Using cache (${cached.data.items.length} items, age: ${cached.cacheAgeSeconds}s)`);
+      console.log(`[1point3acres] 📊 DEBUG Snapshot:`, JSON.stringify(debugInfo, null, 2));
       return {
         items: cached.data.items.slice(0, 5),
         status: 'ok',
@@ -625,13 +639,15 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
     // Try stale cache
     const stale = getStaleCache(cacheKey);
     if (stale?.data?.items && stale.data.items.length >= 3) {
-      debugInfo.fallbackMode = 'cache';
-      debugInfo.fallbackReason = 'STALE_CACHE_HIT';
-      debugInfo.filteredThreadCount = stale.data.items.length;
-      debugInfo.sampleLinks = stale.data.items.slice(0, 3).map((item: CommunityItem) => item.url);
-      debugInfo.sampleTitles = stale.data.items.slice(0, 3).map((item: CommunityItem) => item.title);
-      console.log(`[1point3acres] ✅ Using stale cache (${stale.data.items.length} items)`);
-      console.log(`[1point3acres] 📊 DEBUG Info:`, JSON.stringify(debugInfo, null, 2));
+      debugInfo.mode = 'cache';
+      debugInfo.reason = 'STALE_CACHE_HIT';
+      debugInfo.filter.filteredThreadCount = stale.data.items.length;
+      debugInfo.filter.sampleLinks = stale.data.items.slice(0, 3).map((item: CommunityItem) => item.url);
+      debugInfo.filter.sampleTitles = stale.data.items.slice(0, 3).map((item: CommunityItem) => item.title);
+      debugInfo.cache.cacheHit = true;
+      debugInfo.cache.cacheAgeSec = stale.cacheAgeSeconds;
+      console.log(`[1point3acres] ✅ Using stale cache (${stale.data.items.length} items, age: ${stale.cacheAgeSeconds}s)`);
+      console.log(`[1point3acres] 📊 DEBUG Snapshot:`, JSON.stringify(debugInfo, null, 2));
       return {
         items: stale.data.items.slice(0, 5),
         status: 'ok',
@@ -640,26 +656,40 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       };
     }
     
-    debugInfo.fallbackReason = 'CACHE_EMPTY';
+    debugInfo.reason = debugInfo.reason || 'CACHE_EMPTY';
+    debugInfo.cache.cacheHit = false;
   } else {
-    debugInfo.fallbackReason = 'NOCACHE_REQUESTED';
+    debugInfo.reason = debugInfo.reason || 'NOCACHE_REQUESTED';
+    debugInfo.cache.cacheHit = false;
   }
   
   // Last resort: seed data (ensure >= 3 items)
-  debugInfo.fallbackMode = 'seed';
-  debugInfo.fallbackReason = debugInfo.fallbackReason || 'SEED_USED';
-  console.log(`[1point3acres] ⚠️ Using seed data (${SEED_DATA.length} items)`);
+  // STEP 5: Validate seed data - must never contain section/category links
   const seedItems = SEED_DATA.length >= 3 ? SEED_DATA.slice(0, 5) : SEED_DATA;
+  const seedForbiddenCount = seedItems.filter(item => {
+    const url = item.url.toLowerCase();
+    return url.includes('/forum-') || url.includes('forum.php') || url.includes('/section/') || !isValid1p3aThreadUrl(item.url);
+  }).length;
   
-  // Assert: must have >= 3 items
-  if (seedItems.length < 3) {
-    console.error(`[1point3acres] ⚠️ Seed data has only ${seedItems.length} items (< 3), this should not happen`);
+  if (seedForbiddenCount > 0) {
+    console.error(`[1point3acres] ❌ CRITICAL: Seed data contains ${seedForbiddenCount} forbidden/section URLs!`);
+    console.error(`[1point3acres]    Invalid seed items:`, seedItems.filter(item => {
+      const url = item.url.toLowerCase();
+      return url.includes('/forum-') || url.includes('forum.php') || url.includes('/section/') || !isValid1p3aThreadUrl(item.url);
+    }).map(item => ({ title: item.title, url: item.url })));
   }
   
-  debugInfo.filteredThreadCount = seedItems.length;
-  debugInfo.sampleLinks = seedItems.slice(0, 3).map(item => item.url);
-  debugInfo.sampleTitles = seedItems.slice(0, 3).map(item => item.title);
-  console.log(`[1point3acres] 📊 DEBUG Info:`, JSON.stringify(debugInfo, null, 2));
+  debugInfo.mode = 'seed';
+  debugInfo.reason = debugInfo.reason || 'SEED_USED';
+  debugInfo.filter.filteredThreadCount = seedItems.length;
+  debugInfo.filter.sampleLinks = seedItems.slice(0, 3).map(item => item.url);
+  debugInfo.filter.sampleTitles = seedItems.slice(0, 3).map(item => item.title);
+  debugInfo.seed.seedCount = seedItems.length;
+  debugInfo.seed.seedSampleLinks = seedItems.slice(0, 3).map(item => item.url);
+  debugInfo.seed.seedSampleTitles = seedItems.slice(0, 3).map(item => item.title);
+  
+  console.log(`[1point3acres] ⚠️ Using seed data (${seedItems.length} items, forbiddenCount: ${seedForbiddenCount})`);
+  console.log(`[1point3acres] 📊 DEBUG Snapshot:`, JSON.stringify(debugInfo, null, 2));
   
   return {
     items: seedItems,
@@ -687,6 +717,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (cached1point3acres) {
       const data1point3acres = cached1point3acres.data;
       
+      // Build debug snapshot for cached response
+      const cachedDebug: any = data1point3acres.debug || {};
+      cachedDebug.mode = 'cache';
+      cachedDebug.reason = cachedDebug.reason || 'CACHE_HIT';
+      cachedDebug.cache = {
+        cacheHit: true,
+        cacheAgeSec: cached1point3acres.cacheAgeSeconds,
+      };
+      
       const response: any = {
         status: 'ok' as const,
         sources: {
@@ -698,9 +737,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         cache_mode: 'normal',
       };
       
-      // Include debug info if requested
-      if (debugMode && data1point3acres.debug) {
-        response.debug = data1point3acres.debug;
+      // Include debug snapshot if requested
+      if (debugMode) {
+        response.debug = cachedDebug;
       }
       
       return res.status(200).json(response);
@@ -738,13 +777,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       source: { name: '1point3acres', url: RSSHUB_1P3A_MARKET },
       ttlSeconds: ttlMsToSeconds(ONEPOINT3ACRES_CACHE_TTL),
       reason: result.reason,
+      debug: result.debug, // Include debug in cached data
     };
 
-    // Cache policy: Only cache if status is 'ok' and we have >= 3 items
-    if (result.status === 'ok' && finalItems.length >= 3) {
+    // STEP 6: Cache policy - only cache if mode is 'live' and we have >= 3 items
+    const shouldCache = result.debug?.mode === 'live' && 
+                       result.debug?.filter?.filteredThreadCount >= 3 && 
+                       result.status === 'ok';
+    
+    if (shouldCache) {
       setCache(cacheKey1point3acres, response1point3acres);
+      if (result.debug) {
+        result.debug.cacheWrite = true;
+      }
+      console.log(`[API /api/community/leeks] ✅ Cached ${finalItems.length} items (mode: ${result.debug?.mode})`);
     } else {
-      console.warn(`[API /api/community/leeks] Not caching 1point3acres (status: ${result.status}, items: ${finalItems.length})`);
+      if (result.debug) {
+        result.debug.cacheWrite = false;
+      }
+      console.warn(`[API /api/community/leeks] ⚠️ Not caching (mode: ${result.debug?.mode}, status: ${result.status}, items: ${finalItems.length})`);
     }
 
     const response: any = {
@@ -760,7 +811,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cache_mode: nocache ? 'bypass' : 'normal',
     };
     
-    // Include debug info if requested
+    // Include debug snapshot if requested
     if (debugMode && result.debug) {
       response.debug = result.debug;
     }

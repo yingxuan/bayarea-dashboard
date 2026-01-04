@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { config } from "@/config";
+import { useExternalLink } from "@/hooks/useExternalLink";
 
 interface CommunityItem {
   source: '1point3acres';
@@ -28,6 +29,7 @@ interface UnifiedItem {
 
 export default function MarketHighlights({ marketNews }: MarketHighlightsProps) {
   const [leekItems, setLeekItems] = useState<CommunityItem[]>([]);
+  const { handleExternalLinkClick } = useExternalLink();
 
   // Fetch 一亩三分地 posts
   useEffect(() => {
@@ -85,6 +87,7 @@ export default function MarketHighlights({ marketNews }: MarketHighlightsProps) 
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={handleExternalLinkClick}
             className="block rounded-sm p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
           >
             <div className="flex items-start gap-2">
