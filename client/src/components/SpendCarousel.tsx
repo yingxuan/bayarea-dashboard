@@ -56,8 +56,9 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
     console.log(`[SpendCarousel] First place:`, places[0]);
   }
 
-  // If we have < 5 places, show compact placeholder instead of huge empty area
-  if (places.length < 5) {
+  // For 新店打卡: no minimum requirement, show all available places
+  // For other categories: if we have < 5 places, show compact placeholder
+  if (category !== '新店打卡' && places.length < 5) {
     console.warn(`[SpendCarousel] Category "${category}" has only ${places.length} places, showing compact placeholder`);
     return (
       <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md flex flex-col min-h-[120px]">
@@ -74,27 +75,53 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
       </div>
     );
   }
-
-  // Select 5 places starting from offset (for "换一批" functionality)
-  // Use modulo to cycle through places if offset exceeds array length
-  const normalizedOffset = Math.max(0, Math.min(offset, places.length - 1));
-  let top5Places: SpendPlace[] = [];
   
-  if (normalizedOffset + 5 <= places.length) {
-    // Normal case: we have enough places from current offset
-    top5Places = places.slice(normalizedOffset, normalizedOffset + 5);
-  } else {
-    // Wrap around: take remaining from current offset + take from start
-    const fromEnd = places.slice(normalizedOffset);
-    const fromStart = places.slice(0, 5 - fromEnd.length);
-    top5Places = [...fromEnd, ...fromStart];
+  // For 新店打卡: if empty, show placeholder
+  if (category === '新店打卡' && places.length === 0) {
+    return (
+      <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md flex flex-col min-h-[120px]">
+        <div className="mb-2 flex-shrink-0 flex items-center justify-between">
+          <h3 className="text-[28px] md:text-[32px] font-mono font-semibold text-foreground">
+            {category}
+          </h3>
+        </div>
+        <div className="flex-1 flex items-center justify-center min-h-0">
+          <p className="text-xs opacity-60 font-mono font-normal text-center line-clamp-2">
+            暂无推荐
+          </p>
+        </div>
+      </div>
+    );
   }
+
+  // For 新店打卡: show all available places (no minimum requirement)
+  // For other categories: select 5 places starting from offset (for "换一批" functionality)
+  let top5Places: SpendPlace[] = [];
+  let displayRandomPlace: SpendPlace | null = null;
   
-  // Find the random place (marked with "随机选店" in category)
-  const randomPlace = places.find(p => p.category.includes('随机选店'));
-  
-  // If no random place found, use the 6th place (if available)
-  const displayRandomPlace = randomPlace || (places.length > 5 ? places[5] : null);
+  if (category === '新店打卡') {
+    // 新店打卡: show all places, no random place needed
+    top5Places = places;
+  } else {
+    // Use modulo to cycle through places if offset exceeds array length
+    const normalizedOffset = Math.max(0, Math.min(offset, places.length - 1));
+    
+    if (normalizedOffset + 5 <= places.length) {
+      // Normal case: we have enough places from current offset
+      top5Places = places.slice(normalizedOffset, normalizedOffset + 5);
+    } else {
+      // Wrap around: take remaining from current offset + take from start
+      const fromEnd = places.slice(normalizedOffset);
+      const fromStart = places.slice(0, 5 - fromEnd.length);
+      top5Places = [...fromEnd, ...fromStart];
+    }
+    
+    // Find the random place (marked with "随机选店" in category)
+    const randomPlace = places.find(p => p.category.includes('随机选店'));
+    
+    // If no random place found, use the 6th place (if available)
+    displayRandomPlace = randomPlace || (places.length > 5 ? places[5] : null);
+  }
 
   return (
     <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md flex flex-col h-auto min-h-0">
@@ -103,7 +130,9 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
         <h3 className="text-[13px] font-mono font-medium text-foreground/80">
           {category}
         </h3>
-        {onRefresh && places.length > 5 && (
+        {/* For 新店打卡: no "换一批" button (data may be limited) */}
+        {/* For other categories: show "换一批" if places.length > 5 */}
+        {onRefresh && category !== '新店打卡' && places.length > 5 && (
           <button
             onClick={onRefresh}
             className="text-xs opacity-60 hover:opacity-100 transition-opacity font-mono font-normal px-2 py-0.5 rounded hover:bg-primary/10 border border-primary/20 hover:border-primary/40"

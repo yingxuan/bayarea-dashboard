@@ -29,8 +29,8 @@ interface SpendResponse {
   items?: SpendPlace[]; // Legacy format
 }
 
-// 2×2 grid: 奶茶/中餐, 夜宵/甜品
-const CATEGORIES = ['奶茶', '中餐', '夜宵', '甜品'] as const;
+// 2×2 grid: 奶茶/中餐, 夜宵/新店打卡
+const CATEGORIES = ['奶茶', '中餐', '夜宵', '新店打卡'] as const;
 
 export default function TodaySpendCarousels() {
   const [placesByCategory, setPlacesByCategory] = useState<Record<string, SpendPlace[]>>({});
@@ -158,16 +158,15 @@ export default function TodaySpendCarousels() {
             const keyMap: Record<string, string> = {
               'milk_tea': '奶茶',
               'chinese': '中餐',
-              'coffee': '甜品', // Map coffee to 甜品 for 2×2 grid
               'late_night': '夜宵',
-              'dessert': '甜品',
+              'new_places': '新店打卡',
             };
             
             const normalized: Record<string, SpendPlace[]> = {
               '奶茶': [],
               '中餐': [],
               '夜宵': [],
-              '甜品': [],
+              '新店打卡': [],
             };
             
             // Try to map itemsByCategory to normalized structure
@@ -242,14 +241,13 @@ export default function TodaySpendCarousels() {
               console.log(`[TodaySpendCarousels] Place: ${place.name}, category: "${placeCategory}"`);
               
               // Map API categories to expected categories
-              // API might return: 奶茶, 中餐, 咖啡, 夜宵
-              // Frontend expects: 奶茶, 中餐, 夜宵, 甜品
+              // API might return: 奶茶, 中餐, 新店打卡, 夜宵
+              // Frontend expects: 奶茶, 中餐, 夜宵, 新店打卡
               const categoryMap: Record<string, string> = {
                 '奶茶': '奶茶',
                 '中餐': '中餐',
-                '咖啡': '甜品', // Map coffee to 甜品
                 '夜宵': '夜宵',
-                '甜品': '甜品',
+                '新店打卡': '新店打卡',
               };
               
               const mappedCategory = categoryMap[placeCategory] || placeCategory;

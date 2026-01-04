@@ -4,7 +4,7 @@
  * 
  * Requirements:
  * - Cities: Cupertino / Sunnyvale
- * - Categories: 奶茶 / 中餐 / 甜品 / 夜宵
+ * - Categories: 奶茶 / 中餐 / 新店打卡 / 夜宵
  * - Always return >= 3 items per category (live or cache/seed)
  * - Sort: "popular" = userRatingCount desc, then rating desc
  * - 24h cache: success → write cache; fail → read cache; cache fail → seed fallback
@@ -25,7 +25,7 @@ export const runtime = 'nodejs';
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { CACHE_TTL, ttlMsToSeconds } from '../../shared/config.js';
-import { getFoodRecommendationsFromSeed, type FoodPlace } from '../../shared/food-seed-data.js';
+import { getFoodRecommendationsFromSeed, FOOD_SEED_DATA, type FoodPlace } from '../../shared/food-seed-data.js';
 import {
   cache,
   setCorsHeaders,
@@ -49,12 +49,15 @@ if (process.env.NODE_ENV !== 'production' || process.env.VERCEL_ENV) {
 }
 
 // Maximum distance in miles from city center (Cupertino or Sunnyvale)
-const MAX_DISTANCE_MILES = 8; // 8 miles from city center
+const MAX_DISTANCE_MILES = 15; // 15 miles from city center
 
-// City coordinates (latitude, longitude) - only Cupertino and Sunnyvale
+// City coordinates (latitude, longitude) - for "新店打卡" we need 5 cities
 const CITY_COORDS = {
   cupertino: { lat: 37.3230, lng: -122.0322 },
   sunnyvale: { lat: 37.3688, lng: -122.0363 },
+  sanjose: { lat: 37.3382, lng: -121.8863 },
+  milpitas: { lat: 37.4283, lng: -121.9066 },
+  fremont: { lat: 37.5483, lng: -121.9886 },
 } as const;
 
 // Default center (Cupertino) for fallback
@@ -65,7 +68,7 @@ const DEFAULT_CENTER = CITY_COORDS.cupertino;
 const CATEGORY_KEYWORDS = {
   '奶茶': ['bubble tea', 'boba'], // Reduced from 10 to 2 keywords
   '中餐': ['chinese restaurant'], // Reduced from 2 to 1 keyword
-  '甜品': ['dessert', 'ice cream'], // Changed from coffee to dessert
+  '新店打卡': ['chinese restaurant', 'bubble tea'], // New category: Chinese restaurants + bubble tea
   '夜宵': ['hot pot', 'bbq'], // Reduced from 10 to 2 keywords
 } as const;
 
@@ -73,7 +76,7 @@ const CATEGORY_KEYWORDS = {
 const CATEGORY_TYPES = {
   '奶茶': 'cafe', // Use cafe as base type for bubble tea
   '中餐': 'restaurant',
-  '甜品': 'cafe', // Use cafe as base type for dessert
+  '新店打卡': 'restaurant', // Will search for both restaurant (Chinese) and cafe (bubble tea)
   '夜宵': 'restaurant', // Use restaurant as base type for BBQ and hot pot
 } as const;
 
@@ -124,9 +127,7 @@ interface GooglePlaceResult {
   photos?: Array<{
     photo_reference: string;
   }>;
-  opening_hours?: {
-    open_now?: boolean;
-  };
+  google_maps_uri?: string;
 }
 
 interface SpendPlace {
@@ -151,6 +152,27 @@ interface SpendPlace {
 function calculatePopularityScore(rating: number, userRatingsTotal: number): number {
   if (userRatingsTotal <= 0 || rating <= 0) return 0;
   return userRatingsTotal * rating;
+}
+
+/**
+ * Calculate "newness score" for "新店打卡" category
+ * Based on userRatingCount (newer places tend to have fewer ratings)
+ * Higher score = newer/more likely to be new
+ * 
+ * Formula: newScore = (50 - min(userRatingCount, 50))
+ * If rating >= 4.2: newScore += 10
+ */
+function calculateNewnessScore(rating: number, userRatingCount: number): number {
+  // Base score: (50 - min(userRatingCount, 50))
+  // This gives 0-50 points based on review count (lower count = higher score)
+  let score = 50 - Math.min(userRatingCount, 50);
+  
+  // Bonus for high rating (avoid low-quality new places)
+  if (rating >= 4.2) {
+    score += 10;
+  }
+  
+  return score;
 }
 
 /**
@@ -190,7 +212,9 @@ async function searchGooglePlacesNearby(
   location: { lat: number; lng: number },
   radius: number = 50000, // Maximum allowed: 50000 meters (~31 miles)
   type?: string,
-  keyword?: string
+  keyword?: string,
+  debugMode: boolean = false,
+  enableDebugLog: boolean = false // Only enable detailed debug logs for 新店打卡
 ): Promise<GooglePlaceResult[]> {
   if (!GOOGLE_PLACES_API_KEY) {
     console.warn('[Spend Today] GOOGLE_PLACES_API_KEY not set in searchPlacesByKeyword, returning empty results');
@@ -208,7 +232,7 @@ async function searchGooglePlacesNearby(
       url = 'https://places.googleapis.com/v1/places:searchText';
       requestBody = {
         textQuery: keyword,
-        maxResultCount: 6, // Reduced from 20: UI shows 2-3 cards + 1 random = 4 max needed
+        maxResultCount: enableDebugLog ? 30 : 8, // For debug mode or 新店打卡: need more results
         locationBias: {
           circle: {
             center: {
@@ -218,14 +242,22 @@ async function searchGooglePlacesNearby(
             radius: radius,
           },
         },
-        includedType: type, // Optional: filter by type
       };
+      
+      // Only include includedType if type is provided
+      if (type) {
+        requestBody.includedType = type;
+      }
+      
+      // Only include rankPreference if in debug mode
+      if (enableDebugLog) {
+        requestBody.rankPreference = 'DISTANCE';
+      }
     } else {
       // Use searchNearby for type-based searches
       url = 'https://places.googleapis.com/v1/places:searchNearby';
       requestBody = {
-        includedTypes: type ? [type] : undefined,
-        maxResultCount: 6, // Reduced from 20: UI shows 2-3 cards + 1 random = 4 max needed
+        maxResultCount: enableDebugLog ? 30 : 6, // For debug mode: need more results
         locationRestriction: {
           circle: {
             center: {
@@ -236,31 +268,55 @@ async function searchGooglePlacesNearby(
           },
         },
       };
+      
+      // Only include includedTypes if type is provided
+      if (type) {
+        requestBody.includedTypes = [type];
+      }
+      
+      // Only include rankPreference if in debug mode
+      if (enableDebugLog) {
+        requestBody.rankPreference = 'DISTANCE';
+      }
     }
     
     // COST OPTIMIZATION: Minimal field mask - only fields actually used in UI
-    // UI uses: name, rating, user_ratings_total, distance_miles (calculated), photo_url
-    // Removed: regularOpeningHours (not shown), types (not shown), googleMapsUri (can construct from place_id)
-    // COST OPTIMIZATION DEBUG: Log API call details
-    console.log(`[Spend Today] 📊 API Call: ${url.includes('searchText') ? 'searchText' : 'searchNearby'}`);
-    console.log(`[Spend Today] 📊 Field Mask: places.id,places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.photos`);
-    console.log(`[Spend Today] 📊 Max Result Count: ${requestBody.maxResultCount}`);
-    console.log(`[Spend Today] 📊 Keyword/Type: ${keyword || type || 'none'}`);
+    // For 新店打卡: places.id, places.displayName, places.formattedAddress, places.googleMapsUri,
+    //               places.rating, places.userRatingCount, places.location, places.photos (max 1)
+    // DO NOT request: reviews, openingHours, editorialSummary, priceLevel, businessStatus
+    // STEP 1: Log request details BEFORE API call (only for 新店打卡)
+    if (enableDebugLog) {
+      const requestSummary = {
+        city: `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`,
+        keyword: keyword || 'none',
+        includedTypes: type ? [type] : undefined,
+        radiusMeters: radius,
+        maxResultCount: requestBody.maxResultCount,
+        fieldMask: 'places.id,places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.photos,places.googleMapsUri',
+        endpoint: url.includes('searchText') ? 'searchText' : 'searchNearby',
+        requestBody: JSON.stringify(requestBody),
+      };
+      // Debug: request summary (only in debug mode)
+    }
     
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-        'X-Goog-FieldMask': 'places.id,places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.photos',
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.photos,places.googleMapsUri',
       },
       body: JSON.stringify(requestBody),
     });
 
+    // Log HTTP status only on error
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[Spend Today] Places API (New) HTTP error: ${response.status} ${response.statusText}`);
-      console.error(`[Spend Today] Error response: ${errorText}`);
+      console.error(`[Spend Today] Places API HTTP error: ${response.status} ${response.statusText}`);
+      if (enableDebugLog && debugMode) {
+        console.error(`[Spend Today] Error response: ${errorText}`);
+      }
       throw new Error(`Places API (New) error: ${response.status} ${response.statusText}`);
     }
 
@@ -272,7 +328,7 @@ async function searchGooglePlacesNearby(
       const errorMessage = error.message || JSON.stringify(error);
       const errorCode = error.code || error.status || 'UNKNOWN';
       
-      console.error(`[Spend Today] Places API (New) error: ${errorCode} - ${errorMessage}`);
+      console.error(`[Spend Today] Places API error: ${errorCode} - ${errorMessage}`);
       
       // Always throw for API errors to trigger fallback
       // This includes: legacy API, billing, quota, key restrictions, etc.
@@ -282,25 +338,51 @@ async function searchGooglePlacesNearby(
     }
 
     const places = data.places || [];
+    const rawPlacesCount = places.length;
     
-    // COST OPTIMIZATION DEBUG: Log results
-    console.log(`[Spend Today] 📊 Places Returned: ${places.length}`);
-    if (places.length > 0) {
-      const photosCount = places.filter(p => p.photos && p.photos.length > 0).length;
-      console.log(`[Spend Today] 📊 Places with Photos: ${photosCount}/${places.length}`);
+    // STEP 1: Log raw API response count BEFORE filtering (only in debug mode)
+    if (enableDebugLog && debugMode) {
+      console.log(`[Spend Today] Raw API Response: ${rawPlacesCount} places`);
     }
     
-    // No need to filter by keyword if we used searchText (it already filters)
-    // But we can still do a light filter for searchNearby results if needed
+    // STEP 2: Filter and track drop reasons
     let filteredPlaces = places;
-    if (keyword && !url.includes('searchText')) {
-      // Only filter if we used searchNearby (shouldn't happen now, but keep as safety)
-      const keywordLower = keyword.toLowerCase();
-      filteredPlaces = places.filter(place => {
-        const name = place.displayName?.text?.toLowerCase() || '';
-        const address = place.formattedAddress?.toLowerCase() || '';
-        return name.includes(keywordLower) || address.includes(keywordLower);
-      });
+    const dropCounters = {
+      drop_noRatingCount: 0,
+      drop_ratingTooLow: 0,
+      drop_notChinese: 0,
+      drop_notBoba: 0,
+      drop_dedup: 0,
+      drop_missingFields: 0,
+      drop_keywordMismatch: 0,
+    };
+    
+    // In debug bypass mode, skip all filtering
+    if (debugMode) {
+      filteredPlaces = places;
+    } else {
+      // No need to filter by keyword if we used searchText (it already filters)
+      // But we can still do a light filter for searchNearby results if needed
+      if (keyword && !url.includes('searchText')) {
+        // Only filter if we used searchNearby (shouldn't happen now, but keep as safety)
+        const keywordLower = keyword.toLowerCase();
+        filteredPlaces = places.filter(place => {
+          const name = place.displayName?.text?.toLowerCase() || '';
+          const address = place.formattedAddress?.toLowerCase() || '';
+          const matches = name.includes(keywordLower) || address.includes(keywordLower);
+          if (!matches) dropCounters.drop_keywordMismatch++;
+          return matches;
+        });
+      }
+    }
+    
+    // Log filtered count only in debug mode and if there are drops
+    if (enableDebugLog && debugMode) {
+      const filteredCount = filteredPlaces.length;
+      const totalDropped = Object.values(dropCounters).reduce((a, b) => a + b, 0);
+      if (totalDropped > 0) {
+        console.log(`[Spend Today] Filtered: ${filteredCount}/${rawPlacesCount} places`, dropCounters);
+      }
     }
     
     // Convert new API format to legacy format for backward compatibility
@@ -320,9 +402,7 @@ async function searchGooglePlacesNearby(
       photos: place.photos && place.photos.length > 0 ? [{
         photo_reference: place.photos[0].name, // New API uses name instead of photo_reference
       }] : undefined,
-      opening_hours: place.regularOpeningHours ? {
-        open_now: place.regularOpeningHours.openNow,
-      } : undefined,
+      google_maps_uri: place.googleMapsUri,
     }));
 
     return legacyResults;
@@ -481,61 +561,161 @@ function calculateDistanceMiles(
 }
 
 /**
+ * STEP 3: Explain why a place was dropped for 夜宵 (for debug mode)
+ */
+function explainDropNightSnack(
+  place: GooglePlaceResult,
+  rating: number,
+  userRatingsTotal: number | undefined,
+  distanceMiles: number,
+  hasKeywordMatch: boolean
+): string[] {
+  const reasons: string[] = [];
+  
+  if (!place.geometry?.location) {
+    reasons.push('drop_missingFields (no location)');
+  }
+  if (distanceMiles > MAX_DISTANCE_MILES) {
+    reasons.push(`drop_distanceTooFar (${distanceMiles.toFixed(1)}mi > ${MAX_DISTANCE_MILES}mi)`);
+  }
+  if (!hasKeywordMatch) {
+    reasons.push('drop_keywordMismatch (name/address does not match 夜宵 keywords: 烤串/串串/火锅/hot pot/bbq/烧烤/烤肉)');
+  }
+  
+  return reasons;
+}
+
+/**
  * Fetch places from Google Places API for a specific city and category
- * Filters by distance from user location (or city center) with 10-mile hard limit
+ * Filters by distance from user location (or city center) with 15-mile hard limit
  */
 async function fetchPlacesForCategory(
   city: keyof typeof CITY_COORDS,
-  category: keyof typeof CATEGORY_KEYWORDS
+  category: keyof typeof CATEGORY_KEYWORDS,
+  debugMode: boolean = false
 ): Promise<SpendPlace[]> {
   // IMPORTANT: Use English category values to avoid encoding issues
   // Frontend will map these back to Chinese for display
   const categoryToEnglish: Record<keyof typeof CATEGORY_KEYWORDS, string> = {
     '奶茶': 'milk_tea',
     '中餐': 'chinese',
-    '甜品': 'dessert',
+    '新店打卡': 'new_places',
     '夜宵': 'late_night',
   };
   
   const categoryToChinese: Record<string, string> = {
     'milk_tea': '奶茶',
     'chinese': '中餐',
-    'dessert': '甜品',
+    'new_places': '新店打卡',
     'late_night': '夜宵',
   };
   
   // Use English category for storage, but keep Chinese for display
   const categoryEnglish = categoryToEnglish[category] || String(category);
   const categoryChinese = categoryToChinese[categoryEnglish] || category;
-  console.log(`[fetchPlacesForCategory] Category: "${category}" -> English: "${categoryEnglish}", Chinese: "${categoryChinese}"`);
+  // Debug log removed for non-新店打卡 categories
   
   // Use city center (not user location) to ensure consistent results
   // This ensures we only get places near Cupertino or Sunnyvale
   const searchCenter = CITY_COORDS[city];
   const keywords = CATEGORY_KEYWORDS[category];
   const type = CATEGORY_TYPES[category];
-  // Search radius: 8 miles in meters (12874 meters)
+  // Search radius: 15 miles in meters (24140 meters)
   // This limits results to Cupertino and Sunnyvale area only
-  const RADIUS_METERS = 12874; // ~8 miles
+  const RADIUS_METERS = 24140; // ~15 miles
   
   const allPlaces: SpendPlace[] = [];
   const seenPlaceIds = new Set<string>();
   // Track original order from Google Places API (results are already sorted by relevance)
   const placeOrderMap = new Map<string, number>();
   let globalOrderIndex = 0;
+  
+  // STEP 0: Debug snapshot for 夜宵
+  const debugSnapshot: any = category === '夜宵' && debugMode ? {
+    key: 'night_snack',
+    city: city,
+    requests: [] as any[],
+    responses: [] as any[],
+    pipeline: {
+      afterKeywordFilterCount: 0,
+      afterDistanceFilterCount: 0,
+      afterRatingFilterCount: 0,
+      afterDedupCount: 0,
+      finalCount: 0,
+    },
+    drops: {
+      drop_keywordMismatch: 0,
+      drop_distanceTooFar: 0,
+      drop_ratingTooLow: 0,
+      drop_missingFields: 0,
+      drop_dedup: 0,
+      drop_other: 0,
+    },
+    samples: {
+      rawTop20: [] as any[],
+      filteredTop20: [] as any[],
+    },
+    cache: { cacheHit: false, cacheAgeSec: 0, cacheWrite: false },
+  } : null;
 
       for (const keyword of keywords) {
     try {
+      // STEP 0: Log request details for 夜宵 debug
+      const requestInfo = category === '夜宵' && debugMode ? {
+        endpoint: 'places:searchText', // searchGooglePlacesNearby uses searchText when keyword is provided
+        includedTypes: type ? [type] : undefined,
+        keyword,
+        radiusMeters: RADIUS_METERS,
+        maxResultCount: 8, // Default in searchGooglePlacesNearby
+        rankPreference: 'RELEVANCE',
+        centerLatLng: { lat: searchCenter.lat, lng: searchCenter.lng },
+      } : null;
+      
+      if (requestInfo && debugSnapshot) {
+        debugSnapshot.requests.push(requestInfo);
+      }
+      
       const results = await searchGooglePlacesNearby(
         searchCenter,
         RADIUS_METERS,
         type,
-        keyword
+        keyword,
+        false, // debugMode
+        category === '夜宵' && debugMode // enableDebugLog for 夜宵
       ).catch((error: any) => {
         // Log error but don't throw - continue with other keywords
         console.error(`[Spend Today] Error searching for keyword "${keyword}":`, error);
+        
+        // STEP 0: Log error in debug snapshot
+        if (requestInfo && debugSnapshot) {
+          debugSnapshot.responses.push({
+            httpStatus: error.response?.status || 500,
+            errorMessage: error.message || String(error),
+            rawPlacesCount: 0,
+          });
+        }
+        
         return [];
       });
+      
+      // STEP 0: Log response for 夜宵 debug
+      if (requestInfo && debugSnapshot) {
+        debugSnapshot.responses.push({
+          httpStatus: 200,
+          errorMessage: null,
+          rawPlacesCount: results.length,
+        });
+        
+        // Store raw top 20
+        const rawTop20 = results.slice(0, 20).map(r => ({
+          placeId: r.place_id,
+          name: r.name,
+          rating: r.rating,
+          userRatingCount: r.user_ratings_total,
+          address: r.formatted_address,
+        }));
+        debugSnapshot.samples.rawTop20.push(...rawTop20);
+      }
 
       // Google Places API returns results sorted by relevance (best matches first)
       // We preserve this order by tracking the index
@@ -543,8 +723,17 @@ async function fetchPlacesForCategory(
         const result = results[i];
         
         // Skip if already seen (from previous keyword)
-        if (seenPlaceIds.has(result.place_id)) continue;
+        if (seenPlaceIds.has(result.place_id)) {
+          if (debugSnapshot) {
+            debugSnapshot.drops.drop_dedup++;
+          }
+          continue;
+        }
         seenPlaceIds.add(result.place_id);
+        
+        if (debugSnapshot) {
+          debugSnapshot.pipeline.afterDedupCount++;
+        }
         
         // Track original order from Google Places ranking
         if (!placeOrderMap.has(result.place_id)) {
@@ -561,7 +750,12 @@ async function fetchPlacesForCategory(
         const finalUserRatingsTotal = userRatingsTotal > 0 ? userRatingsTotal : 10;
 
         // If no geometry, skip (we need location data)
-        if (!result.geometry?.location) continue;
+        if (!result.geometry?.location) {
+          if (debugSnapshot) {
+            debugSnapshot.drops.drop_missingFields++;
+          }
+          continue;
+        }
         
         // Calculate distance from city center
         const distanceMiles = calculateDistanceMiles(
@@ -571,9 +765,16 @@ async function fetchPlacesForCategory(
           result.geometry.location.lng
         );
         
-        // HARD LIMIT: Only keep places within 8 miles of city center (Cupertino or Sunnyvale)
+        // HARD LIMIT: Only keep places within 15 miles of city center (Cupertino or Sunnyvale)
         if (distanceMiles > MAX_DISTANCE_MILES) {
+          if (debugSnapshot) {
+            debugSnapshot.drops.drop_distanceTooFar++;
+          }
           continue;
+        }
+        
+        if (debugSnapshot) {
+          debugSnapshot.pipeline.afterDistanceFilterCount++;
         }
 
         // COST OPTIMIZATION: Use data from searchNearby directly, NO getPlaceDetails call
@@ -614,8 +815,35 @@ async function fetchPlacesForCategory(
             addressLower.includes('hot pot') ||
             addressLower.includes('bbq');
           
+          // STEP 3: Check for known store (Hankow Cuisine) and use explainDrop (debug only)
+          const isKnownStore = debugMode && nameLower.includes('hankow');
+          
+          if (isKnownStore && debugSnapshot) {
+            const dropReasons = explainDropNightSnack(
+              result,
+              rating,
+              userRatingsTotal,
+              distanceMiles,
+              isBBQSkewersOrHotPot
+            );
+            // Only log if actually dropped
+            if (dropReasons.length > 0) {
+              // Only log if actually dropped (debug mode)
+              if (debugMode && dropReasons.length > 0) {
+                console.log(`[Spend Today] 夜宵 - Hankow Cuisine dropped:`, dropReasons);
+              }
+            }
+          }
+          
           if (!isBBQSkewersOrHotPot) {
+            if (debugSnapshot) {
+              debugSnapshot.drops.drop_keywordMismatch++;
+            }
             continue;
+          }
+          
+          if (debugSnapshot) {
+            debugSnapshot.pipeline.afterKeywordFilterCount++;
           }
         }
         
@@ -686,6 +914,21 @@ async function fetchPlacesForCategory(
     const scoreB = calculateCombinedRankingScore(rankB, b.user_ratings_total);
     return scoreA - scoreB; // Lower score = better
   });
+  
+  // STEP 0: Finalize debug snapshot for 夜宵
+  if (debugSnapshot) {
+    debugSnapshot.pipeline.finalCount = allPlaces.length;
+    debugSnapshot.samples.filteredTop20 = allPlaces.slice(0, 20).map(p => ({
+      placeId: p.id,
+      name: p.name,
+      rating: p.rating,
+      userRatingCount: p.user_ratings_total,
+      address: p.address,
+    }));
+    
+    // Attach debug snapshot to return value
+    (allPlaces as any).__debugSnapshot = debugSnapshot;
+  }
 
   return allPlaces;
 }
@@ -693,22 +936,937 @@ async function fetchPlacesForCategory(
 /**
  * Fetch all places from all cities and categories, then merge and sort by popularity
  */
-async function fetchAllPlacesFromGoogle(): Promise<SpendPlace[]> {
+/**
+ * STEP 3: Explain why a place was dropped (for debug mode)
+ */
+function explainDrop(
+  place: GooglePlaceResult,
+  rating: number,
+  userRatingsTotal: number | undefined,
+  distanceMiles: number,
+  tierThreshold: number
+): { dropped: boolean; reasons: string[] } {
+  const reasons: string[] = [];
+  
+  if (rating < 4.0) {
+    reasons.push(`drop_ratingTooLow (${rating} < 4.0)`);
+  }
+  if (userRatingsTotal !== undefined && userRatingsTotal > tierThreshold) {
+    reasons.push(`drop_userRatingCountTooHigh (${userRatingsTotal} > ${tierThreshold})`);
+  }
+  if (!place.geometry?.location) {
+    reasons.push('drop_missingFields (no location)');
+  }
+  if (distanceMiles > MAX_DISTANCE_MILES) {
+    reasons.push(`drop_distanceTooFar (${distanceMiles.toFixed(1)}mi > ${MAX_DISTANCE_MILES}mi)`);
+  }
+  
+  return {
+    dropped: reasons.length > 0,
+    reasons,
+  };
+}
+
+/**
+ * STEP 4: Calculate Chinese/Bubble Tea relevance score (0-100)
+ * Used as a boost, not a hard filter
+ */
+function calculateRelevanceScore(
+  nameLower: string,
+  addressLower: string,
+  isForChinese: boolean
+): number {
+  let score = 0;
+  
+  if (isForChinese) {
+    // Chinese restaurant keywords
+    const chineseKeywords = ['chinese', '中餐', '川菜', '粤菜', '火锅', 'sichuan', 'cantonese', 'hot pot', 'x-pot', 'x pot', 'the x'];
+    for (const keyword of chineseKeywords) {
+      if (nameLower.includes(keyword)) score += 20;
+      if (addressLower.includes(keyword)) score += 10;
+    }
+  } else {
+    // Bubble tea keywords
+    const bobaKeywords = ['bubble tea', 'boba', '奶茶', 'tapioca', 'milk tea'];
+    for (const keyword of bobaKeywords) {
+      if (nameLower.includes(keyword)) score += 20;
+      if (addressLower.includes(keyword)) score += 10;
+    }
+  }
+  
+  return Math.min(100, score);
+}
+
+/**
+ * STEP 5: Process results with tiered thresholds (30/80/150)
+ * STEP 4: Chinese/Bubble Tea check is now a SCORE BOOST, not a hard filter
+ * STEP 3: Use explainDrop for X-Pot debugging
+ */
+async function processResultsWithTieredThresholds(
+  results: GooglePlaceResult[],
+  seenPlaceIds: Set<string>,
+  existingPlaces: SpendPlace[],
+  searchCenter: { lat: number; lng: number },
+  cityName: string,
+  isForChinese: boolean,
+  debugMode: boolean,
+  debugInfo: any,
+  dropCounters: {
+    drop_dedup: number;
+    drop_ratingTooLow: number;
+    drop_userRatingCountTooHigh: number;
+    drop_missingFields: number;
+    drop_distanceTooFar: number;
+  }
+): Promise<SpendPlace[]> {
+  const newPlaces: SpendPlace[] = [];
+  
+  // STEP 5: Tiered thresholds
+  const TIERS = [
+    { threshold: 30, ratingMin: 4.0 },
+    { threshold: 80, ratingMin: 4.0 },
+    { threshold: 150, ratingMin: 3.8 },
+  ];
+  
+  for (const tier of TIERS) {
+    if (existingPlaces.length + newPlaces.length >= 3) {
+      break; // Stop once we have >= 3
+    }
+    
+    const tierPlaces: SpendPlace[] = [];
+    const tierDropCounters = {
+      drop_dedup: 0,
+      drop_ratingTooLow: 0,
+      drop_userRatingCountTooHigh: 0,
+      drop_missingFields: 0,
+      drop_distanceTooFar: 0,
+    };
+    
+    for (const result of results) {
+      if (seenPlaceIds.has(result.place_id)) {
+        tierDropCounters.drop_dedup++;
+        continue;
+      }
+      
+      const rating = result.rating || 0;
+      const userRatingsTotal = result.user_ratings_total;
+      
+      // STEP 5: Apply tier threshold
+      if (rating < tier.ratingMin) {
+        tierDropCounters.drop_ratingTooLow++;
+        continue;
+      }
+      if (userRatingsTotal !== undefined && userRatingsTotal > tier.threshold) {
+        tierDropCounters.drop_userRatingCountTooHigh++;
+        continue;
+      }
+      
+      if (!result.geometry?.location) {
+        tierDropCounters.drop_missingFields++;
+        continue;
+      }
+      
+      const distanceMiles = calculateDistanceMiles(
+        searchCenter.lat,
+        searchCenter.lng,
+        result.geometry.location.lat,
+        result.geometry.location.lng
+      );
+      
+      if (distanceMiles > MAX_DISTANCE_MILES) {
+        tierDropCounters.drop_distanceTooFar++;
+        continue;
+      }
+      
+      // STEP 3: Check for X-Pot and use explainDrop (debug only)
+      const nameLower = result.name.toLowerCase();
+      const addressLower = (result.formatted_address || '').toLowerCase();
+      const isKnownStore = debugMode && (nameLower.includes('x-pot') || nameLower.includes('x pot') || 
+                        (nameLower.includes('the x') && addressLower.includes('cupertino')));
+      
+      if (isKnownStore) {
+        const dropExplanation = explainDrop(result, rating, userRatingsTotal, distanceMiles, tier.threshold);
+        
+        if (dropExplanation.dropped) {
+          // Only log if dropped
+          console.log(`[Spend Today] 新店打卡 - X-Pot dropped (tier ${tier.threshold}):`, dropExplanation.reasons);
+          continue; // Skip if dropped at this tier
+        }
+        
+        if (!debugInfo.knownStoreCheck) {
+          debugInfo.knownStoreCheck = {
+            found: true,
+            inRawResults: true,
+            place: {
+              id: result.place_id,
+              name: result.name,
+              rating,
+              userRatingCount: userRatingsTotal,
+              address: result.formatted_address,
+            },
+            dropExplanation,
+            willBeAdded: !dropExplanation.dropped,
+          };
+        }
+      }
+      
+      // STEP 4: Calculate relevance score (boost, not filter)
+      const relevanceScore = calculateRelevanceScore(nameLower, addressLower, isForChinese);
+      
+      // Get photo
+      let photoUrl: string | undefined;
+      if (result.photos && result.photos.length > 0 && result.photos[0].photo_reference) {
+        const photoRef = result.photos[0].photo_reference;
+        if (photoRef.startsWith('places/')) {
+          photoUrl = `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=200&key=${GOOGLE_PLACES_API_KEY}`;
+        } else {
+          photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=200&photo_reference=${photoRef}&key=${GOOGLE_PLACES_API_KEY}`;
+        }
+      }
+      
+      const mapsUrl = result.google_maps_uri || `https://www.google.com/maps/place/?q=place_id:${result.place_id}`;
+      const finalUserRatingsTotal = userRatingsTotal || 0;
+      const newnessScore = calculateNewnessScore(rating, finalUserRatingsTotal);
+      
+      // STEP 4: Add relevance boost to newness score
+      const finalScore = newnessScore + (relevanceScore * 0.1); // 10% boost from relevance
+      
+      seenPlaceIds.add(result.place_id);
+      tierPlaces.push({
+        id: result.place_id,
+        name: result.name,
+        category: '新店打卡',
+        rating: rating,
+        user_ratings_total: finalUserRatingsTotal,
+        address: result.formatted_address || '',
+        maps_url: mapsUrl,
+        photo_url: photoUrl,
+        city: cityName,
+        score: finalScore,
+        distance_miles: parseFloat(distanceMiles.toFixed(1)),
+      });
+    }
+    
+    // Update drop counters
+    Object.keys(tierDropCounters).forEach(key => {
+      const typedKey = key as keyof typeof tierDropCounters;
+      dropCounters[typedKey] = (dropCounters[typedKey] || 0) + tierDropCounters[typedKey];
+    });
+    
+    newPlaces.push(...tierPlaces);
+    if (debugMode && tierPlaces.length > 0) {
+      // Only log if places were added (debug mode)
+      if (debugMode && tierPlaces.length > 0) {
+        console.log(`[Spend Today] 新店打卡 - Tier ${tier.threshold}: +${tierPlaces.length}`);
+      }
+    }
+  }
+  
+  return newPlaces;
+}
+
+/**
+ * Fetch "新店打卡" places from 5 cities (Chinese restaurants + bubble tea)
+ * Uses newness scoring based on userRatingCount
+ * 
+ * Search strategy:
+ * - STEP 6: Prefer searchNearby for discovery, searchText only as fallback
+ * - Chinese restaurants: includedTypes=["restaurant"]
+ * - Bubble tea: includedTypes=["cafe", "restaurant"]
+ * - STEP 4: Chinese/Bubble Tea check is now a SCORE BOOST, not a hard filter
+ * - STEP 5: Tiered thresholds: tier1 (<=30), tier2 (<=80), tier3 (<=150)
+ */
+async function fetchNewPlaces(debugMode: boolean = false): Promise<SpendPlace[]> {
+  const NEW_PLACES_CITIES: Array<keyof typeof CITY_COORDS> = ['cupertino', 'sunnyvale', 'sanjose', 'milpitas', 'fremont'];
+  const RADIUS_METERS = 24140; // ~15 miles
+  
+  // Chinese restaurant keywords
+  const CHINESE_KEYWORDS = ['Chinese', 'Chinese restaurant', '中餐', '川菜', '粤菜', '火锅', 'Sichuan', 'Cantonese'];
+  // Bubble tea keywords
+  const BUBBLE_TEA_KEYWORDS = ['bubble tea', 'boba', '奶茶'];
+  
+  const allPlaces: SpendPlace[] = [];
+  const seenPlaceIds = new Set<string>();
+  let apiCallsMade = 0;
+  
+  // Debug mode: collect debug info
+  const debugInfo: any = {
+    requests: [],
+    rawPlacesByRequest: [] as any[],
+    filteredPlacesByRequest: [] as any[],
+    dropCountersByRequest: [] as any[],
+    knownStoreCheck: null as any,
+  };
+  
+  // STEP 6: Prefer searchNearby for discovery (no keywords, broader coverage)
+  // Then use searchText with keywords only if results < 3
+  for (const city of NEW_PLACES_CITIES) {
+    const searchCenter = CITY_COORDS[city];
+    // Format city name properly
+    const cityNameMap: Record<string, string> = {
+      'cupertino': 'Cupertino',
+      'sunnyvale': 'Sunnyvale',
+      'sanjose': 'San Jose',
+      'milpitas': 'Milpitas',
+      'fremont': 'Fremont',
+    };
+    const cityName = cityNameMap[city] || city.charAt(0).toUpperCase() + city.slice(1);
+    
+    // STEP 6: First try searchNearby (broader discovery, no keyword filter)
+    const dropCounters = {
+      drop_dedup: 0,
+      drop_ratingTooLow: 0,
+      drop_userRatingCountTooHigh: 0,
+      drop_missingFields: 0,
+      drop_distanceTooFar: 0,
+    };
+    
+    try {
+      const nearbyResults = await searchGooglePlacesNearby(
+        searchCenter,
+        RADIUS_METERS,
+        'restaurant',
+        undefined, // No keyword - use searchNearby
+        false, // debugMode
+        true // enableDebugLog
+      );
+      apiCallsMade++;
+      if (debugMode) {
+        console.log(`[Spend Today] 新店打卡 - Nearby search (${city}): ${nearbyResults.length} results`);
+      }
+      
+      // STEP 1: Log raw places in debug mode
+      if (debugMode) {
+        const rawPlacesSummary = nearbyResults.slice(0, 20).map(r => ({
+          id: r.place_id,
+          displayName: r.name,
+          rating: r.rating,
+          userRatingCount: r.user_ratings_total,
+          shortFormattedAddress: r.formatted_address,
+        }));
+        debugInfo.rawPlacesByRequest.push({
+          request: { city, method: 'searchNearby', includedTypes: ['restaurant'], radiusMeters: RADIUS_METERS },
+          rawPlacesCount: nearbyResults.length,
+          rawPlaces: rawPlacesSummary,
+        });
+      }
+      
+      // Process nearby results with tiered thresholds (STEP 5)
+      const tierResults = await processResultsWithTieredThresholds(
+        nearbyResults,
+        seenPlaceIds,
+        allPlaces,
+        searchCenter,
+        cityName,
+        true, // isForChinese
+        debugMode,
+        debugInfo,
+        dropCounters
+      );
+      
+      if (tierResults.length > 0) {
+        allPlaces.push(...tierResults);
+      }
+      
+      // STEP 2: Log filtered count and drop reasons
+      if (debugMode) {
+        debugInfo.filteredPlacesByRequest.push({
+          request: { city, method: 'searchNearby' },
+          rawPlacesCount: nearbyResults.length,
+          filteredCount: tierResults.length,
+          dropCounters: { ...dropCounters },
+        });
+      }
+    } catch (error) {
+      console.error(`[Spend Today] 🔍 新店打卡 - STEP 6 - Nearby search error (${city}):`, error);
+    }
+    
+    // STEP 6: Fallback to searchText with keywords only if we still need more results
+    if (allPlaces.length < 3) {
+      // Search for Chinese restaurants with keywords (fallback)
+      for (const keyword of CHINESE_KEYWORDS.slice(0, 3)) { // Limit to first 3 to reduce calls
+        try {
+        // STEP 1: Log request details (debug mode)
+        const requestInfo = {
+          city,
+          center: { lat: searchCenter.lat, lng: searchCenter.lng },
+          radiusMeters: RADIUS_METERS,
+          includedTypes: ['restaurant'],
+          keyword,
+          maxResultCount: 8,
+          rankPreference: 'RELEVANCE', // searchText uses relevance by default
+        };
+        
+        if (debugMode) {
+          debugInfo.requests.push(requestInfo);
+        }
+        
+        const chineseResults = await searchGooglePlacesNearby(
+          searchCenter,
+          RADIUS_METERS,
+          'restaurant',
+          keyword,
+          false, // debugMode
+          true // enableDebugLog - only for 新店打卡
+        );
+        apiCallsMade++;
+        
+        // STEP 1: Log raw places (first 20) in debug mode
+        if (debugMode) {
+          const rawPlacesSummary = chineseResults.slice(0, 20).map(r => ({
+            id: r.place_id,
+            displayName: r.name,
+            rating: r.rating,
+            userRatingCount: r.user_ratings_total,
+            shortFormattedAddress: r.formatted_address,
+          }));
+          debugInfo.rawPlacesByRequest.push({
+            request: requestInfo,
+            rawPlacesCount: chineseResults.length,
+            rawPlaces: rawPlacesSummary,
+          });
+        }
+        
+        // STEP 2: Use tiered thresholds processing (STEP 5) for fallback searchText results
+        const fallbackDropCounters = {
+          drop_dedup: 0,
+          drop_ratingTooLow: 0,
+          drop_userRatingCountTooHigh: 0,
+          drop_missingFields: 0,
+          drop_distanceTooFar: 0,
+        };
+        
+        const fallbackResults = await processResultsWithTieredThresholds(
+          chineseResults,
+          seenPlaceIds,
+          allPlaces,
+          searchCenter,
+          cityName,
+          true, // isForChinese
+          debugMode,
+          debugInfo,
+          fallbackDropCounters
+        );
+        
+        if (fallbackResults.length > 0) {
+          allPlaces.push(...fallbackResults);
+        }
+        
+        // STEP 2: Log filtered count and drop reasons
+        if (debugMode) {
+          debugInfo.filteredPlacesByRequest.push({
+            request: requestInfo,
+            rawPlacesCount: chineseResults.length,
+            filteredCount: fallbackResults.length,
+            dropCounters: fallbackDropCounters,
+          });
+        }
+        
+        // Small delay between keywords to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error(`[Spend Today] Error fetching Chinese restaurants for ${city} with keyword "${keyword}":`, error);
+      }
+    }
+    
+    // Search for bubble tea with multiple keywords and types
+    for (const keyword of BUBBLE_TEA_KEYWORDS) {
+      // Try both cafe and restaurant types
+      for (const type of ['cafe', 'restaurant']) {
+        try {
+          const bubbleTeaResults = await searchGooglePlacesNearby(
+            searchCenter,
+            RADIUS_METERS,
+            type,
+            keyword,
+            false, // debugMode
+            true // enableDebugLog - only for 新店打卡
+          );
+          apiCallsMade++;
+          
+          // STEP 2: Track filtering with detailed drop counters
+          const dropCounters = {
+            drop_dedup: 0,
+            drop_ratingTooLow: 0,
+            drop_userRatingCountTooHigh: 0,
+            drop_missingFields: 0,
+            drop_distanceTooFar: 0,
+            drop_notBoba: 0,
+          };
+          
+          const beforeAddCount = allPlaces.length;
+          for (const result of bubbleTeaResults) {
+            if (seenPlaceIds.has(result.place_id)) {
+              dropCounters.drop_dedup++;
+              continue;
+            }
+            seenPlaceIds.add(result.place_id);
+            
+            const rating = result.rating || 0;
+            const userRatingsTotal = result.user_ratings_total;
+            
+            // Primary filter: rating >= 4.0 and userRatingCount <= 50
+            // Treat missing userRatingCount as large but do NOT drop everything (allow if rating is good)
+            if (rating < 4.0) {
+              dropCounters.drop_ratingTooLow++;
+              continue;
+            }
+            // Only filter by userRatingCount if it exists and is > 50
+            if (userRatingsTotal !== undefined && userRatingsTotal > 50) {
+              dropCounters.drop_userRatingCountTooHigh++;
+              continue;
+            }
+            
+            if (!result.geometry?.location) {
+              dropCounters.drop_missingFields++;
+              continue;
+            }
+            
+            const distanceMiles = calculateDistanceMiles(
+              searchCenter.lat,
+              searchCenter.lng,
+              result.geometry.location.lat,
+              result.geometry.location.lng
+            );
+            
+            if (distanceMiles > MAX_DISTANCE_MILES) {
+              dropCounters.drop_distanceTooFar++;
+              continue;
+            }
+            
+            // Check if it's a bubble tea shop
+            const nameLower = result.name.toLowerCase();
+            const addressLower = (result.formatted_address || '').toLowerCase();
+            const isBubbleTea = nameLower.includes('bubble tea') || nameLower.includes('boba') || 
+                               nameLower.includes('奶茶') || nameLower.includes('tapioca') ||
+                               addressLower.includes('bubble tea') || addressLower.includes('boba');
+            
+            if (!isBubbleTea) {
+              dropCounters.drop_notBoba++;
+              continue;
+            }
+            
+            // Get photo (max 1)
+            let photoUrl: string | undefined;
+            if (result.photos && result.photos.length > 0 && result.photos[0].photo_reference) {
+              const photoRef = result.photos[0].photo_reference;
+              if (photoRef.startsWith('places/')) {
+                photoUrl = `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=200&key=${GOOGLE_PLACES_API_KEY}`;
+              } else {
+                photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=200&photo_reference=${photoRef}&key=${GOOGLE_PLACES_API_KEY}`;
+              }
+            }
+            
+            // Use googleMapsUri if available, otherwise construct from place_id
+            const mapsUrl = result.google_maps_uri || `https://www.google.com/maps/place/?q=place_id:${result.place_id}`;
+            // Use 0 for userRatingCount if missing (for scoring purposes)
+            const finalUserRatingsTotal = userRatingsTotal || 0;
+            const newnessScore = calculateNewnessScore(rating, finalUserRatingsTotal);
+            
+            allPlaces.push({
+              id: result.place_id,
+              name: result.name,
+              category: '新店打卡',
+              rating: rating,
+              user_ratings_total: finalUserRatingsTotal,
+              address: result.formatted_address || '',
+              maps_url: mapsUrl,
+              photo_url: photoUrl,
+              city: cityName,
+              score: newnessScore,
+              distance_miles: parseFloat(distanceMiles.toFixed(1)),
+            });
+          }
+          
+        // STEP 2: Log filtered count (debug only)
+        if (debugMode) {
+          const addedCount = allPlaces.length - beforeAddCount;
+          const totalFiltered = Object.values(dropCounters).reduce((a, b) => a + b, 0);
+          if (totalFiltered > 0) {
+            // Only log if filtered (debug mode)
+            if (debugMode && totalFiltered > 0) {
+              console.log(`[Spend Today] 新店打卡 - Bubble tea filtered: ${addedCount}/${bubbleTeaResults.length}`);
+            }
+          }
+        }
+          
+          // Small delay between searches to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+          console.error(`[Spend Today] Error fetching bubble tea for ${city} with keyword "${keyword}" and type "${type}":`, error);
+        }
+      }
+    }
+    
+    // Small delay between cities to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  
+  // Sort by newness score (descending) - higher score = newer
+  allPlaces.sort((a, b) => b.score - a.score);
+  
+  if (debugMode) {
+    console.log(`[Spend Today] 新店打卡 - Initial: ${allPlaces.length} places (${apiCallsMade} calls)`);
+  }
+  
+  // STEP 5: Tiered thresholds are now handled in processResultsWithTieredThresholds
+  // Old relaxed search code removed - no longer needed
+    if (debugMode) {
+      // Only log in debug mode
+      if (debugMode) {
+        console.log(`[Spend Today] 新店打卡 - Relaxing threshold: ${allPlaces.length} places`);
+      }
+    }
+    
+    // Re-search with relaxed threshold (userRatingCount <= 100)
+    const relaxedPlaces: SpendPlace[] = [];
+    const relaxedSeenPlaceIds = new Set<string>(seenPlaceIds); // Keep existing places to avoid duplicates
+    
+    for (const city of NEW_PLACES_CITIES) {
+      const searchCenter = CITY_COORDS[city];
+      const cityNameMap: Record<string, string> = {
+        'cupertino': 'Cupertino',
+        'sunnyvale': 'Sunnyvale',
+        'sanjose': 'San Jose',
+        'milpitas': 'Milpitas',
+        'fremont': 'Fremont',
+      };
+      const cityName = cityNameMap[city] || city.charAt(0).toUpperCase() + city.slice(1);
+      
+      // Re-search Chinese restaurants with relaxed threshold
+      for (const keyword of CHINESE_KEYWORDS.slice(0, 3)) { // Limit to first 3 keywords to avoid too many calls
+        try {
+          const chineseResults = await searchGooglePlacesNearby(
+            searchCenter,
+            RADIUS_METERS,
+            'restaurant',
+            keyword,
+            false, // debugMode
+            true // enableDebugLog - only for 新店打卡
+          );
+          apiCallsMade++;
+          
+          // STEP 5: If rawPlacesCount>0 but filteredCount==0, relax filters
+          
+          for (const result of chineseResults) {
+            if (relaxedSeenPlaceIds.has(result.place_id)) continue;
+            relaxedSeenPlaceIds.add(result.place_id);
+            
+            const rating = result.rating || 0;
+            const userRatingsTotal = result.user_ratings_total || 0;
+            
+            // Relaxed filter: rating >= 3.8 (relaxed from 4.0) and userRatingCount <= 100
+            if (rating < 3.8 || userRatingsTotal > 100) continue;
+            
+            if (!result.geometry?.location) continue;
+            
+            const distanceMiles = calculateDistanceMiles(
+              searchCenter.lat,
+              searchCenter.lng,
+              result.geometry.location.lat,
+              result.geometry.location.lng
+            );
+            
+            if (distanceMiles > MAX_DISTANCE_MILES) continue;
+            
+            // Check if it's a Chinese restaurant
+            const nameLower = result.name.toLowerCase();
+            const addressLower = (result.formatted_address || '').toLowerCase();
+            const isChinese = nameLower.includes('chinese') || nameLower.includes('中餐') || 
+                             nameLower.includes('川菜') || nameLower.includes('粤菜') ||
+                             nameLower.includes('火锅') || nameLower.includes('sichuan') ||
+                             nameLower.includes('cantonese') || addressLower.includes('chinese');
+            
+            if (!isChinese) continue;
+            
+            // Get photo
+            let photoUrl: string | undefined;
+            if (result.photos && result.photos.length > 0 && result.photos[0].photo_reference) {
+              const photoRef = result.photos[0].photo_reference;
+              if (photoRef.startsWith('places/')) {
+                photoUrl = `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=200&key=${GOOGLE_PLACES_API_KEY}`;
+              } else {
+                photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=200&photo_reference=${photoRef}&key=${GOOGLE_PLACES_API_KEY}`;
+              }
+            }
+            
+            const mapsUrl = result.google_maps_uri || `https://www.google.com/maps/place/?q=place_id:${result.place_id}`;
+            // Use 0 for userRatingCount if missing (for scoring purposes)
+            const finalUserRatingsTotal = userRatingsTotal || 0;
+            const newnessScore = calculateNewnessScore(rating, finalUserRatingsTotal);
+            
+            relaxedPlaces.push({
+              id: result.place_id,
+              name: result.name,
+              category: '新店打卡',
+              rating: rating,
+              user_ratings_total: finalUserRatingsTotal,
+              address: result.formatted_address || '',
+              maps_url: mapsUrl,
+              photo_url: photoUrl,
+              city: cityName,
+              score: newnessScore,
+              distance_miles: parseFloat(distanceMiles.toFixed(1)),
+            });
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+          console.error(`[Spend Today] Error in relaxed search for Chinese restaurants (${city}, ${keyword}):`, error);
+        }
+      }
+      
+      // Re-search bubble tea with relaxed threshold
+      for (const keyword of BUBBLE_TEA_KEYWORDS.slice(0, 2)) { // Limit to first 2 keywords
+        for (const type of ['cafe', 'restaurant']) {
+          try {
+            const bubbleTeaResults = await searchGooglePlacesNearby(
+              searchCenter,
+              RADIUS_METERS,
+              type,
+              keyword,
+              false, // debugMode
+              true // enableDebugLog - only for 新店打卡
+            );
+            apiCallsMade++;
+            
+            // STEP 5: If rawPlacesCount>0 but filteredCount==0, relax filters
+            
+            for (const result of bubbleTeaResults) {
+              if (relaxedSeenPlaceIds.has(result.place_id)) continue;
+              relaxedSeenPlaceIds.add(result.place_id);
+              
+              const rating = result.rating || 0;
+              const userRatingsTotal = result.user_ratings_total || 0;
+              
+              // Relaxed filter: rating >= 3.8 (relaxed from 4.0) and userRatingCount <= 100
+              // Treat missing userRatingCount as large but do NOT drop everything
+              if (rating < 3.8) continue;
+              if (userRatingsTotal !== undefined && userRatingsTotal > 100) continue;
+              
+              if (!result.geometry?.location) continue;
+              
+              const distanceMiles = calculateDistanceMiles(
+                searchCenter.lat,
+                searchCenter.lng,
+                result.geometry.location.lat,
+                result.geometry.location.lng
+              );
+              
+              if (distanceMiles > MAX_DISTANCE_MILES) continue;
+              
+              const nameLower = result.name.toLowerCase();
+              const addressLower = (result.formatted_address || '').toLowerCase();
+              const isBubbleTea = nameLower.includes('bubble tea') || nameLower.includes('boba') || 
+                                 nameLower.includes('奶茶') || nameLower.includes('tapioca') ||
+                                 addressLower.includes('bubble tea') || addressLower.includes('boba');
+              
+              if (!isBubbleTea) continue;
+              
+              let photoUrl: string | undefined;
+              if (result.photos && result.photos.length > 0 && result.photos[0].photo_reference) {
+                const photoRef = result.photos[0].photo_reference;
+                if (photoRef.startsWith('places/')) {
+                  photoUrl = `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=200&key=${GOOGLE_PLACES_API_KEY}`;
+                } else {
+                  photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=200&photo_reference=${photoRef}&key=${GOOGLE_PLACES_API_KEY}`;
+                }
+              }
+              
+              const mapsUrl = result.google_maps_uri || `https://www.google.com/maps/place/?q=place_id:${result.place_id}`;
+              // Use 0 for userRatingCount if missing (for scoring purposes)
+              const finalUserRatingsTotal = userRatingsTotal || 0;
+              const newnessScore = calculateNewnessScore(rating, finalUserRatingsTotal);
+              
+              relaxedPlaces.push({
+                id: result.place_id,
+                name: result.name,
+                category: '新店打卡',
+                rating: rating,
+                user_ratings_total: finalUserRatingsTotal,
+                address: result.formatted_address || '',
+                maps_url: mapsUrl,
+                photo_url: photoUrl,
+                city: cityName,
+                score: newnessScore,
+                distance_miles: parseFloat(distanceMiles.toFixed(1)),
+              });
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 100));
+          } catch (error) {
+            console.error(`[Spend Today] Error in relaxed search for bubble tea (${city}, ${keyword}, ${type}):`, error);
+          }
+        }
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    
+    // Merge relaxed results (avoid duplicates)
+    const existingIds = new Set(allPlaces.map(p => p.id));
+    const newRelaxedPlaces = relaxedPlaces.filter(p => !existingIds.has(p.id));
+    allPlaces.push(...newRelaxedPlaces);
+    
+    // Re-sort by newness score
+    allPlaces.sort((a, b) => b.score - a.score);
+    
+    if (debugMode && newRelaxedPlaces.length > 0) {
+      console.log(`[Spend Today] 新店打卡 - Relaxed search: +${newRelaxedPlaces.length} places`);
+    }
+  }
+  
+  if (debugMode) {
+    // Only log summary in debug mode
+    if (debugMode) {
+      console.log(`[Spend Today] 新店打卡 - Final: ${allPlaces.length} places (${apiCallsMade} calls)`);
+    }
+  }
+  
+  // Debug mode: if known store not found, run wide net query
+  if (debugMode && (!debugInfo.knownStoreCheck || !debugInfo.knownStoreCheck.found)) {
+    try {
+      // Wide net query: center near X-Pot, larger radius, no keyword filter
+      const wideNetCenter = { lat: 37.3226, lng: -122.0405 }; // Near X-Pot Cupertino
+      // Use searchNearby directly (not searchText) for wide net query
+      const wideNetUrl = 'https://places.googleapis.com/v1/places:searchNearby';
+      const wideNetRequestBody = {
+        includedTypes: ['restaurant'],
+        maxResultCount: 30,
+        locationRestriction: {
+          circle: {
+            center: {
+              latitude: wideNetCenter.lat,
+              longitude: wideNetCenter.lng,
+            },
+            radius: 12000, // 12km radius
+          },
+        },
+        rankPreference: 'DISTANCE', // Use DISTANCE to surface nearby places
+      };
+      
+      const wideNetResponse = await fetch(wideNetUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.photos,places.googleMapsUri',
+        },
+        body: JSON.stringify(wideNetRequestBody),
+      });
+      
+      if (!wideNetResponse.ok) {
+        const errorText = await wideNetResponse.text();
+        console.error(`[Spend Today] 🔍 新店打卡 - STEP 2 - Wide net HTTP error: ${wideNetResponse.status}`, errorText);
+        throw new Error(`Wide net query failed: ${wideNetResponse.status}`);
+      }
+      
+      const wideNetData: NewPlacesSearchNearbyResponse = await wideNetResponse.json();
+      const wideNetPlaces = wideNetData.places || [];
+      
+      // Convert to GooglePlaceResult format
+      const wideNetResults: GooglePlaceResult[] = wideNetPlaces.map(place => ({
+        place_id: place.id,
+        name: place.displayName?.text || '',
+        rating: place.rating,
+        user_ratings_total: place.userRatingCount,
+        formatted_address: place.formattedAddress,
+        geometry: place.location ? {
+          location: {
+            lat: place.location.latitude,
+            lng: place.location.longitude,
+          },
+        } : undefined,
+        photos: place.photos && place.photos.length > 0 ? [{
+          photo_reference: place.photos[0].name,
+        }] : undefined,
+        google_maps_uri: place.googleMapsUri,
+      }));
+      
+      // Check if X-Pot appears in wide net results
+      const xPotResult = wideNetResults.find(r => 
+        r.name.toLowerCase().includes('x-pot') || 
+        r.name.toLowerCase().includes('x pot')
+      );
+      
+      if (xPotResult) {
+        debugInfo.knownStoreCheck = {
+          found: true,
+          inRawResults: true,
+          inWideNet: true,
+          place: {
+            id: xPotResult.place_id,
+            name: xPotResult.name,
+            rating: xPotResult.rating,
+            userRatingCount: xPotResult.user_ratings_total,
+            address: xPotResult.formatted_address,
+          },
+          wideNetQuery: {
+            center: wideNetCenter,
+            radiusMeters: 12000,
+            includedTypes: ['restaurant'],
+            keyword: undefined,
+            maxResultCount: 30,
+            rawPlacesCount: wideNetResults.length,
+          },
+        };
+      } else {
+        debugInfo.knownStoreCheck = {
+          found: false,
+          inRawResults: false,
+          inWideNet: false,
+          wideNetQuery: {
+            center: wideNetCenter,
+            radiusMeters: 12000,
+            includedTypes: ['restaurant'],
+            keyword: undefined,
+            maxResultCount: 30,
+            rawPlacesCount: wideNetResults.length,
+          },
+        };
+      }
+    } catch (error) {
+      console.error(`[Spend Today] 🔍 新店打卡 - STEP 2 - Wide net query error:`, error);
+    }
+  }
+  
+  // Attach debug info to return value (will be used in handler if debug mode)
+  (allPlaces as any).__debugInfo = debugMode ? debugInfo : undefined;
+  
+  return allPlaces;
+}
+
+// Remove old relaxed search code - now handled by tiered thresholds
+
+async function fetchAllPlacesFromGoogle(debugMode: boolean = false): Promise<SpendPlace[]> {
   // Only search in Cupertino and Sunnyvale (no San Jose)
   const cities: Array<keyof typeof CITY_COORDS> = ['cupertino', 'sunnyvale'];
-  const categories: Array<keyof typeof CATEGORY_KEYWORDS> = ['奶茶', '中餐', '甜品', '夜宵'];
+  const categories: Array<keyof typeof CATEGORY_KEYWORDS> = ['奶茶', '中餐', '夜宵'];
   
   const allPlaces: SpendPlace[] = [];
   // Track global order across all cities/categories to preserve Google Places ranking
   const globalPlaceOrderMap = new Map<string, number>();
   let globalOrderIndex = 0;
   
-  // Fetch from all combinations
+  // Collect debug snapshots for 夜宵
+  const nightSnackDebugSnapshots: any[] = [];
+  
+  // Fetch from all combinations (excluding 新店打卡 which is handled separately)
   for (const city of cities) {
     for (const category of categories) {
       try {
         // Don't pass userLocation - always use city center to ensure distance filtering works correctly
-        const places = await fetchPlacesForCategory(city, category);
+        const places = await fetchPlacesForCategory(city, category, debugMode);
+        
+        // Extract debug snapshot for 夜宵
+        if (category === '夜宵') {
+          const debugSnapshot = (places as any).__debugSnapshot;
+          if (debugSnapshot) {
+            delete (places as any).__debugSnapshot;
+            nightSnackDebugSnapshots.push(debugSnapshot);
+          }
+        }
+        
         // Assign global order indices to preserve Google Places ranking
         for (const place of places) {
           if (!globalPlaceOrderMap.has(place.id)) {
@@ -722,6 +1880,33 @@ async function fetchAllPlacesFromGoogle(): Promise<SpendPlace[]> {
         // Continue with other cities/categories
       }
     }
+  }
+  
+  // Store debug snapshots for handler
+  (allPlaces as any).__nightSnackDebugSnapshots = nightSnackDebugSnapshots;
+  
+  // Fetch "新店打卡" separately (5 cities, Chinese restaurants + bubble tea)
+  try {
+    const newPlaces = await fetchNewPlaces(debugMode);
+    // Extract debug info if present
+    const newPlacesDebugInfo = (newPlaces as any).__debugInfo;
+    if (newPlacesDebugInfo) {
+      delete (newPlaces as any).__debugInfo;
+    }
+    
+    // Assign global order indices
+    for (const place of newPlaces) {
+      if (!globalPlaceOrderMap.has(place.id)) {
+        globalPlaceOrderMap.set(place.id, globalOrderIndex++);
+      }
+      place.googlePlacesRank = globalPlaceOrderMap.get(place.id);
+    }
+    allPlaces.push(...newPlaces);
+    
+    // Store debug info for handler
+    (allPlaces as any).__newPlacesDebugInfo = newPlacesDebugInfo;
+  } catch (error) {
+    console.error('[Spend Today] Error fetching new places:', error);
   }
   
   // Remove duplicates by place_id (keep the one with the earliest order index = best ranking)
@@ -764,13 +1949,13 @@ async function fetchAllPlacesFromGoogle(): Promise<SpendPlace[]> {
 
 /**
  * Group places by category and return top 6 per category
- * Returns: { '奶茶': [...], '中餐': [...], '甜品': [...], '夜宵': [...] }
+ * Returns: { '奶茶': [...], '中餐': [...], '新店打卡': [...], '夜宵': [...] }
  */
 function groupPlacesByCategory(places: SpendPlace[]): Record<string, SpendPlace[]> {
   const byCategory: Record<string, SpendPlace[]> = {
     '奶茶': [],
     '中餐': [],
-    '甜品': [],
+    '新店打卡': [],
     '夜宵': [],
   };
   
@@ -780,24 +1965,480 @@ function groupPlacesByCategory(places: SpendPlace[]): Record<string, SpendPlace[
     }
   });
   
-  // Sort each category by score and take top 6
+  // Sort each category by score and take top 50
+  // For 新店打卡, score is newness score (higher = newer)
+  // For other categories, score is popularity score (higher = more popular)
   const result: Record<string, SpendPlace[]> = {};
   for (const category of Object.keys(byCategory)) {
     result[category] = byCategory[category]
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 50); // Return top 50 places per category (ranked by Google Places)
+      .sort((a, b) => b.score - a.score) // Higher score = better (works for both newness and popularity)
+      .slice(0, 50); // Return top 50 places per category
   }
   
   return result;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Security logging at handler start (without exposing the key)
-  console.log('[Spend Today] Handler started');
-  console.log('[Spend Today] VERCEL_ENV:', process.env.VERCEL_ENV || 'local');
-  console.log('[Spend Today] GOOGLE_PLACES_API_KEY exists:', !!process.env.GOOGLE_PLACES_API_KEY);
-  console.log('[Spend Today] GOOGLE_PLACES_API_KEY length:', process.env.GOOGLE_PLACES_API_KEY?.length || 0);
-  console.log('[Spend Today] All env vars containing "GOOGLE":', Object.keys(process.env).filter(k => k.toUpperCase().includes('GOOGLE')).join(', ') || 'None');
+  // STEP 1 & 2: Sanity checks
+  const debugMode = req.query.debug === '1';
+  
+  // STEP 1 & 2: Sanity checks for Hankow Cuisine (夜宵)
+  const nightSnackSanityCheck = req.query.nightSnackSanityCheck === '1';
+  
+  if (nightSnackSanityCheck && debugMode) {
+    try {
+      // STEP 0: Try to extract Place ID from Google Maps short link
+      const mapsShortLink = 'https://maps.app.goo.gl/DvQuw1BbziDNf6N88';
+      
+      let placeIdFromLink: string | null = null;
+      let placeDetailsFromLink: any = null;
+      
+      try {
+        // Follow redirect to get full URL
+        const redirectResponse = await fetch(mapsShortLink, { method: 'HEAD', redirect: 'follow' });
+        const fullUrl = redirectResponse.url;
+        
+        // Try to extract place_id from URL (format: .../place/.../... or ...?cid=... or .../data=...)
+        const placeIdMatch = fullUrl.match(/place[\/=]([^\/\?&]+)/i) || fullUrl.match(/cid[=:]([^&]+)/i);
+        if (placeIdMatch) {
+          placeIdFromLink = placeIdMatch[1];
+        }
+        
+        // If we have a place_id, try to get place details
+        if (placeIdFromLink) {
+          const placeDetailsUrl = `https://places.googleapis.com/v1/places/${placeIdFromLink}`;
+          const placeDetailsResponse = await fetch(placeDetailsUrl, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+              'X-Goog-FieldMask': 'id,displayName,rating,userRatingCount,formattedAddress,location,googleMapsUri',
+            },
+          });
+          
+          if (placeDetailsResponse.ok) {
+            placeDetailsFromLink = await placeDetailsResponse.json();
+          }
+        }
+      } catch (linkError: any) {
+        console.error(`[Spend Today] Error resolving link:`, linkError);
+      }
+      
+      // STEP 1: Direct query for "Hankow Cuisine" - try multiple variations
+      const directQueryUrl = 'https://places.googleapis.com/v1/places:searchText';
+      
+      // Try multiple query variations
+      const queryVariations = [
+        'Hankow Cuisine Sunnyvale',
+        'Hankow Cuisine',
+        'Hankow Cuisine Cupertino',
+        'Hankow Cuisine San Jose',
+        'Hankow Cuisine Bay Area',
+        'Hankou Cuisine', // Alternative spelling
+        '汉口食府', // Chinese name if applicable
+      ];
+      
+      const directResults: any[] = [];
+      let hankowFound = false;
+      let hankowData: any = null;
+      
+      for (const queryText of queryVariations) {
+        const directQueryBody = {
+          textQuery: queryText,
+          maxResultCount: 10, // Increased to 10 for better coverage
+        };
+        
+        try {
+          const directResponse = await fetch(directQueryUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+              'X-Goog-FieldMask': 'places.id,places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.googleMapsUri',
+            },
+            body: JSON.stringify(directQueryBody),
+          });
+          
+          if (!directResponse.ok) {
+            const errorText = await directResponse.text();
+            console.error(`[Spend Today] Direct query error for "${queryText}": ${directResponse.status}`);
+            continue; // Try next variation
+          }
+          
+          const directData: NewPlacesSearchNearbyResponse = await directResponse.json();
+          const directPlaces = directData.places || [];
+          
+          const queryResults = directPlaces.map(p => ({
+            name: p.displayName?.text,
+            placeId: p.id,
+            rating: p.rating,
+            userRatingCount: p.userRatingCount,
+            address: p.formattedAddress,
+            googleMapsUri: p.googleMapsUri,
+          }));
+          
+          directResults.push(...queryResults);
+          
+          // Check if Hankow Cuisine appears in this query
+          const hankowInThisQuery = queryResults.find(r => 
+            r.name?.toLowerCase().includes('hankow') || 
+            r.name?.toLowerCase().includes('han kow')
+          );
+          
+          if (hankowInThisQuery && !hankowFound) {
+            hankowFound = true;
+            hankowData = hankowInThisQuery;
+          }
+          
+          // Small delay between queries
+          await new Promise(resolve => setTimeout(resolve, 200));
+        } catch (error: any) {
+          console.error(`[Spend Today] Error for query "${queryText}":`, error);
+          continue; // Try next variation
+        }
+      }
+      
+      // Deduplicate results by placeId
+      const uniqueDirectResults = Array.from(
+        new Map(directResults.map(r => [r.placeId, r])).values()
+      );
+      
+      // STEP 2: Nearby search for multiple cities (wide net)
+      const nearbyUrl = 'https://places.googleapis.com/v1/places:searchNearby';
+      
+      // Try multiple cities
+      const citiesToTest = [
+        { name: 'Sunnyvale', center: CITY_COORDS.sunnyvale },
+        { name: 'Cupertino', center: CITY_COORDS.cupertino },
+        { name: 'San Jose', center: CITY_COORDS.sanjose },
+      ];
+      
+      const allNearbyResults: any[] = [];
+      let hankowInNearby: any = null;
+      
+      for (const city of citiesToTest) {
+        const nearbyBody = {
+          includedTypes: ['restaurant'],
+          maxResultCount: 30,
+          locationRestriction: {
+            circle: {
+              center: {
+                latitude: city.center.lat,
+                longitude: city.center.lng,
+              },
+              radius: 12000, // 12km
+            },
+          },
+          rankPreference: 'DISTANCE',
+        };
+        
+        try {
+          const nearbyResponse = await fetch(nearbyUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+              'X-Goog-FieldMask': 'places.id,places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.googleMapsUri',
+            },
+            body: JSON.stringify(nearbyBody),
+          });
+          
+          if (!nearbyResponse.ok) {
+            const errorText = await nearbyResponse.text();
+            console.error(`[Spend Today] Nearby search error for ${city.name}: ${nearbyResponse.status}`);
+            continue; // Try next city
+          }
+          
+          const nearbyData: NewPlacesSearchNearbyResponse = await nearbyResponse.json();
+          const nearbyPlaces = nearbyData.places || [];
+          
+          const cityResults = nearbyPlaces.map(p => ({
+            name: p.displayName?.text,
+            placeId: p.id,
+            rating: p.rating,
+            userRatingCount: p.userRatingCount,
+            address: p.formattedAddress,
+          }));
+          
+          allNearbyResults.push(...cityResults);
+          
+          // Check if Hankow Cuisine appears in this city's results
+          const hankowInThisCity = cityResults.find(r => 
+            r.name?.toLowerCase().includes('hankow') || 
+            r.name?.toLowerCase().includes('han kow')
+          );
+          
+          if (hankowInThisCity && !hankowInNearby) {
+            hankowInNearby = hankowInThisCity;
+          }
+          
+          // Small delay between cities
+          await new Promise(resolve => setTimeout(resolve, 200));
+        } catch (error: any) {
+          console.error(`[Spend Today] Error for ${city.name}:`, error);
+          continue; // Try next city
+        }
+      }
+      
+      // Deduplicate nearby results by placeId
+      const uniqueNearbyResults = Array.from(
+        new Map(allNearbyResults.map(r => [r.placeId, r])).values()
+      );
+      
+      // Check if place from link matches any results
+      let hankowFromLink = false;
+      if (placeDetailsFromLink) {
+        const linkPlaceId = placeDetailsFromLink.id;
+        const linkName = placeDetailsFromLink.displayName?.text?.toLowerCase() || '';
+        
+        // Check if it appears in direct query results
+        const foundInDirect = uniqueDirectResults.find(r => 
+          r.placeId === linkPlaceId || 
+          r.name?.toLowerCase().includes(linkName.split(' ')[0])
+        );
+        
+        // Check if it appears in nearby results
+        const foundInNearby = uniqueNearbyResults.find(r => 
+          r.placeId === linkPlaceId || 
+          r.name?.toLowerCase().includes(linkName.split(' ')[0])
+        );
+        
+        if (foundInDirect || foundInNearby) {
+          hankowFromLink = true;
+          if (!hankowFound && foundInDirect) {
+            hankowFound = true;
+            hankowData = foundInDirect;
+          }
+          if (!hankowInNearby && foundInNearby) {
+            hankowInNearby = foundInNearby;
+          }
+        }
+      }
+      
+      setCorsHeaders(res);
+      return res.status(200).json({
+        debug: true,
+        nightSnackSanityCheck: true,
+        step0_fromLink: {
+          mapsLink: mapsShortLink,
+          placeId: placeIdFromLink,
+          placeDetails: placeDetailsFromLink ? {
+            name: placeDetailsFromLink.displayName?.text,
+            placeId: placeDetailsFromLink.id,
+            rating: placeDetailsFromLink.rating,
+            userRatingCount: placeDetailsFromLink.userRatingCount,
+            address: placeDetailsFromLink.formattedAddress,
+            googleMapsUri: placeDetailsFromLink.googleMapsUri,
+          } : null,
+          foundInResults: hankowFromLink,
+        },
+        step1_directQuery: {
+          queries: queryVariations,
+          resultsCount: uniqueDirectResults.length,
+          results: uniqueDirectResults,
+          hankowFound: hankowFound,
+          hankowData: hankowData,
+        },
+        step2_nearbySearch: {
+          cities: citiesToTest.map(c => c.name),
+          radius: 12000,
+          resultsCount: uniqueNearbyResults.length,
+          results: uniqueNearbyResults,
+          hankowFound: !!hankowInNearby,
+          hankowData: hankowInNearby,
+        },
+        summary: {
+          foundFromLink: hankowFromLink,
+          foundInDirectQuery: hankowFound,
+          foundInNearbySearch: !!hankowInNearby,
+          conclusion: hankowFromLink || hankowFound || hankowInNearby
+            ? 'Hankow Cuisine exists in Google Places API' 
+            : 'Hankow Cuisine NOT found in Google Places API - may need to check: 1) Place ID/name spelling, 2) API permissions, 3) Place may be permanently closed',
+        },
+      });
+    } catch (error: any) {
+      console.error(`[Spend Today] 🔍 STEP 1/2 - Night snack sanity check error:`, error);
+      setCorsHeaders(res);
+      return res.status(500).json({
+        debug: true,
+        nightSnackSanityCheck: true,
+        error: error.message || String(error),
+      });
+    }
+  }
+  
+  // STEP 1 & 2: Sanity checks for X-Pot (新店打卡)
+  const xPotSanityCheck = req.query.sanityCheck === '1';
+  
+  if (xPotSanityCheck && debugMode) {
+    try {
+      // STEP 1: Direct query for "The X-Pot Cupertino"
+      const directQueryUrl = 'https://places.googleapis.com/v1/places:searchText';
+      const directQueryBody = {
+        textQuery: 'The X-Pot Cupertino',
+        maxResultCount: 10,
+      };
+      
+      const directResponse = await fetch(directQueryUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.googleMapsUri',
+        },
+        body: JSON.stringify(directQueryBody),
+      });
+      
+      if (!directResponse.ok) {
+        const errorText = await directResponse.text();
+        console.error(`[Spend Today] 🔍 STEP 1 - HTTP error: ${directResponse.status}`, errorText);
+        throw new Error(`Direct query failed: ${directResponse.status}`);
+      }
+      
+      const directData: NewPlacesSearchNearbyResponse = await directResponse.json();
+      const directPlaces = directData.places || [];
+      const directResults = directPlaces.map(p => ({
+        name: p.displayName?.text,
+        placeId: p.id,
+        rating: p.rating,
+        userRatingCount: p.userRatingCount,
+        address: p.formattedAddress,
+      }));
+      
+      // STEP 2: Nearby search for Cupertino
+      const cupertinoCenter = CITY_COORDS.cupertino;
+      const nearbyUrl = 'https://places.googleapis.com/v1/places:searchNearby';
+      const nearbyBody = {
+        includedTypes: ['restaurant'],
+        maxResultCount: 30,
+        locationRestriction: {
+          circle: {
+            center: {
+              latitude: cupertinoCenter.lat,
+              longitude: cupertinoCenter.lng,
+            },
+            radius: 12000, // 12km
+          },
+        },
+        rankPreference: 'DISTANCE',
+      };
+      
+      const nearbyResponse = await fetch(nearbyUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.googleMapsUri',
+        },
+        body: JSON.stringify(nearbyBody),
+      });
+      
+      if (!nearbyResponse.ok) {
+        const errorText = await nearbyResponse.text();
+        console.error(`[Spend Today] 🔍 STEP 2 - HTTP error: ${nearbyResponse.status}`, errorText);
+        throw new Error(`Nearby search failed: ${nearbyResponse.status}`);
+      }
+      
+      const nearbyData: NewPlacesSearchNearbyResponse = await nearbyResponse.json();
+      const nearbyPlaces = nearbyData.places || [];
+      const nearbyResults = nearbyPlaces.map(p => ({
+        name: p.displayName?.text,
+        placeId: p.id,
+        rating: p.rating,
+        userRatingCount: p.userRatingCount,
+        address: p.formattedAddress,
+      }));
+      
+      // Check if X-Pot appears in either result
+      const xPotInDirect = directResults.find(r => r.name?.toLowerCase().includes('x-pot') || r.name?.toLowerCase().includes('x pot'));
+      const xPotInNearby = nearbyResults.find(r => r.name?.toLowerCase().includes('x-pot') || r.name?.toLowerCase().includes('x pot'));
+      
+      setCorsHeaders(res);
+      return res.status(200).json({
+        debug: true,
+        sanityCheck: true,
+        step1_directQuery: {
+          query: 'The X-Pot Cupertino',
+          resultsCount: directPlaces.length,
+          results: directResults,
+          xPotFound: !!xPotInDirect,
+          xPotData: xPotInDirect || null,
+        },
+        step2_nearbySearch: {
+          center: cupertinoCenter,
+          radius: 12000,
+          resultsCount: nearbyPlaces.length,
+          results: nearbyResults,
+          xPotFound: !!xPotInNearby,
+          xPotData: xPotInNearby || null,
+        },
+      });
+    } catch (error: any) {
+      console.error(`[Spend Today] 🔍 STEP 1/2 - Sanity check error:`, error);
+      setCorsHeaders(res);
+      return res.status(500).json({
+        debug: true,
+        sanityCheck: true,
+        error: error.message || String(error),
+      });
+    }
+  }
+  
+  // STEP 3: Debug bypass mode (?debug=1&bypassFilter=1)
+  const bypassFilter = req.query.bypassFilter === '1';
+  
+  if (bypassFilter && debugMode) {
+    console.log(`[Spend Today] 🔍 STEP 3 - DEBUG BYPASS MODE: Running minimal query (San Jose, Chinese, restaurant)`);
+    
+    try {
+      // Minimal query: San Jose, Chinese, restaurant, radius=10000m, maxResultCount=10
+      const sanJoseCenter = CITY_COORDS.sanjose;
+      const bypassResults = await searchGooglePlacesNearby(
+        sanJoseCenter,
+        10000, // 10km radius
+        'restaurant',
+        'Chinese',
+        true // debugMode = true (bypass filtering in searchGooglePlacesNearby)
+      );
+      
+      // Return first 5 places with raw data (no filtering)
+      const rawPlaces = bypassResults.slice(0, 5).map(result => ({
+        name: result.name,
+        rating: result.rating,
+        userRatingCount: result.user_ratings_total,
+        place_id: result.place_id,
+        address: result.formatted_address,
+      }));
+      
+      setCorsHeaders(res);
+      return res.status(200).json({
+        debug: true,
+        bypassMode: true,
+        rawPlacesCount: bypassResults.length,
+        places: rawPlaces,
+        requestSummary: {
+          city: 'San Jose',
+          keyword: 'Chinese',
+          includedTypes: ['restaurant'],
+          radiusMeters: 10000,
+          maxResultCount: 10,
+        },
+      });
+    } catch (error: any) {
+      console.error(`[Spend Today] 🔍 STEP 3 - Bypass Error:`, error);
+      setCorsHeaders(res);
+      return res.status(500).json({
+        debug: true,
+        bypassMode: true,
+        error: error.message || String(error),
+        rawPlacesCount: 0,
+      });
+    }
+  }
+  // Security logging at handler start (only in non-production)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[Spend Today] Handler started');
+  }
   
   setCorsHeaders(res);
   
@@ -843,8 +2484,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     
-    // COST OPTIMIZATION DEBUG: Log cache miss
-    console.log(`[Spend Today] ❌ Cache MISS: will fetch from API`);
+    // Log cache miss (only in debug mode)
+    if (debugMode) {
+      console.log(`[Spend Today] Cache MISS: fetching from API`);
+    }
 
     // Fetch from Google Places API
     // If API key is not configured, skip API call and go directly to stale cache or seed data fallback
@@ -859,24 +2502,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
         // COST OPTIMIZATION DEBUG: Track API calls
         const apiCallStartTime = Date.now();
-        allPlaces = await fetchAllPlacesFromGoogle();
+        allPlaces = await fetchAllPlacesFromGoogle(debugMode);
         const apiCallDuration = Date.now() - apiCallStartTime;
         
-        // COST OPTIMIZATION DEBUG: Calculate estimated API calls saved
-        // Before: Each category had 10 keywords × 2 cities = 20 calls per category × 4 categories = 80 calls
-        //         Plus getPlaceDetails: ~20 places × 2 cities = 40 calls
-        //         Total: ~120 calls per request
-        // After: Each category has 2 keywords × 2 cities = 4 calls per category × 4 categories = 16 calls
-        //        No getPlaceDetails calls = 0
-        //        Total: ~16 calls per request
-        // Savings: ~104 calls per request (87% reduction)
-        const estimatedCallsBefore = 120; // Rough estimate
-        const estimatedCallsAfter = 16; // Rough estimate
-        const estimatedSavings = estimatedCallsBefore - estimatedCallsAfter;
-        console.log(`[Spend Today] 📊 API Call Summary:`);
-        console.log(`[Spend Today] 📊   Duration: ${apiCallDuration}ms`);
-        console.log(`[Spend Today] 📊   Places Returned: ${allPlaces.length}`);
-        console.log(`[Spend Today] 📊   Estimated Calls Saved: ~${estimatedSavings} calls (${Math.round(estimatedSavings / estimatedCallsBefore * 100)}% reduction)`);
+        // Log API call summary (only in debug mode)
+        if (debugMode) {
+          console.log(`[Spend Today] API calls: ${apiCallDuration}ms, ${allPlaces.length} places`);
+        }
       } catch (apiError: any) {
         console.error('[Spend Today] Error fetching from Google Places API:', apiError);
         // If API fails (e.g., REQUEST_DENIED, billing issue), continue to stale cache or seed data fallback
@@ -904,7 +2536,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const CATEGORY_KEY_MAP: Record<string, string> = {
           '奶茶': 'milk_tea',
           '中餐': 'chinese',
-          '甜品': 'dessert',
+          '新店打卡': 'new_places',
           '夜宵': 'late_night',
         };
         
@@ -912,7 +2544,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const normalizedItemsByCategory: Record<string, SpendPlace[]> = {
           'milk_tea': [],
           'chinese': [],
-          'dessert': [],
+          'new_places': [],
           'late_night': [],
         };
         
@@ -929,7 +2561,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               top5.push(randomPlace);
             }
             normalizedItemsByCategory[englishKey] = top5;
-          } else if (key === 'milk_tea' || key === 'chinese' || key === 'dessert' || key === 'late_night') {
+          } else if (key === 'milk_tea' || key === 'chinese' || key === 'new_places' || key === 'late_night') {
             // Limit to 5 items + 1 random per category
             const categoryPlaces = places as SpendPlace[];
             const top5 = categoryPlaces.slice(0, 5);
@@ -967,7 +2599,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const placesByCategoryDirect: Record<string, SpendPlace[]> = {
       '奶茶': [],
       '中餐': [],
-      '甜品': [],
+      '新店打卡': [],
       '夜宵': [],
     };
     
@@ -980,7 +2612,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         placesByCategoryDirect[placeCategory].push(place);
       } else {
         // Try to match by checking if the category string matches any expected category
-        const expectedCategories: string[] = ['奶茶', '中餐', '甜品', '夜宵'];
+        const expectedCategories: string[] = ['奶茶', '中餐', '新店打卡', '夜宵'];
         const matched = expectedCategories.find(cat => {
           // Compare by byte representation to avoid encoding issues
           const placeBytes = Buffer.from(placeCategory, 'utf8').toString('hex');
@@ -1014,34 +2646,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Each place still has the correct Chinese category field
     const CATEGORY_MILK_TEA = '奶茶';
     const CATEGORY_CHINESE = '中餐';
-    const CATEGORY_DESSERT = '甜品';
+    const CATEGORY_NEW_PLACES = '新店打卡';
     const CATEGORY_LATE_NIGHT = '夜宵';
     
     // Map Chinese category names to English keys for JSON serialization
     const CATEGORY_KEY_MAP: Record<string, string> = {
       [CATEGORY_MILK_TEA]: 'milk_tea',
       [CATEGORY_CHINESE]: 'chinese',
-      [CATEGORY_DESSERT]: 'dessert',
+      [CATEGORY_NEW_PLACES]: 'new_places',
       [CATEGORY_LATE_NIGHT]: 'late_night',
     };
     
-    const categories: string[] = [CATEGORY_MILK_TEA, CATEGORY_CHINESE, CATEGORY_DESSERT, CATEGORY_LATE_NIGHT];
+    const categories: string[] = [CATEGORY_MILK_TEA, CATEGORY_CHINESE, CATEGORY_NEW_PLACES, CATEGORY_LATE_NIGHT];
     const finalPlacesByCategory: Record<string, SpendPlace[]> = {
       'milk_tea': [],
       'chinese': [],
-      'dessert': [],
+      'new_places': [],
       'late_night': [],
     };
     
-    // Log category keys to verify encoding
-    console.log('[Spend Today] Categories array:', categories);
-    console.log('[Spend Today] Categories bytes:', categories.map(c => Buffer.from(c, 'utf8').toString('hex')));
-    console.log('[Spend Today] FinalPlacesByCategory initial keys:', Object.keys(finalPlacesByCategory));
-    console.log('[Spend Today] FinalPlacesByCategory initial keys bytes:', Object.keys(finalPlacesByCategory).map(k => Buffer.from(k, 'utf8').toString('hex')));
-    
     for (const category of categories) {
-      // Use the category directly (it's already a proper string literal)
-      console.log(`[Spend Today] Processing category: "${category}" (bytes: ${Buffer.from(category, 'utf8').toString('hex')})`);
       
       // Try to find matching places from placesByCategoryDirect
       // First try exact match
@@ -1073,17 +2697,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const staleItems = stale.data.itemsByCategory[staleKey] as SpendPlace[];
           // Only use stale items if they have valid place_id (real places)
           const validStaleItems = staleItems.filter(p => p.id && (p.id.startsWith('Ch') || p.id.length > 10));
-          console.log(`[Spend Today] Found ${validStaleItems.length} valid stale items for ${category}`);
           const existingIds = new Set(categoryPlaces.map(p => p.id));
           const additionalItems = validStaleItems.filter(p => !existingIds.has(p.id));
           categoryPlaces = [...categoryPlaces, ...additionalItems]
             .sort((a, b) => {
-              // Sort by combined ranking: Google Places rank + new business bonus
-              const rankA = a.googlePlacesRank ?? Infinity;
-              const rankB = b.googlePlacesRank ?? Infinity;
-              const scoreA = calculateCombinedRankingScore(rankA, a.user_ratings_total);
-              const scoreB = calculateCombinedRankingScore(rankB, b.user_ratings_total);
-              return scoreA - scoreB; // Lower score = better
+              // For 新店打卡, sort by newness score (higher = newer)
+              // For other categories, sort by combined ranking: Google Places rank + new business bonus
+              if (category === '新店打卡') {
+                return b.score - a.score; // Higher newness score = better
+              } else {
+                const rankA = a.googlePlacesRank ?? Infinity;
+                const rankB = b.googlePlacesRank ?? Infinity;
+                const scoreA = calculateCombinedRankingScore(rankA, a.user_ratings_total);
+                const scoreB = calculateCombinedRankingScore(rankB, b.user_ratings_total);
+                return scoreA - scoreB; // Lower score = better
+              }
             })
             .slice(0, 50); // Return top 50 places per category (ranked by combined score)
         } else {
@@ -1094,44 +2722,78 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Use English key for itemsByCategory, but keep Chinese category in each place
       const englishKey = CATEGORY_KEY_MAP[category];
       if (englishKey) {
-        // If we have < 2 places, try seed data fallback for this category
-        if (categoryPlaces.length < 2) {
-          console.log(`[Spend Today] Category ${category} has < 2 places, trying seed data fallback`);
-          const seedPlaces = getFoodRecommendationsFromSeed();
-          const seedForCategory = seedPlaces.filter(p => p.category === category);
-          if (seedForCategory.length > 0) {
-            const seedSpendPlaces: SpendPlace[] = seedForCategory.map(p => ({
-              id: p.id,
-              name: p.name,
-              category: p.category,
-              rating: p.rating,
-              user_ratings_total: p.review_count,
-              address: p.address,
-              maps_url: p.url,
-              photo_url: p.photo_url,
-              city: p.city,
-              score: p.score,
-              distance_miles: p.distance_miles,
-            }));
-            categoryPlaces = [...categoryPlaces, ...seedSpendPlaces].slice(0, 50);
-            console.log(`[Spend Today] Added ${seedSpendPlaces.length} seed places for ${category}`);
+        // For 新店打卡: no minimum requirement, show all available places
+        // For other categories: ensure we have at least 6 places (5 normal + 1 random) for carousel display
+        if (category !== '新店打卡') {
+          // If we have < 6, pad with seed data (only for non-新店打卡 categories)
+          if (categoryPlaces.length < 6) {
+            // Use FOOD_SEED_DATA directly to get all seed places for this category
+            const seedForCategory = FOOD_SEED_DATA.filter(p => p.category === category);
+            if (seedForCategory.length > 0) {
+              const seedSpendPlaces: SpendPlace[] = seedForCategory.map(p => ({
+                id: p.id,
+                name: p.name,
+                category: p.category,
+                rating: p.rating,
+                user_ratings_total: p.review_count,
+                address: p.address,
+                maps_url: p.url,
+                photo_url: p.photo_url,
+                city: p.city,
+                score: p.score,
+                distance_miles: p.distance_miles,
+              }));
+              // Add seed places that are not already in categoryPlaces
+              const existingIds = new Set(categoryPlaces.map(p => p.id));
+              const newSeedPlaces = seedSpendPlaces.filter(p => !existingIds.has(p.id));
+              // Add enough seed places to reach at least 6 total
+              const needed = 6 - categoryPlaces.length;
+              categoryPlaces = [...categoryPlaces, ...newSeedPlaces.slice(0, needed)];
+              console.log(`[Spend Today] Added ${Math.min(newSeedPlaces.length, needed)} seed places for ${category}, total now: ${categoryPlaces.length}`);
+            }
+          }
+          
+          // Ensure we have at least 6 places for carousel (5 normal + 1 random)
+          // If still < 6 after seed data addition, use all available places
+          if (categoryPlaces.length < 6) {
+            console.warn(`[Spend Today] WARNING: Category ${category} still has only ${categoryPlaces.length} places after seed data addition`);
           }
         }
         
-        // Keep top 5 places per category, sorted by Google Places ranking (already sorted by placeOrderMap)
-        const top5Places = categoryPlaces.slice(0, 5);
-        
-        // Add one random place from the category (if available)
-        if (categoryPlaces.length > 5) {
-          const remainingPlaces = categoryPlaces.slice(5);
-          const randomPlace = remainingPlaces[Math.floor(Math.random() * remainingPlaces.length)];
-          // Mark as random selection
-          randomPlace.category = `${category} (随机选店)`;
-          top5Places.push(randomPlace);
+        // For 新店打卡, sort by newness score (higher = newer) and use all available places
+        // For other categories, already sorted by popularity
+        if (category === '新店打卡') {
+          categoryPlaces.sort((a, b) => b.score - a.score); // Higher newness score = better
+          // 新店打卡: show all available places, no minimum requirement
+          finalPlacesByCategory[englishKey] = categoryPlaces;
+        } else {
+          // Keep top 5 places per category
+          const top5Places = categoryPlaces.slice(0, 5);
+          
+          // Always add one random place if we have at least 6 places total
+          // If we have exactly 5, use the 5th as both normal and random (to ensure 6 items)
+          if (categoryPlaces.length >= 6) {
+            const remainingPlaces = categoryPlaces.slice(5);
+            const randomPlace = remainingPlaces[Math.floor(Math.random() * remainingPlaces.length)];
+            // Mark as random selection
+            randomPlace.category = `${category} (随机选店)`;
+            top5Places.push(randomPlace);
+          } else if (categoryPlaces.length === 5) {
+            // If we have exactly 5, duplicate the last one as random to ensure 6 items
+            const lastPlace = { ...categoryPlaces[4] };
+            lastPlace.category = `${category} (随机选店)`;
+            top5Places.push(lastPlace);
+          } else {
+            // If < 5, we can't reach 6, but still try to add one more if available
+            if (categoryPlaces.length > top5Places.length) {
+              const extraPlace = categoryPlaces[top5Places.length];
+              extraPlace.category = `${category} (随机选店)`;
+              top5Places.push(extraPlace);
+            }
+          }
+          
+          finalPlacesByCategory[englishKey] = top5Places;
         }
-        
-        finalPlacesByCategory[englishKey] = top5Places;
-        console.log(`[Spend Today] Final count for ${category} (key: ${englishKey}): ${finalPlacesByCategory[englishKey].length} (5 items + ${top5Places.length > 5 ? '1 random' : '0 random'})`);
       } else {
         console.error(`[Spend Today] ERROR: No English key mapping for category ${category}`);
       }
@@ -1141,16 +2803,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
     
-    // Log final structure before sending
-    console.log('[Spend Today] ✅ Final response structure:');
-    console.log('[Spend Today] FinalPlacesByCategory keys:', Object.keys(finalPlacesByCategory));
-    const totalCount = Object.values(finalPlacesByCategory).reduce((sum, arr) => sum + arr.length, 0);
-    console.log('[Spend Today] Total places count:', totalCount);
-    for (const [key, places] of Object.entries(finalPlacesByCategory)) {
-      console.log(`[Spend Today]   "${key}": ${places.length} places`);
-      if (places.length > 0) {
-        console.log(`[Spend Today]     Sample: ${places[0].name} (${places[0].city})`);
-      }
+    // Log final summary (only in debug mode)
+    if (debugMode) {
+      const totalCount = Object.values(finalPlacesByCategory).reduce((sum, arr) => sum + arr.length, 0);
+      console.log(`[Spend Today] Final: ${totalCount} places across ${Object.keys(finalPlacesByCategory).length} categories`);
+    }
+    
+    // Extract debug info from allPlaces if present
+    const newPlacesDebugInfo = (allPlaces as any).__newPlacesDebugInfo;
+    if (newPlacesDebugInfo) {
+      delete (allPlaces as any).__newPlacesDebugInfo;
+    }
+    
+    // Extract debug snapshots for 夜宵
+    const nightSnackDebugSnapshots = (allPlaces as any).__nightSnackDebugSnapshots;
+    if (nightSnackDebugSnapshots) {
+      delete (allPlaces as any).__nightSnackDebugSnapshots;
     }
     
     const response: any = {
@@ -1167,7 +2835,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cache_age_seconds: 0,
       cache_expires_in_seconds: ttlSeconds,
       // Debug info (only if ?debug=1 is in query or in development)
-      ...(req.query.debug === '1' || process.env.VERCEL_ENV === 'development' ? {
+      ...(debugMode ? {
         _debug: {
           hasApiKey: !!GOOGLE_PLACES_API_KEY,
           apiKeyLength: GOOGLE_PLACES_API_KEY?.length || 0,
@@ -1176,6 +2844,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           allGoogleEnvVars: Object.keys(process.env).filter(k => k.toUpperCase().includes('GOOGLE')),
           placesFromApi: allPlaces.length,
           placesFromCache: 0, // Will be set if using cache
+          newPlacesDebug: newPlacesDebugInfo || null, // 新店打卡 debug info
+          nightSnackDebug: nightSnackDebugSnapshots || null, // 夜宵 debug snapshots (STEP 0)
         },
       } : {}),
     };
@@ -1184,9 +2854,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // COST OPTIMIZATION: Cache results for 12 hours (aggressive caching)
     setCache(cacheKey, response);
     
-    // COST OPTIMIZATION DEBUG: Log cache write
-    const totalPlacesCached = response.items?.length || Object.values(response.itemsByCategory || {}).reduce((sum: number, arr: any) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
-    console.log(`[Spend Today] 💾 Cache WRITTEN: ${totalPlacesCached} total places, TTL: 12h`);
+    // Log cache write (only in debug mode)
+    if (debugMode) {
+      const totalPlacesCached = response.items?.length || Object.values(response.itemsByCategory || {}).reduce((sum: number, arr: any) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+      console.log(`[Spend Today] Cache written: ${totalPlacesCached} places`);
+    }
 
     // Ensure proper encoding for JSON response
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -1238,18 +2910,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       
       // NO seed data fallback - only return real places from stale cache
-      const categories: Array<keyof typeof CATEGORY_KEYWORDS> = ['奶茶', '中餐', '甜品', '夜宵'];
+      const categories: Array<keyof typeof CATEGORY_KEYWORDS> = ['奶茶', '中餐', '新店打卡', '夜宵'];
       const CATEGORY_KEY_MAP_STALE: Record<string, string> = {
         '奶茶': 'milk_tea',
         '中餐': 'chinese',
-        '甜品': 'dessert',
+        '新店打卡': 'new_places',
         '夜宵': 'late_night',
       };
       
       const normalizedItemsByCategory: Record<string, SpendPlace[]> = {
         'milk_tea': [],
         'chinese': [],
-        'dessert': [],
+        'new_places': [],
         'late_night': [],
       };
       
@@ -1259,17 +2931,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const filtered = itemsByCategory[category].filter((p: any) => 
             p.id && (p.id.startsWith('Ch') || p.id.length > 10) && p.maps_url && !p.maps_url.includes('#')
           );
-          // Limit to 5 items + 1 random per category
-          const top5 = filtered.slice(0, 5);
-          if (filtered.length > 5) {
-            const remaining = filtered.slice(5);
-            const randomPlace = remaining[Math.floor(Math.random() * remaining.length)];
-            randomPlace.category = `${category} (随机选店)`;
-            top5.push(randomPlace);
-          }
           const englishKey = CATEGORY_KEY_MAP_STALE[category];
           if (englishKey) {
-            normalizedItemsByCategory[englishKey] = top5;
+            // For 新店打卡: show all available places, no minimum requirement
+            if (category === '新店打卡') {
+              normalizedItemsByCategory[englishKey] = filtered;
+              console.log(`[Spend Today] Stale cache: 新店打卡 showing ${filtered.length} places (no minimum requirement)`);
+            } else {
+              // Limit to 5 items + 1 random per category (for other categories)
+              const top5 = filtered.slice(0, 5);
+              if (filtered.length > 5) {
+                const remaining = filtered.slice(5);
+                const randomPlace = remaining[Math.floor(Math.random() * remaining.length)];
+                randomPlace.category = `${category} (随机选店)`;
+                top5.push(randomPlace);
+              }
+              normalizedItemsByCategory[englishKey] = top5;
+            }
           }
         }
       }
@@ -1290,21 +2968,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Last resort: use seed data as fallback
-    console.log('[Spend Today] All attempts failed, using seed data as fallback');
+    console.warn('[Spend Today] All attempts failed, using seed data as fallback');
     const seedPlaces = getFoodRecommendationsFromSeed();
     
     // Convert seed data to SpendPlace format and group by category
     const seedByCategory: Record<string, SpendPlace[]> = {
       'milk_tea': [],
       'chinese': [],
-      'dessert': [],
+      'new_places': [],
       'late_night': [],
     };
     
     const categoryMap: Record<string, string> = {
       '奶茶': 'milk_tea',
       '中餐': 'chinese',
-      '甜品': 'dessert',
+      '新店打卡': 'new_places',
       '夜宵': 'late_night',
     };
     
