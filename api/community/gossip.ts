@@ -59,54 +59,7 @@ interface GossipItem {
   };
 }
 
-/**
- * Built-in seed data (only used when warm seed is empty - first deployment)
- * IMPORTANT: These MUST be real, accessible thread URLs from 1point3acres section/391
- * FORBIDDEN: Never use forum/section/directory pages (e.g., /forum-391, /section/, forum.php)
- * ALLOWED: Only thread detail pages (e.g., /bbs/thread-xxxxx-1-1.html, viewthread.php?tid=xxxxx)
- * 
- * NOTE: Current URLs are placeholders. Replace with real thread URLs from section/391.
- * Once RSSHub works successfully, warm seed will be populated with real URLs automatically.
- */
-const BUILTIN_SEED_1P3A: GossipItem[] = [
-  {
-    title: '湾区生活讨论',
-    url: 'https://www.1point3acres.com/bbs/thread-123456-1-1.html', // TODO: Replace with real thread URL from section/391
-    meta: { source: '1point3acres' },
-  },
-  {
-    title: '人际关系话题',
-    url: 'https://www.1point3acres.com/bbs/thread-123457-1-1.html', // TODO: Replace with real thread URL from section/391
-    meta: { source: '1point3acres' },
-  },
-  {
-    title: '社区讨论',
-    url: 'https://www.1point3acres.com/bbs/thread-123458-1-1.html', // TODO: Replace with real thread URL from section/391
-    meta: { source: '1point3acres' },
-  },
-];
-
-/**
- * Built-in seed data for TeamBlind (only used when warm seed is empty)
- * These are real, accessible discussion URLs
- */
-const BUILTIN_SEED_BLIND: GossipItem[] = [
-  {
-    title: 'Blind Discussion',
-    url: 'https://www.teamblind.com/topic/123456', // Placeholder - should be real topic
-    meta: { source: 'blind' },
-  },
-  {
-    title: 'Tech Discussion',
-    url: 'https://www.teamblind.com/topic/123457', // Placeholder - should be real topic
-    meta: { source: 'blind' },
-  },
-  {
-    title: 'Workplace Discussion',
-    url: 'https://www.teamblind.com/topic/123458', // Placeholder - should be real topic
-    meta: { source: 'blind' },
-  },
-];
+// Seed data removed - no fallback data
 
 /**
  * Save warm seed (real posts from successful live fetch)
@@ -547,16 +500,15 @@ async function fetch1P3A(nocache: boolean = false): Promise<ModulePayload<Gossip
     };
   }
   
-  // Built-in seed (only on first deployment)
-  console.log(`[Gossip 1P3A] ⚠️ Using built-in seed (warm seed empty, first deployment?)`);
-  console.log(`[Gossip 1P3A] 📋 Returning ${BUILTIN_SEED_1P3A.length} built-in seed items`);
+  // No seed data fallback
+  console.log(`[Gossip 1P3A] ❌ No data available (no seed data fallback)`);
   return {
-    source: 'seed',
+    source: 'unavailable',
     status: 'failed',
     fetchedAt,
     ttlSeconds: 0,
-    note: 'Live fetch failed, no warm seed available',
-    items: BUILTIN_SEED_1P3A,
+    note: 'Live fetch failed, no fallback data available',
+    items: [],
   };
 }
 
@@ -820,15 +772,15 @@ async function fetchBlind(nocache: boolean = false): Promise<ModulePayload<Gossi
     };
   }
   
-  // Last resort: built-in seed (only on first deployment)
-  console.log(`[Gossip Blind] ⚠️ Using built-in seed (warm seed empty)`);
+  // No seed data fallback
+  console.log(`[Gossip Blind] ❌ No data available (no seed data fallback)`);
   return {
-    source: 'seed',
+    source: 'unavailable',
     status: 'failed',
     fetchedAt,
     ttlSeconds: 0,
-    note: 'Live fetch failed, no warm seed available',
-    items: BUILTIN_SEED_BLIND,
+    note: 'Live fetch failed, no fallback data available',
+    items: [],
   };
 }
 
@@ -887,34 +839,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         };
       }
       
-      // Last resort: built-in seed
-      const builtinSeed = source === '1point3acres' ? BUILTIN_SEED_1P3A : BUILTIN_SEED_BLIND;
-      const needed = Math.max(0, 3 - validItems.length);
-      const padded = needed > 0 
-        ? [...validItems, ...builtinSeed.slice(0, needed)]
-        : validItems;
-      
-      // Assert: must have >= 3 items
-      if (padded.length < 3) {
-        console.error(`[Gossip ${source}] ⚠️ ensureMinItems failed: only ${padded.length} items after padding`);
-        // Force pad to 3 items
-        const forceNeeded = 3 - padded.length;
-        const forcePadded = [...padded, ...builtinSeed.slice(0, forceNeeded)];
-        return {
-          ...payload,
-          items: forcePadded.slice(0, 3), // Ensure exactly 3
-          status: 'degraded' as const,
-          note: `Forced to 3 items with seed data`,
-        };
-      }
-      
+      // No seed data padding - return items as-is
       return {
         ...payload,
-        items: padded.slice(0, 10), // Limit to 10 max
-        status: payload.status === 'ok' ? 'degraded' : payload.status,
-        note: payload.note 
-          ? `${payload.note}; padded with ${needed} built-in seed items`
-          : needed > 0 ? `Padded with ${needed} built-in seed items` : undefined,
+        items: validItems.slice(0, 10), // Limit to 10 max
+        status: validItems.length >= 3 ? payload.status : 'degraded' as const,
+        note: validItems.length < 3 
+          ? `Only ${validItems.length} items available (minimum 3 required)`
+          : payload.note,
       };
     };
     
@@ -944,11 +876,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     const fallback1P3A = warmSeed1P3A.length >= 3 
       ? warmSeed1P3A.slice(0, 10)
-      : BUILTIN_SEED_1P3A;
+      : [];
     
     const fallbackBlind = warmSeedBlind.length >= 3
       ? warmSeedBlind.slice(0, 10)
-      : BUILTIN_SEED_BLIND;
+      : [];
     
     res.status(200).json({
       status: 'ok' as const,

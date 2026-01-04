@@ -56,40 +56,7 @@ interface DealItem {
   sourceMode: 'live' | 'cache' | 'seed'; // Data source mode
 }
 
-// Seed data: Real deal URLs (must be real, clickable deals)
-// These are example URLs - in production, these should be actual deal pages from recent successful fetches
-const SEED_DEALS: DealItem[] = [
-  {
-    id: 'seed-1',
-    title: 'Amazon Prime Day Deals - Up to 50% Off Electronics',
-    url: 'https://www.amazon.com/deals',
-    source: 'Slickdeals',
-    sourceLabel: 'Slickdeals',
-    publishedAt: new Date().toISOString(),
-    score: 85,
-    sourceMode: 'seed',
-  },
-  {
-    id: 'seed-2',
-    title: 'Costco Membership $60 - $20 Shop Card Offer',
-    url: 'https://www.costco.com/membership.html',
-    source: 'DoC',
-    sourceLabel: 'DoC',
-    publishedAt: new Date().toISOString(),
-    score: 80,
-    sourceMode: 'seed',
-  },
-  {
-    id: 'seed-3',
-    title: 'Best Buy Clearance - Up to 40% Off Tech',
-    url: 'https://www.bestbuy.com/site/clearance',
-    source: 'Reddit',
-    sourceLabel: 'Reddit',
-    publishedAt: new Date().toISOString(),
-    score: 75,
-    sourceMode: 'seed',
-  },
-];
+// Seed data removed - no fallback data
 
 /**
  * Normalize URL: Remove UTM parameters and tracking params
@@ -462,11 +429,11 @@ async function fetchAllDeals(nocache: boolean = false): Promise<{ items: DealIte
     };
   }
   
-  // Last resort: seed data
-  console.log(`[Deals] ⚠️ Using seed data (${SEED_DEALS.length} items)`);
+  // No seed data fallback
+  console.log(`[Deals] ❌ No data available (no seed data fallback)`);
   return {
-    items: SEED_DEALS,
-    sourceMode: 'seed',
+    items: [],
+    sourceMode: 'unavailable',
     debug,
   };
 }
@@ -490,8 +457,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       sourceMode: result.sourceMode,
     }));
     
-    // Ensure >= 3 items
-    const finalItems = items.length >= 3 ? items : [...items, ...SEED_DEALS.slice(0, 3 - items.length)];
+    // Use items as-is (no seed data padding)
+    const finalItems = items;
     
     const response = {
       status: 'ok' as const,
@@ -528,15 +495,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     
-    // Last resort: seed data
+    // No seed data fallback
     return res.status(200).json({
-      status: 'ok' as const,
-      items: SEED_DEALS,
-      count: SEED_DEALS.length,
+      status: 'unavailable' as const,
+      items: [],
+      count: 0,
       asOf: new Date().toISOString(),
-      source: { name: 'Seed Data', url: '' },
+      source: { name: 'No Data', url: '' },
       ttlSeconds: 0,
-      sourceMode: 'seed' as const,
+      sourceMode: 'unavailable' as const,
       cache_hit: false,
       error: error instanceof Error ? error.message : String(error),
     });

@@ -25,7 +25,7 @@ export const runtime = 'nodejs';
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { CACHE_TTL, ttlMsToSeconds } from '../../shared/config.js';
-import { getFoodRecommendationsFromSeed, FOOD_SEED_DATA, type FoodPlace } from '../../shared/food-seed-data.js';
+// Seed data removed - no fallback data
 import {
   cache,
   setCorsHeaders,
@@ -221,6 +221,17 @@ async function searchGooglePlacesNearby(
     return [];
   }
 
+  // Validate inputs
+  if (!location || typeof location.lat !== 'number' || typeof location.lng !== 'number') {
+    throw new Error('Invalid location: must have lat and lng as numbers');
+  }
+  
+  // Validate radius: Google Places API (New) allows 1-50000 meters
+  const validRadius = Math.max(1, Math.min(50000, radius));
+  if (radius !== validRadius && enableDebugLog) {
+    console.warn(`[Spend Today] Radius ${radius} clamped to ${validRadius} (valid range: 1-50000)`);
+  }
+
   try {
     // For keyword-based searches, use searchText instead of searchNearby
     // searchNearby is better for type-based searches, searchText for keyword searches
@@ -239,13 +250,13 @@ async function searchGooglePlacesNearby(
               latitude: location.lat,
               longitude: location.lng,
             },
-            radius: radius,
+            radius: validRadius, // Use validated radius
           },
         },
       };
       
-      // Only include includedType if type is provided
-      if (type) {
+      // Only include includedType if type is provided and not empty
+      if (type && type.trim().length > 0) {
         requestBody.includedType = type;
       }
       
@@ -264,17 +275,18 @@ async function searchGooglePlacesNearby(
               latitude: location.lat,
               longitude: location.lng,
             },
-            radius: radius,
+            radius: validRadius, // Use validated radius
           },
         },
       };
       
-      // Only include includedTypes if type is provided
+      // Only include includedTypes if type is provided and not empty
       // Note: Google Places API searchNearby requires includedTypes (array of strings)
-      if (type) {
+      // Must be non-empty array with valid type strings
+      if (type && type.trim().length > 0) {
         requestBody.includedTypes = [type];
       } else {
-        // If no type provided, searchNearby requires at least one type
+        // If no type provided or empty string, searchNearby requires at least one type
         // Default to restaurant if no type specified
         requestBody.includedTypes = ['restaurant'];
       }
@@ -318,11 +330,22 @@ async function searchGooglePlacesNearby(
 
     if (!response.ok) {
       const errorText = await response.text();
+      let errorDetails = '';
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorDetails = JSON.stringify(errorJson, null, 2);
+      } catch {
+        errorDetails = errorText;
+      }
+      
       console.error(`[Spend Today] Places API HTTP error: ${response.status} ${response.statusText}`);
       console.error(`[Spend Today] Request URL: ${url}`);
       console.error(`[Spend Today] Request body:`, JSON.stringify(requestBody, null, 2));
-      console.error(`[Spend Today] Error response: ${errorText}`);
-      throw new Error(`Places API (New) error: ${response.status} ${response.statusText}`);
+      console.error(`[Spend Today] Error response:`, errorDetails);
+      console.error(`[Spend Today] Location: lat=${location.lat}, lng=${location.lng}, radius=${validRadius}`);
+      console.error(`[Spend Today] Type: "${type}", Keyword: "${keyword}"`);
+      
+      throw new Error(`Places API (New) error: ${response.status} ${response.statusText} - ${errorDetails.substring(0, 200)}`);
     }
 
     const data: NewPlacesSearchNearbyResponse = await response.json();
@@ -2727,39 +2750,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Use English key for itemsByCategory, but keep Chinese category in each place
       const englishKey = CATEGORY_KEY_MAP[category];
       if (englishKey) {
-        // For all categories: ensure we have at least 6 places (5 normal + 1 random) for carousel display
-        // If we have < 6, pad with seed data
+        // Use places as-is (no seed data padding)
         if (categoryPlaces.length < 6) {
-          // Use FOOD_SEED_DATA directly to get all seed places for this category
-          const seedForCategory = FOOD_SEED_DATA.filter(p => p.category === category);
-          if (seedForCategory.length > 0) {
-            const seedSpendPlaces: SpendPlace[] = seedForCategory.map(p => ({
-              id: p.id,
-              name: p.name,
-              category: p.category,
-              rating: p.rating,
-              user_ratings_total: p.review_count,
-              address: p.address,
-              maps_url: p.url,
-              photo_url: p.photo_url,
-              city: p.city,
-              score: p.score,
-              distance_miles: p.distance_miles,
-            }));
-            // Add seed places that are not already in categoryPlaces
-            const existingIds = new Set(categoryPlaces.map(p => p.id));
-            const newSeedPlaces = seedSpendPlaces.filter(p => !existingIds.has(p.id));
-            // Add enough seed places to reach at least 6 total
-            const needed = 6 - categoryPlaces.length;
-            categoryPlaces = [...categoryPlaces, ...newSeedPlaces.slice(0, needed)];
-            console.log(`[Spend Today] Added ${Math.min(newSeedPlaces.length, needed)} seed places for ${category}, total now: ${categoryPlaces.length}`);
-          }
-        }
-        
-        // Ensure we have at least 6 places for carousel (5 normal + 1 random)
-        // If still < 6 after seed data addition, use all available places
-        if (categoryPlaces.length < 6) {
-          console.warn(`[Spend Today] WARNING: Category ${category} still has only ${categoryPlaces.length} places after seed data addition`);
+          console.warn(`[Spend Today] WARNING: Category ${category} has only ${categoryPlaces.length} places (target: 6)`);
         }
         
         // For all categories: ensure we have at least 6 places (5 normal + 1 random) for carousel display
@@ -2968,73 +2961,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Last resort: use seed data as fallback
-    console.warn('[Spend Today] All attempts failed, using seed data as fallback');
-    const seedPlaces = getFoodRecommendationsFromSeed();
-    
-    // Convert seed data to SpendPlace format and group by category
-    const seedByCategory: Record<string, SpendPlace[]> = {
-      'milk_tea': [],
-      'chinese': [],
-      'new_places': [],
-      'late_night': [],
-    };
-    
-    const categoryMap: Record<string, string> = {
-      '奶茶': 'milk_tea',
-      '中餐': 'chinese',
-      '新店打卡': 'new_places',
-      '夜宵': 'late_night',
-    };
-    
-    seedPlaces.forEach((place: FoodPlace) => {
-      const englishKey = categoryMap[place.category] || 'milk_tea';
-      if (seedByCategory[englishKey]) {
-        seedByCategory[englishKey].push({
-          id: place.id,
-          name: place.name,
-          category: place.category,
-          rating: place.rating,
-          user_ratings_total: place.review_count,
-          address: place.address,
-          maps_url: place.url,
-          photo_url: place.photo_url,
-          city: place.city,
-          score: place.score,
-          distance_miles: place.distance_miles,
-        });
-      }
-    });
-    
-    // Limit each category to 5 items + 1 random
-    for (const [key, places] of Object.entries(seedByCategory)) {
-      const top5 = places.slice(0, 5);
-      if (places.length > 5) {
-        const remaining = places.slice(5);
-        const randomPlace = remaining[Math.floor(Math.random() * remaining.length)];
-        const categoryName = categoryMap[randomPlace.category] || key;
-        randomPlace.category = `${categoryName} (随机选店)`;
-        top5.push(randomPlace);
-      }
-      seedByCategory[key] = top5;
-    }
-    
+    // No seed data fallback
+    console.warn('[Spend Today] All attempts failed, no seed data fallback available');
     const errorAtISO = new Date().toISOString();
-    const allSeedItems = Object.values(seedByCategory).flat();
 
     // Ensure proper encoding for JSON response
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.status(200).json({
-      status: 'ok' as const,
-      itemsByCategory: seedByCategory,
-      items: allSeedItems,
-      count: allSeedItems.length,
+      status: 'unavailable' as const,
+      itemsByCategory: {
+        'milk_tea': [],
+        'chinese': [],
+        'new_places': [],
+        'late_night': [],
+      },
+      items: [],
+      count: 0,
       asOf: errorAtISO,
-      source: { name: 'Local Seed Data', url: 'https://maps.google.com' },
+      source: { name: 'No Data', url: 'https://maps.google.com' },
       ttlSeconds: ttlMsToSeconds(SPEND_TODAY_CACHE_TTL),
       cache_hit: false,
       fetched_at: errorAtISO,
-      note: 'Using seed data fallback',
+      note: 'All attempts failed, no fallback data available',
       // Debug info (only if ?debug=1 is in query or in development)
       ...(req.query.debug === '1' || process.env.VERCEL_ENV === 'development' ? {
         _debug: {

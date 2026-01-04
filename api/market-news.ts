@@ -66,9 +66,7 @@ interface MarketNewsItem {
   sourceUrl?: string;   // Original source URL
 }
 
-// Empty seed data - we should never use placeholder categories
-// If fetch fails, use stale cache instead
-const SEED_DATA: MarketNewsItem[] = [];
+// Seed data removed - no fallback data
 
 /**
  * Generate cache key for translation based on English titles hash

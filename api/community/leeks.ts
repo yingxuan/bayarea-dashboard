@@ -52,30 +52,7 @@ interface CommunityItem {
   publishedAt?: string; // ISO date string
 }
 
-// Seed data as last resort fallback (must be >= 3 real thread URLs)
-const SEED_DATA: CommunityItem[] = [
-  {
-    source: '1point3acres',
-    sourceLabel: '一亩三分地',
-    title: '投资理财讨论',
-    url: 'https://www.1point3acres.com/bbs/thread-123456-1-1.html', // Placeholder - should be real thread
-    publishedAt: new Date().toISOString(),
-  },
-  {
-    source: '1point3acres',
-    sourceLabel: '一亩三分地',
-    title: '市场热点分析',
-    url: 'https://www.1point3acres.com/bbs/thread-123457-1-1.html', // Placeholder - should be real thread
-    publishedAt: new Date().toISOString(),
-  },
-  {
-    source: '1point3acres',
-    sourceLabel: '一亩三分地',
-    title: '股票投资讨论',
-    url: 'https://www.1point3acres.com/bbs/thread-123458-1-1.html', // Placeholder - should be real thread
-    publishedAt: new Date().toISOString(),
-  },
-];
+// Seed data removed - no fallback data
 
 /**
  * Convert instant.1point3acres.com/thread/xxxxx to standard format
@@ -454,15 +431,11 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       emptyLinkCount: 0,
       dedupRemovedCount: 0,
       filteredThreadCount: 0,
-      sampleLinks: [] as string[],
-      sampleTitles: [] as string[],
       rawLinksBeforeFilter: [] as string[],
       rawLinksAfterFilter: [] as string[],
     },
     seed: {
-      seedCount: SEED_DATA.length,
-      seedSampleLinks: SEED_DATA.slice(0, 3).map(item => item.url),
-      seedSampleTitles: SEED_DATA.slice(0, 3).map(item => item.title),
+      seedCount: 0,
     },
     cache: {
       cacheHit: false,
@@ -571,14 +544,6 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
     let forbiddenCount = 0;
     let emptyLinkCount = 0;
     
-    // Step 6: Log first item structure for debug
-    if (itemsArray.length > 0 && debugInfo) {
-      const firstItem = itemsArray[0];
-      debugInfo.parse.sampleTitleNode = {
-        typeof: typeof firstItem.title,
-        keys: typeof firstItem.title === 'object' ? Object.keys(firstItem.title || {}) : [],
-      };
-    }
     
     // Parse RSS items
     for (const item of itemsArray) {
@@ -690,8 +655,6 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
     debugInfo.filter.emptyLinkCount = emptyLinkCount;
     debugInfo.filter.dedupRemovedCount = dedupRemovedCount;
     debugInfo.filter.filteredThreadCount = uniqueItems.length;
-    debugInfo.filter.sampleLinks = uniqueItems.slice(0, 3).map(item => item.url);
-    debugInfo.filter.sampleTitles = uniqueItems.slice(0, 3).map(item => item.title);
     debugInfo.filter.rawLinksBeforeFilter = rawLinksBeforeFilter.slice(0, 10);
     debugInfo.filter.rawLinksAfterFilter = rawLinksAfterFilter.slice(0, 10);
     
@@ -699,12 +662,9 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
     if (debugInfo.parse.parsedItemCount > 0 && threadMatchCount === 0 && uniqueItems.length === 0) {
       debugInfo.reason = 'WRONG_NODE';
       console.error(`[1point3acres] ❌ WRONG_NODE detected: parsed ${debugInfo.parse.parsedItemCount} items but NONE match thread whitelist`);
-      console.error(`[1point3acres]    Sample raw links:`, rawLinksBeforeFilter.slice(0, 5));
     }
     
     console.log(`[1point3acres] ✅ Fetched ${uniqueItems.length} valid thread items from RSS (instance: ${usedInstance})`);
-    console.log(`[1point3acres] 📊 DEBUG - Sample links:`, debugInfo.filter.sampleLinks);
-    console.log(`[1point3acres] 📊 DEBUG - Sample titles:`, debugInfo.filter.sampleTitles);
       
       // Ensure >= 3 items
       if (uniqueItems.length < 3) {
@@ -721,8 +681,6 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
         debugInfo.fetch.textFirst200Chars = debugSnapshot.textFirst200Chars;
         debugInfo.fetch.looksLikeHtml = debugSnapshot.looksLikeHtml;
       }
-      debugInfo.parse.sampleTitles = uniqueItems.slice(0, 3).map(item => item.title);
-      debugInfo.parse.sampleLinks = uniqueItems.slice(0, 3).map(item => item.url);
       
       // Ensure >= 3 items (with fallback)
       if (uniqueItems.length >= 3) {
@@ -763,8 +721,6 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
         debugInfo.mode = 'live';
         debugInfo.reason = 'HTML_SCRAPE_SUCCESS';
         debugInfo.filter.filteredThreadCount = htmlItems.length;
-        debugInfo.filter.sampleLinks = htmlItems.slice(0, 3).map(item => item.url);
-        debugInfo.filter.sampleTitles = htmlItems.slice(0, 3).map(item => item.title);
         console.log(`[1point3acres] ✅ Successfully scraped ${htmlItems.length} items from HTML`);
         console.log(`[1point3acres] 📊 DEBUG Snapshot:`, JSON.stringify(debugInfo, null, 2));
         return {
@@ -789,8 +745,6 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       debugInfo.mode = 'cache';
       debugInfo.reason = 'CACHE_HIT';
       debugInfo.filter.filteredThreadCount = cached.data.items.length;
-      debugInfo.filter.sampleLinks = cached.data.items.slice(0, 3).map((item: CommunityItem) => item.url);
-      debugInfo.filter.sampleTitles = cached.data.items.slice(0, 3).map((item: CommunityItem) => item.title);
       debugInfo.cache.cacheHit = true;
       debugInfo.cache.cacheAgeSec = cached.cacheAgeSeconds;
       console.log(`[1point3acres] ✅ Using cache (${cached.data.items.length} items, age: ${cached.cacheAgeSeconds}s)`);
@@ -813,8 +767,6 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       debugInfo.mode = 'cache';
       debugInfo.reason = 'STALE_CACHE_HIT';
       debugInfo.filter.filteredThreadCount = stale.data.items.length;
-      debugInfo.filter.sampleLinks = stale.data.items.slice(0, 3).map((item: CommunityItem) => item.url);
-      debugInfo.filter.sampleTitles = stale.data.items.slice(0, 3).map((item: CommunityItem) => item.title);
       debugInfo.cache.cacheHit = true;
       debugInfo.cache.cacheAgeSec = cacheAgeSec;
       console.log(`[1point3acres] ✅ Using stale cache (${stale.data.items.length} items, age: ${cacheAgeSec}s)`);
@@ -834,38 +786,19 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
     debugInfo.cache.cacheHit = false;
   }
   
-  // Last resort: seed data (ensure >= 3 items)
-  // STEP 5: Validate seed data - must never contain section/category links
-  const seedItems = SEED_DATA.length >= 3 ? SEED_DATA.slice(0, 5) : SEED_DATA;
-  const seedForbiddenCount = seedItems.filter(item => {
-    const url = item.url.toLowerCase();
-    return url.includes('/forum-') || url.includes('forum.php') || url.includes('/section/') || !isValid1p3aThreadUrl(item.url);
-  }).length;
+  // No seed data fallback - return empty result
+  debugInfo.mode = 'unavailable';
+  debugInfo.reason = debugInfo.reason || 'NO_DATA';
+  debugInfo.filter.filteredThreadCount = 0;
+  debugInfo.seed.seedCount = 0;
   
-  if (seedForbiddenCount > 0) {
-    console.error(`[1point3acres] ❌ CRITICAL: Seed data contains ${seedForbiddenCount} forbidden/section URLs!`);
-    console.error(`[1point3acres]    Invalid seed items:`, seedItems.filter(item => {
-      const url = item.url.toLowerCase();
-      return url.includes('/forum-') || url.includes('forum.php') || url.includes('/section/') || !isValid1p3aThreadUrl(item.url);
-    }).map(item => ({ title: item.title, url: item.url })));
-  }
-  
-  debugInfo.mode = 'seed';
-  debugInfo.reason = debugInfo.reason || 'SEED_USED';
-  debugInfo.filter.filteredThreadCount = seedItems.length;
-  debugInfo.filter.sampleLinks = seedItems.slice(0, 3).map(item => item.url);
-  debugInfo.filter.sampleTitles = seedItems.slice(0, 3).map(item => item.title);
-  debugInfo.seed.seedCount = seedItems.length;
-  debugInfo.seed.seedSampleLinks = seedItems.slice(0, 3).map(item => item.url);
-  debugInfo.seed.seedSampleTitles = seedItems.slice(0, 3).map(item => item.title);
-  
-  console.log(`[1point3acres] ⚠️ Using seed data (${seedItems.length} items, forbiddenCount: ${seedForbiddenCount})`);
+  console.log(`[1point3acres] ❌ No data available (no seed data fallback)`);
   console.log(`[1point3acres] 📊 DEBUG Snapshot:`, JSON.stringify(debugInfo, null, 2));
   
   return {
-    items: seedItems,
-    status: 'ok',
-    reason: 'Live fetch failed, using seed data',
+    items: [],
+    status: 'unavailable',
+    reason: 'Live fetch failed, no fallback data available',
     debug: debugInfo,
   };
 }
@@ -925,19 +858,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const result = await fetch1point3acresPosts(nocache);
     const fetchedAtISO = new Date().toISOString();
 
-    // Ensure >= 3 items (with fallback to seed if needed)
-    let finalItems = result.items;
-    if (finalItems.length < 3) {
-      console.warn(`[API /api/community/leeks] ⚠️ Only ${finalItems.length} items (< 3), padding with seed data`);
-      const needed = 3 - finalItems.length;
-      finalItems = [...finalItems, ...SEED_DATA.slice(0, needed)];
-    }
-    
-    // Assert: must have >= 3 items
-    if (finalItems.length < 3) {
-      console.error(`[API /api/community/leeks] ⚠️ ensureMinItems failed: only ${finalItems.length} items after padding`);
-      finalItems = SEED_DATA.slice(0, 3); // Force to 3 items
-    }
+    // Use items as-is (no seed data padding)
+    const finalItems = result.items;
     
     // Prepare response for 1point3acres
     const response1point3acres: any = {
@@ -1008,7 +930,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const data1point3acres = stale1point3acres 
       ? stale1point3acres.data 
-      : { items: SEED_DATA.slice(0, 5), status: 'ok' as const, reason: 'Cache expired and fetch failed, using seed' };
+      : { items: [], status: 'unavailable' as const, reason: 'Cache expired and fetch failed, no fallback data' };
 
     return res.status(200).json({
       status: 'ok' as const,

@@ -222,24 +222,7 @@ async function appendCurrentValue(holdings: Array<{ ticker: string; shares: numb
   }
 }
 
-/**
- * Generate seed data (flat line using current value)
- */
-function generateSeedData(currentValue: number, count: number = 20): ValueDataPoint[] {
-  const now = new Date();
-  const points: ValueDataPoint[] = [];
-  
-  // Generate points for the last 24 hours (5-minute intervals)
-  for (let i = count - 1; i >= 0; i--) {
-    const timestamp = new Date(now.getTime() - i * 5 * 60 * 1000);
-    points.push({
-      t: timestamp.toISOString(),
-      v: currentValue,
-    });
-  }
-  
-  return points;
-}
+// Seed data generation removed
 
 /**
  * Interpolate or pad points to ensure >= 20 points
@@ -250,8 +233,8 @@ function ensureMinPoints(points: ValueDataPoint[], minCount: number = 20): Value
   }
 
   if (points.length === 0) {
-    // No points at all - generate seed
-    return generateSeedData(0, minCount);
+    // No points at all - return empty array
+    return [];
   }
 
   // Pad by repeating last point
@@ -347,21 +330,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (points.length === 0) {
         // No points in range - use seed
         const currentValue = holdings.length > 0 ? await calculatePortfolioValue(holdings) : 0;
-        points = generateSeedData(currentValue);
-        source = "seed";
-        status = "degraded";
-        note = "no intraday points yet";
+        points = [];
+        source = "unavailable";
+        status = "failed";
+        note = "no intraday points available";
       } else {
         source = "live";
         status = "ok";
       }
     } else {
-      // No stored data - generate seed
-      const currentValue = holdings.length > 0 ? await calculatePortfolioValue(holdings) : 0;
-      points = generateSeedData(currentValue);
-      source = "seed";
-      status = "degraded";
-      note = "no intraday points yet";
+      // No stored data - return empty
+      points = [];
+      source = "unavailable";
+      status = "failed";
+      note = "no intraday points available";
     }
 
     // Ensure minimum 20 points
@@ -405,15 +387,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Last resort: return seed data
-    const seedPoints = generateSeedData(0, 20);
+    // No seed data fallback
     const payload: ModulePayload<ValueDataPoint> = {
-      source: "seed",
+      source: "unavailable",
       status: "failed",
       fetchedAt: new Date().toISOString(),
       ttlSeconds: 60,
-      note: "all sources failed, using seed",
-      items: seedPoints,
+      note: "all sources failed, no fallback data available",
+      items: [],
     };
 
     return res.status(200).json({
