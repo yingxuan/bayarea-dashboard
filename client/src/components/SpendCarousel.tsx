@@ -16,6 +16,8 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
 } from "@/components/ui/carousel";
 
 interface SpendPlace {
@@ -99,29 +101,25 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
   let top5Places: SpendPlace[] = [];
   let displayRandomPlace: SpendPlace | null = null;
   
-  if (category === '新店打卡') {
-    // 新店打卡: show all places, no random place needed
-    top5Places = places;
+  // Use modulo to cycle through places if offset exceeds array length
+  const normalizedOffset = Math.max(0, Math.min(offset, places.length - 1));
+  
+  if (normalizedOffset + 5 <= places.length) {
+    // Normal case: we have enough places from current offset
+    top5Places = places.slice(normalizedOffset, normalizedOffset + 5);
   } else {
-    // Use modulo to cycle through places if offset exceeds array length
-    const normalizedOffset = Math.max(0, Math.min(offset, places.length - 1));
-    
-    if (normalizedOffset + 5 <= places.length) {
-      // Normal case: we have enough places from current offset
-      top5Places = places.slice(normalizedOffset, normalizedOffset + 5);
-    } else {
-      // Wrap around: take remaining from current offset + take from start
-      const fromEnd = places.slice(normalizedOffset);
-      const fromStart = places.slice(0, 5 - fromEnd.length);
-      top5Places = [...fromEnd, ...fromStart];
-    }
-    
-    // Find the random place (marked with "随机选店" in category)
-    const randomPlace = places.find(p => p.category.includes('随机选店'));
-    
-    // If no random place found, use the 6th place (if available)
-    displayRandomPlace = randomPlace || (places.length > 5 ? places[5] : null);
+    // Wrap around: take remaining from current offset + take from start
+    const fromEnd = places.slice(normalizedOffset);
+    const fromStart = places.slice(0, 5 - fromEnd.length);
+    top5Places = [...fromEnd, ...fromStart];
   }
+  
+  // Find the random place (marked with "随机选店" in category)
+  // For all categories (including 新店打卡), show random place if available
+  const randomPlace = places.find(p => p.category.includes('随机选店'));
+  
+  // If no random place found, use the 6th place (if available)
+  displayRandomPlace = randomPlace || (places.length > 5 ? places[5] : null);
 
   return (
     <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md flex flex-col h-auto min-h-0">
@@ -150,8 +148,10 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
           loop: false,
           dragFree: true,
         }}
-        className="w-full min-w-0"
+        className="w-full min-w-0 relative"
       >
+        <CarouselPrevious className="hidden md:flex left-2 z-10 bg-background/80 backdrop-blur-sm hover:bg-background/90" />
+        <CarouselNext className="hidden md:flex right-2 z-10 bg-background/80 backdrop-blur-sm hover:bg-background/90" />
         <CarouselContent className="-ml-2 min-w-0 items-stretch">
           {/* Card 1-5: Normal places */}
           {top5Places.map((place) => {
