@@ -100,27 +100,9 @@ export default function LeekCommunity({ maxItems = 5, hideTitle = false }: LeekC
 
   return (
     <div className={hideTitle ? "p-1.5 h-auto" : "rounded-sm p-4 bg-card border border-border/40 shadow-md h-auto"}>
-      {/* Header */}
-      {!hideTitle && (
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-[13px] font-mono font-medium text-foreground/80">
-            韭菜社区
-          </h3>
-          <a
-            href={FORUM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs opacity-60 hover:opacity-100 transition-opacity font-mono font-normal flex items-center gap-1"
-          >
-            查看更多
-            <ArrowRight className="w-3 h-3" />
-          </a>
-        </div>
-      )}
-
-      {/* Posts List */}
+      {/* Posts List - No header, just topics with labels */}
       <div className="space-y-1">
-        {/* 1point3acres items */}
+        {/* 1point3acres items with label */}
         {items
           .slice(0, maxItems)
           .map((item, index) => (
@@ -133,7 +115,8 @@ export default function LeekCommunity({ maxItems = 5, hideTitle = false }: LeekC
             >
               <div className="flex items-start justify-between gap-2">
                 <span className={`${hideTitle ? 'text-xs' : 'text-[14px]'} font-mono font-normal text-foreground/80 group-hover:text-primary transition-colors line-clamp-2 flex-1`} style={{ lineHeight: '1.4' }}>
-                  <span className="text-[10px] mr-1">•</span>{item.title}
+                  <span className="text-[10px] font-medium text-primary/80 mr-1">【投资理财】</span>
+                  {item.title}
                 </span>
                 <ExternalLink className={`${hideTitle ? 'w-3 h-3' : 'w-4 h-4'} opacity-60 text-muted-foreground flex-shrink-0 group-hover:text-primary group-hover:opacity-100 transition-colors mt-0.5`} />
               </div>

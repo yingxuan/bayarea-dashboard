@@ -2,6 +2,7 @@
  * Server-side utility functions
  * - Timeout handling
  * - Fallback mechanisms
+ * - Retry logic with exponential backoff
  */
 
 /**
@@ -24,6 +25,79 @@ export async function withTimeout<T>(
       }, ms);
     }),
   ]);
+}
+
+/**
+ * Retry a function with exponential backoff
+ * Useful for handling transient errors like 403 rate limits
+ * 
+ * @param fn Async function to retry
+ * @param options Retry configuration
+ * @returns Result from successful execution
+ * @throws Last error if all retries fail
+ */
+export async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  options: {
+    maxRetries?: number;
+    initialDelayMs?: number;
+    maxDelayMs?: number;
+    backoffMultiplier?: number;
+    retryableStatusCodes?: number[];
+    label?: string;
+  } = {}
+): Promise<T> {
+  const {
+    maxRetries = 3,
+    initialDelayMs = 1000,
+    maxDelayMs = 10000,
+    backoffMultiplier = 2,
+    retryableStatusCodes = [403, 429, 500, 502, 503, 504],
+    label = 'Retry',
+  } = options;
+
+  let lastError: Error | null = null;
+  let delay = initialDelayMs;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await fn();
+      if (attempt > 0) {
+        console.log(`[${label}] ✅ Succeeded on attempt ${attempt + 1}/${maxRetries + 1}`);
+      }
+      return result;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      // Check if error is retryable
+      const isRetryable = 
+        (error instanceof Error && 
+         ('status' in error || 'statusCode' in error || error.message.includes('403') || error.message.includes('429'))) ||
+        retryableStatusCodes.some(code => 
+          error instanceof Error && error.message.includes(String(code))
+        );
+
+      // Don't retry on last attempt or if error is not retryable
+      if (attempt >= maxRetries || !isRetryable) {
+        if (attempt >= maxRetries) {
+          console.error(`[${label}] ❌ All ${maxRetries + 1} attempts failed`);
+        } else {
+          console.error(`[${label}] ❌ Non-retryable error: ${lastError.message}`);
+        }
+        throw lastError;
+      }
+
+      console.warn(
+        `[${label}] ⚠️ Attempt ${attempt + 1}/${maxRetries + 1} failed: ${lastError.message}. Retrying in ${delay}ms...`
+      );
+
+      // Wait with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay = Math.min(delay * backoffMultiplier, maxDelayMs);
+    }
+  }
+
+  throw lastError || new Error('Retry failed');
 }
 
 /**
