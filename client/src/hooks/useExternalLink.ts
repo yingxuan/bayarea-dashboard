@@ -121,30 +121,40 @@ export function useExternalLink() {
           link.rel = link.rel ? `${link.rel} noopener noreferrer` : "noopener noreferrer";
         }
         
-        // Show first-click hint on mobile (only once per session)
-        if (isMobile && !hasShownHint) {
+        // In standalone/PWA mode, use same-tab navigation so back button works
+        // In regular browsers, use new tab to preserve dashboard
+        if (isStandalone) {
+          // Standalone mode: open in same tab so back button can return to dashboard
           e.preventDefault();
           e.stopPropagation();
-          setShowHint(true);
-          sessionStorage.setItem(SESSION_STORAGE_KEY, "true");
           
-          // Open link after showing hint
-          setTimeout(() => {
-            if (isStandalone) {
-              // In standalone/PWA mode, try window.open first
-              const newWindow = window.open(href, "_blank", "noopener,noreferrer");
-              // If blocked, fallback to same-tab (user can use back button)
-              if (!newWindow) {
-                window.location.href = href;
-              }
-            } else {
-              // Regular mobile browser - window.open should work
+          // Show hint on first click (mobile only)
+          if (isMobile && !hasShownHint) {
+            setShowHint(true);
+            sessionStorage.setItem(SESSION_STORAGE_KEY, "true");
+            setTimeout(() => {
+              window.location.href = href;
+            }, 100);
+          } else {
+            // Direct navigation for subsequent clicks
+            window.location.href = href;
+          }
+        } else {
+          // Regular browser: open in new tab
+          // Show first-click hint on mobile (only once per session)
+          if (isMobile && !hasShownHint) {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowHint(true);
+            sessionStorage.setItem(SESSION_STORAGE_KEY, "true");
+            
+            setTimeout(() => {
               window.open(href, "_blank", "noopener,noreferrer");
-            }
-          }, 100);
+            }, 100);
+          }
+          // For non-mobile or after first hint, let the browser handle it naturally
+          // The link already has target="_blank" set above
         }
-        // For non-mobile or after first hint, let the browser handle it naturally
-        // The link already has target="_blank" set above
       }
     };
 
@@ -186,20 +196,26 @@ export function useExternalLink() {
         e.currentTarget.target = "_blank";
         e.currentTarget.rel = "noopener noreferrer";
         
-        if (isMobile && !hasShownHint) {
+        if (isStandalone) {
+          // Standalone mode: open in same tab so back button can return to dashboard
+          e.preventDefault();
+          if (isMobile && !hasShownHint) {
+            setShowHint(true);
+            sessionStorage.setItem(SESSION_STORAGE_KEY, "true");
+            setTimeout(() => {
+              window.location.href = href;
+            }, 100);
+          } else {
+            window.location.href = href;
+          }
+        } else if (isMobile && !hasShownHint) {
+          // Regular browser: open in new tab
           e.preventDefault();
           setShowHint(true);
           sessionStorage.setItem(SESSION_STORAGE_KEY, "true");
           
           setTimeout(() => {
-            if (isStandalone) {
-              const newWindow = window.open(href, "_blank", "noopener,noreferrer");
-              if (!newWindow) {
-                window.location.href = href;
-              }
-            } else {
-              window.open(href, "_blank", "noopener,noreferrer");
-            }
+            window.open(href, "_blank", "noopener,noreferrer");
           }, 100);
         }
       }

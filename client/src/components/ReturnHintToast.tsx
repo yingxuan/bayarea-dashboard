@@ -26,8 +26,8 @@ export default function ReturnHintToast({ show, onDismiss, isStandalone = false 
   if (!show) return null;
 
   const message = isStandalone 
-    ? "已打开外部链接，点击返回按钮返回仪表盘" 
-    : "已在新标签打开，回到此页继续刷";
+    ? "已打开外部链接，点击浏览器返回按钮可返回仪表盘" 
+    : "已在新标签打开，切换回此标签页继续刷";
 
   return (
     <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[9999] w-full max-w-sm px-4">
