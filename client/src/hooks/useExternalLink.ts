@@ -33,8 +33,9 @@ export function useExternalLink() {
     sessionStorage.getItem(SESSION_STORAGE_KEY) === "true";
 
   // Track outbound clicks and show return hint when user comes back
+  // Show on all devices, not just mobile
   useEffect(() => {
-    if (typeof window === "undefined" || !isMobile) return;
+    if (typeof window === "undefined") return;
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -48,16 +49,17 @@ export function useExternalLink() {
           if (timeSinceClick < tenMinutes) {
             const returnHintShown = sessionStorage.getItem(RETURN_HINT_SHOWN_KEY);
             if (!returnHintShown || returnHintShown !== String(lastClickTime)) {
-              setShowReturnHint(true);
-              sessionStorage.setItem(RETURN_HINT_SHOWN_KEY, String(lastClickTime));
-              
-              // Auto-dismiss after 5 seconds
+              // Small delay to ensure page is fully visible
               setTimeout(() => {
-                setShowReturnHint(false);
-              }, 5000);
+                setShowReturnHint(true);
+                sessionStorage.setItem(RETURN_HINT_SHOWN_KEY, String(lastClickTime));
+              }, 300);
             }
           }
         }
+      } else {
+        // Tab became hidden - don't show hint when user leaves
+        setShowReturnHint(false);
       }
     };
 
@@ -68,14 +70,21 @@ export function useExternalLink() {
       }
     };
 
+    const handleFocus = () => {
+      // Also check on window focus (user switched back to tab)
+      handleVisibilityChange();
+    };
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("pageshow", handlePageShow);
+    window.addEventListener("focus", handleFocus);
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pageshow", handlePageShow);
+      window.removeEventListener("focus", handleFocus);
     };
-  }, [isMobile]);
+  }, []);
 
   // Global click handler for all external links
   useEffect(() => {
