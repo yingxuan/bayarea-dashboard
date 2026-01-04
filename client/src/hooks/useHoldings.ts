@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { traceHoldingsWrite } from "@/utils/holdingsTracer";
 
 export interface Holding {
   id: string; // Unique ID for each holding
@@ -91,6 +92,7 @@ export function useHoldings() {
   // Load holdings and ytdBaseline on mount
   useEffect(() => {
     const loaded = loadHoldings();
+    traceHoldingsWrite('init_from_storage', loaded);
     setHoldings(loaded);
     
     // Load ytdBaseline
@@ -112,6 +114,7 @@ export function useHoldings() {
   // Save holdings whenever they change
   useEffect(() => {
     if (isLoaded) {
+      traceHoldingsWrite('save_to_storage', holdings);
       saveHoldings(holdings);
     }
   }, [holdings, isLoaded]);
@@ -129,7 +132,11 @@ export function useHoldings() {
       avgCost: holding.avgCost,
     };
 
-    setHoldings((prev) => [...prev, normalized]);
+    setHoldings((prev) => {
+      const newHoldings = [...prev, normalized];
+      traceHoldingsWrite('addHolding', newHoldings);
+      return newHoldings;
+    });
     return normalized;
   }, []);
 
@@ -139,8 +146,8 @@ export function useHoldings() {
       throw new Error(validation.error);
     }
 
-    setHoldings((prev) =>
-      prev.map((h) => {
+    setHoldings((prev) => {
+      const newHoldings = prev.map((h) => {
         if (h.id === id) {
           return {
             ...h,
@@ -149,15 +156,22 @@ export function useHoldings() {
           };
         }
         return h;
-      })
-    );
+      });
+      traceHoldingsWrite('updateHolding', newHoldings);
+      return newHoldings;
+    });
   }, []);
 
   const deleteHolding = useCallback((id: string) => {
-    setHoldings((prev) => prev.filter((h) => h.id !== id));
+    setHoldings((prev) => {
+      const newHoldings = prev.filter((h) => h.id !== id);
+      traceHoldingsWrite('deleteHolding', newHoldings);
+      return newHoldings;
+    });
   }, []);
 
   const clearHoldings = useCallback(() => {
+    traceHoldingsWrite('clearHoldings', []);
     setHoldings([]);
   }, []);
 
@@ -178,6 +192,7 @@ export function useHoldings() {
 
     if (merge) {
       // Merge: combine with existing, update duplicates by ticker
+      // Ensure new array reference (no mutation)
       setHoldings((prev) => {
         const merged = [...prev];
         for (const newHolding of validHoldings) {
@@ -190,11 +205,15 @@ export function useHoldings() {
             merged.push(newHolding);
           }
         }
+        traceHoldingsWrite('importHoldings_merge', merged);
         return merged;
       });
     } else {
       // Replace: clear and set new holdings
-      setHoldings(validHoldings);
+      // Ensure new array reference (no mutation) - critical for React reactivity
+      const newHoldings = validHoldings.map(h => ({ ...h })); // Deep copy
+      traceHoldingsWrite('importHoldings_replace', newHoldings);
+      setHoldings(newHoldings);
     }
   }, []);
 

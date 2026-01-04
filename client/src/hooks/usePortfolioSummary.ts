@@ -5,6 +5,7 @@
 
 import { useMemo } from "react";
 import { Holding } from "./useHoldings";
+import { traceMarketValueCompute } from "@/utils/holdingsTracer";
 
 export interface QuoteData {
   price: number;
@@ -140,11 +141,26 @@ export function usePortfolioSummary(
     }
 
     // Return normalized values (ensure all are proper numbers, rounded for stability)
-    return {
+    const result = {
       portfolioValue: Math.round(Number(portfolioValue) * 100) / 100 || 0,
       dailyChangeAmount: Math.round(Number(dailyChangeAmount) * 100) / 100 || 0,
       dailyChangePercent: Math.round(Number(dailyChangePercent) * 10000) / 10000 || 0,
       ytdPercent: ytdPercent !== null ? Math.round(Number(ytdPercent) * 10000) / 10000 : null,
     };
+    
+    // Trace market value computation
+    const tickersWithQuotes = holdings.filter(h => {
+      const tickerUpper = h.ticker.toUpperCase();
+      const quote = quotesData[tickerUpper];
+      return quote && quote.status === 'ok' && quote.price > 0;
+    }).length;
+    
+    traceMarketValueCompute(
+      holdings.length,
+      result.portfolioValue,
+      tickersWithQuotes
+    );
+    
+    return result;
   }, [holdingsKey, quotesKey, ytdBaseline, holdings, quotesData]);
 }

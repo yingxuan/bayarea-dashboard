@@ -65,13 +65,21 @@ export default function Home() {
   // Fetch quotes when holdings change
   useEffect(() => {
     if (!holdingsLoaded || holdings.length === 0) {
+      console.log('[Home] Quotes fetch skipped: holdingsLoaded=', holdingsLoaded, 'holdings.length=', holdings.length);
       setQuotesData({});
       return;
     }
 
     const fetchQuotes = async () => {
+      const fetchStartTime = new Date().toISOString();
+      const tickers = holdings.map(h => h.ticker.toUpperCase()).join(',');
+      console.log('[Home] Fetching quotes for holdings:', {
+        holdingsLength: holdings.length,
+        tickers,
+        fetchStartTime,
+      });
+      
       try {
-        const tickers = holdings.map(h => h.ticker.toUpperCase()).join(',');
         const apiUrl = `${config.apiBaseUrl}/api/quotes?tickers=${encodeURIComponent(tickers)}`;
         
         const response = await fetch(apiUrl, {
@@ -111,6 +119,16 @@ export default function Home() {
             changePercent,
             status: quote.status,
           };
+        });
+        
+        const fetchEndTime = new Date().toISOString();
+        const validQuotesCount = Object.keys(quotesMap).length;
+        console.log('[Home] Quotes fetched successfully:', {
+          holdingsLength: holdings.length,
+          requestedTickers: tickers.split(',').length,
+          validQuotesCount,
+          fetchStartTime,
+          fetchEndTime,
         });
         
         setQuotesData(quotesMap);
