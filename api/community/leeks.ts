@@ -10,12 +10,14 @@
  * - Cache TTL: 10 minutes
  */
 
-// Force Node.js runtime on Vercel (not Edge) for compatibility
+// CRITICAL: Force Node.js runtime on Vercel (not Edge) for compatibility
+// This is required for proper encoding handling with iconv-lite and Buffer
 export const runtime = 'nodejs';
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import * as cheerio from 'cheerio';
 import { XMLParser } from 'fast-xml-parser';
+import * as iconv from 'iconv-lite';
 import { CACHE_TTL, ttlMsToSeconds } from '../../shared/config.js';
 import {
   setCorsHeaders,
@@ -231,11 +233,108 @@ async function fetch1point3acresDirectHTML(): Promise<CommunityItem[]> {
 }
 
 /**
- * Try fetching from a single RSSHub instance (SAME as gossip.ts - no encoding handling)
- * 
- * IMPORTANT: This must match gossip.ts exactly. DO NOT add encoding handling.
+ * Extract charset from Content-Type header
  */
-async function tryRSSHubInstance(url: string, timeout: number): Promise<{ success: boolean; xmlText?: string; contentType?: string; error?: string }> {
+function extractCharsetFromHeader(contentType: string): string | null {
+  const match = contentType.match(/charset=([^;]+)/i);
+  return match ? match[1].trim().toLowerCase() : null;
+}
+
+/**
+ * Extract charset from XML prolog
+ */
+function extractCharsetFromProlog(xmlBytes: Buffer): string | null {
+  const prolog = xmlBytes.slice(0, 200).toString('latin1');
+  const match = prolog.match(/encoding\s*=\s*["']([^"']+)["']/i);
+  return match ? match[1].trim().toLowerCase() : null;
+}
+
+/**
+ * Count replacement characters () in text
+ */
+function countReplacements(text: string, maxLength: number = 2048): number {
+  const sample = text.slice(0, maxLength);
+  return (sample.match(/\uFFFD/g) || []).length;
+}
+
+/**
+ * Decode buffer with charset detection and fallback
+ * Step 3: Charset detection order + fallback
+ */
+function decodeWithCharsetDetection(
+  buffer: Buffer,
+  contentType: string,
+  debugInfo?: any
+): { text: string; chosenCharset: string; replacementCount: number } {
+  // Step 1: charset from content-type header
+  const headerCharset = extractCharsetFromHeader(contentType);
+  
+  // Step 2: charset from XML prolog
+  const prologCharset = extractCharsetFromProlog(buffer);
+  
+  if (debugInfo) {
+    debugInfo.decode.headerCharset = headerCharset || 'none';
+    debugInfo.decode.prologCharset = prologCharset || 'none';
+  }
+  
+  // Try header charset first, then prolog, then default to utf-8
+  let primaryCharset = headerCharset || prologCharset || 'utf-8';
+  
+  // Normalize charset names
+  if (primaryCharset === 'gbk' || primaryCharset === 'gb2312') {
+    primaryCharset = 'gb18030';
+  }
+  
+  // Decode with primary charset
+  let decoded = iconv.decode(buffer, primaryCharset);
+  let replacementCount = countReplacements(decoded);
+  
+  // Step 3: If ANY '' appears, compare utf-8 and gb18030
+  if (replacementCount > 0) {
+    const utf8Decoded = iconv.decode(buffer, 'utf-8');
+    const utf8Replacements = countReplacements(utf8Decoded);
+    
+    const gb18030Decoded = iconv.decode(buffer, 'gb18030');
+    const gb18030Replacements = countReplacements(gb18030Decoded);
+    
+    // Pick the one with fewer replacements
+    if (utf8Replacements < replacementCount && utf8Replacements < gb18030Replacements) {
+      decoded = utf8Decoded;
+      replacementCount = utf8Replacements;
+      primaryCharset = 'utf-8';
+    } else if (gb18030Replacements < replacementCount) {
+      decoded = gb18030Decoded;
+      replacementCount = gb18030Replacements;
+      primaryCharset = 'gb18030';
+    }
+  }
+  
+  if (debugInfo) {
+    debugInfo.decode.selectedEncoding = primaryCharset;
+    debugInfo.decode.replacementCount = replacementCount;
+    debugInfo.decode.first200Chars = decoded.slice(0, 200);
+  }
+  
+  return { text: decoded, chosenCharset: primaryCharset, replacementCount };
+}
+
+/**
+ * Try fetching from a single RSSHub instance
+ * Use response.text() directly (Node.js runtime handles encoding)
+ */
+async function tryRSSHubInstance(
+  url: string,
+  timeout: number,
+  debugInfo?: any
+): Promise<{ 
+  success: boolean; 
+  xmlText?: string; 
+  contentType?: string; 
+  contentEncoding?: string;
+  finalUrl?: string;
+  error?: string;
+  debugSnapshot?: any;
+}> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -245,18 +344,71 @@ async function tryRSSHubInstance(url: string, timeout: number): Promise<{ succes
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       },
+      redirect: 'follow',
     });
     
     clearTimeout(timeoutId);
     
     const contentType = response.headers.get('content-type') || 'unknown';
+    const contentEncoding = response.headers.get('content-encoding') || 'none';
+    const finalUrl = response.url || url;
+    const status = response.status;
     
     if (!response.ok) {
-      return { success: false, contentType, error: `HTTP ${response.status} ${response.statusText}` };
+      return { 
+        success: false, 
+        contentType, 
+        contentEncoding,
+        finalUrl,
+        error: `HTTP ${status} ${response.statusText}` 
+      };
     }
     
+    // Use response.text() directly - Node.js runtime handles encoding
     const xmlText = await response.text();
-    return { success: true, xmlText, contentType };
+    
+    // Step 1: Build debug snapshot
+    const snapshot: any = {
+      url,
+      runtime: 'nodejs',
+      status,
+      contentType,
+      contentEncoding,
+      finalUrl,
+      textFirst200Chars: xmlText.slice(0, 200),
+    };
+    
+    // Step 4: NON_XML guard
+    const looksLikeHtml = xmlText.trim().toLowerCase().startsWith('<!doctype html') ||
+                         xmlText.trim().toLowerCase().startsWith('<html') ||
+                         contentType.includes('text/html');
+    snapshot.looksLikeHtml = looksLikeHtml;
+    
+    if (debugInfo) {
+      Object.assign(debugInfo.fetch, {
+        status,
+        contentType,
+        contentEncoding,
+        finalUrl,
+      });
+      debugInfo.fetch.looksLikeHtml = looksLikeHtml;
+      debugInfo.decode = {
+        headerCharset: extractCharsetFromHeader(contentType) || 'none',
+        prologCharset: extractCharsetFromProlog(Buffer.from(xmlText, 'utf-8')) || 'none',
+        selectedEncoding: 'utf-8',
+        replacementCount: countReplacements(xmlText),
+        first200Chars: xmlText.slice(0, 200),
+      };
+    }
+    
+    return { 
+      success: true, 
+      xmlText, 
+      contentType,
+      contentEncoding,
+      finalUrl,
+      debugSnapshot: snapshot,
+    };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     return { success: false, error: errorMsg };
@@ -319,21 +471,29 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
     cacheWrite: false,
   };
   
-  // Try live fetch from RSSHub (try all instances) - same as gossip.ts
+  // Try live fetch from RSSHub (try all instances)
   let xmlText: string | undefined;
   let contentType: string | undefined;
+  let contentEncoding: string | undefined;
+  let finalUrl: string | undefined;
   let lastError: string | undefined;
   let usedInstance: string | undefined;
+  let debugSnapshot: any = undefined;
+  let looksLikeHtml = false;
   
   for (let i = 0; i < RSSHUB_INSTANCES.length; i++) {
     const instanceUrl = RSSHUB_INSTANCES[i];
     console.log(`[1point3acres] 🔍 Trying RSSHub instance ${i + 1}/${RSSHUB_INSTANCES.length}: ${instanceUrl}`);
     
-    const result = await tryRSSHubInstance(instanceUrl, RSS_FETCH_TIMEOUT);
+    const result = await tryRSSHubInstance(instanceUrl, RSS_FETCH_TIMEOUT, debugInfo);
     
     if (result.success && result.xmlText) {
       xmlText = result.xmlText;
       contentType = result.contentType;
+      contentEncoding = result.contentEncoding;
+      finalUrl = result.finalUrl;
+      debugSnapshot = result.debugSnapshot;
+      looksLikeHtml = result.debugSnapshot?.looksLikeHtml || false;
       usedInstance = instanceUrl;
       console.log(`[1point3acres] ✅ Successfully fetched from instance ${i + 1}`);
       break;
@@ -342,6 +502,16 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       contentType = result.contentType;
       console.log(`[1point3acres] ❌ Instance ${i + 1} failed: ${lastError}`);
     }
+  }
+  
+  // Update debug info with fetch details
+  if (debugSnapshot) {
+    Object.assign(debugInfo.fetch, {
+      status: debugSnapshot.status,
+      contentType: debugSnapshot.contentType,
+      contentEncoding: debugSnapshot.contentEncoding,
+      finalUrl: debugSnapshot.finalUrl,
+    });
   }
   
   // DEBUG: Log HTTP status and content-type
@@ -355,28 +525,25 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
   // If we got XML, parse it
   if (xmlText) {
     try {
-      // DEBUG: Detect NON_XML (HTML response from RSSHub)
-      const isHtml = xmlText.trim().toLowerCase().startsWith('<!doctype html') || 
+      // Step 4: NON_XML guard (do not cache)
+      const isHtml = looksLikeHtml || 
+                     xmlText.trim().toLowerCase().startsWith('<!doctype html') || 
                      xmlText.trim().toLowerCase().startsWith('<html') ||
                      (contentType && contentType.includes('text/html'));
       const isXml = !isHtml && (xmlText.trim().startsWith('<?xml') || xmlText.trim().startsWith('<rss') || xmlText.trim().startsWith('<feed'));
       
       if (isHtml || !isXml) {
         debugInfo.reason = 'NON_XML';
-        console.warn(`[1point3acres] ⚠️ NON_XML detected: content-type=${contentType}, startsWith=${xmlText.substring(0, 50)}`);
-        // Continue parsing anyway (don't change behavior, just log)
+        console.warn(`[1point3acres] ⚠️ NON_XML detected: content-type=${contentType}, looksLikeHtml=${looksLikeHtml}, startsWith=${xmlText.substring(0, 50)}`);
+        // Do NOT parse, do NOT cache, fallback to cache/seed
+        throw new Error('NON_XML: HTML response received instead of XML');
       }
       
       // DEBUG: Log first 200 characters of RSS response
       const rssPreview = xmlText.substring(0, 200);
       console.log(`[1point3acres] 🔍 DEBUG - RSS Response Preview (first 200 chars): ${rssPreview}`);
       
-      // Parse XML using fast-xml-parser (same as gossip.ts)
-      // IMPORTANT: This parser configuration is proven to work correctly for 1point3acres RSS.
-      // DO NOT change this configuration without explicit user request.
-      // - Simple configuration (no cdataPropName, no htmlEntities: false)
-      // - Relies on default parser behavior
-      // - This matches the working implementation in gossip.ts
+      // Parse XML using fast-xml-parser (same config as gossip.ts)
       const parser = new XMLParser({
         ignoreAttributes: false,
         attributeNamePrefix: '@_',
@@ -389,27 +556,10 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       const itemsArray = Array.isArray(rssItems) ? rssItems : [rssItems];
       
       debugInfo.parse.rawItemCount = itemsArray.length;
-      debugInfo.parse.parsedItemCount = itemsArray.length;
       console.log(`[1point3acres] ✅ RSS XML parsed, ${itemsArray.length} raw items`);
     
-    // Debug: Log first item structure to understand RSS format
-    if (itemsArray.length > 0) {
-      const firstItem = itemsArray[0];
-      console.log(`[1point3acres] 🔍 First item structure:`, JSON.stringify({
-        hasLink: !!firstItem.link,
-        linkType: typeof firstItem.link,
-        linkValue: typeof firstItem.link === 'string' ? firstItem.link.substring(0, 100) : JSON.stringify(firstItem.link).substring(0, 100),
-        hasTitle: !!firstItem.title,
-        titleType: typeof firstItem.title,
-        titleValue: typeof firstItem.title === 'string' ? firstItem.title.substring(0, 50) : JSON.stringify(firstItem.title).substring(0, 50),
-      }, null, 2));
-    }
-    
-    // If < 3 items after parsing, log first 300 chars for debugging
-    if (itemsArray.length < 3) {
-      const preview = xmlText.substring(0, 300);
-      console.warn(`[1point3acres] ⚠️ Parsed ${itemsArray.length} items (< 3), XML preview (first 300 chars): ${preview}`);
-    }
+    // Update debug info with parsed item count
+    debugInfo.parse.parsedItemCount = itemsArray.length;
     
     const items: CommunityItem[] = [];
     const seenUrls = new Set<string>();
@@ -421,18 +571,22 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
     let forbiddenCount = 0;
     let emptyLinkCount = 0;
     
+    // Step 6: Log first item structure for debug
+    if (itemsArray.length > 0 && debugInfo) {
+      const firstItem = itemsArray[0];
+      debugInfo.parse.sampleTitleNode = {
+        typeof: typeof firstItem.title,
+        keys: typeof firstItem.title === 'object' ? Object.keys(firstItem.title || {}) : [],
+      };
+    }
+    
     // Parse RSS items
     for (const item of itemsArray) {
       if (!item) continue;
       
       totalLinksCount++;
       
-      // Extract link and title (handle different RSS formats) - same as gossip.ts
-      // IMPORTANT: This extraction logic is proven to work correctly for 1point3acres RSS.
-      // DO NOT change this logic without explicit user request.
-      // - Simple extraction (no HTML entity decoding, no CDATA special handling)
-      // - Handles: string, #text, @_href patterns
-      // - This matches the working implementation in gossip.ts
+      // Extract link and title (handle different RSS formats) - same logic as gossip.ts
       // RSS 2.0: link can be string directly, or object with #text
       let link = '';
       if (typeof item.link === 'string') {
@@ -508,7 +662,7 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
       items.push({
         source: '1point3acres',
         sourceLabel: '一亩三分地',
-        title: title.trim(),
+        title: title.trim(), // Same as gossip.ts - no cleanText()
         url,
         publishedAt,
       });
@@ -557,11 +711,23 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
         console.warn(`[1point3acres] ⚠️ Only ${uniqueItems.length} valid items (< 3), will try cache/fallback`);
       }
       
+      // Step 1: Complete debug snapshot with all required fields
+      if (debugSnapshot) {
+        debugInfo.fetch.url = usedInstance || debugSnapshot.url;
+        debugInfo.fetch.runtime = 'nodejs';
+        debugInfo.fetch.status = debugSnapshot.status || debugInfo.fetch.status;
+        debugInfo.fetch.contentEncoding = debugSnapshot.contentEncoding || '';
+        debugInfo.fetch.bytesFirst200Base64 = debugSnapshot.bytesFirst200Base64;
+        debugInfo.fetch.textFirst200Chars = debugSnapshot.textFirst200Chars;
+        debugInfo.fetch.looksLikeHtml = debugSnapshot.looksLikeHtml;
+      }
+      debugInfo.parse.sampleTitles = uniqueItems.slice(0, 3).map(item => item.title);
+      debugInfo.parse.sampleLinks = uniqueItems.slice(0, 3).map(item => item.url);
+      
       // Ensure >= 3 items (with fallback)
       if (uniqueItems.length >= 3) {
         debugInfo.mode = 'live';
         debugInfo.reason = debugInfo.reason || 'SUCCESS';
-        console.log(`[1point3acres] 📊 DEBUG Snapshot:`, JSON.stringify(debugInfo, null, 2));
         return {
           items: uniqueItems.slice(0, 5), // Return top 5
           status: 'ok',
@@ -785,10 +951,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       debug: result.debug, // Include debug in cached data
     };
 
-    // STEP 6: Cache policy - only cache if mode is 'live' and we have >= 3 items
+    // Step 4: Cache policy - only cache if mode is 'live', >= 3 items, and NOT NON_XML
     const shouldCache = result.debug?.mode === 'live' && 
                        result.debug?.filter?.filteredThreadCount >= 3 && 
-                       result.status === 'ok';
+                       result.status === 'ok' &&
+                       result.debug?.reason !== 'NON_XML';
     
     if (shouldCache) {
       setCache(cacheKey1point3acres, response1point3acres);
@@ -800,7 +967,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (result.debug) {
         result.debug.cacheWrite = false;
       }
-      console.warn(`[API /api/community/leeks] ⚠️ Not caching (mode: ${result.debug?.mode}, status: ${result.status}, items: ${finalItems.length})`);
+      const reason = result.debug?.reason === 'NON_XML' ? 'NON_XML (do not cache)' : 
+                    `mode: ${result.debug?.mode}, status: ${result.status}, items: ${finalItems.length}`;
+      console.warn(`[API /api/community/leeks] ⚠️ Not caching (${reason})`);
     }
 
     const response: any = {
@@ -816,9 +985,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cache_mode: nocache ? 'bypass' : 'normal',
     };
     
-    // Include debug snapshot if requested
-    if (debugMode && result.debug) {
-      response.debug = result.debug;
+    // Step 1: Include debug snapshot if requested (debug=1)
+    if (debugMode) {
+      response.debug = result.debug || {};
+      // Ensure all required debug fields are present
+      if (result.debug) {
+        response.debug.fetch = result.debug.fetch || {};
+        response.debug.decode = result.debug.decode || {};
+        response.debug.parse = result.debug.parse || {};
+        response.debug.filter = result.debug.filter || {};
+      }
     }
 
     res.setHeader('Content-Type', 'application/json; charset=utf-8');

@@ -232,7 +232,7 @@ async function searchGooglePlacesNearby(
       url = 'https://places.googleapis.com/v1/places:searchText';
       requestBody = {
         textQuery: keyword,
-        maxResultCount: enableDebugLog ? 30 : 8, // For debug mode or 新店打卡: need more results
+        maxResultCount: enableDebugLog ? 20 : 8, // Google Places API (New) limit: 1-20
         locationBias: {
           circle: {
             center: {
@@ -257,7 +257,7 @@ async function searchGooglePlacesNearby(
       // Use searchNearby for type-based searches
       url = 'https://places.googleapis.com/v1/places:searchNearby';
       requestBody = {
-        maxResultCount: enableDebugLog ? 30 : 6, // For debug mode: need more results
+        maxResultCount: enableDebugLog ? 20 : 6, // Google Places API (New) limit: 1-20
         locationRestriction: {
           circle: {
             center: {
@@ -270,8 +270,13 @@ async function searchGooglePlacesNearby(
       };
       
       // Only include includedTypes if type is provided
+      // Note: Google Places API searchNearby requires includedTypes (array of strings)
       if (type) {
         requestBody.includedTypes = [type];
+      } else {
+        // If no type provided, searchNearby requires at least one type
+        // Default to restaurant if no type specified
+        requestBody.includedTypes = ['restaurant'];
       }
       
       // Only include rankPreference if in debug mode
@@ -314,9 +319,9 @@ async function searchGooglePlacesNearby(
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[Spend Today] Places API HTTP error: ${response.status} ${response.statusText}`);
-      if (enableDebugLog && debugMode) {
-        console.error(`[Spend Today] Error response: ${errorText}`);
-      }
+      console.error(`[Spend Today] Request URL: ${url}`);
+      console.error(`[Spend Today] Request body:`, JSON.stringify(requestBody, null, 2));
+      console.error(`[Spend Today] Error response: ${errorText}`);
       throw new Error(`Places API (New) error: ${response.status} ${response.statusText}`);
     }
 
@@ -1732,7 +1737,7 @@ async function fetchNewPlaces(debugMode: boolean = false): Promise<SpendPlace[]>
       const wideNetUrl = 'https://places.googleapis.com/v1/places:searchNearby';
       const wideNetRequestBody = {
         includedTypes: ['restaurant'],
-        maxResultCount: 30,
+        maxResultCount: 20, // Google Places API (New) limit: 1-20
         locationRestriction: {
           circle: {
             center: {
@@ -1806,7 +1811,7 @@ async function fetchNewPlaces(debugMode: boolean = false): Promise<SpendPlace[]>
             radiusMeters: 12000,
             includedTypes: ['restaurant'],
             keyword: undefined,
-            maxResultCount: 30,
+            maxResultCount: 20, // Google Places API (New) limit: 1-20
             rawPlacesCount: wideNetResults.length,
           },
         };
@@ -1820,7 +1825,7 @@ async function fetchNewPlaces(debugMode: boolean = false): Promise<SpendPlace[]>
             radiusMeters: 12000,
             includedTypes: ['restaurant'],
             keyword: undefined,
-            maxResultCount: 30,
+            maxResultCount: 20, // Google Places API (New) limit: 1-20
             rawPlacesCount: wideNetResults.length,
           },
         };
@@ -2119,7 +2124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       for (const city of citiesToTest) {
         const nearbyBody = {
           includedTypes: ['restaurant'],
-          maxResultCount: 30,
+          maxResultCount: 20, // Google Places API (New) limit: 1-20
           locationRestriction: {
             circle: {
               center: {
@@ -2310,7 +2315,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const nearbyUrl = 'https://places.googleapis.com/v1/places:searchNearby';
       const nearbyBody = {
         includedTypes: ['restaurant'],
-        maxResultCount: 30,
+        maxResultCount: 20, // Google Places API (New) limit: 1-20
         locationRestriction: {
           circle: {
             center: {
@@ -2722,78 +2727,74 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Use English key for itemsByCategory, but keep Chinese category in each place
       const englishKey = CATEGORY_KEY_MAP[category];
       if (englishKey) {
-        // For 新店打卡: no minimum requirement, show all available places
-        // For other categories: ensure we have at least 6 places (5 normal + 1 random) for carousel display
-        if (category !== '新店打卡') {
-          // If we have < 6, pad with seed data (only for non-新店打卡 categories)
-          if (categoryPlaces.length < 6) {
-            // Use FOOD_SEED_DATA directly to get all seed places for this category
-            const seedForCategory = FOOD_SEED_DATA.filter(p => p.category === category);
-            if (seedForCategory.length > 0) {
-              const seedSpendPlaces: SpendPlace[] = seedForCategory.map(p => ({
-                id: p.id,
-                name: p.name,
-                category: p.category,
-                rating: p.rating,
-                user_ratings_total: p.review_count,
-                address: p.address,
-                maps_url: p.url,
-                photo_url: p.photo_url,
-                city: p.city,
-                score: p.score,
-                distance_miles: p.distance_miles,
-              }));
-              // Add seed places that are not already in categoryPlaces
-              const existingIds = new Set(categoryPlaces.map(p => p.id));
-              const newSeedPlaces = seedSpendPlaces.filter(p => !existingIds.has(p.id));
-              // Add enough seed places to reach at least 6 total
-              const needed = 6 - categoryPlaces.length;
-              categoryPlaces = [...categoryPlaces, ...newSeedPlaces.slice(0, needed)];
-              console.log(`[Spend Today] Added ${Math.min(newSeedPlaces.length, needed)} seed places for ${category}, total now: ${categoryPlaces.length}`);
-            }
-          }
-          
-          // Ensure we have at least 6 places for carousel (5 normal + 1 random)
-          // If still < 6 after seed data addition, use all available places
-          if (categoryPlaces.length < 6) {
-            console.warn(`[Spend Today] WARNING: Category ${category} still has only ${categoryPlaces.length} places after seed data addition`);
+        // For all categories: ensure we have at least 6 places (5 normal + 1 random) for carousel display
+        // If we have < 6, pad with seed data
+        if (categoryPlaces.length < 6) {
+          // Use FOOD_SEED_DATA directly to get all seed places for this category
+          const seedForCategory = FOOD_SEED_DATA.filter(p => p.category === category);
+          if (seedForCategory.length > 0) {
+            const seedSpendPlaces: SpendPlace[] = seedForCategory.map(p => ({
+              id: p.id,
+              name: p.name,
+              category: p.category,
+              rating: p.rating,
+              user_ratings_total: p.review_count,
+              address: p.address,
+              maps_url: p.url,
+              photo_url: p.photo_url,
+              city: p.city,
+              score: p.score,
+              distance_miles: p.distance_miles,
+            }));
+            // Add seed places that are not already in categoryPlaces
+            const existingIds = new Set(categoryPlaces.map(p => p.id));
+            const newSeedPlaces = seedSpendPlaces.filter(p => !existingIds.has(p.id));
+            // Add enough seed places to reach at least 6 total
+            const needed = 6 - categoryPlaces.length;
+            categoryPlaces = [...categoryPlaces, ...newSeedPlaces.slice(0, needed)];
+            console.log(`[Spend Today] Added ${Math.min(newSeedPlaces.length, needed)} seed places for ${category}, total now: ${categoryPlaces.length}`);
           }
         }
         
-        // For 新店打卡, sort by newness score (higher = newer) and use all available places
+        // Ensure we have at least 6 places for carousel (5 normal + 1 random)
+        // If still < 6 after seed data addition, use all available places
+        if (categoryPlaces.length < 6) {
+          console.warn(`[Spend Today] WARNING: Category ${category} still has only ${categoryPlaces.length} places after seed data addition`);
+        }
+        
+        // For all categories: ensure we have at least 6 places (5 normal + 1 random) for carousel display
+        // For 新店打卡, sort by newness score (higher = newer)
         // For other categories, already sorted by popularity
         if (category === '新店打卡') {
           categoryPlaces.sort((a, b) => b.score - a.score); // Higher newness score = better
-          // 新店打卡: show all available places, no minimum requirement
-          finalPlacesByCategory[englishKey] = categoryPlaces;
-        } else {
-          // Keep top 5 places per category
-          const top5Places = categoryPlaces.slice(0, 5);
-          
-          // Always add one random place if we have at least 6 places total
-          // If we have exactly 5, use the 5th as both normal and random (to ensure 6 items)
-          if (categoryPlaces.length >= 6) {
-            const remainingPlaces = categoryPlaces.slice(5);
-            const randomPlace = remainingPlaces[Math.floor(Math.random() * remainingPlaces.length)];
-            // Mark as random selection
-            randomPlace.category = `${category} (随机选店)`;
-            top5Places.push(randomPlace);
-          } else if (categoryPlaces.length === 5) {
-            // If we have exactly 5, duplicate the last one as random to ensure 6 items
-            const lastPlace = { ...categoryPlaces[4] };
-            lastPlace.category = `${category} (随机选店)`;
-            top5Places.push(lastPlace);
-          } else {
-            // If < 5, we can't reach 6, but still try to add one more if available
-            if (categoryPlaces.length > top5Places.length) {
-              const extraPlace = categoryPlaces[top5Places.length];
-              extraPlace.category = `${category} (随机选店)`;
-              top5Places.push(extraPlace);
-            }
-          }
-          
-          finalPlacesByCategory[englishKey] = top5Places;
         }
+        
+        // Keep top 5 places per category
+        const top5Places = categoryPlaces.slice(0, 5);
+        
+        // Always add one random place if we have at least 6 places total
+        // If we have exactly 5, use the 5th as both normal and random (to ensure 6 items)
+        if (categoryPlaces.length >= 6) {
+          const remainingPlaces = categoryPlaces.slice(5);
+          const randomPlace = remainingPlaces[Math.floor(Math.random() * remainingPlaces.length)];
+          // Mark as random selection
+          randomPlace.category = `${category} (随机选店)`;
+          top5Places.push(randomPlace);
+        } else if (categoryPlaces.length === 5) {
+          // If we have exactly 5, duplicate the last one as random to ensure 6 items
+          const lastPlace = { ...categoryPlaces[4] };
+          lastPlace.category = `${category} (随机选店)`;
+          top5Places.push(lastPlace);
+        } else {
+          // If < 5, we can't reach 6, but still try to add one more if available
+          if (categoryPlaces.length > top5Places.length) {
+            const extraPlace = categoryPlaces[top5Places.length];
+            extraPlace.category = `${category} (随机选店)`;
+            top5Places.push(extraPlace);
+          }
+        }
+        
+        finalPlacesByCategory[englishKey] = top5Places;
       } else {
         console.error(`[Spend Today] ERROR: No English key mapping for category ${category}`);
       }
