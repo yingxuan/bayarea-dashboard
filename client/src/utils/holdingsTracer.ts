@@ -1,30 +1,12 @@
 /**
  * Holdings Write Tracer (dev-only)
  * Logs all holdings state changes for debugging
+ * Only logs to console - no UI elements
  */
 
 const isDev = import.meta.env.DEV;
 const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
 const debugMode = urlParams?.get('debug') === '1' || isDev;
-
-/**
- * Show toast notification (lazy import to avoid circular deps)
- */
-async function showDebugToast(message: string, type: 'info' | 'success' | 'error' = 'info') {
-  try {
-    const { toast } = await import('sonner');
-    if (type === 'success') {
-      toast.success(message, { duration: 3000 });
-    } else if (type === 'error') {
-      toast.error(message, { duration: 3000 });
-    } else {
-      toast.info(message, { duration: 2000 });
-    }
-  } catch (e) {
-    // Fallback to console if toast not available
-    console.log(`[Toast] ${message}`);
-  }
-}
 
 /**
  * Trace holdings write operation
@@ -46,7 +28,7 @@ export function traceHoldingsWrite(source: string, holdings: any[]): void {
     fullHash: holdingsJson.length > 0 ? `${holdingsJson.length} chars` : 'empty',
   });
   
-  // Also log to a global array for inspection
+  // Also log to a global array for inspection (console only)
   if (!(window as any).__holdingsWriteHistory) {
     (window as any).__holdingsWriteHistory = [];
   }
@@ -63,12 +45,6 @@ export function traceHoldingsWrite(source: string, holdings: any[]): void {
   const history = (window as any).__holdingsWriteHistory;
   if (history.length > 20) {
     history.shift();
-  }
-  
-  // Show toast for critical operations (only for imports to avoid spam)
-  if (source.includes('importHoldings')) {
-    const mode = source.includes('merge') ? '合并' : '替换';
-    showDebugToast(`📥 ${mode}: ${holdingsLength} 项`, 'success');
   }
 }
 
@@ -92,16 +68,10 @@ export function traceMarketValueCompute(
     lastPriceFetchTime: lastPriceFetchTime || 'N/A',
   });
   
-  // Also log to a global array
+  // Also log to a global array (console only)
   if (!(window as any).__marketValueComputeHistory) {
     (window as any).__marketValueComputeHistory = [];
   }
-  
-  const prevEntry = (window as any).__marketValueComputeHistory[
-    (window as any).__marketValueComputeHistory.length - 1
-  ];
-  const prevValue = prevEntry?.computedMarketValue ?? 0;
-  const valueChanged = Math.abs(computedMarketValue - prevValue) > 0.01;
   
   (window as any).__marketValueComputeHistory.push({
     timestamp,
@@ -115,15 +85,5 @@ export function traceMarketValueCompute(
   const history = (window as any).__marketValueComputeHistory;
   if (history.length > 20) {
     history.shift();
-  }
-  
-  // Show toast if market value changed significantly (only if value > 0 and we have quotes)
-  // Throttle: only show if value changed by more than $1 and we have valid quotes
-  if (valueChanged && computedMarketValue > 0 && holdingsLength > 0 && tickersCount > 0) {
-    // Only show if this is a significant change (likely after import)
-    const changeAmount = Math.abs(computedMarketValue - prevValue);
-    if (changeAmount > 1) {
-      showDebugToast(`💰 市值: $${computedMarketValue.toLocaleString()} (${tickersCount}/${holdingsLength})`, 'info');
-    }
   }
 }

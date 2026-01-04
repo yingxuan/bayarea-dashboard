@@ -25,7 +25,7 @@ import IndicesCard from "@/components/IndicesCard";
 import ShowsCarousel from "@/components/ShowsCarousel";
 import SectionHeader from "@/components/SectionHeader";
 import TimeAgo from "@/components/TimeAgo";
-import ReturnHintToast from "@/components/ReturnHintToast";
+import ReturnHintToast, { ReturnToDashboardToast } from "@/components/ReturnHintToast";
 import { useHoldings } from "@/hooks/useHoldings";
 import { QuoteData } from "@/hooks/usePortfolioSummary";
 import { useExternalLink } from "@/hooks/useExternalLink";
@@ -50,7 +50,15 @@ async function fetchWithTimeout(url: string, timeoutMs = 10000): Promise<Respons
 
 export default function Home() {
   // Mobile return hint
-  const { showHint, dismissHint, handleExternalLinkClick, isStandalone } = useExternalLink();
+  const { 
+    showHint, 
+    dismissHint, 
+    showReturnHint,
+    dismissReturnHint,
+    handleReturnHintClick,
+    handleExternalLinkClick, 
+    isStandalone 
+  } = useExternalLink();
 
   // Section 1: 打工耽误赚钱
   const [marketNews, setMarketNews] = useState<any[]>([]); // 市场要闻
@@ -65,21 +73,13 @@ export default function Home() {
   // Fetch quotes when holdings change
   useEffect(() => {
     if (!holdingsLoaded || holdings.length === 0) {
-      console.log('[Home] Quotes fetch skipped: holdingsLoaded=', holdingsLoaded, 'holdings.length=', holdings.length);
       setQuotesData({});
       return;
     }
 
     const fetchQuotes = async () => {
-      const fetchStartTime = new Date().toISOString();
-      const tickers = holdings.map(h => h.ticker.toUpperCase()).join(',');
-      console.log('[Home] Fetching quotes for holdings:', {
-        holdingsLength: holdings.length,
-        tickers,
-        fetchStartTime,
-      });
-      
       try {
+        const tickers = holdings.map(h => h.ticker.toUpperCase()).join(',');
         const apiUrl = `${config.apiBaseUrl}/api/quotes?tickers=${encodeURIComponent(tickers)}`;
         
         const response = await fetch(apiUrl, {
@@ -119,16 +119,6 @@ export default function Home() {
             changePercent,
             status: quote.status,
           };
-        });
-        
-        const fetchEndTime = new Date().toISOString();
-        const validQuotesCount = Object.keys(quotesMap).length;
-        console.log('[Home] Quotes fetched successfully:', {
-          holdingsLength: holdings.length,
-          requestedTickers: tickers.split(',').length,
-          validQuotesCount,
-          fetchStartTime,
-          fetchEndTime,
         });
         
         setQuotesData(quotesMap);
@@ -274,6 +264,11 @@ export default function Home() {
     <div className="min-h-screen bg-background grid-bg">
       <Navigation />
       <ReturnHintToast show={showHint} onDismiss={dismissHint} isStandalone={isStandalone} />
+      <ReturnToDashboardToast 
+        show={showReturnHint} 
+        onDismiss={dismissReturnHint}
+        onClick={handleReturnHintClick}
+      />
 
       <main className="w-full min-w-0">
         <div className="mx-auto w-full max-w-6xl px-4 md:px-6 py-3 space-y-4">

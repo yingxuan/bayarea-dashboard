@@ -1,6 +1,11 @@
 /**
  * ExternalLink component - Wrapper for external links with mobile return hint
  * Ensures consistent behavior: opens in new tab, shows hint on mobile first click
+ * 
+ * Usage:
+ * <ExternalLink href="https://example.com">Link text</ExternalLink>
+ * 
+ * For same-origin links, use regular <a> tag (this component will not intercept)
  */
 
 import { ReactNode } from "react";
@@ -12,6 +17,7 @@ interface ExternalLinkProps {
   className?: string;
   target?: string;
   rel?: string;
+  onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
   [key: string]: any; // Allow other props
 }
 
@@ -21,11 +27,12 @@ export default function ExternalLink({
   className = "",
   target = "_blank",
   rel = "noopener noreferrer",
+  onClick,
   ...props 
 }: ExternalLinkProps) {
   const { handleExternalLinkClick } = useExternalLink();
 
-  // Don't intercept if it's a same-origin link or placeholder
+  // Check if it's an external link
   const isExternal = typeof window !== "undefined" && 
     href && 
     !href.startsWith(window.location.origin) && 
@@ -33,12 +40,28 @@ export default function ExternalLink({
     !href.startsWith("javascript:") &&
     !href.startsWith("mailto:");
 
+  // For external links, always use _blank and noopener
+  const finalTarget = isExternal ? "_blank" : target;
+  const finalRel = isExternal ? "noopener noreferrer" : rel;
+
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    // Call custom onClick if provided
+    if (onClick) {
+      onClick(e);
+    }
+    
+    // Handle external link click (for mobile hint)
+    if (isExternal) {
+      handleExternalLinkClick(e);
+    }
+  };
+
   return (
     <a
       href={href}
-      target={target}
-      rel={rel}
-      onClick={isExternal ? handleExternalLinkClick : undefined}
+      target={finalTarget}
+      rel={finalRel}
+      onClick={handleClick}
       className={className}
       {...props}
     >
