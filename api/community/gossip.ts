@@ -10,6 +10,9 @@
  * - All URLs must be valid thread/post detail pages (not list pages)
  */
 
+// Force Node.js runtime on Vercel (not Edge) for compatibility
+export const runtime = 'nodejs';
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import * as cheerio from 'cheerio';
 import { XMLParser } from 'fast-xml-parser';
@@ -192,9 +195,9 @@ function isValid1p3aThreadUrl(url: string): boolean {
   // 2. forum.php?mod=viewthread&tid=xxxxx (viewthread.php)
   // 3. instant.1point3acres.com/thread/xxxxx (will be normalized)
   const hasThreadPattern = (urlLower.includes('/bbs/thread-') || urlLower.includes('thread-')) && 
-                           (urlLower.includes('.html') || urlLower.match(/thread-\d+/));
+                           (urlLower.includes('.html') || !!urlLower.match(/thread-\d+/));
   const hasViewThreadPattern = urlLower.includes('viewthread') && (urlLower.includes('tid=') || urlLower.includes('viewthread.php'));
-  const hasInstantPattern = urlLower.includes('instant.1point3acres.com/thread/') && urlLower.match(/thread\/\d+/);
+  const hasInstantPattern = urlLower.includes('instant.1point3acres.com/thread/') && !!urlLower.match(/thread\/\d+/);
   
   const isValid = hasThreadPattern || hasViewThreadPattern || hasInstantPattern;
   

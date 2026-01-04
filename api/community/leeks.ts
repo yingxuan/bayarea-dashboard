@@ -24,6 +24,7 @@ import {
   getCachedData,
   setCache,
   getStaleCache,
+  cache,
 } from '../utils.js';
 import { retryWithBackoff } from '../../server/utils.js';
 
@@ -112,9 +113,9 @@ function isValid1p3aThreadUrl(url: string): boolean {
   // 2. forum.php?mod=viewthread&tid=xxxxx
   // 3. instant.1point3acres.com/thread/xxxxx (new format from RSSHub)
   const hasThreadPattern = (urlLower.includes('/bbs/thread-') || urlLower.includes('thread-')) && 
-                           (urlLower.includes('.html') || urlLower.match(/thread-\d+/));
+                           (urlLower.includes('.html') || !!urlLower.match(/thread-\d+/));
   const hasViewThreadPattern = urlLower.includes('forum.php?mod=viewthread') && urlLower.includes('tid=');
-  const hasInstantPattern = urlLower.includes('instant.1point3acres.com/thread/') && urlLower.match(/thread\/\d+/);
+  const hasInstantPattern = urlLower.includes('instant.1point3acres.com/thread/') && !!urlLower.match(/thread\/\d+/);
   
   const isValid = hasThreadPattern || hasViewThreadPattern || hasInstantPattern;
   
@@ -639,14 +640,18 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
     // Try stale cache
     const stale = getStaleCache(cacheKey);
     if (stale?.data?.items && stale.data.items.length >= 3) {
+      // Calculate cache age manually since getStaleCache doesn't return it
+      const staleCacheEntry = cache.get(cacheKey);
+      const cacheAgeSec = staleCacheEntry ? Math.floor((Date.now() - staleCacheEntry.timestamp) / 1000) : undefined;
+      
       debugInfo.mode = 'cache';
       debugInfo.reason = 'STALE_CACHE_HIT';
       debugInfo.filter.filteredThreadCount = stale.data.items.length;
       debugInfo.filter.sampleLinks = stale.data.items.slice(0, 3).map((item: CommunityItem) => item.url);
       debugInfo.filter.sampleTitles = stale.data.items.slice(0, 3).map((item: CommunityItem) => item.title);
       debugInfo.cache.cacheHit = true;
-      debugInfo.cache.cacheAgeSec = stale.cacheAgeSeconds;
-      console.log(`[1point3acres] ✅ Using stale cache (${stale.data.items.length} items, age: ${stale.cacheAgeSeconds}s)`);
+      debugInfo.cache.cacheAgeSec = cacheAgeSec;
+      console.log(`[1point3acres] ✅ Using stale cache (${stale.data.items.length} items, age: ${cacheAgeSec}s)`);
       console.log(`[1point3acres] 📊 DEBUG Snapshot:`, JSON.stringify(debugInfo, null, 2));
       return {
         items: stale.data.items.slice(0, 5),
