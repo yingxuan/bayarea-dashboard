@@ -200,40 +200,41 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
       return;
     }
 
+    // Always log for mobile debugging
+    console.log('[HoldingsEditor] handleImport called');
+    
     try {
       const input = document.createElement("input");
       input.type = "file";
       // More permissive accept: .json, application/json, text/plain (iOS may set empty or octet-stream)
       input.accept = ".json,application/json,text/plain";
       
-      // Ensure file picker is triggered directly by user click
-      input.onchange = async (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0];
-        if (!file) {
-          // Reset input value so selecting same file again works
-          input.value = "";
+      // Add multiple event listeners for mobile compatibility
+      let fileProcessed = false;
+      
+      const processFile = async (file: File) => {
+        if (fileProcessed) {
+          console.log('[HoldingsEditor] File already processed, skipping');
           return;
         }
-
-        // Debug: log file info
-        const urlParams = new URLSearchParams(window.location.search);
-        const debugMode = urlParams.get('debug') === '1' || import.meta.env.DEV;
-        if (debugMode) {
-          console.log('[HoldingsEditor] File selected:', {
-            name: file.name,
-            type: file.type,
-            size: file.size,
-          });
-        }
+        fileProcessed = true;
+        
+        console.log('[HoldingsEditor] Processing file:', {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+        });
 
         try {
           let text: string;
           
           // Option A: Use file.text() (preferred modern way, mobile-safe)
           if (typeof file.text === 'function') {
+            console.log('[HoldingsEditor] Using file.text()');
             text = await file.text();
           } else {
             // Option B: Fallback to FileReader (for older browsers)
+            console.log('[HoldingsEditor] Using FileReader fallback');
             text = await new Promise<string>((resolve, reject) => {
               const reader = new FileReader();
               reader.onload = (event) => {
@@ -251,10 +252,13 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
             });
           }
 
+          console.log('[HoldingsEditor] File read successfully, length:', text.length);
+
           // Parse JSON with good error message
           let data: any;
           try {
             data = JSON.parse(text);
+            console.log('[HoldingsEditor] JSON parsed successfully, items:', Array.isArray(data) ? data.length : 'not array');
           } catch (parseError) {
             throw new Error(`JSON 解析失败：${parseError instanceof Error ? parseError.message : '无效的 JSON 格式'}`);
           }
@@ -272,14 +276,32 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
             throw new Error(`数据格式错误：${invalidItems.length} 个项目缺少必需字段 (ticker, shares)`);
           }
 
-          const merge = confirm("合并到现有持仓？(取消以替换)");
+          console.log('[HoldingsEditor] Data validated, items:', data.length);
+          console.log('[HoldingsEditor] Current holdings before import:', holdings.length);
+          
+          const merge = window.confirm("合并到现有持仓？(取消以替换)");
+          console.log('[HoldingsEditor] Import mode:', merge ? 'merge' : 'replace');
+          
+          // Import holdings - this should trigger state update via useHoldings hook
           importHoldings(data, merge);
+          
+          console.log('[HoldingsEditor] importHoldings() called with', data.length, 'items, merge=', merge);
           setLastImportError(null);
-          toast.success(`持仓${merge ? "已合并" : "已导入"}`);
+          
+          // Show success message with item count
+          const itemCount = data.length;
+          toast.success(`持仓${merge ? "已合并" : "已导入"} (${itemCount} 项)`, {
+            duration: 3000,
+          });
+          
+          // Force a re-render check - holdings should update via React state
+          // The useHoldings hook will trigger a re-render when setHoldings is called
+          console.log('[HoldingsEditor] Toast shown, waiting for state update...');
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : "导入持仓失败";
           setLastImportError(errorMessage);
           console.error('[HoldingsEditor] Import error:', error);
+          console.error('[HoldingsEditor] Error stack:', error instanceof Error ? error.stack : 'N/A');
           toast.error(`读取文件失败：${errorMessage}`);
         } finally {
           // Reset input value so selecting same file again works
@@ -287,12 +309,129 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
         }
       };
       
-      // Trigger file picker (must be direct user click)
-      input.click();
+      // Cleanup function
+      const cleanup = () => {
+        if (document.body.contains(input)) {
+          document.body.removeChild(input);
+          console.log('[HoldingsEditor] Input element cleaned up');
+        }
+      };
+      
+      // Wrapped processFile with cleanup
+      const wrappedProcessFile = async (file: File) => {
+        await processFile(file);
+        // Cleanup after processing
+        setTimeout(cleanup, 100);
+      };
+      
+      // Use onchange (primary) - wrap in try-catch for mobile
+      input.onchange = async (e) => {
+        try {
+          console.log('[HoldingsEditor] input.onchange triggered');
+          const file = (e.target as HTMLInputElement).files?.[0];
+          if (!file) {
+            console.log('[HoldingsEditor] No file selected in onchange');
+            input.value = "";
+            cleanup();
+            return;
+          }
+          await wrappedProcessFile(file);
+        } catch (error) {
+          console.error('[HoldingsEditor] Error in onchange handler:', error);
+          toast.error(`导入失败：${error instanceof Error ? error.message : '未知错误'}`);
+          cleanup();
+        }
+      };
+      
+      // Also listen to input event (mobile Chrome fallback)
+      input.addEventListener('input', async (e) => {
+        try {
+          console.log('[HoldingsEditor] input event triggered');
+          const file = (e.target as HTMLInputElement).files?.[0];
+          if (file) {
+            await wrappedProcessFile(file);
+          } else {
+            console.log('[HoldingsEditor] No file in input event');
+            cleanup();
+          }
+        } catch (error) {
+          console.error('[HoldingsEditor] Error in input event handler:', error);
+          toast.error(`导入失败：${error instanceof Error ? error.message : '未知错误'}`);
+          cleanup();
+        }
+      }, { once: true });
+      
+      // For mobile Chrome: Add to DOM (required for mobile browsers)
+      input.style.position = 'fixed';
+      input.style.opacity = '0';
+      input.style.width = '0';
+      input.style.height = '0';
+      input.style.overflow = 'hidden';
+      input.style.pointerEvents = 'none';
+      input.style.top = '-1000px';
+      input.style.left = '-1000px';
+      document.body.appendChild(input);
+      
+      console.log('[HoldingsEditor] Input added to DOM, triggering file picker');
+      console.log('[HoldingsEditor] UserAgent:', navigator.userAgent);
+      console.log('[HoldingsEditor] Is Chrome Mobile:', /Chrome.*Mobile|Android.*Chrome/.test(navigator.userAgent));
+      
+      // For mobile Chrome: click() must be called synchronously within user gesture
+      // Do NOT use setTimeout - it breaks the user gesture context on mobile
+      try {
+        input.click();
+        console.log('[HoldingsEditor] input.click() called successfully');
+      } catch (clickError) {
+        console.error('[HoldingsEditor] Error calling input.click():', clickError);
+        toast.error('无法打开文件选择器，请尝试使用"从剪贴板导入"');
+        cleanup();
+        return;
+      }
+      
+      // Also update input event listener
+      input.removeEventListener('input', input.oninput as any);
+      input.addEventListener('input', async (e) => {
+        try {
+          console.log('[HoldingsEditor] input event triggered');
+          const file = (e.target as HTMLInputElement).files?.[0];
+          if (file) {
+            await wrappedProcessFile(file);
+          } else {
+            console.log('[HoldingsEditor] No file in input event');
+            cleanup();
+          }
+        } catch (error) {
+          console.error('[HoldingsEditor] Error in input event handler:', error);
+          toast.error(`导入失败：${error instanceof Error ? error.message : '未知错误'}`);
+          cleanup();
+        }
+      }, { once: true });
+      
+      // Fallback cleanup after 10 seconds
+      setTimeout(() => {
+        if (!fileProcessed) {
+          console.warn('[HoldingsEditor] ⚠️ File not processed after 10s, cleaning up');
+          cleanup();
+        }
+      }, 10000);
+      
+      // Log if file picker doesn't trigger within 1 second (mobile issue detection)
+      setTimeout(() => {
+        if (!fileProcessed) {
+          console.warn('[HoldingsEditor] ⚠️ File picker may not have opened after 1s');
+          console.warn('[HoldingsEditor] Input state:', {
+            type: input.type,
+            accept: input.accept,
+            inDOM: document.body.contains(input),
+            files: input.files?.length || 0,
+          });
+        }
+      }, 1000);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "无法打开文件选择器";
       setLastImportError(errorMessage);
       console.error('[HoldingsEditor] File picker error:', error);
+      console.error('[HoldingsEditor] Error stack:', error instanceof Error ? error.stack : 'N/A');
       toast.error(`读取文件失败：${errorMessage}`);
     }
   };
