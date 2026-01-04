@@ -129,7 +129,7 @@ export default function IndicesCard() {
           {loading ? "加载中..." : "暂无数据"}
         </div>
       ) : (
-        <div className="space-y-0.5 flex-1" style={{ lineHeight: '1.35' }}>
+        <div className="space-y-0.5 flex-1" style={{ lineHeight: '1.3' }}>
           {indices.map((index, idx) => {
             const isUnavailable = index.status === "unavailable";
             const isOk = index.status === "ok";
@@ -161,11 +161,11 @@ export default function IndicesCard() {
                     </div>
                     {/* Pct (右对齐，tabular-nums，紧贴数字) */}
                     {isOk && (index.change !== undefined || index.changePercent !== undefined) && (
-                      <div className="flex items-center gap-0 justify-end">
+                      <div className="flex items-baseline gap-0 justify-end">
                         {isPositive ? (
-                          <TrendingUp className="w-2.5 h-2.5 mr-0.5 text-green-500/70" />
+                          <TrendingUp className="w-2.5 h-2.5 mr-0.5 text-green-500/70 flex-shrink-0" />
                         ) : (
-                          <TrendingDown className="w-2.5 h-2.5 mr-0.5 text-red-500/70" />
+                          <TrendingDown className="w-2.5 h-2.5 mr-0.5 text-red-500/70 flex-shrink-0" />
                         )}
                         <span className={`text-[14px] font-medium font-mono tabular-nums ${
                           isPositive ? "text-green-500/70" : "text-red-500/70"

@@ -176,15 +176,15 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
                     
                     {/* Overlay: Name + Rating + Distance (bottom-left) */}
                     <div className="absolute bottom-0 left-0 right-0 p-2 text-white z-10">
-                      <h4 className="text-[14px] font-medium mb-1 truncate drop-shadow-lg">{place.name}</h4>
-                      <div className="flex items-center gap-1.5 text-xs opacity-70 drop-shadow-md">
-                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                        <span className="font-normal tabular-nums">{place.rating.toFixed(1)}</span>
+                      <h4 className="text-[13px] font-medium mb-0.5 truncate drop-shadow-lg leading-tight">{place.name}</h4>
+                      <div className="flex items-baseline gap-1.5 text-[11px] opacity-70 drop-shadow-md font-mono font-normal">
+                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 flex-shrink-0" />
+                        <span className="tabular-nums">{place.rating.toFixed(1)}</span>
                         {place.distance_miles !== undefined && (
                           <>
                             <span className="text-white/60">•</span>
-                            <MapPin className="w-3 h-3" />
-                            <span className="font-normal tabular-nums">{place.distance_miles.toFixed(1)} mi</span>
+                            <MapPin className="w-3 h-3 flex-shrink-0" />
+                            <span className="tabular-nums">{place.distance_miles.toFixed(1)} mi</span>
                           </>
                         )}
                       </div>

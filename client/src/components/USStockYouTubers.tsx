@@ -61,8 +61,8 @@ export default function USStockYouTubers({ stockYoutubers, offset = 0, onRefresh
   return (
     <div className="w-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-baseline gap-2">
           <h3 className="text-[13px] font-mono font-medium text-foreground/80">美股博主</h3>
           {statusHint && (
             <span className="text-xs opacity-60 font-mono font-normal text-foreground/60">
@@ -117,8 +117,8 @@ export default function USStockYouTubers({ stockYoutubers, offset = 0, onRefresh
                         }}
                       />
                       <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                        <h4 className="text-[14px] font-medium text-white mb-1 line-clamp-1">{item.title}</h4>
-                        <div className="flex items-center gap-1.5 text-xs opacity-70 text-white/80 font-mono font-normal">
+                        <h4 className="text-[13px] font-medium text-white mb-0.5 line-clamp-1 leading-tight">{item.title}</h4>
+                        <div className="flex items-baseline gap-1.5 text-[11px] opacity-70 text-white/80 font-mono font-normal">
                           <span>{item.channelName}</span>
                           <span>•</span>
                           <TimeAgo isoString={item.publishedAt} />

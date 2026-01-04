@@ -116,26 +116,98 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
   if (loading && !source1P3A && !sourceBlind) {
     return (
       <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md">
-        <div className="animate-pulse">
-          <div className="h-6 bg-muted rounded w-1/3 mb-4"></div>
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-12 bg-muted rounded"></div>
-            ))}
+          <div className="animate-pulse">
+            <div className="h-6 bg-muted rounded w-1/3 mb-4"></div>
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-12 bg-muted rounded"></div>
+              ))}
+            </div>
           </div>
+      </div>
+    );
+  }
+
+  // Get all items with labels, merged from all sources
+  const getAllItemsWithLabels = () => {
+    const allItems: Array<{ item: GossipItem; label: string; source: ModulePayload<GossipItem> | null }> = [];
+    
+    // Add 1P3A items with label
+    if (source1P3A?.items && source1P3A.items.length > 0) {
+      source1P3A.items.slice(0, maxItemsPerSource).forEach(item => {
+        allItems.push({
+          item,
+          label: '', // Removed '湾区生活' prefix as requested
+          source: source1P3A,
+        });
+      });
+    }
+    
+    // Add Blind items with label
+    if (sourceBlind?.items && sourceBlind.items.length > 0) {
+      sourceBlind.items.slice(0, maxItemsPerSource).forEach(item => {
+        allItems.push({
+          item,
+          label: 'Blind',
+          source: sourceBlind,
+        });
+      });
+    }
+    
+    return allItems;
+  };
+
+  const allItems = getAllItemsWithLabels();
+  const hasAnyData = allItems.length > 0 || source1P3A || sourceBlind;
+
+  if (!hasAnyData) {
+    return (
+      <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md">
+        <div className="text-center">
+          <p className="text-xs opacity-60 text-muted-foreground font-mono font-normal">
+            暂时抓不到，点这里去看原帖
+          </p>
         </div>
       </div>
     );
   }
 
-  // Render source group
-  const renderSourceGroup = (
-    title: string,
-    payload: ModulePayload<GossipItem> | null,
-    sourceKey: '1point3acres' | 'blind'
-  ) => {
-    if (!payload || !payload.items || payload.items.length === 0) {
-      return (
+  return (
+    <div className="space-y-2">
+      {/* All items merged, showing as "today's gossip" - 帖子列表（5条） */}
+      {allItems.length > 0 ? (
+        allItems.slice(0, 5).map(({ item, label, source }, index) => {
+          const showStatusMessage = source && (source.source === 'seed' || source.status === 'failed' || source.status === 'degraded');
+          
+          return (
+            <a
+              key={`${item.url}-${index}`}
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block rounded-sm p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
+            >
+              <div className="flex items-start justify-between gap-2">
+                {/* Title with label */}
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-[13px] font-normal group-hover:text-primary transition-colors line-clamp-2 leading-tight">
+                    {label && <span className="text-[11px] font-normal text-muted-foreground/70 mr-1.5">【{label}】</span>}
+                    {item.title}
+                  </h4>
+                  {showStatusMessage && (
+                    <span className="text-[10px] opacity-50 font-mono font-normal mt-0.5 block">
+                      {source?.source === 'seed' ? '备用' : source?.status === 'failed' ? '暂时抓不到，已用备用' : '已显示上次结果'}
+                    </span>
+                  )}
+                </div>
+                
+                {/* External Link */}
+                <ExternalLink className="w-4 h-4 opacity-60 text-muted-foreground flex-shrink-0 group-hover:text-primary group-hover:opacity-100 transition-colors mt-0.5" />
+              </div>
+            </a>
+          );
+        })
+      ) : (
         <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md">
           <div className="text-center">
             <p className="text-xs opacity-60 text-muted-foreground font-mono font-normal">
@@ -143,55 +215,7 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
             </p>
           </div>
         </div>
-      );
-    }
-
-    const items = payload.items.slice(0, maxItemsPerSource);
-    const showStatusMessage = payload.source === 'seed' || payload.status === 'failed' || payload.status === 'degraded';
-    
-    return (
-      <div className="space-y-2">
-        {/* Header with status */}
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-[13px] font-mono font-medium text-foreground/80">{title}</h3>
-          {showStatusMessage && (
-            <span className="text-xs opacity-60 font-mono font-normal">
-              {payload.source === 'seed' ? '备用' : payload.status === 'failed' ? '暂时抓不到，已用备用' : '已显示上次结果'}
-            </span>
-          )}
-        </div>
-        
-        {/* Items */}
-        {items.map((item, index) => (
-          <a
-            key={`${item.url}-${index}`}
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block rounded-sm p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
-          >
-            <div className="flex items-start justify-between gap-2">
-              {/* Title */}
-              <h4 className="text-[14px] font-normal group-hover:text-primary transition-colors line-clamp-2 flex-1" style={{ lineHeight: '1.4' }}>
-                {item.title}
-              </h4>
-              
-              {/* External Link */}
-              <ExternalLink className="w-4 h-4 opacity-60 text-muted-foreground flex-shrink-0 group-hover:text-primary group-hover:opacity-100 transition-colors mt-0.5" />
-            </div>
-          </a>
-        ))}
-      </div>
-    );
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* 一亩三分地 · 湾区生活 */}
-      {renderSourceGroup('一亩三分地 · 湾区生活', source1P3A, '1point3acres')}
-      
-      {/* Blind · 码农匿名吃瓜 */}
-      {renderSourceGroup('Blind · 码农匿名吃瓜', sourceBlind, 'blind')}
+      )}
     </div>
   );
 }

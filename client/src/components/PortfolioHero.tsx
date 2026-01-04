@@ -253,15 +253,15 @@ export default function PortfolioHero({
       <div className="p-4 flex-1">
         <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr_0.6fr] gap-2 md:gap-4">
           {/* 左列: 市值 + 今日盈亏 + Sparkline */}
-          <div className="min-w-0">
+          <div className="min-w-0 flex flex-col">
             {/* 市值（S级，单独一行） */}
-            <div className="mb-1">
-              <span className="text-[28px] md:text-[32px] font-mono font-semibold text-foreground leading-none tabular-nums">
+            <div className="mb-0.5">
+              <span className="text-[28px] md:text-[32px] font-mono font-semibold text-foreground leading-[1.1] tabular-nums">
                 ${portfolioMetrics.portfolioValue.toLocaleString()}
               </span>
             </div>
             {/* Daily Change（M级，加粗，单独一行） */}
-            <div className="flex items-baseline gap-0.5 mb-2">
+            <div className="flex items-baseline gap-0.5 mb-1.5">
               {portfolioMetrics.dailyChangeAmount >= 0 ? (
                 <TrendingUp className="w-3 h-3 flex-shrink-0 text-green-500/70" />
               ) : (
@@ -284,8 +284,8 @@ export default function PortfolioHero({
                 {portfolioMetrics.dailyChangePercent.toFixed(2)}%
               </span>
             </div>
-            {/* Sparkline - 紧贴数字区域，减少下方空白 */}
-            <div className="w-full -mx-2 md:-mx-3 mt-1">
+            {/* Sparkline - 垂直居中对齐到数字块 */}
+            <div className="w-full -mx-2 md:-mx-3 mt-0.5 flex items-center">
               <PortfolioSparkline
                 data={valueSeries}
                 currentValue={portfolioMetrics.portfolioValue}
@@ -326,8 +326,8 @@ export default function PortfolioHero({
             <div className="hidden md:grid grid-cols-2 gap-3">
               {/* Positive column */}
               <div className="min-w-0">
-                <div className="text-xs opacity-60 font-mono font-normal mb-1.5">Top 3 ↑</div>
-                <div className="space-y-0.5" style={{ lineHeight: '1.35' }}>
+                <div className="text-xs opacity-50 font-mono font-normal mb-1">Top 3 ↑</div>
+                <div className="space-y-0.5" style={{ lineHeight: '1.3' }}>
                   {topPositive.length > 0 ? (
                     topPositive.map((mover) => (
                       <div
@@ -337,9 +337,9 @@ export default function PortfolioHero({
                         <span className="text-[14px] font-medium font-mono text-foreground w-12">
                           {mover.ticker}
                         </span>
-                        <div className="flex items-center gap-0 text-[14px] font-medium font-mono tabular-nums justify-end">
-                          <TrendingUp className="w-2.5 h-2.5 mr-0.5 text-green-500/70" />
-                          <span className="text-right text-green-500/70">+{mover.dailyChangePercent.toFixed(1)}%</span>
+                        <div className="flex items-baseline gap-0 text-[14px] font-medium font-mono tabular-nums justify-end">
+                          <TrendingUp className="w-2.5 h-2.5 mr-0.5 text-green-500/70 flex-shrink-0" />
+                          <span className="text-right text-green-500/70 tabular-nums">+{mover.dailyChangePercent.toFixed(1)}%</span>
                         </div>
                       </div>
                     ))
@@ -362,9 +362,9 @@ export default function PortfolioHero({
                         <span className="text-[14px] font-medium font-mono text-foreground w-12">
                           {mover.ticker}
                         </span>
-                        <div className="flex items-center gap-0 text-[14px] font-medium font-mono tabular-nums justify-end">
-                          <TrendingDown className="w-2.5 h-2.5 mr-0.5 text-red-500/70" />
-                          <span className="text-right text-red-500/70">{mover.dailyChangePercent.toFixed(1)}%</span>
+                        <div className="flex items-baseline gap-0 text-[14px] font-medium font-mono tabular-nums justify-end">
+                          <TrendingDown className="w-2.5 h-2.5 mr-0.5 text-red-500/70 flex-shrink-0" />
+                          <span className="text-right text-red-500/70 tabular-nums">{mover.dailyChangePercent.toFixed(1)}%</span>
                         </div>
                       </div>
                     ))
@@ -388,13 +388,13 @@ export default function PortfolioHero({
                       <span className="text-[14px] font-medium font-mono text-foreground w-12">
                         {mover.ticker}
                       </span>
-                      <div className="flex items-center gap-0 text-[14px] font-medium font-mono tabular-nums justify-end">
+                      <div className="flex items-baseline gap-0 text-[14px] font-medium font-mono tabular-nums justify-end">
                         {isPositive ? (
-                          <TrendingUp className="w-2.5 h-2.5 mr-0.5 text-green-500/70" />
+                          <TrendingUp className="w-2.5 h-2.5 mr-0.5 text-green-500/70 flex-shrink-0" />
                         ) : (
-                          <TrendingDown className="w-2.5 h-2.5 mr-0.5 text-red-500/70" />
+                          <TrendingDown className="w-2.5 h-2.5 mr-0.5 text-red-500/70 flex-shrink-0" />
                         )}
-                        <span className={`text-right ${isPositive ? "text-green-500/70" : "text-red-500/70"}`}>
+                        <span className={`text-right tabular-nums ${isPositive ? "text-green-500/70" : "text-red-500/70"}`}>
                           {isPositive ? "+" : ""}{mover.dailyChangePercent.toFixed(1)}%
                         </span>
                       </div>
@@ -418,7 +418,7 @@ export default function PortfolioHero({
           <div className="min-w-0 flex flex-col">
             <div className="text-xs opacity-50 font-mono font-normal mb-1">Performance</div>
             <TooltipProvider>
-              <div className="space-y-0.5" style={{ lineHeight: '1.4' }}>
+              <div className="space-y-0.5" style={{ lineHeight: '1.3' }}>
                 {/* 5D */}
                 <div className="grid grid-cols-[auto_1fr] items-baseline gap-2">
                   <span className="text-[14px] font-medium font-mono text-foreground w-8">
@@ -426,7 +426,7 @@ export default function PortfolioHero({
                   </span>
                   <div className="text-[14px] font-medium font-mono tabular-nums text-right">
                     {performanceMetrics.fiveDay !== null ? (
-                      <span className={performanceMetrics.fiveDay >= 0 ? "text-green-500/70" : "text-red-500/70"}>
+                      <span className={`tabular-nums ${performanceMetrics.fiveDay >= 0 ? "text-green-500/70" : "text-red-500/70"}`}>
                         {performanceMetrics.fiveDay >= 0 ? "+" : ""}
                         {performanceMetrics.fiveDay.toFixed(2)}%
                       </span>
@@ -445,19 +445,19 @@ export default function PortfolioHero({
 
                 {/* 1M */}
                 <div className="grid grid-cols-[auto_1fr] items-baseline gap-2">
-                  <span className="text-xs font-medium font-mono text-foreground w-8">
+                  <span className="text-[14px] font-medium font-mono text-foreground w-8">
                     1M
                   </span>
-                  <div className="text-xs font-mono tabular-nums text-right">
+                  <div className="text-[14px] font-medium font-mono tabular-nums text-right">
                     {performanceMetrics.oneMonth !== null ? (
-                      <span className={performanceMetrics.oneMonth >= 0 ? "text-green-500/80" : "text-red-500/80"}>
+                      <span className={`tabular-nums ${performanceMetrics.oneMonth >= 0 ? "text-green-500/70" : "text-red-500/70"}`}>
                         {performanceMetrics.oneMonth >= 0 ? "+" : ""}
                         {performanceMetrics.oneMonth.toFixed(2)}%
                       </span>
                     ) : (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="opacity-70 cursor-help">N/A</span>
+                          <span className="opacity-60 cursor-help">N/A</span>
                         </TooltipTrigger>
                         <TooltipContent>
                           <p className="text-xs">数据不足（&lt;5 个交易日）</p>
@@ -474,7 +474,7 @@ export default function PortfolioHero({
                   </span>
                   <div className="text-[14px] font-medium font-mono tabular-nums text-right">
                     {performanceMetrics.ytd !== null && performanceMetrics.ytd !== undefined ? (
-                      <span className={performanceMetrics.ytd >= 0 ? "text-green-500/70" : "text-red-500/70"}>
+                      <span className={`tabular-nums ${performanceMetrics.ytd >= 0 ? "text-green-500/70" : "text-red-500/70"}`}>
                         {performanceMetrics.ytd >= 0 ? "+" : ""}
                         {performanceMetrics.ytd.toFixed(2)}%
                       </span>

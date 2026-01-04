@@ -55,9 +55,13 @@ export default function TimeAgo({ isoString, className = "" }: TimeAgoProps) {
     second: "2-digit",
   });
 
+  // Use className if provided, otherwise use default styles
+  const defaultClasses = "text-xs opacity-60 text-muted-foreground font-mono font-normal";
+  const finalClasses = className ? `${defaultClasses} ${className}` : defaultClasses;
+  
   return (
     <span
-      className={`text-xs opacity-60 text-muted-foreground font-mono font-normal ${className}`}
+      className={finalClasses}
       title={`${isoTime} (${isoString})`}
     >
       {relativeTime}

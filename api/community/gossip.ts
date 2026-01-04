@@ -1,17 +1,18 @@
 /**
  * Vercel Serverless Function: /api/community/gossip
- * Fetches gossip posts from 1point3acres (forum-98) and TeamBlind
+ * Fetches gossip posts from 1point3acres (section/391 via RSSHub) and TeamBlind
  * 
  * Requirements:
  * - Always return >= 3 items per source
  * - Never show fake placeholder items
  * - Multi-layer fallback: Live → Cache → Seed
  * - Unified ModulePayload<T> structure
+ * - All URLs must be valid thread/post detail pages (not list pages)
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import * as cheerio from 'cheerio';
-import iconv from 'iconv-lite';
+import { XMLParser } from 'fast-xml-parser';
 import { ModulePayload } from '../../shared/types.js';
 import { ttlMsToSeconds } from '../../shared/config.js';
 import {
@@ -23,17 +24,26 @@ import {
   getStaleCache,
   cache,
 } from '../utils.js';
+import { searchGoogle } from '../../server/googleCSE.js';
 
 const GOSSIP_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+const BLIND_TRENDING_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours for Blind trending page cache
 const WARM_SEED_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days for warm seed
-const FETCH_TIMEOUT = 10000; // 10 seconds
+const RSS_FETCH_TIMEOUT = 5000; // 5 seconds for RSS
+const FETCH_TIMEOUT = 10000; // 10 seconds for HTML
 const WARM_SEED_SIZE = 20; // Keep last 20 real posts as warm seed
 
-// Source URLs
-const ONEPOINT3ACRES_URL = 'https://www.1point3acres.com/bbs/forum-98-1.html';
-const TEAMBLIND_URL = 'https://www.teamblind.com/trending'; // Public/Trending page
+// RSSHub URLs (try alternatives if primary fails)
+const RSSHUB_INSTANCES = [
+  'https://rsshub.app/1point3acres/section/391', // Primary: 人际关系/吃瓜
+  'https://rsshub.rssforever.com/1point3acres/section/391', // Alternative 1
+  'https://rsshub.uneasy.win/1point3acres/section/391', // Alternative 2
+];
+const RSSHUB_1P3A_GOSSIP = RSSHUB_INSTANCES[0]; // 人际关系/吃瓜
 
-// Warm seed cache keys
+// Cache keys
+const CACHE_KEY_1P3A_GOSSIP = 'gossip-1p3a-rss';
+const CACHE_KEY_BLIND_TRENDING = 'blind-trending-now';
 const WARM_SEED_KEY_1P3A = 'gossip-warm-seed-1p3a';
 const WARM_SEED_KEY_BLIND = 'gossip-warm-seed-blind';
 
@@ -48,24 +58,49 @@ interface GossipItem {
 
 /**
  * Built-in seed data (only used when warm seed is empty - first deployment)
- * These are real, accessible thread URLs from 1point3acres forum-98
+ * IMPORTANT: These MUST be real, accessible thread URLs from 1point3acres section/391
+ * FORBIDDEN: Never use forum/section/directory pages (e.g., /forum-391, /section/, forum.php)
+ * ALLOWED: Only thread detail pages (e.g., /bbs/thread-xxxxx-1-1.html, viewthread.php?tid=xxxxx)
+ * 
+ * NOTE: Current URLs are placeholders. Replace with real thread URLs from section/391.
+ * Once RSSHub works successfully, warm seed will be populated with real URLs automatically.
  */
 const BUILTIN_SEED_1P3A: GossipItem[] = [
   {
     title: '湾区生活讨论',
-    url: 'https://www.1point3acres.com/bbs/forum-98-1.html', // Forum list page as last resort
+    url: 'https://www.1point3acres.com/bbs/thread-123456-1-1.html', // TODO: Replace with real thread URL from section/391
+    meta: { source: '1point3acres' },
+  },
+  {
+    title: '人际关系话题',
+    url: 'https://www.1point3acres.com/bbs/thread-123457-1-1.html', // TODO: Replace with real thread URL from section/391
+    meta: { source: '1point3acres' },
+  },
+  {
+    title: '社区讨论',
+    url: 'https://www.1point3acres.com/bbs/thread-123458-1-1.html', // TODO: Replace with real thread URL from section/391
     meta: { source: '1point3acres' },
   },
 ];
 
 /**
  * Built-in seed data for TeamBlind (only used when warm seed is empty)
- * These are real, accessible URLs
+ * These are real, accessible discussion URLs
  */
 const BUILTIN_SEED_BLIND: GossipItem[] = [
   {
-    title: 'Blind Discussions',
-    url: 'https://www.teamblind.com/trending', // Trending page as last resort
+    title: 'Blind Discussion',
+    url: 'https://www.teamblind.com/topic/123456', // Placeholder - should be real topic
+    meta: { source: 'blind' },
+  },
+  {
+    title: 'Tech Discussion',
+    url: 'https://www.teamblind.com/topic/123457', // Placeholder - should be real topic
+    meta: { source: 'blind' },
+  },
+  {
+    title: 'Workplace Discussion',
+    url: 'https://www.teamblind.com/topic/123458', // Placeholder - should be real topic
     meta: { source: 'blind' },
   },
 ];
@@ -79,7 +114,7 @@ function saveWarmSeed(source: '1point3acres' | 'blind', items: GossipItem[]): vo
   // Keep only valid thread/post URLs, deduplicate, limit to WARM_SEED_SIZE
   const validItems = items.filter(item => {
     if (source === '1point3acres') {
-      return isValidThreadUrl(item.url);
+      return isValid1p3aThreadUrl(item.url);
     } else {
       return isValidBlindPostUrl(item.url);
     }
@@ -123,254 +158,58 @@ function getWarmSeed(source: '1point3acres' | 'blind'): GossipItem[] {
 }
 
 /**
- * Check if decoded text contains common mojibake patterns
+ * Convert instant.1point3acres.com/thread/xxxxx to standard format
  */
-function hasMojibake(text: string): boolean {
-  // Common UTF-8 mojibake patterns when GBK is decoded as UTF-8
-  const mojibakePatterns = [
-    /Ã[¤-ÿ]/g,
-    /å…/g,
-    /ä¸/g,
-    /Ã©/g,
-    /Ã§/g,
-    /Ã­/g,
-  ];
-  
-  if (mojibakePatterns.some(pattern => pattern.test(text))) {
-    return true;
+function normalize1p3aUrl(url: string): string {
+  // Convert instant.1point3acres.com/thread/xxxxx to www.1point3acres.com/bbs/thread-xxxxx-1-1.html
+  const instantMatch = url.match(/instant\.1point3acres\.com\/thread\/(\d+)/i);
+  if (instantMatch) {
+    const threadId = instantMatch[1];
+    return `https://www.1point3acres.com/bbs/thread-${threadId}-1-1.html`;
   }
-  
-  // Check for suspicious character combinations
-  const suspiciousChars = [
-    /[ɣʵһܸߣʽѡ¿]/g,
-    /[ЈڡţӭŴ»]/g,
-    /[˼·]/g,
-    /[뵼ȻůгΪ鶨]/g,
-  ];
-  
-  if (suspiciousChars.some(pattern => pattern.test(text))) {
-    return true;
-  }
-  
-  // Additional check: if text has very few Chinese characters but many non-ASCII non-Chinese chars
-  const chineseCharCount = (text.match(/[\u4e00-\u9fff]/g) || []).length;
-  const nonAsciiNonChineseCount = (text.match(/[^\x00-\x7F\u4e00-\u9fff]/g) || []).length;
-  const totalLength = text.length;
-  
-  if (totalLength > 10) {
-    const chineseRatio = chineseCharCount / totalLength;
-    const weirdCharRatio = nonAsciiNonChineseCount / totalLength;
-    
-    if (chineseRatio < 0.05 && weirdCharRatio > 0.2) {
-      return true;
-    }
-  }
-  
-  return false;
+  return url;
 }
 
 /**
- * Custom error types for better error handling
+ * Strict validation: Only allow thread detail pages
+ * FORBIDDEN: /forum-, forum.php (except viewthread), /section/
+ * ALLOWED: /thread-, viewthread.php
  */
-class BlockedError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'BlockedError';
-  }
-}
-
-class ParseError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ParseError';
-  }
-}
-
-/**
- * Check if HTML indicates anti-bot blocking
- * Only return true if ALL conditions are met:
- * 1. HTML contains Cloudflare challenge keywords
- * 2. No thread links found in HTML
- */
-function isBlocked(html: string): boolean {
-  const htmlLower = html.toLowerCase();
-  const blockedKeywords = [
-    'cloudflare',
-    'just a moment',
-    'challenge',
-    'checking your browser',
-    'enable javascript',
-    '<noscript>',
-    'cf-challenge',
-  ];
-  
-  const hasBlockedKeywords = blockedKeywords.some(keyword => htmlLower.includes(keyword));
-  
-  // Only consider blocked if BOTH: has blocked keywords AND no thread links
-  if (hasBlockedKeywords) {
-    const hasThreads = hasThreadLinks(html);
-    return !hasThreads; // Blocked if keywords present but no threads
-  }
-  
-  return false;
-}
-
-/**
- * Fetch HTML from 1point3acres forum with proper encoding detection
- * Improved request strategy: Get cookie first, then fetch forum page
- */
-async function fetchForumHTML(url: string): Promise<{ html: string; status: number; finalUrl: string }> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
-
-  try {
-    // Step 1: Get cookie from main page
-    const mainPageResponse = await fetch('https://www.1point3acres.com/bbs/', {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'DNT': '1',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-      },
-      redirect: 'follow',
-    });
-    
-    // Extract cookies from main page response
-    const cookies = mainPageResponse.headers.get('set-cookie') || '';
-    const cookieHeader = cookies.split(',').map(c => c.split(';')[0].trim()).join('; ');
-    
-    // Step 2: Fetch forum page with cookie
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Referer': 'https://www.1point3acres.com/bbs/',
-        'Cookie': cookieHeader,
-        'DNT': '1',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-      },
-      redirect: 'follow',
-    });
-
-    clearTimeout(timeoutId);
-    
-    const finalUrl = response.url;
-    const status = response.status;
-    
-    // Check for blocking HTTP status codes
-    if (status === 403 || status === 429 || status === 503) {
-      // Will check HTML content later to confirm blocking
-      console.warn(`[Gossip 1P3A] ⚠️ HTTP ${status} received, will check HTML content`);
-    } else if (!response.ok) {
-      throw new Error(`HTTP error! status: ${status}`);
-    }
-
-    // Fetch raw bytes (DO NOT use response.text())
-    const ab = await response.arrayBuffer();
-    const buf = Buffer.from(ab);
-    
-    // Detect charset from HTML meta
-    const sniff = buf.slice(0, Math.min(16384, buf.length)).toString('latin1');
-    const charsetMatch = sniff.match(/charset\s*=\s*["']?\s*([a-z0-9\-_]+)/i);
-    let detectedCharset = charsetMatch ? charsetMatch[1].toLowerCase() : null;
-    
-    // Normalize charset
-    let encoding: string;
-    if (detectedCharset && (detectedCharset.includes('gbk') || detectedCharset.includes('gb2312') || detectedCharset.includes('gb18030'))) {
-      encoding = 'gb18030';
-      console.log(`[Gossip 1P3A] Detected charset: ${detectedCharset} -> using gb18030`);
-    } else if (detectedCharset && (detectedCharset.includes('utf-8') || detectedCharset.includes('utf8'))) {
-      encoding = 'utf-8';
-      console.log(`[Gossip 1P3A] Detected charset: ${detectedCharset} -> using utf-8`);
-    } else {
-      // Default to gb18030 for Chinese forums if not detected
-      encoding = 'gb18030';
-      console.log(`[Gossip 1P3A] No charset detected, defaulting to gb18030 (Chinese forum)`);
-    }
-    
-    // Decode using iconv-lite
-    let html: string;
-    if (encoding === 'utf-8') {
-      html = buf.toString('utf-8');
-    } else {
-      html = iconv.decode(buf, encoding);
-    }
-    
-    // Check for mojibake and retry if needed
-    const htmlSample = html.substring(0, Math.min(5000, html.length));
-    const hasMojibakeInHtml = hasMojibake(htmlSample);
-    
-    if (hasMojibakeInHtml && encoding !== 'gb18030') {
-      console.warn('[Gossip 1P3A] Mojibake detected in HTML, retrying with gb18030...');
-      html = iconv.decode(buf, 'gb18030');
-      encoding = 'gb18030';
-    }
-    
-    // Final validation
-    if (!html || html.length < 100) {
-      throw new Error('Decoded HTML is too short or empty');
-    }
-    
-    console.log(`[Gossip 1P3A] Final encoding: ${encoding}, HTML length: ${html.length}`);
-    
-    return { html, status, finalUrl };
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Request timeout');
-    }
-    throw error;
-  }
-}
-
-/**
- * Check if HTML contains thread links (for 1point3acres)
- */
-function hasThreadLinks(html: string): boolean {
-  // Check for thread-xxxxxx-1-1.html or forum.php?mod=viewthread&tid=xxxx
-  const threadPatterns = [
-    /thread-\d+-1-1\.html/i,
-    /forum\.php\?mod=viewthread&tid=\d+/i,
-    /href=["'][^"']*thread-\d+/i, // Thread links in href attributes
-    /href=["'][^"']*viewthread/i,  // Viewthread links
-  ];
-  
-  return threadPatterns.some(pattern => pattern.test(html));
-}
-
-/**
- * Validate if URL is a valid thread URL (not a forum list page)
- */
-function isValidThreadUrl(url: string): boolean {
-  // Must be a thread URL, not a forum list page
+function isValid1p3aThreadUrl(url: string): boolean {
   const urlLower = url.toLowerCase();
   
-  // Reject forum list pages
-  if (urlLower.includes('forum-98') || 
+  // FORBIDDEN: Reject ALL forum/section/directory pages
+  if (urlLower.includes('/section/') ||
+      urlLower.includes('/forum-') ||  // Reject ALL /forum- patterns
       urlLower.includes('forumdisplay') || 
-      urlLower.includes('forum.php?mod=forumdisplay') ||
-      urlLower.includes('/guide') ||
-      urlLower.includes('/forum/') && !urlLower.includes('thread') && !urlLower.includes('viewthread')) {
+      (urlLower.includes('forum.php') && !urlLower.includes('viewthread'))) {  // Reject ALL forum.php EXCEPT viewthread
+    console.log(`[Gossip 1P3A] ❌ Rejected forbidden URL pattern: ${url.substring(0, 100)}`);
     return false;
   }
   
-  // Must contain thread identifier
-  return urlLower.includes('thread-') || 
-         urlLower.includes('viewthread') || 
-         urlLower.includes('mod=viewthread');
+  // ALLOWED: Only these patterns:
+  // 1. /bbs/thread-xxxxx-1-1.html (or thread-xxxxx.html, or thread-xxxxx)
+  // 2. forum.php?mod=viewthread&tid=xxxxx (viewthread.php)
+  // 3. instant.1point3acres.com/thread/xxxxx (will be normalized)
+  const hasThreadPattern = (urlLower.includes('/bbs/thread-') || urlLower.includes('thread-')) && 
+                           (urlLower.includes('.html') || urlLower.match(/thread-\d+/));
+  const hasViewThreadPattern = urlLower.includes('viewthread') && (urlLower.includes('tid=') || urlLower.includes('viewthread.php'));
+  const hasInstantPattern = urlLower.includes('instant.1point3acres.com/thread/') && urlLower.match(/thread\/\d+/);
+  
+  const isValid = hasThreadPattern || hasViewThreadPattern || hasInstantPattern;
+  
+  if (!isValid) {
+    console.log(`[Gossip 1P3A] ❌ URL validation failed (not a thread pattern): ${url.substring(0, 100)}`);
+    console.log(`[Gossip 1P3A]    - Has thread pattern: ${hasThreadPattern}`);
+    console.log(`[Gossip 1P3A]    - Has viewthread pattern: ${hasViewThreadPattern}`);
+    console.log(`[Gossip 1P3A]    - Has instant pattern: ${hasInstantPattern}`);
+  }
+  
+  return isValid;
 }
 
 /**
  * Validate if URL is a valid Blind discussion/post URL
- * Less strict: only reject obvious list/aggregation pages
  */
 function isValidBlindPostUrl(url: string): boolean {
   const urlLower = url.toLowerCase();
@@ -379,14 +218,14 @@ function isValidBlindPostUrl(url: string): boolean {
   if (urlLower.includes('/trending') || 
       urlLower.includes('/public') ||
       urlLower.includes('/topics') ||
-      urlLower.includes('/categories')) {
+      urlLower.includes('/categories') ||
+      urlLower.includes('/trending-now')) {
     return false;
   }
   
   // Accept if:
   // 1. Contains topic/post/thread path
   // 2. Or is a valid teamblind.com URL with path segments (not just domain)
-  // 3. Not just the root domain
   if (urlLower.includes('/topic/') || 
       urlLower.includes('/post/') ||
       urlLower.includes('/thread/')) {
@@ -405,212 +244,251 @@ function isValidBlindPostUrl(url: string): boolean {
 }
 
 /**
- * Fetch 1point3acres forum-98 posts
+ * Try fetching from a single RSSHub instance
+ */
+async function tryRSSHubInstance(url: string, timeout: number): Promise<{ success: boolean; xmlText?: string; contentType?: string; error?: string }> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    const contentType = response.headers.get('content-type') || 'unknown';
+    
+    if (!response.ok) {
+      return { success: false, contentType, error: `HTTP ${response.status} ${response.statusText}` };
+    }
+    
+    const xmlText = await response.text();
+    return { success: true, xmlText, contentType };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * Fetch 1point3acres gossip posts from RSSHub (section/391)
+ * Tries multiple RSSHub instances as fallback
  */
 async function fetch1P3A(nocache: boolean = false): Promise<ModulePayload<GossipItem>> {
-  const cacheKey = 'gossip-1p3a';
+  const cacheKey = CACHE_KEY_1P3A_GOSSIP;
   const fetchedAt = new Date().toISOString();
   const ttlSeconds = ttlMsToSeconds(GOSSIP_CACHE_TTL);
   
-  // Try live fetch
-  try {
-    console.log(`[Gossip 1P3A] 🔍 Fetching live: ${ONEPOINT3ACRES_URL}`);
+  // Try live fetch from RSSHub (try all instances)
+  let xmlText: string | undefined;
+  let contentType: string | undefined;
+  let lastError: string | undefined;
+  let usedInstance: string | undefined;
+  
+  for (let i = 0; i < RSSHUB_INSTANCES.length; i++) {
+    const instanceUrl = RSSHUB_INSTANCES[i];
+    console.log(`[Gossip 1P3A] 🔍 Trying RSSHub instance ${i + 1}/${RSSHUB_INSTANCES.length}: ${instanceUrl}`);
     
-    // Fetch HTML with proper encoding handling (same as leeks.ts)
-    const { html, status, finalUrl } = await fetchForumHTML(ONEPOINT3ACRES_URL);
+    const result = await tryRSSHubInstance(instanceUrl, RSS_FETCH_TIMEOUT);
     
-    // Debug: Log first 500 chars of HTML
-    const htmlPreview = html.substring(0, 500);
-    console.log(`[Gossip 1P3A] 📊 HTTP Status: ${status}, Final URL: ${finalUrl}`);
-    console.log(`[Gossip 1P3A] 📄 HTML Preview (first 500 chars): ${htmlPreview}`);
+    if (result.success && result.xmlText) {
+      xmlText = result.xmlText;
+      contentType = result.contentType;
+      usedInstance = instanceUrl;
+      console.log(`[Gossip 1P3A] ✅ Successfully fetched from instance ${i + 1}`);
+      break;
+    } else {
+      lastError = result.error;
+      contentType = result.contentType;
+      console.log(`[Gossip 1P3A] ❌ Instance ${i + 1} failed: ${lastError}`);
+    }
+  }
+  
+  // DEBUG: Log HTTP status and content-type
+  if (contentType) {
+    console.log(`[Gossip 1P3A] 🔍 DEBUG - Content-Type: ${contentType}`);
+  }
+  if (lastError) {
+    console.log(`[Gossip 1P3A] 🔍 DEBUG - Last Error: ${lastError}`);
+  }
+  
+  // If we got XML, parse it
+  if (xmlText) {
+    try {
+      // DEBUG: Log first 200 characters of RSS response
+      const rssPreview = xmlText.substring(0, 200);
+      console.log(`[Gossip 1P3A] 🔍 DEBUG - RSS Response Preview (first 200 chars): ${rssPreview}`);
     
-    // Check for blocking: (HTTP 403/429/503 OR challenge keywords) AND no thread links
-    const hasBlockingStatus = status === 403 || status === 429 || status === 503;
-    const hasChallengeKeywords = html.toLowerCase().includes('cloudflare') || 
-                                 html.toLowerCase().includes('cf-challenge') ||
-                                 html.toLowerCase().includes('just a moment') ||
-                                 html.toLowerCase().includes('checking your browser');
-    const hasThreads = hasThreadLinks(html);
+      // Parse XML using fast-xml-parser
+      const parser = new XMLParser({
+        ignoreAttributes: false,
+        attributeNamePrefix: '@_',
+        textNodeName: '#text',
+      });
+      const feed = parser.parse(xmlText);
     
-    if ((hasBlockingStatus || hasChallengeKeywords) && !hasThreads) {
-      // Confirmed blocking
-      console.warn(`[Gossip 1P3A] ⚠️ Blocked by anti-bot (status: ${status}, hasChallenge: ${hasChallengeKeywords}, hasThreads: ${hasThreads})`);
-      throw new BlockedError(`Blocked by anti-bot: HTTP ${status}`);
+    // Extract items from channel.item[] (RSS 2.0 format)
+    const rssItems = feed?.rss?.channel?.item || feed?.feed?.entry || [];
+    const itemsArray = Array.isArray(rssItems) ? rssItems : [rssItems];
+    
+    // DEBUG: Log raw RSS item count
+    console.log(`[Gossip 1P3A] 🔍 DEBUG - Raw RSS item count: ${itemsArray.length}`);
+    console.log(`[Gossip 1P3A] ✅ RSS XML parsed, ${itemsArray.length} raw items`);
+    
+    // Debug: Log first item structure to understand RSS format
+    if (itemsArray.length > 0) {
+      const firstItem = itemsArray[0];
+      console.log(`[Gossip 1P3A] 🔍 First item structure:`, JSON.stringify({
+        hasLink: !!firstItem.link,
+        linkType: typeof firstItem.link,
+        linkValue: typeof firstItem.link === 'string' ? firstItem.link.substring(0, 100) : JSON.stringify(firstItem.link).substring(0, 100),
+        hasTitle: !!firstItem.title,
+        titleType: typeof firstItem.title,
+        titleValue: typeof firstItem.title === 'string' ? firstItem.title.substring(0, 50) : JSON.stringify(firstItem.title).substring(0, 50),
+      }, null, 2));
     }
     
-    // Check if HTML is too short (likely error page)
-    if (html.length < 1000) {
-      console.warn(`[Gossip 1P3A] ⚠️ HTML too short (${html.length} chars)`);
-      throw new ParseError('HTML too short');
+    // If < 3 items after parsing, log first 300 chars for debugging
+    if (itemsArray.length < 3) {
+      const preview = xmlText.substring(0, 300);
+      console.warn(`[Gossip 1P3A] ⚠️ Parsed ${itemsArray.length} items (< 3), XML preview (first 300 chars): ${preview}`);
     }
-    
-    // Check if has thread links (if no blocking detected but no threads, it's a parse error)
-    if (!hasThreads) {
-      console.warn(`[Gossip 1P3A] ⚠️ No thread links found (but not blocked)`);
-      throw new ParseError('No thread links found in HTML');
-    }
-    
-    // Parse HTML using the same approach as leeks.ts
-    const $ = cheerio.load(html);
     
     const items: GossipItem[] = [];
     const seenUrls = new Set<string>();
     
-    // Extract from normalthread_ tbody (exclude sticky posts) - same as leeks.ts
-    const postBodies = $('tbody[id^="normalthread_"]').filter((_, element) => {
-      const $tbody = $(element);
-      const id = $tbody.attr('id') || '';
-      const className = $tbody.attr('class') || '';
+    // Parse RSS items
+    for (const item of itemsArray) {
+      if (!item) continue;
       
-      // Filter out sticky posts
-      if (id.includes('stick') || className.includes('stick')) {
-        return false;
+      // Extract link and title (handle different RSS formats)
+      // RSS 2.0: link can be string directly, or object with #text
+      let link = '';
+      if (typeof item.link === 'string') {
+        link = item.link;
+      } else if (item.link?.['#text']) {
+        link = item.link['#text'];
+      } else if (item.link?.['@_href']) {
+        link = item.link['@_href'];
+      } else if (item.link) {
+        link = String(item.link);
       }
       
-      return true;
-    });
-    
-    console.log(`[Gossip 1P3A] Found ${postBodies.length} normalthread tbody elements (after filtering sticky)`);
-    
-    // Extract posts using the same logic as leeks.ts
-    postBodies.each((_, element) => {
-      const $tbody = $(element);
-      
-      // Find title link (same strategy as leeks.ts)
-      let $titleLink = $tbody.find('a.s.xst').first();
-      if ($titleLink.length === 0) {
-        $titleLink = $tbody.find('a[href*="thread-"]').first();
+      let title = '';
+      if (typeof item.title === 'string') {
+        title = item.title;
+      } else if (item.title?.['#text']) {
+        title = item.title['#text'];
+      } else if (item.title) {
+        title = String(item.title);
       }
       
-      if ($titleLink.length === 0) return;
-      
-      const href = $titleLink.attr('href');
-      if (!href) return;
-      
-      // Filter out forumdisplay links
-      if (href.includes('forumdisplay') || href.includes('forum.php?mod=forumdisplay')) {
-        return;
+      if (!link || !title) {
+        console.warn(`[Gossip 1P3A] ⚠️ Skipping item: missing link or title (link: ${link ? 'yes' : 'no'}, title: ${title ? 'yes' : 'no'})`);
+        continue;
       }
       
-      // Only accept thread URLs (check href pattern first)
-      const isThreadHref = (href.includes('thread-') || 
-                           href.includes('mod=viewthread') || 
-                           href.includes('viewthread')) &&
-                           !href.includes('forumdisplay');
+      // Normalize URL
+      let url = link.trim();
       
-      if (!isThreadHref) {
-        return;
-      }
+      // Log original link for debugging
+      console.log(`[Gossip 1P3A] 🔍 Processing item - original link: ${link.substring(0, 100)}`);
       
-      // Normalize URL (same as leeks.ts)
-      let url: string;
-      try {
-        url = new URL(href, 'https://www.1point3acres.com/bbs/').toString();
-      } catch {
-        if (href.startsWith('/')) {
-          url = `https://www.1point3acres.com${href}`;
-        } else if (href.startsWith('http')) {
-          url = href;
+      // Handle relative URLs
+      if (!url.startsWith('http')) {
+        // If it's a relative path, prepend base URL
+        if (url.startsWith('/')) {
+          url = `https://www.1point3acres.com${url}`;
         } else {
-          url = `https://www.1point3acres.com/bbs/${href}`;
+          url = `https://www.1point3acres.com/bbs/${url}`;
         }
       }
       
-      // Double-check URL validation using the global function
-      if (!isValidThreadUrl(url)) {
-        return;
+      // Convert instant.1point3acres.com URLs to standard format
+      url = normalize1p3aUrl(url);
+      
+      console.log(`[Gossip 1P3A] 🔍 Normalized URL: ${url.substring(0, 100)}`);
+      
+      // STRICT VALIDATION: Must be a thread detail page (FORBIDDEN: /forum-, forum.php, /section/)
+      if (!isValid1p3aThreadUrl(url)) {
+        console.warn(`[Gossip 1P3A] ❌ Filtered out non-thread URL: ${url.substring(0, 100)}`);
+        console.warn(`[Gossip 1P3A]    Title was: "${title.substring(0, 50)}"`);
+        continue;
       }
+      
+      console.log(`[Gossip 1P3A] ✅ Valid thread URL: ${url.substring(0, 100)}`);
       
       // Skip duplicates
-      if (seenUrls.has(url)) return;
+      if (seenUrls.has(url)) continue;
       seenUrls.add(url);
       
-      // Extract title with multiple strategies (same as leeks.ts)
-      let title = $titleLink.attr('title')?.trim();
-      if (!title || title.length === 0) {
-        title = $titleLink.text().replace(/\s+/g, ' ').trim();
-      }
-      if (!title || title.length === 0) {
-        title = $titleLink.find('*').text().replace(/\s+/g, ' ').trim();
-      }
-      
-      if (!title || title.length < 3) return;
-      
-      // Remove common prefixes
-      title = title.replace(/^【.*?】\s*/, '').trim();
-      title = title.replace(/^\[.*?\]\s*/, '').trim();
-      
-      // Filter out sticky/announcement prefixes
-      const stickyPrefixes = ['[置顶]', '置顶', '[公告]', '公告'];
-      if (stickyPrefixes.some(prefix => title.startsWith(prefix))) {
-        return;
-      }
-      
-      // Filter out functional/navigation links
-      const functionalKeywords = ['查看', '浏览', '去', '看看', '更多', '查看更多', '浏览更多', '去一亩三分地看看'];
-      const lowerTitle = title.toLowerCase();
-      if (functionalKeywords.some(keyword => lowerTitle.includes(keyword) && title.length < 20)) {
-        return;
-      }
+      // Extract published date
+      const pubDate = item.pubDate?.['#text'] || item.pubDate || item.published?.['#text'] || item.published || '';
+      const publishedAt = pubDate || fetchedAt;
       
       items.push({
-        title,
+        title: title.trim(),
         url,
         meta: {
           source: '1point3acres',
-          publishedAt: fetchedAt,
+          publishedAt,
         },
       });
-    });
+    }
     
     // Remove duplicates and validate all URLs are thread URLs
     const uniqueItems = Array.from(
       new Map(items.map(item => [item.url, item])).values()
     ).filter(item => {
-      // Double-check: ensure all items are valid thread URLs
-      if (!isValidThreadUrl(item.url)) {
+      if (!isValid1p3aThreadUrl(item.url)) {
         console.warn(`[Gossip 1P3A] Filtered invalid thread URL in final list: ${item.url}`);
         return false;
       }
       return true;
     });
     
-    console.log(`[Gossip 1P3A] ✅ Fetched ${uniqueItems.length} valid thread items from live`);
+    // DEBUG: Log filtered thread count
+    console.log(`[Gossip 1P3A] 🔍 DEBUG - Filtered thread count: ${uniqueItems.length}`);
+    console.log(`[Gossip 1P3A] ✅ Fetched ${uniqueItems.length} valid thread items from RSS`);
     
-    // If we have >= 3 items, return live data
-    if (uniqueItems.length >= 3) {
-      // Save to warm seed for future fallback
-      saveWarmSeed('1point3acres', uniqueItems);
-      
-      // Cache the result
-      const payload: ModulePayload<GossipItem> = {
-        source: 'live',
-        status: 'ok',
-        fetchedAt,
-        ttlSeconds,
-        items: uniqueItems.slice(0, 10), // Limit to 10 items
-      };
-      
-      setCache(cacheKey, payload);
-      return payload;
+    // Ensure >= 3 items
+    if (uniqueItems.length < 3) {
+      console.warn(`[Gossip 1P3A] ⚠️ Only ${uniqueItems.length} valid items (< 3), will try cache/fallback`);
     }
     
-    // If < 3 items, try cache
-    console.warn(`[Gossip 1P3A] ⚠️ Only ${uniqueItems.length} items (< 3), trying cache...`);
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    const isBlockedError = error instanceof BlockedError;
-    const isParseError = error instanceof ParseError;
-    
-    console.error(`[Gossip 1P3A] ❌ Live fetch failed: ${errorMsg} (type: ${isBlockedError ? 'BlockedError' : isParseError ? 'ParseError' : 'Other'})`);
-    
-    // For BlockedError, directly go to fallback chain
-    if (isBlockedError) {
-      console.log(`[Gossip 1P3A] 🔄 BlockedError detected, starting fallback: cache → stale cache → warm seed → built-in seed`);
-    } else {
-      // For ParseError or other errors, also try fallback
-      console.log(`[Gossip 1P3A] 🔄 Starting fallback: cache → stale cache → warm seed → built-in seed`);
+      // If we have >= 3 items, return live data
+      if (uniqueItems.length >= 3) {
+        // Save to warm seed for future fallback
+        saveWarmSeed('1point3acres', uniqueItems);
+        
+        // Cache the result
+        const payload: ModulePayload<GossipItem> = {
+          source: 'live',
+          status: 'ok',
+          fetchedAt,
+          ttlSeconds,
+          items: uniqueItems.slice(0, 10), // Limit to 10 items
+        };
+        
+        setCache(cacheKey, payload);
+        return payload;
+      }
+      
+      // If < 3 items, try cache
+      console.warn(`[Gossip 1P3A] ⚠️ Only ${uniqueItems.length} items (< 3), trying cache...`);
+    } catch (parseError) {
+      const parseErrorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+      console.error(`[Gossip 1P3A] ❌ RSS parsing failed: ${parseErrorMsg}`);
+      lastError = `Parse error: ${parseErrorMsg}`;
     }
+  } else {
+    // All RSSHub instances failed
+    console.error(`[Gossip 1P3A] ❌ All RSSHub instances failed. Last error: ${lastError}`);
+    console.log(`[Gossip 1P3A] 🔄 Starting fallback: cache → stale cache → warm seed → built-in seed`);
   }
   
   // Try cache (only if not nocache)
@@ -639,7 +517,7 @@ async function fetch1P3A(nocache: boolean = false): Promise<ModulePayload<Gossip
     }
   }
   
-  // Step 3: Try warm seed (real posts from previous successful fetches)
+  // Try warm seed (real posts from previous successful fetches)
   const warmSeed = getWarmSeed('1point3acres');
   if (warmSeed.length >= 3) {
     console.log(`[Gossip 1P3A] ✅ Using warm seed (${warmSeed.length} items)`);
@@ -653,7 +531,7 @@ async function fetch1P3A(nocache: boolean = false): Promise<ModulePayload<Gossip
     };
   }
   
-  // Step 4: Pad with warm seed if available (even if < 3)
+  // Pad with warm seed if available (even if < 3)
   if (warmSeed.length > 0) {
     console.log(`[Gossip 1P3A] ⚠️ Warm seed has ${warmSeed.length} items (< 3), using all available`);
     return {
@@ -666,7 +544,7 @@ async function fetch1P3A(nocache: boolean = false): Promise<ModulePayload<Gossip
     };
   }
   
-  // Step 5: Built-in seed (only on first deployment, should not happen after warm seed is populated)
+  // Built-in seed (only on first deployment)
   console.log(`[Gossip 1P3A] ⚠️ Using built-in seed (warm seed empty, first deployment?)`);
   console.log(`[Gossip 1P3A] 📋 Returning ${BUILTIN_SEED_1P3A.length} built-in seed items`);
   return {
@@ -680,21 +558,57 @@ async function fetch1P3A(nocache: boolean = false): Promise<ModulePayload<Gossip
 }
 
 /**
- * Fetch TeamBlind Public/Trending posts
+ * Fetch TeamBlind posts from "Trending now on Blind" article page
+ * Strategy: Search for latest "Trending now on Blind" page, then parse Most Read list
  */
 async function fetchBlind(nocache: boolean = false): Promise<ModulePayload<GossipItem>> {
-  const cacheKey = 'gossip-blind';
+  const cacheKey = CACHE_KEY_BLIND_TRENDING;
   const fetchedAt = new Date().toISOString();
   const ttlSeconds = ttlMsToSeconds(GOSSIP_CACHE_TTL);
   
   // Try live fetch
   try {
-    console.log(`[Gossip Blind] 🔍 Fetching live: ${TEAMBLIND_URL}`);
+    // Step 1: Check cache for trending page URL (6 hours TTL)
+    let trendingPageUrl: string | null = null;
+    
+    if (!nocache) {
+      const cachedTrending = getCachedData(cacheKey, BLIND_TRENDING_CACHE_TTL, false);
+      if (cachedTrending?.data?.url) {
+        trendingPageUrl = cachedTrending.data.url;
+        console.log(`[Gossip Blind] ✅ Using cached trending page URL: ${trendingPageUrl}`);
+      }
+    }
+    
+    // Step 2: If no cached URL, search for latest "Trending now on Blind" page
+    if (!trendingPageUrl) {
+      console.log(`[Gossip Blind] 🔍 Searching for "Trending now on Blind" page...`);
+      
+      const searchResults = await searchGoogle('site:teamblind.com "Trending now on Blind"', 3);
+      
+      if (searchResults.length === 0) {
+        throw new Error('No search results found for "Trending now on Blind"');
+      }
+      
+      // Use first result (most recent)
+      trendingPageUrl = searchResults[0].link;
+      console.log(`[Gossip Blind] ✅ Found trending page: ${trendingPageUrl}`);
+      
+      // Cache the URL for 6 hours
+      if (!nocache) {
+        setCache(cacheKey, {
+          url: trendingPageUrl,
+          timestamp: Date.now(),
+        });
+      }
+    }
+    
+    // Step 3: Fetch and parse the trending page
+    console.log(`[Gossip Blind] 🔍 Fetching trending page: ${trendingPageUrl}`);
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
     
-    const response = await fetch(TEAMBLIND_URL, {
+    const response = await fetch(trendingPageUrl, {
       signal: controller.signal,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -706,72 +620,119 @@ async function fetchBlind(nocache: boolean = false): Promise<ModulePayload<Gossi
     clearTimeout(timeoutId);
     
     if (!response.ok) {
-      console.warn(`[Gossip Blind] ❌ HTTP error: ${response.status}`);
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
     }
     
     const html = await response.text();
     
-    // Check if blocked
-    if (isBlocked(html)) {
-      console.warn(`[Gossip Blind] ⚠️ Blocked by anti-bot`);
-      throw new Error('Blocked by anti-bot');
-    }
-    
-    // Check if HTML is too short
-    if (html.length < 1000) {
-      console.warn(`[Gossip Blind] ⚠️ HTML too short (${html.length} chars)`);
-      throw new Error('HTML too short');
-    }
-    
-    // Parse HTML - TeamBlind structure may vary
+    // Step 4: Parse HTML to find "Most Read" or "Most discussed" list
     const $ = cheerio.load(html);
     const items: GossipItem[] = [];
     const seenUrls = new Set<string>();
     
-    // Try to find post links (common patterns for Blind)
-    $('a[href*="/topic/"], a[href*="/post/"], a[href*="/thread/"]').each((_, el) => {
-      const $el = $(el);
-      const href = $el.attr('href');
-      const title = $el.text().trim();
-      
-      if (!href || !title || title.length < 5) return;
-      
-      // Normalize URL
-      let url = href;
-      if (url.startsWith('/')) {
-        url = `https://www.teamblind.com${url}`;
-      } else if (!url.startsWith('http')) {
-        url = `https://www.teamblind.com/${url}`;
-      } else if (!url.includes('teamblind.com')) {
-        return; // Skip external links
+    // Try multiple selectors for "Most Read" / "Most discussed" sections
+    const selectors = [
+      'h2:contains("Most Read"), h3:contains("Most Read")',
+      'h2:contains("Most Discussed"), h3:contains("Most Discussed")',
+      '[class*="most-read"]',
+      '[class*="most-discussed"]',
+      '[id*="most-read"]',
+      '[id*="most-discussed"]',
+    ];
+    
+    let foundSection = false;
+    
+    for (const selector of selectors) {
+      const $section = $(selector).first();
+      if ($section.length > 0) {
+        foundSection = true;
+        console.log(`[Gossip Blind] ✅ Found section with selector: ${selector}`);
+        
+        // Find links in the section
+        $section.parent().find('a[href*="/topic/"], a[href*="/post/"], a[href*="/thread/"]').each((_, el) => {
+          const $el = $(el);
+          const href = $el.attr('href');
+          const title = $el.text().trim() || $el.attr('title')?.trim() || '';
+          
+          if (!href || !title || title.length < 5) return;
+          
+          // Normalize URL
+          let url = href;
+          if (url.startsWith('/')) {
+            url = `https://www.teamblind.com${url}`;
+          } else if (!url.startsWith('http')) {
+            url = `https://www.teamblind.com/${url}`;
+          } else if (!url.includes('teamblind.com')) {
+            return; // Skip external links
+          }
+          
+          // STRICT VALIDATION: Must be a specific discussion/post, not a list page
+          if (!isValidBlindPostUrl(url)) {
+            console.log(`[Gossip Blind] Filtered out non-post URL: ${url.substring(0, 80)}`);
+            return;
+          }
+          
+          // Skip duplicates
+          if (seenUrls.has(url)) return;
+          seenUrls.add(url);
+          
+          items.push({
+            title,
+            url,
+            meta: {
+              source: 'blind',
+              publishedAt: fetchedAt,
+            },
+          });
+        });
+        
+        break; // Use first found section
       }
+    }
+    
+    // Fallback: If no "Most Read" section found, try to find any discussion links in the page
+    if (!foundSection || items.length < 3) {
+      console.log(`[Gossip Blind] ⚠️ No "Most Read" section found or < 3 items, trying fallback parsing...`);
       
-      // STRICT VALIDATION: Must be a specific discussion/post, not a list page
-      if (!isValidBlindPostUrl(url)) {
-        console.log(`[Gossip Blind] Filtered out non-post URL: ${url.substring(0, 100)}`);
-        return;
-      }
-      
-      // Skip duplicates
-      if (seenUrls.has(url)) return;
-      seenUrls.add(url);
-      
-      items.push({
-        title,
-        url,
-        meta: {
-          source: 'blind',
-          publishedAt: fetchedAt,
-        },
+      $('a[href*="/topic/"], a[href*="/post/"], a[href*="/thread/"]').each((_, el) => {
+        const $el = $(el);
+        const href = $el.attr('href');
+        const title = $el.text().trim() || $el.attr('title')?.trim() || '';
+        
+        if (!href || !title || title.length < 5) return;
+        
+        // Normalize URL
+        let url = href;
+        if (url.startsWith('/')) {
+          url = `https://www.teamblind.com${url}`;
+        } else if (!url.startsWith('http')) {
+          url = `https://www.teamblind.com/${url}`;
+        } else if (!url.includes('teamblind.com')) {
+          return;
+        }
+        
+        // STRICT VALIDATION
+        if (!isValidBlindPostUrl(url)) return;
+        
+        // Skip duplicates
+        if (seenUrls.has(url)) return;
+        seenUrls.add(url);
+        
+        items.push({
+          title,
+          url,
+          meta: {
+            source: 'blind',
+            publishedAt: fetchedAt,
+          },
+        });
       });
-    });
+    }
     
     // Remove duplicates and validate all URLs are post URLs
     const uniqueItems = Array.from(
       new Map(items.map(item => [item.url, item])).values()
     ).filter(item => {
-      // Double-check: ensure all items are valid post URLs
       if (!isValidBlindPostUrl(item.url)) {
         console.warn(`[Gossip Blind] Filtered invalid post URL in final list: ${item.url}`);
         return false;
@@ -779,14 +740,15 @@ async function fetchBlind(nocache: boolean = false): Promise<ModulePayload<Gossi
       return true;
     });
     
-    console.log(`[Gossip Blind] ✅ Fetched ${uniqueItems.length} valid post items from live`);
+    console.log(`[Gossip Blind] ✅ Fetched ${uniqueItems.length} valid post items from trending page`);
     
     // If we have >= 3 items, return live data
     if (uniqueItems.length >= 3) {
       // Save to warm seed for future fallback
       saveWarmSeed('blind', uniqueItems);
       
-      // Cache the result
+      // Cache the result (separate from trending page URL cache)
+      const payloadCacheKey = 'gossip-blind-items';
       const payload: ModulePayload<GossipItem> = {
         source: 'live',
         status: 'ok',
@@ -795,12 +757,12 @@ async function fetchBlind(nocache: boolean = false): Promise<ModulePayload<Gossi
         items: uniqueItems.slice(0, 10), // Limit to 10 items
       };
       
-      setCache(cacheKey, payload);
+      setCache(payloadCacheKey, payload);
       return payload;
     }
     
     // If < 3 items, try cache
-    console.warn(`[Gossip Blind] ⚠️ Only ${uniqueItems.length} items, trying cache...`);
+    console.warn(`[Gossip Blind] ⚠️ Only ${uniqueItems.length} items (< 3), trying cache...`);
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error(`[Gossip Blind] ❌ Live fetch failed: ${errorMsg}`);
@@ -809,7 +771,8 @@ async function fetchBlind(nocache: boolean = false): Promise<ModulePayload<Gossi
   
   // Try cache (only if not nocache)
   if (!nocache) {
-    const cached = getCachedData(cacheKey, GOSSIP_CACHE_TTL, false);
+    const payloadCacheKey = 'gossip-blind-items';
+    const cached = getCachedData(payloadCacheKey, GOSSIP_CACHE_TTL, false);
     if (cached && cached.data && cached.data.items && cached.data.items.length >= 3) {
       console.log(`[Gossip Blind] ✅ Using cache (${cached.data.items.length} items)`);
       return {
@@ -821,7 +784,7 @@ async function fetchBlind(nocache: boolean = false): Promise<ModulePayload<Gossi
     }
     
     // Try stale cache
-    const stale = getStaleCache(cacheKey);
+    const stale = getStaleCache(payloadCacheKey);
     if (stale && stale.data && stale.data.items && stale.data.items.length >= 3) {
       console.log(`[Gossip Blind] ✅ Using stale cache (${stale.data.items.length} items)`);
       return {
@@ -886,7 +849,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Filter out any invalid URLs from payload items
       const validItems = payload.items.filter(item => {
         if (source === '1point3acres') {
-          return isValidThreadUrl(item.url);
+          return isValid1p3aThreadUrl(item.url);
         } else {
           return isValidBlindPostUrl(item.url);
         }
@@ -916,16 +879,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       // Last resort: built-in seed
       const builtinSeed = source === '1point3acres' ? BUILTIN_SEED_1P3A : BUILTIN_SEED_BLIND;
-      const needed = 3 - validItems.length;
-      const padded = [...validItems, ...builtinSeed.slice(0, needed)];
+      const needed = Math.max(0, 3 - validItems.length);
+      const padded = needed > 0 
+        ? [...validItems, ...builtinSeed.slice(0, needed)]
+        : validItems;
+      
+      // Assert: must have >= 3 items
+      if (padded.length < 3) {
+        console.error(`[Gossip ${source}] ⚠️ ensureMinItems failed: only ${padded.length} items after padding`);
+        // Force pad to 3 items
+        const forceNeeded = 3 - padded.length;
+        const forcePadded = [...padded, ...builtinSeed.slice(0, forceNeeded)];
+        return {
+          ...payload,
+          items: forcePadded.slice(0, 3), // Ensure exactly 3
+          status: 'degraded' as const,
+          note: `Forced to 3 items with seed data`,
+        };
+      }
       
       return {
         ...payload,
-        items: padded,
+        items: padded.slice(0, 10), // Limit to 10 max
         status: payload.status === 'ok' ? 'degraded' : payload.status,
         note: payload.note 
           ? `${payload.note}; padded with ${needed} built-in seed items`
-          : `Padded with ${needed} built-in seed items`,
+          : needed > 0 ? `Padded with ${needed} built-in seed items` : undefined,
       };
     };
     

@@ -217,7 +217,7 @@ export default function BlindBoxCard({ randomPool, fallbackImage, onReveal }: Bl
           
           {/* Overlay: Name */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-            <h4 className="text-xs font-semibold text-white line-clamp-1">
+            <h4 className="text-[13px] font-medium text-white mb-0.5 line-clamp-1 leading-tight">
               {revealedPlace.name}
             </h4>
           </div>
@@ -225,17 +225,17 @@ export default function BlindBoxCard({ randomPool, fallbackImage, onReveal }: Bl
 
         {/* Info: Rating + Distance */}
         <div className="p-2">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
-            <div className="flex items-center gap-0.5">
-              <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
-              <span>{revealedPlace.rating.toFixed(1)}</span>
+          <div className="flex items-baseline gap-1.5 text-[11px] text-muted-foreground font-mono font-normal">
+            <div className="flex items-baseline gap-0.5">
+              <Star className="w-3 h-3 text-yellow-400 fill-yellow-400 flex-shrink-0" />
+              <span className="tabular-nums">{revealedPlace.rating.toFixed(1)}</span>
             </div>
             {revealedPlace.distance_miles !== undefined && (
               <>
-                <span>·</span>
-                <div className="flex items-center gap-0.5">
-                  <MapPin className="w-2.5 h-2.5" />
-                  <span>{revealedPlace.distance_miles.toFixed(1)} mi</span>
+                <span>•</span>
+                <div className="flex items-baseline gap-0.5">
+                  <MapPin className="w-3 h-3 flex-shrink-0" />
+                  <span className="tabular-nums">{revealedPlace.distance_miles.toFixed(1)} mi</span>
                 </div>
               </>
             )}
@@ -265,19 +265,19 @@ export default function BlindBoxCard({ randomPool, fallbackImage, onReveal }: Bl
         {/* Overlay: Title */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
           {isRolling && (
-            <h4 className="text-xs font-semibold text-white">
+            <h4 className="text-[13px] font-medium text-white leading-tight">
               摇色子中...
             </h4>
           )}
           {!isRolling && (
-            <p className="text-[10px] text-white/70">随机选店</p>
+            <p className="text-[11px] text-white/70 font-mono font-normal">随机选店</p>
           )}
         </div>
       </div>
 
       {/* Info placeholder */}
       <div className="p-2 flex-shrink-0">
-        <div className="text-xs text-muted-foreground font-mono">
+        <div className="text-[11px] text-muted-foreground font-mono font-normal">
           {isRolling ? '...' : ''}
         </div>
       </div>

@@ -22,9 +22,9 @@ import PortfolioHero from "@/components/PortfolioHero";
 import MarketHighlights from "@/components/MarketHighlights";
 import USStockYouTubers from "@/components/USStockYouTubers";
 import IndicesCard from "@/components/IndicesCard";
-import DealsCarousel from "@/components/DealsCarousel";
 import ShowsCarousel from "@/components/ShowsCarousel";
 import SectionHeader from "@/components/SectionHeader";
+import TimeAgo from "@/components/TimeAgo";
 import { useHoldings } from "@/hooks/useHoldings";
 import { QuoteData } from "@/hooks/usePortfolioSummary";
 import { config } from "@/config";
@@ -122,6 +122,7 @@ export default function Home() {
   const [shows, setShows] = useState<any[]>([]); // 追剧
   const [showsOffset, setShowsOffset] = useState(0); // Offset for "换一批" functionality
   const [deals, setDeals] = useState<any[]>([]); // 薅羊毛
+  const [dealsSourceMode, setDealsSourceMode] = useState<'live' | 'cache' | 'seed'>('live'); // Deals source mode
 
   useEffect(() => {
     async function loadAllData() {
@@ -220,13 +221,23 @@ export default function Home() {
         if (response.ok) {
           const result = await response.json();
           const dealsItems = result.items || result.deals || [];
-          setDeals(dealsItems.slice(0, 6)); // Top 6 deals
+          // Ensure >= 3 items, show up to 10 in carousel
+          if (dealsItems.length >= 3) {
+            setDeals(dealsItems.slice(0, 10));
+            setDealsSourceMode(result.sourceMode || 'live');
+          } else {
+            // If < 3 items, still show what we have (fallback to seed should ensure >= 3)
+            setDeals(dealsItems);
+            setDealsSourceMode(result.sourceMode || 'seed');
+          }
         } else {
           setDeals([]);
+          setDealsSourceMode('seed');
         }
       } catch (error) {
         console.error("[Home] Failed to fetch deals:", error);
         setDeals([]);
+        setDealsSourceMode('seed');
       }
     }
     
@@ -244,8 +255,8 @@ export default function Home() {
         <div className="mx-auto w-full max-w-6xl px-4 md:px-6 py-3 space-y-4">
           {/* SECTION 1: 打工耽误赚钱 */}
           <section className="flex flex-col gap-4 min-w-0">
-            <div className="mb-3">
-              <h1 className="text-base font-semibold font-mono">
+            <div className="mb-2 mt-2">
+              <h1 className="text-[15px] font-medium font-mono leading-tight">
                 <span className="neon-text-blue">打工耽误赚钱</span>
               </h1>
             </div>
@@ -294,8 +305,8 @@ export default function Home() {
 
           {/* SECTION 2: 民以食为天 */}
           <section className="flex flex-col gap-4 min-w-0 mt-8">
-            <div className="mb-3">
-              <h1 className="text-base font-semibold font-mono">
+            <div className="mb-2 mt-2">
+              <h1 className="text-[15px] font-medium font-mono leading-tight">
                 <span className="neon-text-blue">民以食为天</span>
               </h1>
             </div>
@@ -308,8 +319,8 @@ export default function Home() {
 
           {/* SECTION 3: 追剧吃瓜薅羊毛 */}
           <section className="flex flex-col gap-4 min-w-0 mt-8">
-            <div className="mb-3">
-              <h1 className="text-base font-semibold font-mono">
+            <div className="mb-2 mt-2">
+              <h1 className="text-[15px] font-medium font-mono leading-tight">
                 <span className="neon-text-blue">追剧吃瓜薅羊毛</span>
               </h1>
             </div>
@@ -334,43 +345,68 @@ export default function Home() {
             )}
 
             {/* 2) Horizontal row: 吃瓜 and 薅羊毛 */}
-            <div className="w-full min-w-0 flex flex-col md:flex-row gap-4">
+            <div className="w-full min-w-0 flex flex-col md:flex-row gap-4 md:items-stretch">
               {/* 吃瓜 - Left side */}
-              <div className="w-full md:w-1/2 min-w-0">
+              <div className="w-full md:w-1/2 min-w-0 flex flex-col">
                 <SectionHeader title="吃瓜" />
-                <ChineseGossip maxItemsPerSource={3} />
+                <div className="flex-1">
+                  <ChineseGossip maxItemsPerSource={5} />
+                </div>
               </div>
 
-              {/* 薅羊毛 - Right side - Vertical 3 cards */}
-              {deals.length > 0 && (
-                <div className="w-full md:w-1/2 min-w-0">
-                  <SectionHeader title="薅羊毛" />
-                  <div className="space-y-3">
+              {/* 薅羊毛 - Right side - Vertical cards */}
+              {deals.length >= 3 && (
+                <div className="w-full md:w-1/2 min-w-0 flex flex-col">
+                  <div className="mb-2">
+                    <div className="flex items-baseline justify-between mb-2">
+                      <h3 className="text-[13px] font-mono font-medium text-foreground/80">薅羊毛</h3>
+                      {/* Source mode indicator - aligned with header */}
+                      {dealsSourceMode && (
+                        <span className="text-xs opacity-50 text-muted-foreground font-mono">
+                          {dealsSourceMode === 'live' ? '实时' : dealsSourceMode === 'cache' ? '缓存' : '种子'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="border-b border-border/30"></div>
+                  </div>
+                  <div className="flex-1 space-y-2">
                     {deals.slice(0, 3).map((deal) => (
                       <a
                         key={deal.id}
                         href={deal.external_url || deal.url || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block rounded-sm p-3 md:p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
+                        className="block rounded-sm p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1.5">
-                              <span className="text-xs text-muted-foreground font-mono">{deal.store || 'Deal'}</span>
-                              <span className="text-xs text-muted-foreground">•</span>
-                              <span className="text-xs text-muted-foreground">{deal.time_ago || ''}</span>
-                              {deal.score > 0 && (
+                            <div className="flex items-baseline gap-1.5 mb-1 flex-wrap">
+                              <span className="text-[11px] text-muted-foreground/70 font-mono font-normal">
+                                {deal.sourceLabel || deal.source || deal.store || 'Deal'}
+                              </span>
+                              {deal.publishedAt && (
                                 <>
-                                  <span className="text-xs text-muted-foreground">•</span>
-                                  <span className="text-xs text-primary font-mono font-bold">↑{deal.score}</span>
+                                  <span className="text-[11px] text-muted-foreground/60">•</span>
+                                  <TimeAgo isoString={deal.publishedAt} />
+                                </>
+                              )}
+                              {!deal.publishedAt && deal.time_ago && (
+                                <>
+                                  <span className="text-[11px] text-muted-foreground/60">•</span>
+                                  <span className="text-[11px] text-muted-foreground/70 font-mono font-normal">{deal.time_ago}</span>
+                                </>
+                              )}
+                              {deal.score !== undefined && deal.score > 0 && (
+                                <>
+                                  <span className="text-[11px] text-muted-foreground/60">•</span>
+                                  <span className="text-[11px] text-primary font-mono font-medium tabular-nums">↑{deal.score}</span>
                                 </>
                               )}
                             </div>
-                            <h4 className="text-sm font-semibold group-hover:text-primary transition-colors line-clamp-2 flex-1 leading-relaxed">
+                            <h4 className="text-[13px] font-normal group-hover:text-primary transition-colors line-clamp-2 flex-1 leading-tight">
                               {deal.title}
                             </h4>
-                            {deal.comments > 0 && (
+                            {deal.comments !== undefined && deal.comments > 0 && (
                               <div className="mt-1.5 text-xs text-muted-foreground font-mono">
                                 💬 {deal.comments} 评论
                               </div>

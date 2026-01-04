@@ -88,15 +88,15 @@ export default function ShowsCarousel({ shows, offset = 0, onRefresh }: ShowsCar
                     }}
                   />
                   <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                    <h4 className="text-[14px] font-medium text-white mb-1 line-clamp-1">{show.title}</h4>
-                    <div className="flex items-center gap-2 text-xs opacity-70 text-white/80">
+                    <h4 className="text-[13px] font-medium text-white mb-0.5 line-clamp-1 leading-tight">{show.title}</h4>
+                    <div className="flex items-baseline gap-1.5 text-[11px] opacity-70 text-white/80 font-mono font-normal">
                       {show.rating > 0 && (
                         <>
-                          <span className="font-normal tabular-nums">⭐ {show.rating.toFixed(1)}</span>
+                          <span className="tabular-nums">⭐ {show.rating.toFixed(1)}</span>
                           <span>•</span>
                         </>
                       )}
-                      <span className="font-normal">{show.platform}</span>
+                      <span>{show.platform}</span>
                     </div>
                   </div>
                 </div>
