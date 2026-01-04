@@ -129,15 +129,17 @@ export function useExternalLink() {
           sessionStorage.setItem(SESSION_STORAGE_KEY, "true");
           
           // Open link after showing hint
-          // In standalone mode, window.open may behave differently, but we still try
           setTimeout(() => {
-            const newWindow = window.open(href, "_blank", "noopener,noreferrer");
-            // If popup was blocked (unlikely in mobile browsers for user-initiated actions),
-            // fallback to same-tab navigation (user can use back button)
-            if (!newWindow && isStandalone) {
-              // In standalone, if new tab fails, we'll navigate in same tab
-              // The browser's back button will work
-              window.location.href = href;
+            if (isStandalone) {
+              // In standalone/PWA mode, try window.open first
+              const newWindow = window.open(href, "_blank", "noopener,noreferrer");
+              // If blocked, fallback to same-tab (user can use back button)
+              if (!newWindow) {
+                window.location.href = href;
+              }
+            } else {
+              // Regular mobile browser - window.open should work
+              window.open(href, "_blank", "noopener,noreferrer");
             }
           }, 100);
         }
@@ -190,10 +192,13 @@ export function useExternalLink() {
           sessionStorage.setItem(SESSION_STORAGE_KEY, "true");
           
           setTimeout(() => {
-            const newWindow = window.open(href, "_blank", "noopener,noreferrer");
-            // Fallback for standalone mode if popup blocked
-            if (!newWindow && isStandalone) {
-              window.location.href = href;
+            if (isStandalone) {
+              const newWindow = window.open(href, "_blank", "noopener,noreferrer");
+              if (!newWindow) {
+                window.location.href = href;
+              }
+            } else {
+              window.open(href, "_blank", "noopener,noreferrer");
             }
           }, 100);
         }
