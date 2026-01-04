@@ -370,7 +370,7 @@ export default function Home() {
                     <div className="border-b border-border/30"></div>
                   </div>
                   <div className="flex-1 space-y-2">
-                    {deals.slice(0, 3).map((deal) => (
+                    {deals.slice(0, 4).map((deal) => (
                       <a
                         key={deal.id}
                         href={deal.external_url || deal.url || '#'}

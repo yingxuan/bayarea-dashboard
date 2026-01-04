@@ -4,7 +4,7 @@
  * 
  * Requirements:
  * - Cities: Cupertino / Sunnyvale
- * - Categories: 奶茶 / 中餐 / 咖啡 / 夜宵
+ * - Categories: 奶茶 / 中餐 / 甜品 / 夜宵
  * - Always return >= 3 items per category (live or cache/seed)
  * - Sort: "popular" = userRatingCount desc, then rating desc
  * - 24h cache: success → write cache; fail → read cache; cache fail → seed fallback
@@ -65,7 +65,7 @@ const DEFAULT_CENTER = CITY_COORDS.cupertino;
 const CATEGORY_KEYWORDS = {
   '奶茶': ['bubble tea', 'boba'], // Reduced from 10 to 2 keywords
   '中餐': ['chinese restaurant'], // Reduced from 2 to 1 keyword
-  '咖啡': ['coffee'], // Reduced from 2 to 1 keyword
+  '甜品': ['dessert', 'ice cream'], // Changed from coffee to dessert
   '夜宵': ['hot pot', 'bbq'], // Reduced from 10 to 2 keywords
 } as const;
 
@@ -73,7 +73,7 @@ const CATEGORY_KEYWORDS = {
 const CATEGORY_TYPES = {
   '奶茶': 'cafe', // Use cafe as base type for bubble tea
   '中餐': 'restaurant',
-  '咖啡': 'cafe',
+  '甜品': 'cafe', // Use cafe as base type for dessert
   '夜宵': 'restaurant', // Use restaurant as base type for BBQ and hot pot
 } as const;
 
@@ -493,14 +493,14 @@ async function fetchPlacesForCategory(
   const categoryToEnglish: Record<keyof typeof CATEGORY_KEYWORDS, string> = {
     '奶茶': 'milk_tea',
     '中餐': 'chinese',
-    '咖啡': 'coffee',
+    '甜品': 'dessert',
     '夜宵': 'late_night',
   };
   
   const categoryToChinese: Record<string, string> = {
     'milk_tea': '奶茶',
     'chinese': '中餐',
-    'coffee': '咖啡',
+    'dessert': '甜品',
     'late_night': '夜宵',
   };
   
@@ -696,7 +696,7 @@ async function fetchPlacesForCategory(
 async function fetchAllPlacesFromGoogle(): Promise<SpendPlace[]> {
   // Only search in Cupertino and Sunnyvale (no San Jose)
   const cities: Array<keyof typeof CITY_COORDS> = ['cupertino', 'sunnyvale'];
-  const categories: Array<keyof typeof CATEGORY_KEYWORDS> = ['奶茶', '中餐', '咖啡', '夜宵'];
+  const categories: Array<keyof typeof CATEGORY_KEYWORDS> = ['奶茶', '中餐', '甜品', '夜宵'];
   
   const allPlaces: SpendPlace[] = [];
   // Track global order across all cities/categories to preserve Google Places ranking
@@ -764,13 +764,13 @@ async function fetchAllPlacesFromGoogle(): Promise<SpendPlace[]> {
 
 /**
  * Group places by category and return top 6 per category
- * Returns: { '奶茶': [...], '中餐': [...], '咖啡': [...], '夜宵': [...] }
+ * Returns: { '奶茶': [...], '中餐': [...], '甜品': [...], '夜宵': [...] }
  */
 function groupPlacesByCategory(places: SpendPlace[]): Record<string, SpendPlace[]> {
   const byCategory: Record<string, SpendPlace[]> = {
     '奶茶': [],
     '中餐': [],
-    '咖啡': [],
+    '甜品': [],
     '夜宵': [],
   };
   
@@ -904,7 +904,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const CATEGORY_KEY_MAP: Record<string, string> = {
           '奶茶': 'milk_tea',
           '中餐': 'chinese',
-          '咖啡': 'coffee',
+          '甜品': 'dessert',
           '夜宵': 'late_night',
         };
         
@@ -912,16 +912,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const normalizedItemsByCategory: Record<string, SpendPlace[]> = {
           'milk_tea': [],
           'chinese': [],
-          'coffee': [],
+          'dessert': [],
           'late_night': [],
         };
         
         for (const [key, places] of Object.entries(itemsByCategory)) {
           const englishKey = CATEGORY_KEY_MAP[key] || key;
           if (normalizedItemsByCategory.hasOwnProperty(englishKey)) {
-            normalizedItemsByCategory[englishKey] = places as SpendPlace[];
-          } else if (key === 'milk_tea' || key === 'chinese' || key === 'coffee' || key === 'late_night') {
-            normalizedItemsByCategory[key] = places as SpendPlace[];
+            // Limit to 5 items + 1 random per category
+            const categoryPlaces = places as SpendPlace[];
+            const top5 = categoryPlaces.slice(0, 5);
+            if (categoryPlaces.length > 5) {
+              const remaining = categoryPlaces.slice(5);
+              const randomPlace = remaining[Math.floor(Math.random() * remaining.length)];
+              randomPlace.category = `${key} (随机选店)`;
+              top5.push(randomPlace);
+            }
+            normalizedItemsByCategory[englishKey] = top5;
+          } else if (key === 'milk_tea' || key === 'chinese' || key === 'dessert' || key === 'late_night') {
+            // Limit to 5 items + 1 random per category
+            const categoryPlaces = places as SpendPlace[];
+            const top5 = categoryPlaces.slice(0, 5);
+            if (categoryPlaces.length > 5) {
+              const remaining = categoryPlaces.slice(5);
+              const randomPlace = remaining[Math.floor(Math.random() * remaining.length)];
+              randomPlace.category = `${key} (随机选店)`;
+              top5.push(randomPlace);
+            }
+            normalizedItemsByCategory[key] = top5;
           }
         }
         
@@ -932,7 +950,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json({
           ...staleData,
           itemsByCategory: normalizedItemsByCategory,
-          items: items.slice(0, 200), // Up to 50 per category * 4 categories
+          items: items.slice(0, 24), // Up to 6 per category * 4 categories (5 items + 1 random)
           count: items.length,
           cache_hit: true,
           stale: true,
@@ -949,7 +967,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const placesByCategoryDirect: Record<string, SpendPlace[]> = {
       '奶茶': [],
       '中餐': [],
-      '咖啡': [],
+      '甜品': [],
       '夜宵': [],
     };
     
@@ -962,7 +980,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         placesByCategoryDirect[placeCategory].push(place);
       } else {
         // Try to match by checking if the category string matches any expected category
-        const expectedCategories: string[] = ['奶茶', '中餐', '咖啡', '夜宵'];
+        const expectedCategories: string[] = ['奶茶', '中餐', '甜品', '夜宵'];
         const matched = expectedCategories.find(cat => {
           // Compare by byte representation to avoid encoding issues
           const placeBytes = Buffer.from(placeCategory, 'utf8').toString('hex');
@@ -996,22 +1014,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Each place still has the correct Chinese category field
     const CATEGORY_MILK_TEA = '奶茶';
     const CATEGORY_CHINESE = '中餐';
-    const CATEGORY_COFFEE = '咖啡';
+    const CATEGORY_DESSERT = '甜品';
     const CATEGORY_LATE_NIGHT = '夜宵';
     
     // Map Chinese category names to English keys for JSON serialization
     const CATEGORY_KEY_MAP: Record<string, string> = {
       [CATEGORY_MILK_TEA]: 'milk_tea',
       [CATEGORY_CHINESE]: 'chinese',
-      [CATEGORY_COFFEE]: 'coffee',
+      [CATEGORY_DESSERT]: 'dessert',
       [CATEGORY_LATE_NIGHT]: 'late_night',
     };
     
-    const categories: string[] = [CATEGORY_MILK_TEA, CATEGORY_CHINESE, CATEGORY_COFFEE, CATEGORY_LATE_NIGHT];
+    const categories: string[] = [CATEGORY_MILK_TEA, CATEGORY_CHINESE, CATEGORY_DESSERT, CATEGORY_LATE_NIGHT];
     const finalPlacesByCategory: Record<string, SpendPlace[]> = {
       'milk_tea': [],
       'chinese': [],
-      'coffee': [],
+      'dessert': [],
       'late_night': [],
     };
     
@@ -1100,9 +1118,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
         
-        // Keep top 50 places per category, sorted by Google Places ranking (already sorted by placeOrderMap)
-        finalPlacesByCategory[englishKey] = categoryPlaces.slice(0, 50);
-        console.log(`[Spend Today] Final count for ${category} (key: ${englishKey}): ${finalPlacesByCategory[englishKey].length}`);
+        // Keep top 5 places per category, sorted by Google Places ranking (already sorted by placeOrderMap)
+        const top5Places = categoryPlaces.slice(0, 5);
+        
+        // Add one random place from the category (if available)
+        if (categoryPlaces.length > 5) {
+          const remainingPlaces = categoryPlaces.slice(5);
+          const randomPlace = remainingPlaces[Math.floor(Math.random() * remainingPlaces.length)];
+          // Mark as random selection
+          randomPlace.category = `${category} (随机选店)`;
+          top5Places.push(randomPlace);
+        }
+        
+        finalPlacesByCategory[englishKey] = top5Places;
+        console.log(`[Spend Today] Final count for ${category} (key: ${englishKey}): ${finalPlacesByCategory[englishKey].length} (5 items + ${top5Places.length > 5 ? '1 random' : '0 random'})`);
       } else {
         console.error(`[Spend Today] ERROR: No English key mapping for category ${category}`);
       }
@@ -1128,7 +1157,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       status: 'ok' as const,
       itemsByCategory: finalPlacesByCategory, // New structure: grouped by category
       items: Object.values(finalPlacesByCategory).flat(), // Legacy: flat array for backward compatibility
-      count: Object.values(finalPlacesByCategory).reduce((sum, arr) => sum + arr.length, 0),
+      count: Object.values(finalPlacesByCategory).reduce((sum, arr) => sum + arr.length, 0), // 6 per category * 4 categories = 24 (5 items + 1 random each)
       asOf: fetchedAtISO,
       source: { name: 'Google Places', url: 'https://maps.google.com' },
       ttlSeconds,
@@ -1209,25 +1238,51 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       
       // NO seed data fallback - only return real places from stale cache
-      const categories: Array<keyof typeof CATEGORY_KEYWORDS> = ['奶茶', '中餐', '咖啡', '夜宵'];
+      const categories: Array<keyof typeof CATEGORY_KEYWORDS> = ['奶茶', '中餐', '甜品', '夜宵'];
+      const CATEGORY_KEY_MAP_STALE: Record<string, string> = {
+        '奶茶': 'milk_tea',
+        '中餐': 'chinese',
+        '甜品': 'dessert',
+        '夜宵': 'late_night',
+      };
+      
+      const normalizedItemsByCategory: Record<string, SpendPlace[]> = {
+        'milk_tea': [],
+        'chinese': [],
+        'dessert': [],
+        'late_night': [],
+      };
+      
       for (const category of categories) {
         // Only keep items with valid place_id (real Google Places - place_id typically starts with 'Ch' or is long)
         if (itemsByCategory[category]) {
-          itemsByCategory[category] = itemsByCategory[category].filter((p: any) => 
+          const filtered = itemsByCategory[category].filter((p: any) => 
             p.id && (p.id.startsWith('Ch') || p.id.length > 10) && p.maps_url && !p.maps_url.includes('#')
           );
+          // Limit to 5 items + 1 random per category
+          const top5 = filtered.slice(0, 5);
+          if (filtered.length > 5) {
+            const remaining = filtered.slice(5);
+            const randomPlace = remaining[Math.floor(Math.random() * remaining.length)];
+            randomPlace.category = `${category} (随机选店)`;
+            top5.push(randomPlace);
+          }
+          const englishKey = CATEGORY_KEY_MAP_STALE[category];
+          if (englishKey) {
+            normalizedItemsByCategory[englishKey] = top5;
+          }
         }
       }
       
       // Rebuild flat items array for backward compatibility
-      items = Object.values(itemsByCategory).flat();
+      items = Object.values(normalizedItemsByCategory).flat();
       
       // Ensure proper encoding for JSON response
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       return res.status(200).json({
         ...staleData,
-        itemsByCategory,
-        items: items.slice(0, 24), // Up to 6 per category * 4 categories
+        itemsByCategory: normalizedItemsByCategory,
+        items: items.slice(0, 24), // Up to 6 per category * 4 categories (5 items + 1 random)
         count: items.length,
         cache_hit: true,
         stale: true,
@@ -1242,15 +1297,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const seedByCategory: Record<string, SpendPlace[]> = {
       'milk_tea': [],
       'chinese': [],
-      'coffee': [],
+      'dessert': [],
       'late_night': [],
     };
     
     const categoryMap: Record<string, string> = {
       '奶茶': 'milk_tea',
       '中餐': 'chinese',
-      '咖啡': 'coffee',
-      '甜品': 'coffee', // Map dessert to coffee for seed data
+      '甜品': 'dessert',
+      '夜宵': 'late_night',
     };
     
     seedPlaces.forEach((place: FoodPlace) => {
@@ -1271,6 +1326,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
     });
+    
+    // Limit each category to 5 items + 1 random
+    for (const [key, places] of Object.entries(seedByCategory)) {
+      const top5 = places.slice(0, 5);
+      if (places.length > 5) {
+        const remaining = places.slice(5);
+        const randomPlace = remaining[Math.floor(Math.random() * remaining.length)];
+        const categoryName = categoryMap[randomPlace.category] || key;
+        randomPlace.category = `${categoryName} (随机选店)`;
+        top5.push(randomPlace);
+      }
+      seedByCategory[key] = top5;
+    }
     
     const errorAtISO = new Date().toISOString();
     const allSeedItems = Object.values(seedByCategory).flat();

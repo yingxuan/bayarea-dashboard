@@ -1,8 +1,6 @@
 /**
  * Market Highlights Component
- * 2 columns: 新闻 / 一亩三分地
- * Desktop: grid-cols-2 (两栏等权、等高)
- * Mobile: Vertical stack (新闻 -> 一亩三分地)
+ * Each item is a separate card with source label
  */
 
 import { useEffect, useState } from "react";
@@ -18,6 +16,14 @@ interface CommunityItem {
 
 interface MarketHighlightsProps {
   marketNews: any[]; // Top 3 中文美股新闻
+}
+
+interface UnifiedItem {
+  id: string;
+  title: string;
+  url: string;
+  source: string; // "新浪财经" or "一亩三分地"
+  publishedAt?: string;
 }
 
 export default function MarketHighlights({ marketNews }: MarketHighlightsProps) {
@@ -52,92 +58,52 @@ export default function MarketHighlights({ marketNews }: MarketHighlightsProps) 
     return () => clearInterval(interval);
   }, []);
 
-  return (
-    <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md">
-      {/* Desktop: 2 columns (新闻/一亩三分地), Mobile: vertical stack */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
-        {/* Column 1: 新闻（Top 3 中文美股新闻） */}
-        <div className="min-w-0">
-          <div className="mb-1.5 flex items-center justify-between">
-            <h4 className="text-[13px] font-mono font-medium text-foreground/80">新浪财经</h4>
-            <a
-              href="https://finance.sina.com.cn/stock/usstock/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs opacity-60 hover:opacity-100 transition-opacity font-mono font-normal"
-            >
-              更多
-            </a>
-          </div>
-          {marketNews.length > 0 ? (
-            <div className="space-y-0.5" style={{ lineHeight: '1.3' }}>
-              {marketNews.slice(0, 3).map((item: any, index: number) => (
-                <a
-                  key={index}
-                  href={item.url || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`block py-0.5 hover:bg-card/80 transition-all group rounded-sm ${
-                    index < marketNews.length - 1 ? 'border-b border-border/30' : ''
-                  }`}
-                >
-                  <div className="flex items-start gap-1.5">
-                    <span className="text-primary mt-1 text-[10px] flex-shrink-0">•</span>
-                    <span className="text-[13px] font-normal font-mono text-foreground/90 group-hover:text-primary transition-colors line-clamp-2 flex-1 leading-tight">
-                      {item.title || item.title_zh || item.title_en || 'Market News'}
-                    </span>
-                  </div>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <div className="text-xs opacity-60 font-mono font-normal text-center py-2">
-              暂无新闻
-            </div>
-          )}
-        </div>
+  // Merge and format items
+  const allItems: UnifiedItem[] = [
+    ...marketNews.slice(0, 3).map((item: any, index: number) => ({
+      id: `news-${index}`,
+      title: item.title || item.title_zh || item.title_en || 'Market News',
+      url: item.url || '#',
+      source: '新浪财经',
+      publishedAt: item.publishedAt,
+    })),
+    ...leekItems.slice(0, 3).map((item, index) => ({
+      id: `leek-${index}`,
+      title: item.title,
+      url: item.url,
+      source: '一亩三分地',
+      publishedAt: item.publishedAt,
+    })),
+  ];
 
-        {/* Column 3: 一亩三分地（3条帖子）- 直接显示话题列表 */}
-        <div className="min-w-0 md:border-l md:border-border/10 md:pl-4">
-          <div className="mb-1.5 flex items-center justify-between">
-            <h4 className="text-[13px] font-mono font-medium text-foreground/80">一亩三分地</h4>
-            <a
-              href="https://rsshub.app/1point3acres/section/400"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs opacity-60 hover:opacity-100 transition-opacity font-mono font-normal"
-            >
-              更多
-            </a>
+  return (
+    <div className="space-y-2">
+      {allItems.length > 0 ? (
+        allItems.map((item) => (
+          <a
+            key={item.id}
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block rounded-sm p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
+          >
+            <div className="flex items-start gap-2">
+              <span className="text-[11px] text-muted-foreground/70 font-mono font-normal flex-shrink-0">
+                {item.source}
+              </span>
+              <span className="text-[13px] font-normal font-mono text-foreground/90 group-hover:text-primary transition-colors line-clamp-2 flex-1 leading-tight">
+                {item.title}
+              </span>
+            </div>
+          </a>
+        ))
+      ) : (
+        <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md">
+          <div className="text-xs opacity-60 font-mono font-normal text-center py-2">
+            暂无内容
           </div>
-          {leekItems.length > 0 ? (
-            <div className="space-y-0.5" style={{ lineHeight: '1.3' }}>
-              {leekItems.slice(0, 3).map((item, index) => (
-                <a
-                  key={`leek-${index}`}
-                  href={item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`block py-0.5 hover:bg-card/80 transition-all group rounded-sm ${
-                    index < Math.min(leekItems.length, 3) - 1 ? 'border-b border-border/30' : ''
-                  }`}
-                >
-                  <div className="flex items-start gap-1.5">
-                    <span className="text-primary mt-1 text-[10px] flex-shrink-0">•</span>
-                    <span className="text-[13px] font-normal font-mono text-foreground/90 group-hover:text-primary transition-colors line-clamp-2 flex-1 leading-tight">
-                      {item.title}
-                    </span>
-                  </div>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <div className="text-xs opacity-60 font-mono font-normal text-center py-2">
-              暂无更新
-            </div>
-          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }
