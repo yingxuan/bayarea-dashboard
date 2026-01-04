@@ -10,6 +10,9 @@
  * - Cache TTL: 10 minutes
  */
 
+// Force Node.js runtime on Vercel (not Edge) for compatibility
+export const runtime = 'nodejs';
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import * as cheerio from 'cheerio';
 import { XMLParser } from 'fast-xml-parser';
@@ -229,7 +232,18 @@ async function fetch1point3acresDirectHTML(): Promise<CommunityItem[]> {
 /**
  * Try fetching from a single RSSHub instance
  */
-async function tryRSSHubInstance(url: string, timeout: number): Promise<{ success: boolean; xmlText?: string; contentType?: string; error?: string }> {
+async function tryRSSHubInstance(url: string, timeout: number): Promise<{ 
+  success: boolean; 
+  xmlText?: string; 
+  contentType?: string; 
+  error?: string;
+  debug?: {
+    status: string;
+    contentType: string;
+    finalUrl: string;
+    first200Chars: string;
+  };
+}> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -244,16 +258,47 @@ async function tryRSSHubInstance(url: string, timeout: number): Promise<{ succes
     clearTimeout(timeoutId);
     
     const contentType = response.headers.get('content-type') || 'unknown';
+    const finalUrl = response.url || url;
+    const status = `${response.status} ${response.statusText}`;
     
     if (!response.ok) {
-      return { success: false, contentType, error: `HTTP ${response.status} ${response.statusText}` };
+      return { 
+        success: false, 
+        contentType, 
+        error: `HTTP ${response.status} ${response.statusText}`,
+        debug: {
+          status,
+          contentType,
+          finalUrl,
+          first200Chars: '',
+        },
+      };
     }
     
     const xmlText = await response.text();
-    return { success: true, xmlText, contentType };
+    return { 
+      success: true, 
+      xmlText, 
+      contentType,
+      debug: {
+        status,
+        contentType,
+        finalUrl,
+        first200Chars: xmlText.substring(0, 200),
+      },
+    };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    return { success: false, error: errorMsg };
+    return { 
+      success: false, 
+      error: errorMsg,
+      debug: {
+        status: 'ERROR',
+        contentType: 'unknown',
+        finalUrl: url,
+        first200Chars: '',
+      },
+    };
   }
 }
 
@@ -261,14 +306,47 @@ async function tryRSSHubInstance(url: string, timeout: number): Promise<{ succes
  * Fetch 1point3acres market hot posts from RSSHub (section/400)
  * Tries multiple RSSHub instances as fallback
  */
-async function fetch1point3acresPosts(nocache: boolean = false): Promise<{ items: CommunityItem[]; status: 'ok' | 'unavailable'; reason?: string }> {
+async function fetch1point3acresPosts(nocache: boolean = false): Promise<{ 
+  items: CommunityItem[]; 
+  status: 'ok' | 'unavailable'; 
+  reason?: string;
+  debug?: {
+    runtime: string;
+    status: string;
+    contentType: string;
+    finalUrl: string;
+    first200Chars: string;
+    parsedItemCount: number;
+    filteredThreadCount: number;
+    fallbackMode: 'live' | 'cache' | 'seed';
+    fallbackReason: string;
+    sampleLinks: string[];
+    sampleTitles: string[];
+  };
+}> {
   const cacheKey = 'leek-community-1point3acres';
+  
+  // Initialize debug info
+  const debugInfo: any = {
+    runtime: typeof process !== 'undefined' && process.versions?.node ? 'nodejs' : 'edge',
+    status: '',
+    contentType: '',
+    finalUrl: '',
+    first200Chars: '',
+    parsedItemCount: 0,
+    filteredThreadCount: 0,
+    fallbackMode: 'live' as const,
+    fallbackReason: '',
+    sampleLinks: [] as string[],
+    sampleTitles: [] as string[],
+  };
   
   // Try live fetch from RSSHub (try all instances)
   let xmlText: string | undefined;
   let contentType: string | undefined;
   let lastError: string | undefined;
   let usedInstance: string | undefined;
+  let fetchDebug: any = null;
   
   for (let i = 0; i < RSSHUB_INSTANCES.length; i++) {
     const instanceUrl = RSSHUB_INSTANCES[i];
@@ -280,13 +358,23 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{ items
       xmlText = result.xmlText;
       contentType = result.contentType;
       usedInstance = instanceUrl;
+      fetchDebug = result.debug;
       console.log(`[1point3acres] ✅ Successfully fetched from instance ${i + 1}`);
       break;
     } else {
       lastError = result.error;
       contentType = result.contentType;
+      fetchDebug = result.debug;
       console.log(`[1point3acres] ❌ Instance ${i + 1} failed: ${lastError}`);
     }
+  }
+  
+  // Update debug info from fetch
+  if (fetchDebug) {
+    debugInfo.status = fetchDebug.status || '';
+    debugInfo.contentType = fetchDebug.contentType || contentType || '';
+    debugInfo.finalUrl = fetchDebug.finalUrl || usedInstance || '';
+    debugInfo.first200Chars = fetchDebug.first200Chars || '';
   }
   
   // DEBUG: Log HTTP status and content-type
@@ -300,7 +388,18 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{ items
   // If we got XML, parse it
   if (xmlText) {
     try {
-    
+      // DEBUG: Detect NON_XML (HTML response from RSSHub)
+      const isHtml = xmlText.trim().toLowerCase().startsWith('<!doctype html') || 
+                     xmlText.trim().toLowerCase().startsWith('<html') ||
+                     (contentType && contentType.includes('text/html'));
+      const isXml = !isHtml && (xmlText.trim().startsWith('<?xml') || xmlText.trim().startsWith('<rss') || xmlText.trim().startsWith('<feed'));
+      
+      if (isHtml || !isXml) {
+        debugInfo.fallbackReason = 'NON_XML';
+        console.warn(`[1point3acres] ⚠️ NON_XML detected: content-type=${contentType}, startsWith=${xmlText.substring(0, 50)}`);
+        // Continue parsing anyway (don't change behavior, just log)
+      }
+      
       // DEBUG: Log first 200 characters of RSS response
       const rssPreview = xmlText.substring(0, 200);
       console.log(`[1point3acres] 🔍 DEBUG - RSS Response Preview (first 200 chars): ${rssPreview}`);
@@ -313,11 +412,12 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{ items
       });
       const feed = parser.parse(xmlText);
     
-    // Extract items from channel.item[] (RSS 2.0 format)
-    const rssItems = feed?.rss?.channel?.item || feed?.feed?.entry || [];
-    const itemsArray = Array.isArray(rssItems) ? rssItems : [rssItems];
-    
-    console.log(`[1point3acres] ✅ RSS XML parsed, ${itemsArray.length} raw items`);
+      // Extract items from channel.item[] (RSS 2.0 format)
+      const rssItems = feed?.rss?.channel?.item || feed?.feed?.entry || [];
+      const itemsArray = Array.isArray(rssItems) ? rssItems : [rssItems];
+      
+      debugInfo.parsedItemCount = itemsArray.length;
+      console.log(`[1point3acres] ✅ RSS XML parsed, ${itemsArray.length} raw items`);
     
     // Debug: Log first item structure to understand RSS format
     if (itemsArray.length > 0) {
@@ -431,7 +531,13 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{ items
       return true;
     });
     
+    debugInfo.filteredThreadCount = uniqueItems.length;
+    debugInfo.sampleLinks = uniqueItems.slice(0, 3).map(item => item.url);
+    debugInfo.sampleTitles = uniqueItems.slice(0, 3).map(item => item.title);
+    
     console.log(`[1point3acres] ✅ Fetched ${uniqueItems.length} valid thread items from RSS (instance: ${usedInstance})`);
+    console.log(`[1point3acres] 📊 DEBUG - Sample links:`, debugInfo.sampleLinks);
+    console.log(`[1point3acres] 📊 DEBUG - Sample titles:`, debugInfo.sampleTitles);
       
       // Ensure >= 3 items
       if (uniqueItems.length < 3) {
@@ -440,33 +546,53 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{ items
       
       // Ensure >= 3 items (with fallback)
       if (uniqueItems.length >= 3) {
+        debugInfo.fallbackMode = 'live';
+        debugInfo.fallbackReason = 'SUCCESS';
+        console.log(`[1point3acres] 📊 DEBUG Info:`, JSON.stringify(debugInfo, null, 2));
         return {
           items: uniqueItems.slice(0, 5), // Return top 5
           status: 'ok',
           reason: `Fetched from RSSHub (${usedInstance})`,
+          debug: debugInfo,
         };
       }
       
       // If < 3 items, try cache
+      debugInfo.fallbackMode = 'cache';
+      debugInfo.fallbackReason = 'FILTER_LT3';
       console.warn(`[1point3acres] ⚠️ Only ${uniqueItems.length} items (< 3), trying cache...`);
+      console.log(`[1point3acres] 📊 DEBUG Info:`, JSON.stringify(debugInfo, null, 2));
     } catch (parseError) {
       const parseErrorMsg = parseError instanceof Error ? parseError.message : String(parseError);
       console.error(`[1point3acres] ❌ RSS parsing failed: ${parseErrorMsg}`);
       lastError = `Parse error: ${parseErrorMsg}`;
+      debugInfo.fallbackMode = 'cache';
+      debugInfo.fallbackReason = 'PARSE_FAIL';
+      console.log(`[1point3acres] 📊 DEBUG Info:`, JSON.stringify(debugInfo, null, 2));
     }
   } else {
     // All RSSHub instances failed, try direct HTML scraping
+    debugInfo.fallbackMode = 'cache';
+    debugInfo.fallbackReason = 'FETCH_FAIL';
     console.error(`[1point3acres] ❌ All RSSHub instances failed. Last error: ${lastError}`);
+    console.log(`[1point3acres] 📊 DEBUG Info:`, JSON.stringify(debugInfo, null, 2));
     console.log(`[1point3acres] 🔄 Trying direct HTML scraping from 1point3acres...`);
     
     try {
       const htmlItems = await fetch1point3acresDirectHTML();
       if (htmlItems.length >= 3) {
+        debugInfo.fallbackMode = 'live';
+        debugInfo.fallbackReason = 'HTML_SCRAPE_SUCCESS';
+        debugInfo.filteredThreadCount = htmlItems.length;
+        debugInfo.sampleLinks = htmlItems.slice(0, 3).map(item => item.url);
+        debugInfo.sampleTitles = htmlItems.slice(0, 3).map(item => item.title);
         console.log(`[1point3acres] ✅ Successfully scraped ${htmlItems.length} items from HTML`);
+        console.log(`[1point3acres] 📊 DEBUG Info:`, JSON.stringify(debugInfo, null, 2));
         return {
           items: htmlItems.slice(0, 5),
           status: 'ok',
           reason: 'Fetched via direct HTML scraping (RSSHub unavailable)',
+          debug: debugInfo,
         };
       } else {
         console.warn(`[1point3acres] ⚠️ HTML scraping returned only ${htmlItems.length} items (< 3)`);
@@ -481,27 +607,47 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{ items
   if (!nocache) {
     const cached = getCachedData(cacheKey, ONEPOINT3ACRES_CACHE_TTL, false);
     if (cached?.data?.items && cached.data.items.length >= 3) {
+      debugInfo.fallbackMode = 'cache';
+      debugInfo.fallbackReason = 'CACHE_HIT';
+      debugInfo.filteredThreadCount = cached.data.items.length;
+      debugInfo.sampleLinks = cached.data.items.slice(0, 3).map((item: CommunityItem) => item.url);
+      debugInfo.sampleTitles = cached.data.items.slice(0, 3).map((item: CommunityItem) => item.title);
       console.log(`[1point3acres] ✅ Using cache (${cached.data.items.length} items)`);
+      console.log(`[1point3acres] 📊 DEBUG Info:`, JSON.stringify(debugInfo, null, 2));
       return {
         items: cached.data.items.slice(0, 5),
         status: 'ok',
         reason: 'Using cached data',
+        debug: debugInfo,
       };
     }
     
     // Try stale cache
     const stale = getStaleCache(cacheKey);
     if (stale?.data?.items && stale.data.items.length >= 3) {
+      debugInfo.fallbackMode = 'cache';
+      debugInfo.fallbackReason = 'STALE_CACHE_HIT';
+      debugInfo.filteredThreadCount = stale.data.items.length;
+      debugInfo.sampleLinks = stale.data.items.slice(0, 3).map((item: CommunityItem) => item.url);
+      debugInfo.sampleTitles = stale.data.items.slice(0, 3).map((item: CommunityItem) => item.title);
       console.log(`[1point3acres] ✅ Using stale cache (${stale.data.items.length} items)`);
+      console.log(`[1point3acres] 📊 DEBUG Info:`, JSON.stringify(debugInfo, null, 2));
       return {
         items: stale.data.items.slice(0, 5),
         status: 'ok',
         reason: 'Using stale cache',
+        debug: debugInfo,
       };
     }
+    
+    debugInfo.fallbackReason = 'CACHE_EMPTY';
+  } else {
+    debugInfo.fallbackReason = 'NOCACHE_REQUESTED';
   }
   
   // Last resort: seed data (ensure >= 3 items)
+  debugInfo.fallbackMode = 'seed';
+  debugInfo.fallbackReason = debugInfo.fallbackReason || 'SEED_USED';
   console.log(`[1point3acres] ⚠️ Using seed data (${SEED_DATA.length} items)`);
   const seedItems = SEED_DATA.length >= 3 ? SEED_DATA.slice(0, 5) : SEED_DATA;
   
@@ -510,10 +656,16 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{ items
     console.error(`[1point3acres] ⚠️ Seed data has only ${seedItems.length} items (< 3), this should not happen`);
   }
   
+  debugInfo.filteredThreadCount = seedItems.length;
+  debugInfo.sampleLinks = seedItems.slice(0, 3).map(item => item.url);
+  debugInfo.sampleTitles = seedItems.slice(0, 3).map(item => item.title);
+  console.log(`[1point3acres] 📊 DEBUG Info:`, JSON.stringify(debugInfo, null, 2));
+  
   return {
     items: seedItems,
     status: 'ok',
     reason: 'Live fetch failed, using seed data',
+    debug: debugInfo,
   };
 }
 
@@ -526,6 +678,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const nocache = isCacheBypass(req);
+    const debugMode = req.query?.debug === '1' || req.query?.debug === 'true';
     const cacheKey1point3acres = 'leek-community-1point3acres';
 
     // Check cache
@@ -534,7 +687,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (cached1point3acres) {
       const data1point3acres = cached1point3acres.data;
       
-      return res.status(200).json({
+      const response: any = {
         status: 'ok' as const,
         sources: {
           '1point3acres': data1point3acres,
@@ -543,7 +696,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         count: data1point3acres.items?.length || 0,
         cache_hit: true,
         cache_mode: 'normal',
-      });
+      };
+      
+      // Include debug info if requested
+      if (debugMode && data1point3acres.debug) {
+        response.debug = data1point3acres.debug;
+      }
+      
+      return res.status(200).json(response);
     }
 
     // Log cache bypass
@@ -599,6 +759,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fetched_at: fetchedAtISO,
       cache_mode: nocache ? 'bypass' : 'normal',
     };
+    
+    // Include debug info if requested
+    if (debugMode && result.debug) {
+      response.debug = result.debug;
+    }
 
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.status(200).json(response);
