@@ -7,7 +7,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { CACHE_TTL, US_STOCK_YOUTUBERS, SILICON_VALLEY_YOUTUBERS, ytRssUrl, SOURCE_INFO, ttlMsToSeconds } from '../shared/config.js';
+import { CACHE_TTL, US_STOCK_YOUTUBERS, SILICON_VALLEY_YOUTUBERS, ytRssUrl, SOURCE_INFO, ttlMsToSeconds } from '../../shared/config.js';
 import {
   cache,
   setCorsHeaders,
@@ -19,7 +19,7 @@ import {
   normalizeCachedResponse,
   normalizeStaleResponse,
   formatUpdatedAt,
-} from './utils.js';
+} from '../../api/utils.js';
 
 const YOUTUBERS_CACHE_TTL = CACHE_TTL.YOUTUBERS;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -303,7 +303,7 @@ async function fetchChannels(channels: Array<{ name: string; channelId?: string;
   return results;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleYoutubers(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
   
   if (handleOptions(req, res)) {
@@ -401,3 +401,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 }
+
+export default handleYoutubers;

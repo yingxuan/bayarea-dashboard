@@ -26,7 +26,7 @@ import {
   setCache,
   getStaleCache,
   cache,
-} from '../utils.js';
+} from '../../api/utils.js';
 import { searchGoogle } from '../../server/googleCSE.js';
 
 const GOSSIP_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
@@ -787,7 +787,7 @@ async function fetchBlind(nocache: boolean = false): Promise<ModulePayload<Gossi
 /**
  * Main handler
  */
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleGossip(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
   
   if (handleOptions(req, res)) {
@@ -906,3 +906,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 }
+
+export default handleGossip;

@@ -14,8 +14,8 @@ import {
   setCache,
   getStaleCache,
   formatUpdatedAt,
-} from './utils.js';
-import { ttlMsToSeconds } from '../shared/config.js';
+} from '../../api/utils.js';
+import { ttlMsToSeconds } from '../../shared/config.js';
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || '';
 const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1/quote';
@@ -238,7 +238,7 @@ async function fetchQuote(ticker: string, nocache: boolean): Promise<QuoteData> 
   return quoteData;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleQuotes(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
   
   if (handleOptions(req, res)) {
@@ -304,3 +304,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 }
+
+export default handleQuotes;

@@ -6,15 +6,10 @@
  */
 
 import type { Request, Response } from 'express';
-import marketHandler from '../api/market.js';
+import marketHandler from '../api/market-all.js';
 import dealsHandler from '../api/deals.js';
-import showsHandler from '../api/shows.js';
-import youtubersHandler from '../api/youtubers.js';
-import quotesHandler from '../api/quotes.js';
 import { handleToday as spendTodayHandler } from '../api/spend/today.js';
-import leekCommunityHandler from '../api/community/leeks.js';
-import marketNewsHandler from '../api/market-news.js';
-import gossipCommunityHandler from '../api/community/gossip.js';
+import communityHandler from '../api/community/[...slug].js';
 import portfolioValueSeriesHandler from '../api/portfolio/value-series.js';
 
 /**
@@ -52,12 +47,20 @@ function expressToVercel(req: Request, res: Response) {
   return { vercelReq, vercelRes };
 }
 
+function withHandler(vercelReq: any, handler: string) {
+  vercelReq.query = {
+    ...(vercelReq.query || {}),
+    handler,
+  };
+}
+
 /**
  * Market API route
  */
 export async function marketRoute(req: Request, res: Response) {
   try {
     const { vercelReq, vercelRes } = expressToVercel(req, res);
+    withHandler(vercelReq, 'market');
     await marketHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Market route error:', error);
@@ -91,7 +94,8 @@ export async function dealsRoute(req: Request, res: Response) {
 export async function showsRoute(req: Request, res: Response) {
   try {
     const { vercelReq, vercelRes } = expressToVercel(req, res);
-    await showsHandler(vercelReq, vercelRes);
+    withHandler(vercelReq, 'shows');
+    await marketHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Shows route error:', error);
     res.status(500).json({
@@ -107,7 +111,8 @@ export async function showsRoute(req: Request, res: Response) {
 export async function youtubersRoute(req: Request, res: Response) {
   try {
     const { vercelReq, vercelRes } = expressToVercel(req, res);
-    await youtubersHandler(vercelReq, vercelRes);
+    withHandler(vercelReq, 'youtubers');
+    await marketHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] YouTubers route error:', error);
     res.status(500).json({
@@ -123,7 +128,8 @@ export async function youtubersRoute(req: Request, res: Response) {
 export async function quotesRoute(req: Request, res: Response) {
   try {
     const { vercelReq, vercelRes } = expressToVercel(req, res);
-    await quotesHandler(vercelReq, vercelRes);
+    withHandler(vercelReq, 'quotes');
+    await marketHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Quotes route error:', error);
     res.status(500).json({
@@ -155,7 +161,8 @@ export async function spendTodayRoute(req: Request, res: Response) {
 export async function leekCommunityRoute(req: Request, res: Response) {
   try {
     const { vercelReq, vercelRes } = expressToVercel(req, res);
-    await leekCommunityHandler(vercelReq, vercelRes);
+    withHandler(vercelReq, 'leeks');
+    await communityHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Leek Community route error:', error);
     res.status(500).json({
@@ -171,7 +178,8 @@ export async function leekCommunityRoute(req: Request, res: Response) {
 export async function marketNewsRoute(req: Request, res: Response) {
   try {
     const { vercelReq, vercelRes } = expressToVercel(req, res);
-    await marketNewsHandler(vercelReq, vercelRes);
+    withHandler(vercelReq, 'market-news');
+    await marketHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Market News route error:', error);
     res.status(500).json({
@@ -187,7 +195,8 @@ export async function marketNewsRoute(req: Request, res: Response) {
 export async function gossipCommunityRoute(req: Request, res: Response) {
   try {
     const { vercelReq, vercelRes } = expressToVercel(req, res);
-    await gossipCommunityHandler(vercelReq, vercelRes);
+    withHandler(vercelReq, 'gossip');
+    await communityHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Gossip Community route error:', error);
     res.status(500).json({

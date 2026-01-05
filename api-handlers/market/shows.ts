@@ -4,7 +4,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { CACHE_TTL, SOURCE_INFO, ttlMsToSeconds, ytRssUrl } from '../shared/config.js';
+import { CACHE_TTL, SOURCE_INFO, ttlMsToSeconds, ytRssUrl } from '../../shared/config.js';
 import {
   cache,
   setCorsHeaders,
@@ -16,7 +16,7 @@ import {
   normalizeCachedResponse,
   normalizeStaleResponse,
   formatUpdatedAt,
-} from './utils.js';
+} from '../../api/utils.js';
 
 const SHOWS_CACHE_TTL = CACHE_TTL.SHOWS;
 const CHANNEL_ID_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours cache for channel ID extraction
@@ -310,7 +310,7 @@ async function fetchAllShows(): Promise<Show[]> {
   return allShows;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleShows(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
   
   if (handleOptions(req, res)) {
@@ -432,3 +432,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 }
+
+export default handleShows;

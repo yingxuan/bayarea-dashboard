@@ -26,7 +26,7 @@ import {
   setCache,
   getStaleCache,
   cache,
-} from '../utils.js';
+} from '../../api/utils.js';
 import { retryWithBackoff } from '../../server/utils.js';
 
 const ONEPOINT3ACRES_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
@@ -702,7 +702,7 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
   };
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleLeeks(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
 
   if (handleOptions(req, res)) {
@@ -843,3 +843,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 }
+
+export default handleLeeks;

@@ -1,11 +1,11 @@
 {
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/api/spend/today", "destination": "/api/spend" },
-    { "source": "/api/spend/new-places", "destination": "/api/spend" },
-    { "source": "/api/spend/enrich-place", "destination": "/api/spend" },
-    { "source": "/api/spend/enrich-hours", "destination": "/api/spend" },
-    { "source": "/api/spend/place-photo", "destination": "/api/spend" },
+    { "source": "/api/market", "destination": "/api/market-all?handler=market" },
+    { "source": "/api/market-news", "destination": "/api/market-all?handler=market-news" },
+    { "source": "/api/quotes", "destination": "/api/market-all?handler=quotes" },
+    { "source": "/api/shows", "destination": "/api/market-all?handler=shows" },
+    { "source": "/api/youtubers", "destination": "/api/market-all?handler=youtubers" },
     { "source": "/api/:path*", "destination": "/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]

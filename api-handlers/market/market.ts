@@ -7,8 +7,8 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { withTimeout, tryPrimaryThenFallback } from '../server/utils.js';
-import { CACHE_TTL, FETCH_TIMEOUT_MS, API_URLS, SOURCE_INFO, ttlMsToSeconds } from '../shared/config.js';
+import { withTimeout, tryPrimaryThenFallback } from '../../server/utils.js';
+import { CACHE_TTL, FETCH_TIMEOUT_MS, API_URLS, SOURCE_INFO, ttlMsToSeconds } from '../../shared/config.js';
 import {
   cache,
   setCorsHeaders,
@@ -18,7 +18,7 @@ import {
   setCache,
   getStaleCache,
   formatUpdatedAt,
-} from './utils.js';
+} from '../../api/utils.js';
 
 const MARKET_CACHE_TTL = CACHE_TTL.MARKET;
 
@@ -796,7 +796,7 @@ async function fetchPowerball(): Promise<MarketDataItem> {
   };
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleMarket(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
   
   if (handleOptions(req, res)) {
@@ -883,3 +883,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 }
+
+export default handleMarket;

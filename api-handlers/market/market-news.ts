@@ -15,7 +15,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import * as cheerio from 'cheerio';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createHash } from 'crypto';
-import { CACHE_TTL, ttlMsToSeconds } from '../shared/config.js';
+import { CACHE_TTL, ttlMsToSeconds } from '../../shared/config.js';
 import {
   setCorsHeaders,
   handleOptions,
@@ -26,7 +26,7 @@ import {
   normalizeCachedResponse,
   normalizeStaleResponse,
   cache,
-} from './utils.js';
+} from '../../api/utils.js';
 
 const MARKET_NEWS_CACHE_TTL = 7.5 * 60 * 1000; // 7.5 minutes (5-10 min range) - for non-empty results only
 const LAST_NON_EMPTY_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours - for last_non_empty cache
@@ -923,7 +923,7 @@ async function fetchMarketNews(): Promise<MarketNewsItem[]> {
   return [];
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleMarketNews(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
 
   if (handleOptions(req, res)) {
@@ -1082,3 +1082,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 }
+
+export default handleMarketNews;
