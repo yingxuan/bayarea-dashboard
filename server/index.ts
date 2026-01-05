@@ -60,6 +60,46 @@ async function startServer() {
   app.options('/api/market-news', (_req, res) => res.sendStatus(200));
   app.get('/api/portfolio/value-series', portfolioValueSeriesRoute);
   app.options('/api/portfolio/value-series', (_req, res) => res.sendStatus(200));
+
+
+  app.get("/api/spend/place-photo", async (req, res) => {
+    const photoName = req.query.photoName as string | undefined;
+    const wRaw = (req.query.w as string | undefined) || "480";
+    const allowed = new Set(["320", "480", "640"]);
+    if (!photoName || !photoName.startsWith("places/")) {
+      return res.status(400).json({ error: "photoName required and must start with places/" });
+    }
+    if (!allowed.has(wRaw)) {
+      return res.status(400).json({ error: "w must be 320|480|640" });
+    }
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: "Missing GOOGLE_PLACES_API_KEY" });
+  
+    const upstreamUrl = `https://places.googleapis.com/v1/${encodeURI(photoName)}/media?maxWidthPx=${wRaw}`;
+    try {
+      const upstream = await fetch(upstreamUrl, {
+        method: "GET",
+        headers: { "X-Goog-Api-Key": apiKey },
+        redirect: "follow",
+      });
+      if (!upstream.ok) {
+        return res
+          .status(502)
+          .set("Cache-Control", "public, max-age=3600, s-maxage=3600")
+          .json({ error: "Upstream error", status: upstream.status });
+      }
+      const ct = upstream.headers.get("content-type") || "image/jpeg";
+      res.setHeader("Content-Type", ct);
+      res.setHeader("Cache-Control", "public, s-maxage=2592000, max-age=604800, stale-while-revalidate=86400");
+      const buf = Buffer.from(await upstream.arrayBuffer());
+      res.status(200).send(buf);
+    } catch (e: any) {
+      return res
+        .status(502)
+        .set("Cache-Control", "public, max-age=3600, s-maxage=3600")
+        .json({ error: "Fetch failed", message: e?.message });
+    }
+  });
   
   // Mount legacy API routes (if any)
   app.use(apiRouter);
