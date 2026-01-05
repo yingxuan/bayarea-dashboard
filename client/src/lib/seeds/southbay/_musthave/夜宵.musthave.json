@@ -1,0 +1,25 @@
+[
+  { "name": "Haidilao Hot Pot", "city": "Cupertino", "tags": ["hotpot", "late-night", "musthave"] },
+  { "name": "The X Pot", "city": "Cupertino", "tags": ["hotpot", "late-night", "musthave"] },
+  { "name": "Boiling Point", "city": "Sunnyvale", "tags": ["hotpot", "late-night"] },
+  { "name": "Hunan Home's Restaurant", "city": "Sunnyvale", "tags": ["hunan", "late-night"] },
+
+  { "name": "QQ Noodle", "city": "Cupertino", "tags": ["noodles", "late-night"] },
+  { "name": "Ramen Nagi", "city": "Santa Clara", "tags": ["ramen", "late-night"] },
+  { "name": "Izakaya Toribar", "city": "San Jose", "tags": ["izakaya", "late-night"] },
+  { "name": "Dan Izakaya", "city": "Mountain View", "tags": ["izakaya", "late-night"] },
+
+  { "name": "Kura Sushi", "city": "San Jose", "tags": ["sushi", "late-night"] },
+  { "name": "Korean Palace", "city": "Santa Clara", "tags": ["korean", "bbq", "late-night"] },
+  { "name": "Gen Korean BBQ House", "city": "San Jose", "tags": ["korean", "bbq", "late-night"] },
+
+  { "name": "Tai Pan", "city": "San Jose", "tags": ["dim-sum", "late-night"] },
+  { "name": "New Port Dim Sum and Chinese Food", "city": "Cupertino", "tags": ["seafood", "late-night"] },
+
+  { "name": "Pho Kim Long", "city": "San Jose", "tags": ["pho", "late-night", "musthave"] },
+  { "name": "Sanraku", "city": "San Jose", "tags": ["japanese", "late-night"] },
+
+  { "name": "La Victoria Taqueria", "city": "San Jose", "tags": ["mexican", "late-night"] },
+  { "name": "Falafel's Drive-In", "city": "San Jose", "tags": ["middle-eastern", "late-night"] },
+  { "name": "Denny's", "city": "Sunnyvale", "tags": ["24h", "late-night"] }
+]

@@ -306,13 +306,15 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
           return false;
         }
         
-        // If no rating/count data available, exclude it (strict filtering)
-        // We cannot include places without rating/count data because we cannot verify they don't have >= 500 count
-        // This ensures the >= 500 filter is always enforced
+        // If no rating/count data available, allow it (new places may not have data yet)
+        // For "新店打卡", we allow places without rating/count data because:
+        // 1. They are new places that may not have enough reviews yet
+        // 2. Seed data may not be enriched yet
+        // 3. We'll enrich them later and filter out >= 500 if needed
         if (import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1')) {
-          console.log(`[SpendCarousel] 新店打卡: Excluding ${place.name} (no rating/count data available, cannot verify < 500, rating: ${rating}, count: ${ratingCount})`);
+          console.log(`[SpendCarousel] 新店打卡: Including ${place.name} (no rating/count data yet, will enrich later)`);
         }
-        return false;
+        return true;
       });
       
       // Use modulo to cycle through filtered places
@@ -501,7 +503,7 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
         </h3>
         <div className="flex items-center gap-2">
           {/* For 新店打卡: show manual refresh button (debug mode only) */}
-          {category === '新店打卡' && (() => {
+          {/* {category === '新店打卡' && (() => {
             const isDev = import.meta.env.DEV;
             const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
             const debugMode = urlParams?.get('debug') === '1' || isDev;
@@ -511,7 +513,7 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
             return (
               <NewPlacesRefreshButton />
             );
-          })()}
+          })()} */}
           
           {/* For other categories: show "换一批" if places.length > 5 */}
           {onRefresh && category !== '新店打卡' && places.length > 5 && (
@@ -935,11 +937,11 @@ function NewPlacesRefreshButton() {
       >
         {refreshing ? '刷新中...' : '刷新新店打卡'}
       </button>
-      {cacheInfo && (
+      {/* {cacheInfo && (
         <div className="text-[8px] font-mono opacity-40">
           {cacheInfo.ageDays !== undefined ? `${cacheInfo.ageDays}d` : 'N/A'} | {cacheInfo.poolSize || 0}
         </div>
-      )}
+      )} */}
       {lastResult && (
         <div className={`text-[8px] font-mono ${lastResult.success ? 'text-green-500' : 'text-red-500'}`}>
           {lastResult.message}

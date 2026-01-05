@@ -1,0 +1,394 @@
+{
+  "version": 2,
+  "category": "新店打卡",
+  "region": "southbay",
+  "updatedAt": "2026-01-05T00:31:55.255Z",
+  "items": [
+    {
+      "name": "MoonTea",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=MoonTea%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "trendy"
+      ],
+      "placeId": "ChIJ77mZztW1j4ARA7L4u49X9AU",
+      "rating": 4.4,
+      "userRatingCount": 116,
+      "googleMapsUri": "https://maps.google.com/?cid=429064139352617475&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ77mZztW1j4ARA7L4u49X9AU/photos/AZLasHq9RPjEGGJTWPDC1DXyAn4yORotdE4uZ86a86MTJECPqvic_nV24ZQ7Da4bhcEHSfcmLxGwIzqIlUoQkqX7NJ_SB_lvijP2VBwMKEFNowk5_a88Ne4J8KXuAoD5VvHlpg57zzRiZC_dUDzew9dfaBqec589aqsi7Mr9JHORUo5l2ww6CAD4h_VbqjYmAfuhRXCIqEC74XhDeozDN5BcSSQVouoL14-C2q60OXijcaiqB6bCVBcMOCcPHvkK3TABufn3AbM6SR4JN_ni-BGWy0P85oyHbqAwHLy95USBT6I05Q",
+      "enrichedAt": 1767573103564,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "CHICHA San Chen",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=CHICHA%20San%20Chen%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "premium"
+      ],
+      "placeId": "ChIJ1eXBjKO1j4AR05oLL0LbXPA",
+      "rating": 4.6,
+      "userRatingCount": 1332,
+      "googleMapsUri": "https://maps.google.com/?cid=17319959344263699155&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ1eXBjKO1j4AR05oLL0LbXPA/photos/AZLasHpVV1NX6J9ZEnBBhBCMSAfeZywQbX_cJS0Rh7mkd3ay7jRnwrBEoEPborsU17XIf26iplwt735adF1aLeMkJcZJUY1nbohAa476C4P8CXX7E0FFKmi3nL_2_iz6PPtV68O8fwAs3jb9OslhSMaEryyfSvTxCsp33nAhM8Y9gze6P7XjPl74gM8uY1j_UAbfculAmyLCu-cAdwUYy6maNY23kt_CJiYwPl4SLAj6qSrL96OF2EFkLS819kgNpf-X-CibQKjRnpgLQJVIupWFj8rGICdLVq8HdJ_5HIC2vhv8gmq9ww7BsgkrzoA2c0Y_zrDLWcJmxC8VBLFSk-9TznWJI9xiVdjwaW5XNanuiatRtiARF78KGh64ZPgBUGakbmV67fji6bEaRak1rIgs4rA3LuuEhckhliTFWk0HGY-mOTv_",
+      "enrichedAt": 1767573103565,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Molly Tea",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Molly%20Tea%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "popular"
+      ],
+      "placeId": "ChIJlVLJP721j4ARUiYhXSJB8Do",
+      "rating": 4.4,
+      "userRatingCount": 78,
+      "googleMapsUri": "https://maps.google.com/?cid=4246966064457524818&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJlVLJP721j4ARUiYhXSJB8Do/photos/AZLasHoK8n-fj4egRQm8XxlPU-zWV6FgGlZXhKwadc-R2ENOaGP9xRjINCh_97PSFCHFSZ5lU7tZJYVPNml9WHJeSLUbdBtS6cwdK7dOlnegvsANTT4muSoi0gpOcMb8gyOM9RjHvHmJZdhR1S5ceQVdnqaAFQDvhQizgV7o0t7Kcq8jYTFCky5S4mhYYe0U7_T1xScKXP3ef2x1tNfPojsuaksdUIusk8YiqJiTu4vYKu24DVUvZUNfVgVjeIJj8LMKwBdupVEihUlnow-DHcklzqX-Kii83alXLzSQqH8Ql6rG7EEHtWzqMwlG4T2p6oZ2TQjgPMzp9aptmsXYhlJxA3vUzdL84Gx3ATC2OeFR3mqCeGh5S0hN8BbCLm5C_4IRKhxV5bgRAezOZ2yuBnpeIKkErn6Sr4urwpdze_jfl-gPhYivWAY7oS7TM4Yjew",
+      "enrichedAt": 1767573103565,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "The X Pot",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=The%20X%20Pot%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "hotpot"
+      ],
+      "placeId": "ChIJVV-QNBC1j4ARjQ8yQ1J10Ao",
+      "rating": 5,
+      "userRatingCount": 61,
+      "googleMapsUri": "https://maps.google.com/?cid=779251731710218125&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJVV-QNBC1j4ARjQ8yQ1J10Ao/photos/AZLasHqTYD3vqnXunJb81orB0tquNNVAhjiHcM93sK6su7kyrnxw8sZYin9890SpQ7iEXTyn5iUujg8im_g-l0SVcmtSbAQcED8ADDsPbTBWevV3KklEozGO7Verp1vnL3JkMQqbZimxGJXzRp6L5q7-2gW1G2AYbkXqcskYsrEpWJ_0CNIt1dAfXFODpBSVtQNd_CxLfCX4om5xrVVJAxR5-UMMTOfrgQ5_BvqV6RifVRPDjUTgUkCFEa-kGC4vWNbkGs6fEUFfGXSl1PosdZjcGjIjqWMVqnuT-3pEJpv8J4Ixwg",
+      "enrichedAt": 1767573103565,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Haidilao Hot Pot",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Haidilao%20Hot%20Pot%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "hotpot"
+      ],
+      "placeId": "ChIJK5B_3Z21j4ARuIABkYGEC-8",
+      "rating": 4.8,
+      "userRatingCount": 5013,
+      "googleMapsUri": "https://maps.google.com/?cid=17225006891827036344&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJK5B_3Z21j4ARuIABkYGEC-8/photos/AZLasHrdbZtfc32UnO6_KvffGVSenXYBcJiex_yNmVfFXfZZyHRvGIFEs6Ub-9kudJi-keN2_yr4Ro5g-sQDDcwRm7flOgFOnPvIX0Qi7tS7H3Dc6YZ-w3QqQFZw0RaU6Rq9f4H54iqmk6b96Pb_KjOuQjsjNZhKaVTlPhTng1Isp2v7Wmr3wZs3noCbFItLvYR_Klo_FmNloNB6kHHP2a495knYvvJovwVsoI0_1XjyT7QX-4hi_M30uExFmAssmMRd9diNISh0cRMlgV5EM_X59QYZjNhbarT45B8YPublRcAxvw",
+      "enrichedAt": 1767573103565,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Seapot",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Seapot%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "hotpot"
+      ],
+      "placeId": "ChIJr-6DkF-3j4ARdRld_i6iFjk",
+      "rating": 4.2,
+      "userRatingCount": 915,
+      "googleMapsUri": "https://maps.google.com/?cid=4113653632369236341&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJr-6DkF-3j4ARdRld_i6iFjk/photos/AZLasHruPRYmZ9ucz5uSfs7C4n8fUiLSsvU2q-evyZ6h2881yGBraCAFs5q1i-Ao77w-vtrXfqibpkFcoMwnKR4HWkgKlYX16l59zbz9AigHFXu_rhGN6I0NaN9Ay_Q6lPfQ-uU0bfba1M8t04-faiyGCLe1SwyIooz4pxmgr81_Q5YkhdjfPtW6KXnaIAGtDM5yQ-D4GsSFVAyAGtjFZuj-cls8H1tLJlDU55D6TSkb1Tp_7M0R3TW8NrzdiMaBoMPG3eSe2eLT-wRd6WridOUPUhy1v-GOtgaSJyOHDKJBTZ9jJA",
+      "enrichedAt": 1767573107157,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Ox 9 Lanzhou",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Ox%209%20Lanzhou%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "noodles"
+      ],
+      "placeId": "ChIJNWe3rNLLj4ARt8EYpfmBseI",
+      "rating": 3,
+      "userRatingCount": 57,
+      "googleMapsUri": "https://maps.google.com/?cid=16334980232666202551&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJNWe3rNLLj4ARt8EYpfmBseI/photos/AZLasHpnkKmg_QeIu5HDLWHUNGu8fLgnPDgm9agjH1B_LSLpA0QI7WAZzmSSu5SDpn-oGPyzOKXOITyI3ZUiaxQ9KNBG2187NGg-K0L5i9_ftnIwRiq9nUVwPesTOnLwwmJC4BHTa-qEqkWtZHZUuZ8wa6z6FRinkzrXi14DZJAto181jDhAfWRVR9uo2PZ9l1KhU6UC1gLnn7lCNBOA36EsUTtVrzDyVJdVQ8c-KyMK-FD9QzlRZU6Fu_E_EJ4GCcwZoG-QxC9aa6ZlOk-EaxHceQYtmFHsEZ55P2LJx9y2HlZDGA",
+      "enrichedAt": 1767573107157,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Chong Qing Xiao Mian",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Chong%20Qing%20Xiao%20Mian%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "spicy"
+      ]
+    },
+    {
+      "name": "Dough Zone",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Dough%20Zone%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "dumplings"
+      ],
+      "placeId": "ChIJHXSOY3AzjoARdCv8qYidvjg",
+      "rating": 4.3,
+      "userRatingCount": 234,
+      "googleMapsUri": "https://maps.google.com/?cid=4088878721991977844&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJHXSOY3AzjoARdCv8qYidvjg/photos/AZLasHr7vbpj0yObNHCqWNVX3iMekcctt4aYk405iOsyD0dO4cY-End4Sub9Int-xzjr6jpM1K45QveVG4cxbWkjBqumDXjydLQso7acZbZpicFak0d2nMA9h9xL6QQECJPxiVkYxhY-yrwrUI55BkXhVsYEyTntSc20KLfisQP-zYjTpBAKVD25GgtbRoV6mV_ElMAgfPqBSHQ1J0HDauaD13uCXgXhrYaWba1g3KtWVBD1833ZQWPDISAZjTnuPCVyc8kIRFwXhZBmnnA_sSsf2_-uyoyzB347s4cFCwYGcr0ZmehVMMTz7Zj1UuWRx4JeVfb9GUsjylXSvjk9ipzrRhBgO0SD3frBaQS6QEDtU6_MbuCQDWVp3UIGQuACH2xaYBJzv_ZQa68EZjwVypL-M_3ZjojJio4oyeQxmEZ9QDseQQ",
+      "enrichedAt": 1767573111292,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Marufuku Ramen",
+      "city": "Santa Clara",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Marufuku%20Ramen%20Santa%20Clara%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "ramen"
+      ],
+      "placeId": "ChIJw1N0TPq1j4ARiWgSpsEurvo",
+      "rating": 4.5,
+      "userRatingCount": 432,
+      "googleMapsUri": "https://maps.google.com/?cid=18063426564679428233&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJw1N0TPq1j4ARiWgSpsEurvo/photos/AZLasHrEmleil3r3OUGxMCkjICsSkIY80druWrYneYiIsAWzGQ2IRvnELdj0_hI-jp_SzsyhOCfKoq7uf7dxr-AblFfduKg6AhVl2AS1tizvvIMp1hq5t8MOLAQo01Uk_CLS-jSbnBNijJBQEweVJ_6cspgphkeIT1-sO9VyRhn_n34T5xfVbv2sH3Yl02OEcW8OHOvfEsEBB1Gi23Sw4EqZGmLYnOufCED52TYO1U8vnGAIPexGim50eXBT3bqT2umpLWuYsVWfztwhCYpjdoViNcCuR3QnnPXqepBSjAe4q0v8Bg",
+      "enrichedAt": 1767573113935,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Ramen Nagi",
+      "city": "Santa Clara",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Ramen%20Nagi%20Santa%20Clara%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "ramen"
+      ],
+      "placeId": "ChIJdWkLR9zLj4ARUf7Gj52Rw6Y",
+      "rating": 4.5,
+      "userRatingCount": 1893,
+      "googleMapsUri": "https://maps.google.com/?cid=12016608336662691409&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJdWkLR9zLj4ARUf7Gj52Rw6Y/photos/AZLasHpcEAw85bEMLFKu6VYidjALbgrY6ezr2jqSRJEJBgn4p3ETVEVQAK9BVrACNQKx4cjHhq5MawMEB0mG-KqJhT71BWjenKjqGI8REbjmb_7oW0yzgq8mgrUH5t3kdtniyq18D0tr7bIIw8eU2IP-UbumzVqqyD0MBlWhtqjv3o6cumFRxQ_I5UQ9sYUA4RZ1F3RJva1rIQ3sowBomGVhH7WQnkp4oq-hyVOjm1BUhVZfrA_wiW0iMkAJNNvp73_gYLlUV2mR9ee5i8-rT2Cjp2wAbcGxwHs8TJcWUrghEcIFz3pGUeHmlb7f4JiKN3P81_fLBRJ3zOrd3q6ANRI1euZh6Nzy8AXtmb30yVy8Oi0qSFysw333yXovFIQuMHP9rIVgTfD6mdGqXH8bq0ChuMxPUrOhA0bCTKWo7EjpH1o",
+      "enrichedAt": 1767573113936,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Superhot Hotpot & Korean BBQ",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Superhot%20Hotpot%20%26%20Korean%20BBQ%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "fusion"
+      ]
+    },
+    {
+      "name": "Urban Ritual",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Urban%20Ritual%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "boba"
+      ],
+      "placeId": "ChIJ5cH4_iafj4ARMynxJjEjrnY",
+      "rating": 4.4,
+      "userRatingCount": 243,
+      "googleMapsUri": "https://maps.google.com/?cid=8551811436436859187&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ5cH4_iafj4ARMynxJjEjrnY/photos/AZLasHqjox_FiWfnOjeOrzdKmaMABjBWivLWiAz2X3MlRbQIzL39xq5T9_-1XqsHmAn95bkUupnRcdCG8t79b_FSW8RBxH8ZiiX3B_edY5Q4p1VetXAxOX-XWyBp7jlxOZr3UYTeBDRmZnHSq8iqFDr-nXDZEb18MunZmXh3akK52VXEGUz2ojccsWKboCIrY_zf2Fo-7BUf-udxigrz4JVFqLWuTxrvYGO5kMsDyhHR1FWMeX3fQZH9LPuBN48P0DICxbii3bg713cdKB6cK47Eq1mGAkkn1HRVWNZMxFIPG2AsEQllaTK7YjSbVIxyDPDm5CJC3Tb_AsIopEbdcEKRKfA5bNogBAD05Do49_zx83uiUjj_GWc8RP60-vCKXXWfFlgO01-bO66HBexsgM6Nlm1_lvvMc3h8frldwA4HtnxruxFrvwbF1iqPW8NUruWv",
+      "enrichedAt": 1767573115252,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Mumu Hot Pot",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Mumu%20Hot%20Pot%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "hotpot"
+      ],
+      "photoQuery": "Mumu Hot Pot Sunnyvale CA",
+      "placeId": "ChIJk0wFRtS3j4ARcASoUURDqpY",
+      "rating": 4.4,
+      "userRatingCount": 542,
+      "enrichStatus": "ok",
+      "googleMapsUri": "https://maps.google.com/?cid=10856563812436804720&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJk0wFRtS3j4ARcASoUURDqpY/photos/AZLasHpfnraOiokm3yxX0K2muGI3P4qyM8lV57wTFZ8CmhAvV6Zg2NC4NY1fVy-g8joGIFonb3aLqnwuWcW8Y0VUYzrojhUKUAuvoEjsm1pmk4mfPI3LDdg8AzGpiblJeLU9tuoS1kNxobXtM-Dy6uGZI9NMCQ6drtU_wsOhaffQW6jut-5a1S7c7shf-Vygo60iHFSzDwViXbgFjsBMKW5EP3csCqbtm234IlaaDiSbT8GFHHnZ5EvWkkyEiFgCnFi0olti2SnxWQ28POk4T5GbHyk7XHuU0ocZciue-HEy2e8uq4F6g_E7Qg9Jn_JKypVDn8BsK1kTRvbVUcd43dfm8uooxHytFRleLwoH7PFNneCoYpasw5Zm50HKOvmsSUtlI7s5khjKfhQjPTgPt-FmSmF91d1FpjJf339UdHALBndHxTw",
+      "enrichedAt": 1767570798852
+    },
+    {
+      "name": "Revopot",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Revopot%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "hotpot"
+      ],
+      "photoQuery": "Revopot San Jose CA",
+      "placeId": "ChIJ2_879fYtjoAR2u_eXwUAOP8",
+      "rating": 4.3,
+      "userRatingCount": 47,
+      "enrichStatus": "ok",
+      "googleMapsUri": "https://maps.google.com/?cid=18390449101450702810&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ2_879fYtjoAR2u_eXwUAOP8/photos/AZLasHqZAYsDVCMB_UhvIBM70QG09QUL22MRtUGR69kkV_LWzE8-p1uhVtk6inM1q9T4ymKDLWiv-69BmQwGPXD4WRsEyIxXJVaVe6YXbULalobyJ-YQd0kBBbmJFq3XQFhVYDCZlyAgtu7R0JVu50qL2iPb9V2G0qHTeBIPI-UH7oqPfV80mfA-vKJOtDwTnOw5SSDUEsM9oNnfiwHADjAOFfxOmrZE7jByjlCt9yLDGNwdPbYOUnBu8XWz-RqCN0-lhN60HMJbR8xYq-_b7hWW-5pjJtwCL6P3nDtsdvQ4nKvsTZqHgmTBap7aNH1zSiYnixtbBuq_XPPVdJXp8lZnNmTMJoTpFxyXWM9XL4QND-kLNGrSXxtiKQTSKpO9loP8esLjqx_Rs0hteXjcofG95Mh9oDJ1mAdXgaR5bE6-XNDDbchW7AxWM7y10lLvsA",
+      "enrichedAt": 1767570801374
+    },
+    {
+      "name": "Chubby Cattle",
+      "city": "Santa Clara",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Chubby%20Cattle%20Santa%20Clara%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "hotpot"
+      ],
+      "photoQuery": "Chubby Cattle Santa Clara CA",
+      "placeId": "ChIJ9bxrRgC1j4ARg-3xmVgc2eo",
+      "rating": 5,
+      "userRatingCount": 3,
+      "enrichStatus": "ok",
+      "googleMapsUri": "https://maps.google.com/?cid=16922588241686818179&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "enrichedAt": 1767570803834
+    },
+    {
+      "name": "Kura Revolving Sushi Bar",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Kura%20Revolving%20Sushi%20Bar%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "sushi"
+      ],
+      "photoQuery": "Kura Revolving Sushi Bar Cupertino CA",
+      "placeId": "ChIJ6bWI2J61j4ARY5IwPV9HXP0",
+      "rating": 4.2,
+      "userRatingCount": 2503,
+      "enrichStatus": "ok",
+      "googleMapsUri": "https://maps.google.com/?cid=18256545463827206755&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ6bWI2J61j4ARY5IwPV9HXP0/photos/AZLasHpwhyZxpKk0Q82dAW3I8xyN0c3NjPnAoGqWWcCvsDfrVBhplbhU3ht8s75JJDzDyh6ILqHpZV_B84fysDmqvDcZvZE2ZV9HT1EU6QC5U-ECqTswS2mP4WHXcUg6Wc_KK1Yi5C1kpLN7VxdmVz8X1l4AYkMYEpdnicNI1tyszZCZVN5pP0WS6xpsW6XkRu2RExud87ULynF0lfOXSMIK4LWn2MXGUigb8G1lBsgwisKIsLua7HjehLk62Ti6WmWOu7kg_czNAZq_RlVIzUKKHktaRhsyMvIbbpmUlmWvXxsjLA",
+      "enrichedAt": 1767570806284
+    },
+    {
+      "name": "BB.Q Chicken",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=BB.Q%20Chicken%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "korean"
+      ],
+      "photoQuery": "BB.Q Chicken Sunnyvale CA",
+      "placeId": "ChIJN7KGGJ-3j4ARpcSEtt_P4X4",
+      "rating": 4.2,
+      "userRatingCount": 266,
+      "enrichStatus": "ok",
+      "googleMapsUri": "https://maps.google.com/?cid=9142817278285628581&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJN7KGGJ-3j4ARpcSEtt_P4X4/photos/AZLasHrSC9J9vI_Id-Oj5KpveemTEzzCunRe9Q-a0gC5heGLl8Qg94t1BSoxspWENBV3CX300IMg-0vCR4AsBCKxfzEhnm0fFf0TpWSyce0mXTz5Bz8otuURFJCHUbYbZ7lf8M3pDP1ry6q8CeTK1f0bTpfn5zO2FOviRUj5FZWDZzC28lElVrG7-x_LbuQ9jJ5mWHWFFXEhSqAFysaW3Os4U8wSCjf6JTsICgWCyk9PAMAj3B0fD1R1XOoiLaGHUcR36Ua8-clsgjNVW5nKZcKA7RFpE0MtdgOEzo-_Yp_Wv_kqT6Y0VxHREMBpyzh3awr0P_7UcyFFnj3YVIoLp5yFuQAOQgURrpHF6D_PsWMtscUsMrxvw-I9DwO5V1O4fB8UYDtGQFj0mSgvviKL7ccFlKo4dFxGkWO4GqdLSkzQe1sKI2SX",
+      "enrichedAt": 1767570808805
+    },
+    {
+      "name": "Paik's Noodle",
+      "city": "Santa Clara",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Paik%27s%20Noodle%20Santa%20Clara%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "korean-chinese"
+      ],
+      "photoQuery": "Paik's Noodle Santa Clara CA",
+      "placeId": "ChIJT2NxLBPKj4ARRivowJnL3Wg",
+      "rating": 4.4,
+      "userRatingCount": 1591,
+      "enrichStatus": "ok",
+      "googleMapsUri": "https://maps.google.com/?cid=7556419611024436038&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJT2NxLBPKj4ARRivowJnL3Wg/photos/AZLasHoK2JeE8UwjRhBjs1RaZVYHMcio3M-yIYmcgCWzBNMleN-ptRxNaLRBECz2xjrg2eJ2b4o2rapXDnI55Rbu9VTCKszO97KX87dz6YVix7NjJU3Qx9b3toES_bQG2HNB7G8Gvl4EPNvI9bZqYdSrcwr6PXBR_p8E6iNzajqe4ciz8wJnf0EFtWpe5qpCA2tstDyUJmJXoq6H4V-pYFBTf9D9Qw0EiXTSDHxKuE48RHpcgGa-36eK0hXPuQc0-kuLEY4ldSANhMGy3aygr72mxZp8rlWcTyG9IqWTRsOPG1cbLw",
+      "enrichedAt": 1767570811300
+    },
+    {
+      "name": "Tang Bar",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Tang%20Bar%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "snacks"
+      ],
+      "photoQuery": "Tang Bar San Jose CA",
+      "placeId": "ChIJbT6_r4N9j4AR2cvacxBwSsw",
+      "rating": 4.2,
+      "userRatingCount": 420,
+      "enrichStatus": "ok",
+      "googleMapsUri": "https://maps.google.com/?cid=14720701547979394009&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJbT6_r4N9j4AR2cvacxBwSsw/photos/AZLasHqdLfXrB79b3MywsBEzupNoHHpXyKbA-CU4ZtMlMmnp-gfo_-D1tcKcCp5umVszP1sBIcsjpDqtIMY1odoKUkVKheIYxSuyQmbMSNaxGscGgoCeCiU_1nTINObFIuE14nQ9G7Sbq7_0zwXkN4MIVreaD0oLQDn1LSCiYLcIyEHC7PpJ8rrMZBcOb_69_cIabJjOhH77tG3-Y0enbmMrQy9w588JF8SycJ2e3W8wfrYiDH6zH42_aVkuPfyVwlcY4ThOUDmuZMyAvGeUJY-67qqrNzn7Le4nnEGOgVQMuvq7nA",
+      "enrichedAt": 1767571123202
+    },
+    {
+      "name": "Yomie’s Rice x Yogurt",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Yomie%27s%20Rice%20x%20Yogurt%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "dessert"
+      ],
+      "photoQuery": "Yomie's Rice x Yogurt San Jose CA",
+      "placeId": "ChIJJWQleQnNj4ARQwONuYKa-IM",
+      "rating": 4.3,
+      "userRatingCount": 76,
+      "enrichStatus": "ok",
+      "googleMapsUri": "https://maps.google.com/?cid=9509520499442254659&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJJWQleQnNj4ARQwONuYKa-IM/photos/AZLasHqu_vz4rAn_IKE96ZnxOFNW4ds2KS3P2otfzUj4MEIDvxNcwDXm84olR0N_Uf_vhq5eHlUQ46Lvo1Qjb3bIuBdpTMTvEGaQdkRkrdSggMny_-0YeRVgrNlEIQORd85yZ6xbp7B0TNQiE1ivzhmrQE69wf8kUhHIZ8Z4FmWwMcrhdU3FRhJPESkSSDj42Y3QcLdcS6IuHIOCvS9bI1Nl4S0HgtzWzhvzpXHIK1vQ5LmIKy3knuWFWu4ROWFo9rBd9-J3mFD6604A9yXGW44xF-vmQr-4IE3voo1RwqhjWMNxV2qCFJLU1Cx1Jt_9xZy4Erf_VWPxh5kMsgYVUGGClEBh9j53CyoZaUCOjbC2sGqtnrIibM5k_jRwPh00eDqD_aYy9k0fynv3rDU_5SM54ODBBHL5MQQbqGFqJhLLvPE",
+      "enrichedAt": 1767570815204
+    },
+    {
+      "name": "Nene Chicken",
+      "city": "Santa Clara",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Nene%20Chicken%20Santa%20Clara%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "korean"
+      ],
+      "photoQuery": "Nene Chicken Santa Clara CA",
+      "placeId": "ChIJn4EzXxPKj4AROpmytp6cBtM",
+      "rating": 4.2,
+      "userRatingCount": 273,
+      "enrichStatus": "ok",
+      "googleMapsUri": "https://maps.google.com/?cid=15206013397346982202&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJn4EzXxPKj4AROpmytp6cBtM/photos/AZLasHrubP93wK3-n0VAmQfwAry5LQAxTQT3AxYD2Kns7gWaWJ66qfpHrO-1pva9dTBbmoOgdCb0DIUp8kSNdt4Te-kbMRjkYcHye_P8Z8kTNNWHpzgFe4aKPvmYCU7SkdLGxZjZocjGB4LKTtRrOFk0_mTMhrgZDtCDEyyQPgBr-HDDlqzN77R0ecQL1ZuMYL0a51mLBbGrtl3Fy3RG5s0ckSESmW_bcpsbXRs1b6wurBgdcc06yO7lXQ1IW3g7-eubNL8mYDFIyS0T9EvydLX8JV0Lg3jkjiT2Exd54R90fSofQHQDGtIBwUFshfzjvo9IB-2Yz4VHk3hSoYtuQ_LCtcix4WA2dYSGWiSzjP2b3jy2STY7QuTJUfIqDVUbs4NBhtU5QtMzPK4K4fYNJvur-_aeimsEGFLezUh2ezyvhYvkG0GE",
+      "enrichedAt": 1767571279553
+    },
+    {
+      "name": "CHAGEE",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=CHAGEE%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "tea"
+      ],
+      "photoQuery": "CHAGEE Sunnyvale CA",
+      "placeId": "ChIJgZxdODK0j4ARxhO0XsC515c",
+      "rating": 4.2,
+      "userRatingCount": 258,
+      "enrichStatus": "ok",
+      "googleMapsUri": "https://maps.google.com/?cid=10941418055593628614&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJgZxdODK0j4ARxhO0XsC515c/photos/AZLasHq0Qfl40fUdFV2fApoT2TPj9IJuvemhNhFhYtL2r38QqRTWdmtJpwUfIh_9LPlUKTYIXE4xAh2UywA9TfbmneLKVfvsQsndLtfwJNG8synZ3xj_3roKAOzD6d-eelH6FMM7asVPaYBMDwnXz8BM-AnufFi-e5dL5dwkR9JLVHTELh_N5dnegfRgmSA_QubcUNn2ZKt6Vd60P3hl6SnCmU_5S3u5dStknscN5MQxD100j9ghHXeVTOte_5oBE3Pd6E9eMYA2K6hJ6DSIsppqdKdCWm4EMccfo80AOd6KTCyP-UNWxuhwwMcSknnL_LuzKx0OicGxyh_0raEh2kEv7PquHZMX8tx4YcyZootYGNlmrKKC_nhg5iuTZVsq_7L9cQgAIEU8sLp6rT2oc8I2PdjgOCDG_Vun77wvZZvq4Frkq9XS",
+      "enrichedAt": 1767571279553
+    }
+  ]
+}

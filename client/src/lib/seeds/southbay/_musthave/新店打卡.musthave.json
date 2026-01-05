@@ -1,0 +1,20 @@
+[
+  { "name": "MoonTea", "city": "Cupertino", "tags": ["new", "trendy"] },
+  { "name": "CHICHA San Chen", "city": "Cupertino", "tags": ["new", "premium"] },
+  { "name": "Molly Tea", "city": "Cupertino", "tags": ["new", "popular"] },
+
+  { "name": "The X Pot", "city": "Cupertino", "tags": ["new", "hotpot"] },
+  { "name": "Haidilao Hot Pot", "city": "Cupertino", "tags": ["new", "hotpot"] },
+  { "name": "Seapot", "city": "San Jose", "tags": ["new", "hotpot"] },
+
+  { "name": "Ox 9 Lanzhou", "city": "San Jose", "tags": ["new", "noodles"] },
+  { "name": "Chong Qing Xiao Mian", "city": "San Jose", "tags": ["new", "spicy"] },
+
+  { "name": "Dough Zone", "city": "San Jose", "tags": ["new", "dumplings"] },
+
+  { "name": "Marufuku Ramen", "city": "Santa Clara", "tags": ["new", "ramen"] },
+  { "name": "Ramen Nagi", "city": "Santa Clara", "tags": ["new", "ramen"] },
+
+  { "name": "Superhot Hotpot & Korean BBQ", "city": "San Jose", "tags": ["new", "fusion"] },
+  { "name": "Urban Ritual", "city": "Sunnyvale", "tags": ["new", "boba"] }
+]

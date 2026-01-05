@@ -1,0 +1,31 @@
+[
+  { "name": "Din Tai Fung", "city": "Santa Clara", "tags": ["taiwanese", "classic", "musthave"] },
+  { "name": "Chef Chu's", "city": "Los Altos", "tags": ["shanghainese", "classic", "musthave"] },
+  { "name": "Fu Lam Mum", "city": "Sunnyvale", "tags": ["cantonese", "dim-sum", "musthave"] },
+  { "name": "Tai Pan", "city": "San Jose", "tags": ["cantonese", "dim-sum", "musthave"] },
+  { "name": "Joy Luck Palace", "city": "San Jose", "tags": ["cantonese", "banquet", "musthave"] },
+
+  { "name": "Koi Palace", "city": "Santa Clara", "tags": ["cantonese", "high-end", "musthave"] },
+  { "name": "New Port Dim Sum and Chinese Food", "city": "Cupertino", "tags": ["cantonese", "seafood", "musthave"] },
+  { "name": "Cooking Papa", "city": "Sunnyvale", "tags": ["sichuan", "musthave"] },
+  { "name": "Sichuan Impression", "city": "Sunnyvale", "tags": ["sichuan", "musthave"] },
+  { "name": "Ma's Restaurant", "city": "Sunnyvale", "tags": ["sichuan", "spicy", "musthave"] },
+
+  { "name": "Liang's Village", "city": "Cupertino", "tags": ["taiwanese", "classic"] },
+  { "name": "QQ Noodle", "city": "Cupertino", "tags": ["noodles"] },
+  { "name": "Din Ding Dumpling House", "city": "Sunnyvale", "tags": ["taiwanese"] },
+  { "name": "Taiwan Cafe", "city": "San Jose", "tags": ["taiwanese"] },
+
+  { "name": "Spicy Dragon", "city": "Sunnyvale", "tags": ["sichuan"] },
+  { "name": "Chong Qing Xiao Mian", "city": "San Jose", "tags": ["noodles", "chongqing"] },
+  { "name": "Ox 9 Lanzhou", "city": "San Jose", "tags": ["lamian"] },
+  { "name": "Lanzhou Hand Pulled Noodles", "city": "Santa Clara", "tags": ["lamian"] },
+
+  { "name": "Taste of China", "city": "Sunnyvale", "tags": ["home-style"] },
+  { "name": "Home Eat", "city": "Sunnyvale", "tags": ["home-style"] },
+  { "name": "Dong Bei Mama", "city": "Sunnyvale", "tags": ["northeastern"] },
+
+  { "name": "Yummy Tract", "city": "San Jose", "tags": ["taiwanese"] },
+  { "name": "Big Dish", "city": "Mountain View", "tags": ["hunan"] },
+  { "name": "Hunan Impression", "city": "San Jose", "tags": ["hunan"] }
+]

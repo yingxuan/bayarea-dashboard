@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { refreshSouthBayPlaces, getCacheStatus } from "@/hooks/usePlacesCache";
+import { refreshSouthBayPlaces, getCacheStatus, clearNewPlacesCache } from "@/hooks/usePlacesCache";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -282,6 +282,17 @@ export default function DebugPanel() {
                       : 'Never'}
                   </div>
                 </div>
+                <div className="bg-muted/50 p-2 rounded text-[10px]">
+                  <div>新店打卡: {placesCacheStatus.newPlacesPool?.itemCount || 0} items</div>
+                  <div className="text-muted-foreground">
+                    Age: {placesCacheStatus.newPlacesPool?.cacheAgeDays ?? 'N/A'} days
+                  </div>
+                  <div className="text-muted-foreground text-[9px]">
+                    Updated: {placesCacheStatus.newPlacesPool
+                      ? new Date(placesCacheStatus.newPlacesPool.updatedAt).toLocaleString()
+                      : 'Never'}
+                  </div>
+                </div>
                 {placesCacheStatus.inCooldown && (
                   <div className="bg-destructive/20 p-2 rounded text-[10px] text-destructive">
                     Cooldown active until: {placesCacheStatus.cooldownUntil
@@ -289,14 +300,29 @@ export default function DebugPanel() {
                       : 'Unknown'}
                   </div>
                 )}
-                <Button
-                  onClick={handleRefreshPlaces}
-                  disabled={refreshing || placesCacheStatus.inCooldown}
-                  className="w-full text-xs py-1 h-auto"
-                  size="sm"
-                >
-                  {refreshing ? '刷新中...' : '刷新 South Bay 店铺缓存'}
-                </Button>
+                <div className="space-y-1">
+                  <Button
+                    onClick={handleRefreshPlaces}
+                    disabled={refreshing || placesCacheStatus.inCooldown}
+                    className="w-full text-xs py-1 h-auto"
+                    size="sm"
+                  >
+                    {refreshing ? '刷新中...' : '刷新 South Bay 店铺缓存'}
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      await clearNewPlacesCache();
+                      const status = await getCacheStatus();
+                      setPlacesCacheStatus(status);
+                      window.location.reload();
+                    }}
+                    className="w-full text-xs py-1 h-auto"
+                    size="sm"
+                    variant="outline"
+                  >
+                    清除新店打卡缓存
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="text-muted-foreground">Loading...</div>

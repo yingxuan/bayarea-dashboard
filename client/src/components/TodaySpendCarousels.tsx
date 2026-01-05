@@ -75,11 +75,11 @@ export default function TodaySpendCarousels() {
               onRefresh={() => handleRefreshCategory(category)}
             />
             {/* Debug info (dev-only) - only for non-新店打卡 categories */}
-            {debugMode && info && category !== '新店打卡' && (
+            {/* {debugMode && info && category !== '新店打卡' && (
               <div className="absolute top-1 right-1 text-[8px] font-mono bg-card/80 px-1 py-0.5 rounded border border-border/40 z-10">
                 {info.mode} | {info.cacheAgeDays !== undefined ? `${info.cacheAgeDays}d` : 'N/A'} | {info.poolSize || 0}
               </div>
-            )}
+            )} */}
           </div>
         );
       })}

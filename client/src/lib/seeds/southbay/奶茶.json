@@ -1,0 +1,642 @@
+{
+  "version": 1,
+  "category": "奶茶",
+  "region": "southbay",
+  "updatedAt": "2026-01-05T00:34:06.588Z",
+  "items": [
+    {
+      "name": "CHICHA San Chen",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=CHICHA%20San%20Chen%20Stevens%20Creek%20Blvd%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "premium",
+        "tea-forward"
+      ],
+      "addressHint": "Stevens Creek Blvd Cupertino",
+      "placeId": "ChIJ1eXBjKO1j4AR05oLL0LbXPA",
+      "rating": 4.6,
+      "userRatingCount": 1334,
+      "googleMapsUri": "https://maps.google.com/?cid=17319959344263699155&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ1eXBjKO1j4AR05oLL0LbXPA/photos/AZLasHpS4EYC3mtWrh0d2sLv35LsRUAaAQI3CT_ZT_uhfQxABAyy6dypvAy2F95ck9XfBryGgmd6ih4KvfABbSOaTt0qhEzIz7kKgwIx1tcU9fuRdVMiU5utMHugUP2mdWBbXQilUKZDWQmq8N-RucAYdoHpKIsNAAwWMLQDaV-c9HDOPAUmKYFDRfWFvbAISCm8sm4WqQgUHd2czWkTxSwjcdNr_fqe8tJt9lYAC8KTdY5ipz5xdfVUED46uE2fGqWgTsksvcsAeL3-lwdJfy5faWUG8ezDNXnOJAWBncGB-9Ij8lf2dU2x3lEyzw0NH0KKkCFhHsQ6bokGC5fo9ejGm2GiumkX3vg2dgetnKvem4TYisZ7vPpvgPav6XbrHEcVxBlF4Pz8DIpAExpEIvhi97kyxDfE84DETseyAIy36c7pXrkq",
+      "enrichedAt": 1767573167259,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Molly Tea",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Molly%20Tea%20Stevens%20Creek%20Blvd%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "milk-tea"
+      ],
+      "addressHint": "Stevens Creek Blvd Cupertino",
+      "placeId": "ChIJlVLJP721j4ARUiYhXSJB8Do",
+      "rating": 4.4,
+      "userRatingCount": 78,
+      "googleMapsUri": "https://maps.google.com/?cid=4246966064457524818&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJlVLJP721j4ARUiYhXSJB8Do/photos/AZLasHrGd0v1te-d6AOgawZiKaZgDtIP0KlDsnREYUk4WT7Z82evt12kLTHsjlKiTn5xWb2IZKXX-Mz_Z62kDob-EbZkG3ccHTjKjeagyz9yHlRZBREFVzJq91P9_XUyWUahyfAZIca-xivD65FWJ2pKVTnqH1sDTYxgyzTCnwVCWENxGNG0BUH-gJS9UuHQGTOZ0gr0ErtkmLRW-c6ryfJ-40VHh5bqTzDTOhWRIM0e7lqHi5ekjmETjDxnTUAzpovQlFuNDh6e3l3dA_DmhbX9nYvxFFFZ9DUmI9JNdarGpU5k--jIfkHsFlt1f5e32iWEPI_0vV80IN7DO5OivlTTvjgS_589av0VJ_-tHjOnVowgUYh4zmgvM4N0LCnvbF1_3qEXLT_3-yyA0KlDRWvaux-CR1ttBFf02aP2uMZKoLrqchSibVAgiY0nZi76bQ",
+      "enrichedAt": 1767573169737,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "WOW Tea Drink",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=WOW%20Tea%20Drink%20Stevens%20Creek%20Blvd%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "teapresso"
+      ],
+      "addressHint": "Stevens Creek Blvd Cupertino",
+      "placeId": "ChIJN5DyVOe1j4ARPp0DxRdNf_8",
+      "rating": 4.5,
+      "userRatingCount": 115,
+      "googleMapsUri": "https://maps.google.com/?cid=18410518566198811966&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJN5DyVOe1j4ARPp0DxRdNf_8/photos/AZLasHpe0pOFO_Icv7OZrHAmzBaVAU1a__hJ7-ARoOk50FH66AvMbHckO3vnvZGR59iBL0Hx_XMROEaijIYs0xOxWM5wPN16RNl3KniFEoyfpgxRwSwTQOHSeW-1YYycBqTGGAW2UxD-mHdPJ5Q4s5xofiwGGJx7VsFzaBYKOETTVpQ3IqLts977BjztQ6QJfZvRG0U1b4J4bw9LZXwp2jvzokIHrlrqSGd-BWgVhS_c_CKNARCZW_TT2zZrHTRuYsBOsL0qGF8gOsgLL18Dx93si66ygdD8GtpibnjPxu0LRihNbQ",
+      "enrichedAt": 1767573172207,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "MoonTea",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=MoonTea%20Stevens%20Creek%20Blvd%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "new",
+        "milk-tea"
+      ],
+      "addressHint": "Stevens Creek Blvd Cupertino",
+      "placeId": "ChIJ77mZztW1j4ARA7L4u49X9AU",
+      "rating": 4.4,
+      "userRatingCount": 116,
+      "googleMapsUri": "https://maps.google.com/?cid=429064139352617475&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ77mZztW1j4ARA7L4u49X9AU/photos/AZLasHqhTNEMtk0vOp8kYzoxkqC1Myctkpg4zIppRQaoYx95nGQV3QCX3XiC1fGElZMpTBqCpG1Q_-q7raVBaqvR1NDcXwo1A8YJ53JgXanbx6CmIoES1R49wWJsq62rMhKqfrae5Xcxab6HUQJqLPUnjWZUPRSn7JY0qWxskXHmSVbPnTrJCA-xRZqImIEgW2WrvVxa21kPbCeFkMU26L2AKxVzpurknji53iPGhA7VSCbiomdbhXnXvVYCB7YeXSzgktXOPha4WUhMQtDWiq2nfVlvx2b9kfBCTBNk1Ii0sK-xHQ",
+      "enrichedAt": 1767573174669,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "TP Tea",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=TP%20Tea%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "taiwanese",
+        "classic"
+      ],
+      "placeId": "ChIJTRDQZ_K1j4ARqdjFU7FbSes",
+      "rating": 4.4,
+      "userRatingCount": 1115,
+      "googleMapsUri": "https://maps.google.com/?cid=16954183089385756841&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJTRDQZ_K1j4ARqdjFU7FbSes/photos/AZLasHogvvJ1i4eGwzq1CQ3SVOBXwf6t2LClgC5zX5bebsdaBgLuqnHyPaPSpxLdEKFE8w2yrKNzrOAxFl0ldabYQp9eqqcW27ey7Iv8XNBGQJcTmKGJO-B-56UPL0E3grjmxWSECqguBdOOFYydnkm57PXtsfXeNMxoEqjHBWArHjl6o9_mbXs3XDVKC4yktN0eamWXkHx8mBtqMjznIH8Y6-_QSb8db-1EDmx9lJQWjP1opfMGJ33mHTvvLUDEeFla4c-P2DWhoKZZC9PjqONJkgBqshvqgiyn8sGdQScyq2M2SskxBduSezVNviEWPv_T9GmEKD5IXlsOO_Rp_jZkQEf1zI2F7dxesshnQdAwvyZdN4JlqDfvmbUda4FVJfDudUWg9h_4KAL9hx2EWqsqjGpXqb9ljqS4p2oct2b7Hu5dmw",
+      "enrichedAt": 1767573177184,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Sunright Tea Studio",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Sunright%20Tea%20Studio%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "fruit-tea"
+      ],
+      "placeId": "ChIJt6567V21j4ARtfy-hZfx27U",
+      "rating": 4.4,
+      "userRatingCount": 496,
+      "googleMapsUri": "https://maps.google.com/?cid=13104333173850832053&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJt6567V21j4ARtfy-hZfx27U/photos/AZLasHrHcPYniFdOTUxJ3gzsxIwm9cSQh1XyuV9EaLDrUBbPLiqrC9wKip4m-1Ee7zroKynN39n4NZtcQVOmXQsmJNUYnlkBgNt3sBIUgaD5zyq_EMqNk52VtnseKwV6jkD6MRVbwFXSbQMUnk-qp3faaOBhKY9Toc2dNWJTzfMGmbCE4Ye4iae-V8vQRMZjZZ8jO7acnCjbcZjx4w09QiobbjE7txtvGnLv3x_CKUxAVe3Hs16gzB-8-EQvR2bR6I4FWSGyfYe1QvwF1H_FfMKX33CM9s8r0DHssVOJsemPIyjzzb1N6ui9sSsu5DxJQULEWEHxzxT5TAEKLTp-I0qc3O8YRNH4_CVmFGaK7TdMznzRnvr7_ReKYlE93MZkw9R_oZnQ8kkG-cLJII4etqL8fBhhaPmUNwkhlr_VlDEsXRFyvg",
+      "enrichedAt": 1767573179697,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "YiFang Taiwan Fruit Tea",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=YiFang%20Taiwan%20Fruit%20Tea%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "fruit-tea",
+        "chain"
+      ],
+      "placeId": "ChIJAzhf6Ne1j4ARx0JWI978QcM",
+      "rating": 3.9,
+      "userRatingCount": 210,
+      "googleMapsUri": "https://maps.google.com/?cid=14069804741887935175&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJAzhf6Ne1j4ARx0JWI978QcM/photos/AZLasHp6Jr0u8968WfK91OlQoc8yyG4i-riA6uQo8PArXAVmBJ_aggHOIekIN6nqQzxUlVGCRKwAMlZW34oG8c55ShjoceIiOTegHuKT-6i53wqHmH902OIDgyFrJL2ito-cSbS6-YK6-XMDKaNFFqaiwLWQcPxCbkR2XAp4iuOrWDGFUC26-uckoDxeUw24Xza01Qk_xg-n8IffT1_d5TQ7aawoHSEfii7jHJsfQYNHDjQpkZPGiaH0MbIjMQNjQk9VFvAJTLqtBbFcfO4UNTf8aJGJveUWAtNhg_8ZKHZqkU0id8PQLRnfIh_g5AiIpBOW4t_i-EznZF_C3Vwpx5sstvH3hRSd50p35Jf4njljK0VrAwjMp7cdE17X21qW3ItYnkW_qYiif7tgIo4f25jPk82L8N9Ax5TkvDmpoIkkcww",
+      "enrichedAt": 1767573182205,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Happy Lemon",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Happy%20Lemon%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "salted-cheese",
+        "chain"
+      ],
+      "placeId": "ChIJ6Zc1oR-2j4ARDceaCEoQZ5k",
+      "rating": 4.4,
+      "userRatingCount": 557,
+      "googleMapsUri": "https://maps.google.com/?cid=11053821720562157325&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ6Zc1oR-2j4ARDceaCEoQZ5k/photos/AZLasHqTP6XeTPRR31Z0xegn08_Hx1E0zqFF100en8_8KCaOrzj3oWvbaNjbt202k5debpqmWuXGWrx7Twa6wqlFhOcjXkJ05swcelBguYR9nyvHxrbpBCnF9n2HoPErDb_VnNdfOLoHTvtHsluQ8iwlhPyLRq-Lboi3Kt3YfFoTUd3ug5cBQY5RtYZA-L5BSkJRcFgwjYbAwkZZTNGpu8OloB4JXu56RG4fNquuxqwqpKMwrUa5VwkIUXmjNjVk-x83x4hWhCnfkfF1w9_Mx8yJ82rgo_6IfhSWf0tp_wHV5xF488SoKXxCUEbj2LvIvrPZtsnFC1qu4vtwkVff1hyjI66GYg973DDY6Isqj7o6TaVFrMAFu-by58RemQYNr7DX7Q_AHkCqwL-BMZdKxVA1ynBROhaqGCpZjX_jUAo",
+      "enrichedAt": 1767573184679,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Ten Ren Tea",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Ten%20Ren%20Tea%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "classic",
+        "tea-house"
+      ],
+      "placeId": "ChIJey2KFZa1j4ARsVW0X9Y_Mfs",
+      "rating": 4.5,
+      "userRatingCount": 479,
+      "googleMapsUri": "https://maps.google.com/?cid=18100318567339939249&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJey2KFZa1j4ARsVW0X9Y_Mfs/photos/AZLasHpEolXJ-PpQ8W36W2fVtXoupl3_i5vzc6nF7HeWxKEs7Gs-5M77Z8386adrhT95ODD90uKBFXXEThi1vPeg5ChnVGKfitUd0NT21cvHsIwQ5SYsG9QxwFttqRNYfW8lp2HywoRr0OjYI-f_uh4TSVAJiSA2ZSmI53-5ooVDlb0fv3PSCac87ZJpVNeI3LVL2WNuX_Bsn72QVud9IyH1a0bjqApg4EJ1X9wlQQfKi-JmOhWd_dITqKbqA9I8_d9Ua1QIdgZgLcW0dl9k7lfjIzVuwIMus5DS4jzGGXlNCDYqiwZ9f-V1oUGrUff4OTsgbz3EmUL1iXgDovqQku5hK5svCo5gRWfZ3siwYr_UhWGZky2H5Khunp1rdG1gfRxLichff7c1J2FCYHRrNmhNZLQan2u4fNHS30DxuP68wpcmZw",
+      "enrichedAt": 1767573187203,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Fantasia Coffee & Tea",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Fantasia%20Coffee%20%26%20Tea%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "boba",
+        "snacks"
+      ],
+      "placeId": "ChIJjVewFZa1j4AR_NeG-WAlPlY",
+      "rating": 4.3,
+      "userRatingCount": 450,
+      "googleMapsUri": "https://maps.google.com/?cid=6214445634251315196&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJjVewFZa1j4AR_NeG-WAlPlY/photos/AZLasHqb-bvjjvtin3gkZr8pU-fpuPJ-W2AEP2nHz8lseWGNXzCSwXFuVxB0puSCP-KWyPxnnBfGE2-8wHdt-ajXtyzFXrZVOeWd5TXvYsXlzWsZp1-osy7eyvyqkgds73JKrxgbaqhXceQojous1ZqKnerDEDQHzLlLMrq3KjxW2GFOwa_xCledQJoQTPPQ00OuU3yD2Dz-EFryJI8KuFY63AImbxG9sloVi-iAqlW_U33Oj0OF_35zva11uWvpJids2_kz0f7fkLp22PpJQj6ukukx1v8AESoSOiAdQ7B66oTf6X05V4BfnFw5-2iCmnhZJoxiHUvzaWzRfYLdxfIEn-lagT2iywk3GZCaLIBu4WmKOkSlB2fbIKmgZUhM_YT-VGPl8jmAM6K6ERJVKujPo3mpju1sdwqKhmUJke5C4FfLD4-G",
+      "enrichedAt": 1767573189742,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Gong Cha",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Gong%20Cha%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "chain",
+        "classic"
+      ],
+      "placeId": "ChIJF2aTC6vKj4ARXo6_T_dBt-o",
+      "rating": 3.8,
+      "userRatingCount": 210,
+      "googleMapsUri": "https://maps.google.com/?cid=16913059456063868510&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJF2aTC6vKj4ARXo6_T_dBt-o/photos/AZLasHr2XlKfnM6h526XDyJgeCFBJmd7fEhq-kL2ORJeqdyzqgMuRs_f0nhCWGDd0ysS30bSEZlmFvcEq8YrNv_XXGKk7bygN0pS86mynK-hd4qzyjiWd8w4Nvs0zwvQvhjK70tgUMtPc21NkQK0Q9g_mt4aIE1ERtw--9bHgvROBjfDtigj1Uf7ClenTDrzeir7hfqW5RS84ibS_yFnibFJHHVDj38N4x_mR7K8U_nRfAeS5FZe6Boh9Sb7vqHFWmTlA0k9zW6aoirWGAwU4Ag7lD2meZ-Z3hcVBoGg8XTG_Bw2izr2rxMbC9-C7OEltEclECkIifhGWE0WGAqvj3T5KK4ZieKXAfuwZb1PBlxuy9VMba6k7g1PdWHWCu0c11-aaQBjDLqGjEM5F0LZro5miNXWWnD1hlHTud33S_7jAds",
+      "enrichedAt": 1767573192254,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Sharetea",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Sharetea%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "chain",
+        "classic"
+      ],
+      "placeId": "ChIJtVzUJc21j4ARWD0WEl8tBH8",
+      "rating": 4.4,
+      "userRatingCount": 180,
+      "googleMapsUri": "https://maps.google.com/?cid=9152490229072280920&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJtVzUJc21j4ARWD0WEl8tBH8/photos/AZLasHox1ni_Lt9ugKBLcObW28ShdYU1L0tS3hNG11l4HUjSmWdh0CJFHRnZAme2dcfDowknaNoRb457kJgKGRm5xiljYMPxQRu4atW_xx9PvEl6W_--0ZbwWUx2-sxQ6UcBGZ-W_hSMtNoXHEa1RbH8G_0yeUSoWSZKr90fh1z6t5jyYt6TFGI0aPDH_88EHf_nqKEgKcYQqQLFpMFAB6YTpWICxNR3Za6dDbOpnXBhijfvNiMbfvm0r_NVfunAQ8AXsjJb0cqrBIeZfVXfbbZJzn6TtRuT3Lb-ugDf024oP7LnBd8Br0A9kqpix7w3f7TBfZ1fDepmC5BvDLmp5avGxLUjioeOvjR1_2DxezIIYm7uXA0HLq9Mg5Y1d9Aq__aj9qJ1Wy_tzweoSZ2xND7at2xypyw2AfD90yJJZSvHB7c-XzjF",
+      "enrichedAt": 1767573194774,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Teaspoon",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Teaspoon%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "chain",
+        "popular"
+      ],
+      "placeId": "ChIJh8-WIwrKj4ARzJuhIhUOfcg",
+      "rating": 4.5,
+      "userRatingCount": 493,
+      "googleMapsUri": "https://maps.google.com/?cid=14446718663612537804&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJh8-WIwrKj4ARzJuhIhUOfcg/photos/AZLasHqdhOEHq086l6MHoyzkJeT9hzmXN9fbRtLbRgNE1qDb93Fr6YdjBjCUHnRLzWOvydDT7hajnMSFkamvbDQ3joGypjMIlr1ZHEXzD-eKyiEcfFm8ypAyPdeREMBsPo4rGTlNp9H5dbGrtG5YjucmJyREtMMPrk8eJ_cRFAvzmNdjaRWOM3SOgUEXSCUhzDqIwvlocFFrfscxMsO-WPfTC3ySYd9NONGIMbmmQDXk6rSk2WAyZkJ7UxlMtn0JiRVz-A72n8YNBzr2VtvzvS7nYWREhQfiHQr_uSDXnxqmmLRF14ZLDGTgSFUf1ctpihHigvcwH-XsaOvG8HvZu5y8jXLO-gDcGwYT_kuWA-ifb63gHmBHPGCgKHT9ulMW4wC4Fhd8B9AEz407JuBpGbvAQ_i8zcll8DSQIHJMoZoG1A",
+      "enrichedAt": 1767573197248,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Boba Guys",
+      "city": "Mountain View",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Boba%20Guys%20Mountain%20View%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "artisan",
+        "popular"
+      ],
+      "placeId": "ChIJQdcgQ9exj4AR5-EI5z52V0g",
+      "rating": 4.1,
+      "userRatingCount": 58,
+      "googleMapsUri": "https://maps.google.com/?cid=5212765106240807399&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJQdcgQ9exj4AR5-EI5z52V0g/photos/AZLasHqjYVS0J2GW4m7na-7Qv4bZFC005vJHi3VIUgWMhRSBI3tsb7ngEWT_51XN1sqvwgHV0um8ihzjgJVCgwVK920XUdKwjE9ulz7dpcBLR7jYU-CVkfVNa7MYGi7lv4wVv1cfh2EIJRymhovR7tL6lNzEP__Kmy2WQ_3XpJhRQbzcWDorSnZKOfTqhv4bXiJY3PGOYbEZpeKiKT02F89owHS3twhwpZe0-FSNW0e_RWhHvu1ko2VpaurI9oy3kc8gg1Xskl1VRp9LNSC7Q73lXCYLLiXKfkk_vVuKLOgGTlfryUwDlqHtbo8nSGJJy2S1cb_tQPjFAP266Wjz7YENvslE7DgBbvNuG6ZgHu0mnuvWGn11DwQ0_B53tDrfFuP4ikiiU8IOUDuS09CSwrwG0ajhvG0mAQ4HTRqOhpVqLCD_IsTlvkB34sxxPDR7reEj",
+      "enrichedAt": 1767573199803,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "7 Leaves Cafe",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=7%20Leaves%20Cafe%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "chain",
+        "milk-tea"
+      ],
+      "placeId": "ChIJuU3oF1vLj4ARNOy9cLZMz7M",
+      "rating": 4.3,
+      "userRatingCount": 341,
+      "googleMapsUri": "https://maps.google.com/?cid=12956658999427460148&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJuU3oF1vLj4ARNOy9cLZMz7M/photos/AZLasHr3Em9Txp0bcxMgrPvJR-MJi4eylJ4yRWlnxBO90JUygdOObHa7LHBv-OhybDx_NsAWpFQlf_vNpdOJWRBcBqNG56TQ9Jv-HvTlv1YLu1MaA-JwfqtS5_kd_2ETI3EydgFGAycC-gP75l6MtxYoeXq2Zu9dMnidgq8NpjSkO9JDgQ3JuIZ37jClMT8wQ_MsaQ3DBEc5LMOW2uPLKS2ts6PmwMAUBKJ35oc1rmGScNxt8i0R1PP9anSCqJjS5T16PBAvMMujLsGBQ1W8EOarzFCEfeXo6AUjffff7fwe7X3G6jEp1mZjdcwk1KWU8nfz8upWOR6jEj4WGrx7qrXlydr4Uqpz4wt5gqS49mCmpDmMzfJnh8e-ZtMQZVCHDTJZVVEdfbgy-EKeSIflzjNGSHyyK4Y9nCwDsRu9IRibLtG42S2_",
+      "enrichedAt": 1767573202318,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "T4 Tea For U",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=T4%20Tea%20For%20U%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "classic",
+        "taiwanese"
+      ],
+      "placeId": "ChIJp2_iUyHMj4ARWc37mXGZNAg",
+      "rating": 4,
+      "userRatingCount": 200,
+      "googleMapsUri": "https://maps.google.com/?cid=591266164286147929&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJp2_iUyHMj4ARWc37mXGZNAg/photos/AZLasHrdc-R8uKNR3zPrRZ-NwIXqybvvyRoz733dkymCCqmhRqCdaHeFR8bC9RCjsWjzXLNvAXRPsxXUxJ12OvToeWWe1_-TRNRowH7XK8FRpRGl4Y9DOL3f6KnbzslPWtLxfcDE0Vc3QO2mVzKqz0CD9QXfCptZ1DXHAJYrdfp1Boa5DtozojEK9__6qPdtukayaPml1RPA1o7W0kxLJ1VeSvCBJtnZW3sioI1g9GaLlU-crdxCS9zaOMwCACjRBLd7tAoC-R-WliHyoTON5SEzaIPSn4WGBKYqUwGryoODrqWbLCutvKzHdrcKPPetB7Q07UmH25_IpYbPEweJKt83JCjYse4a8pUUckZ01SAvqj-NDX3Yp1LCaakyl1Mf2PsFCAtVXOmHypV3ar6jGNb0e4HG1bYJUTAremjtSmgH8lLKVfgA",
+      "enrichedAt": 1767573204949,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Asha Tea House",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Asha%20Tea%20House%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "tea-forward",
+        "no-boba"
+      ],
+      "placeId": "ChIJ3aKMWoiAhYARmNLc2TR11L0",
+      "rating": 4.6,
+      "userRatingCount": 712,
+      "googleMapsUri": "https://maps.google.com/?cid=13678686838084915864&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ3aKMWoiAhYARmNLc2TR11L0/photos/AZLasHp5QbmxppiKpjnINpPOk-CW6SEkYXXu-JkWd4REVJ0dgiwOfaUwMfjya8U04WOfPgFPlv03Im1qJiVo7zuDyzklfpvLcrUg2DBhSt3L22veQmlJc6EyxgcJP1_DDmhtW8IOh8qI6g9gS3fb1fOBoOKtU2PPwqWdwMSDA0qAI4Of2dlp8p4P5gWKwO_hVoGzjMmwrjBSVvV92mfxjIdthy-fKRFbSLg2OHYjws5DZtu4aaFE2lZRB4NIsg-jHWkvSpv3qtzFyF4iWOoJGCU2blWJ2MGl-kgTcrnLKSUSu8tpTvdMJmmrfVgaE1jj7Q4uAbVoVYfIl1RijdNPCFqFZQCCujMg9Zuhb0iu3bag-PoiqYQZP1nfvI5tDO2HKT2MEXNZ2O47rI5uMVE_oWnVaPunXwEHImY3XjFtc5BQZ9Sm1Jp3",
+      "enrichedAt": 1767573207466,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Purple Kow",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Purple%20Kow%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "classic",
+        "late-night"
+      ],
+      "placeId": "ChIJD4_-m70yjoARwTvnSkCIMFw",
+      "rating": 4.4,
+      "userRatingCount": 48,
+      "googleMapsUri": "https://maps.google.com/?cid=6642959260087434177&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJD4_-m70yjoARwTvnSkCIMFw/photos/AZLasHq3Hs5CT9QEopyjBd0O4mIA5z77TZ7wtKIPk1diisJ4JgoaWzvVxTKqdWCJDe2ALYim4ej51-Io1OmcrdwJz1F7LYE0ZznyN91XtmEpLTH12D1mI-ldkChx-9_-ZhiWZUvtz9-mI2SaORrHVQXNlO22rLq8APBqqsBVnprWmt5oqr0MLngza1JuuUISVuGaTgDYzfY38q2ki4lMTlQrlWwhaZZYf72icVw4TeUGdzWlvLUdbHiwyc8FPn6OQJfVCr-clCEgCC-IpItXvR5reW1GhetgUoze6_9TbMxLg0IplklgSZp_YKtjLPRwFcPNEcql8z5Sjcv68g1SVwv1lXhCBL1nhP3qWBb39Ej9-8HFCTnEXVroJWHlxPJ-V8jSP837-iVb7ReNQDZb1KQPFZvsaKUxhhvQm4GsOBiAXS05grc",
+      "enrichedAt": 1767573209928,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Ume Tea",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Ume%20Tea%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "cheese-foam"
+      ],
+      "placeId": "ChIJa8QR1q4zjoARwOIt7laAxQ0",
+      "rating": 4.3,
+      "userRatingCount": 62,
+      "googleMapsUri": "https://maps.google.com/?cid=992340403756589760&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJa8QR1q4zjoARwOIt7laAxQ0/photos/AZLasHqUA3BbeyUO4rWNfcauxhRG8ruhVpPbgep9I_SXZkf8BwT1OpD8vLEiZ7w7AqRSBKj7XzJucq4QOe4doY-7CJbWNXsIRhsOZ2NQm0XNx2KxFNkzWw9hZyqv7le8K8QcczpVPQtBv4wRCH-cWQOj2fierFyCfUV-6255qJjoIoDta8pphIktceZYSk_hxEpgdEQn0NxCXul5xHvNGDrRUcL5B2L8oAKAaNpOFtrGd5ncYnIc9ggecdQ3zv3BgTm2j-eHQtkuTjzzZPHBmm_BkL0kaFiTbhiy0mUY6D88mufUKyO56F9XyJZCcauPVGc8DaE2ZYUka5sdYnYOSLkLfkIeTdhvgIeELUkXHEpt-jOZUr9Sc8axBPLdL-NxyyzmPokFFxA_HoLWjWM4QsEwyjMtRUbL0UlPLvyyGSOLu8O4kElnHQWQy-fzykzKsw",
+      "enrichedAt": 1767573212444,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Tea Era",
+      "city": "Mountain View",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Tea%20Era%20Mountain%20View%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "classic",
+        "food"
+      ],
+      "placeId": "ChIJz0l0CzS3j4ARS5xSnRM1lcY",
+      "rating": 4.3,
+      "userRatingCount": 730,
+      "googleMapsUri": "https://maps.google.com/?cid=14309401749399706699&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJz0l0CzS3j4ARS5xSnRM1lcY/photos/AZLasHpy4k-9B11b4h5renGXigGb8fnhusq9qBFpZq3s4Vc9lgzsOtjc05zoG8-j3BpGjyNi5j19uVSKXBoCIvHHhCIgQ2hlt2wHqTJbYS1LGxxRTxCHxzHRBvxsQQhIwCGrQkDWKn81BEg60Y_ygzmgVF3vYOEYa059phsgQAFnP8dgwQpip9UrUZ3OZ9KD93G4OZaFUD545uOEwpKGvWwEjD8jcvFK930mjZouPuFwrRmLFH_EHXqnhzDTh2ICtf7eOOMm-Hw_2gBQnd7ifM1OTOM7WzVvYSVhzHEfHeHK42pcqC55jzACFhTb4z82Ut2edNC-fMQC8BDbxF3ySXYS-e57BnGcr1NrgBV8Y_n3PpysnOKps5kIrm5L2eLp_b_H0TcB3Ln-iJRo4G_3utUoN-OcoQ7_j4wOpzrkSNi6RGlBxA",
+      "enrichedAt": 1767573214971,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Boba Bliss",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Boba%20Bliss%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "local",
+        "popular"
+      ],
+      "placeId": "ChIJg7i1N1-xj4ARV2AKkJsWA-o",
+      "rating": 4.6,
+      "userRatingCount": 496,
+      "googleMapsUri": "https://maps.google.com/?cid=16862346287197610071&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJg7i1N1-xj4ARV2AKkJsWA-o/photos/AZLasHpNJrzXI_VOae9ezmMEGjCzSgoJjhqZaaGbdnxgb-gW0Chtfj1hv5-eYVL01OvMIZ8Kgfufo1puMcDJ7us-VUTfjBR0epForhSYQsbd4YXz_gmrLD5ZO-5XsBAFKPaOa9uLQfKgANKACgHxgo9lJK5hgDtdNrZbhOzVVtnhD4U9CYQeH_o2QOwa8LvrC-9j77RsBiRW780uVoMINBUJxTgGhpQN8M_0KAmGPpLgXAe3gcxIh5j6qXSF7lschW3-zwbgfLt3dQnYfds8YaDyaZI10tLMUZ0Irc-wOp8fCbMbjQ",
+      "enrichedAt": 1767573217464,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "TeaTop",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=TeaTop%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "taiwanese"
+      ],
+      "placeId": "ChIJl-quum21j4ARHNh3FZvPWiI",
+      "rating": 4.5,
+      "userRatingCount": 566,
+      "googleMapsUri": "https://maps.google.com/?cid=2475519210180565020&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJl-quum21j4ARHNh3FZvPWiI/photos/AZLasHo2JFFmEJVerKyffXAxipZbQGqbVx5O0oan2gh4zKhKnlIJDOZ0ONgZ9bOb9U7e7sHA033wDnKq_NKveg4u-DBs1L6SDGKUSU5d_MItqjGGezOg2huS0mniOY2oSZPwD5Lbzpn4XtGR1JyjEowxqUmMq9p2Q3gI_EQY2MJ987i2wv3eTN2Sog4IJgK4Cf12uCZEwPC8ARahsC983vKZlMnX7FiD7G_h3hkDDmMeuybRMxfmsc-OJZNmoK-lD_i7Kh-95_IqMxLaJE6kc3IOSkGIBSClehx7AuP1HLEzzJDrlIb1X2MA2F2CVvQFcMSJxdURokuoqoRFkVHyS7tdhQnocopjkWrKEvoKhIRrtLr_gI4z7UxU7SYg8Vapfxn41e02Xw58VMMibscWvejLZINRZvBVI0O-q8TtmXtKgSi_mg",
+      "enrichedAt": 1767573219932,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Urban Ritual",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Urban%20Ritual%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "milk-tea",
+        "modern"
+      ],
+      "placeId": "ChIJ5cH4_iafj4ARMynxJjEjrnY",
+      "rating": 4.4,
+      "userRatingCount": 243,
+      "googleMapsUri": "https://maps.google.com/?cid=8551811436436859187&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ5cH4_iafj4ARMynxJjEjrnY/photos/AZLasHrf_nHSxl_6gxo90t8B0lH3Kp38jsZuZviaHmZi7ZZB3GKsdj4thMPlQd3BbqSS7uChBtrX810YSvQ_o7HJm1vxHBUrfdTU58iypu5yHtRNiKh9agocLfaxoOmIKt-8q7JjRcFtjNXhXtJRj9r0YczfcyYn1_LyYFfosS2GYBTV1UV_H41ijB_z01gh7PYXsSJXOOrAkjDIEPlvDaxp5mcIn5ddhDmTNH-gpg4bMc1EQDFXQcW7IDRhVzVfCgm7U5qiYPBexMxhx2GGok7d9EGYYJgchXq566XVnPJ5Fr6ye-Fps3-IYAT5le8E4K86vw-HTmvqlafyf-ZXEXw-tfVjk9uO5UaxRIHVRHUeqvqzEByTFEVEstnM7w0lZL-enXhPjB3cmuMRcPMSe1mafjIaPxjC69av7v4tlX3_VXlUkZwapkHJT4CMJXG0JiTN",
+      "enrichedAt": 1767573222430,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Royaltea",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Royaltea%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "fruit-tea",
+        "chain"
+      ],
+      "placeId": "ChIJ2XSRErTpj4ARHjIwsrQsnmo",
+      "rating": 4.2,
+      "userRatingCount": 83,
+      "googleMapsUri": "https://maps.google.com/?cid=7682627168935883294&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ2XSRErTpj4ARHjIwsrQsnmo/photos/AZLasHpz7qijfrzb2bjJX8HuusWdoGhRdsyeuFti9MLs2PFybhbndpACAraqdozOymJ6gxVvyz5CtYa_O8qwwofst6J53lspQ3cYCd9ETnXHmmQkuZZ_KXOhSPpler2FfsscG5AF2yj8fT6mvYSlZ_O3T5Iv48Gt4UcVeIvUdN-HVKoMDDn5IwXh40qJG3jLoHd-ZJT3A3khQkg23K-tjOQqb7W7ZyBbaEZtI7iQOdB9kASlZ4syaXwPzPOkC_Uqq12asvL89zxfmj5GHRCiQ5mdEWLqYZ5yCGAuwrs69jUKuGjiq8WKMmD66QhaVY39d5BVqFotsjwOH75-NiaLgmwDufs5g3WFJNxI9ecEYHR3gz5EjjqhIQMHuIvsmGGrQ1wQSikizZPuHv6FYQMu5dABs8PUKJ4g2VZ2V-_A2cFlSAVgL1A",
+      "enrichedAt": 1767573224910,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Quickly",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Quickly%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "old-school",
+        "chain"
+      ],
+      "placeId": "ChIJExpGRQC1j4AReqLJ-8UwrVQ",
+      "rating": 4.9,
+      "userRatingCount": 189,
+      "googleMapsUri": "https://maps.google.com/?cid=6101586697047876218&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJExpGRQC1j4AReqLJ-8UwrVQ/photos/AZLasHo3aFXEoJ4tl9iv81jICsSywoVLqcAPc7z1FmHvlRGEZKY2bcw8vKzpuqJZXNuj6UccRQH-EYhgiBLtxONR0aAzfBzRLDBkppchcml9UzPAgxBCo0Mzm66vdIfSaxjGvToCntYyfdm088r_cM9mClKwdNdxUeUTtVUks8GsiH3kHX_zK3JlqRVxE7J2LxADQoNkgammKN3mXvOHcWxhiR-sPp2LDPNV1Ogn6QRK3eV_JD42_ypDGkH_HxHeBXwf84_ISsLruWBNat7WgW19ZEo-wSDtDdgS4TDUsmCD-cJSQV4Gt5JINDiTOGtyhpt0GeEocR5eGc-8a_Lj22QWOWY-dJ0FNA8CK0tmXQa0t4E4-pcTHPfflZdUVSrTqaccU8m-EG54zYgVflJxiZ9B2Dc_wpN11rbTm6ByaG8ZocRzQvzKGnEgeORcn2JYZA",
+      "enrichedAt": 1767573227405,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Mr. Green Bubble",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Mr.%20Green%20Bubble%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "classic"
+      ],
+      "placeId": "ChIJFbHTRZu2j4AR2-4juhjibJM",
+      "rating": 3.8,
+      "userRatingCount": 18,
+      "googleMapsUri": "https://maps.google.com/?cid=10623114216890167003&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJFbHTRZu2j4AR2-4juhjibJM/photos/AZLasHqcsxF4sM-HVjOwZ9n1RSh_Me0W0YIxc88ZqoFt-W46Z7MrHMuwOdhur78byc04QMUVqUU1hglF4p9jF7h_iAViwRy4J3IEIgrpJ1DFCeg2KCF6P3WVYFwyd2JGNesO34g59SmdneIVQzZtPsp2eLOXzJxtGIW61N5dQP9Mawf6kh_k7kmktTWWKJUusd9bEbX7KDVEstO0xgnbXPj7g1L_3ETVRK_IUTC_GBDKRpV_usCZHfxvmPFj35TV1OZ1sc_f2vfzUtyLtk88p4MzSub-9REpO1YLwlORN7mLW5TGNSll8PeLHRJELvFcsDMN3HFGclS6UwxKwes5QxN4xkTP-OfqAAxhizNPOh1DxS4tJcMtYuDXAG77ZyM2rZWnU_XJShxLJ9kGtyVteQkQZ9nNCm3WLw3KXHKdacfU-sp6_HS4",
+      "enrichedAt": 1767573229890,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Tastea",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Tastea%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "chain",
+        "fruit-tea"
+      ],
+      "placeId": "ChIJS1TWlTXMj4AR8nQsUmdj2wQ",
+      "rating": 4.2,
+      "userRatingCount": 474,
+      "googleMapsUri": "https://maps.google.com/?cid=349982691462771954&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJS1TWlTXMj4AR8nQsUmdj2wQ/photos/AZLasHqmyx_6_Qhc-KJgNe9yo4IiUq86dcppRTp063fhF-cHd48O5rrPFv7AV3oGUfZYhFo5U3XFNHtvKv_KigmLv1iBCEGHjCurCiFD0K9ZfA4-JkpjWk5tL87stz3vAbfTzeV4St2MN1dJQ5ci0YkEXtK4emxWabMyLmVV4xLTbYS6CYglo7_mEiqwQS8C8z7ED8e3P7lmNf6Gpjh4EheKED_Hll7qUqT_t8yPlSpuiYPDP0VmNpSXNzjOI1E-PpHpu1MCXfnv-Tl--8K6PHNRvIv7zydaHnJQNoBSp074Y_KgsO8DErbmIHxkOOCX5YZCsWvikrq6K0ms13vY1gq1lEFBXDquuUblRojlIxJruwtMreo0ynUJ0KgLSAsJmzeC0HUo_axOKkoYtCUq14wgJ-OhXt85a-2mdbceobQbiSY",
+      "enrichedAt": 1767573232431,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Happy Lemon",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Happy%20Lemon%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "salted-cheese",
+        "chain"
+      ],
+      "placeId": "ChIJFViJC8q1j4ARv60kXvvvVpk",
+      "rating": 4.3,
+      "userRatingCount": 151,
+      "googleMapsUri": "https://maps.google.com/?cid=11049282598695382463&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJFViJC8q1j4ARv60kXvvvVpk/photos/AZLasHoiwiUpuTFNuMiOkvDrjTRf03bK-ReyMq3MDEAyJB1vpY2L6DSr4zR7CQ3PPCUAnyHLXAJyQx8x0AavkBb2T2_FwHTxsTk__v8dXkn5fq_eDrolkEgQG8g8hh4Ktb5u-5dv3ij--dQz9iIGsRz3vh4Ew2Z5XPptpGl31_BdqikGXeQSUQSrKAGEEvXysvWf5YlQs3UaugPdUIvl3S5v5xGdhFc6JuA55-ZBixoupg5R2AfbzlV80x8e3XOOcnVHFPP2t4h4tgVpUGYYB1gNhrolhr8OrckbRE4Pkg9We3PWL18EXX7QMsZMVbfvtQuSqldnbS63i8lXfttntx23TOfmPcyD0kH0x1mRbbE1S6Fee1XHkj3yfiKuyk5n7JIhVJe2cCVLYFfL_M2NayXw1f9HMPz4XfHAsPSdyvka2J-zLg",
+      "enrichedAt": 1767573235031,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Tiger Tea & Juice",
+      "city": "Santa Clara",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Tiger%20Tea%20%26%20Juice%20Santa%20Clara%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "local"
+      ],
+      "placeId": "ChIJx3RZgrR3j4ARmwsEVkWe26g",
+      "rating": 4.4,
+      "userRatingCount": 329,
+      "googleMapsUri": "https://maps.google.com/?cid=12167492838904564635&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJx3RZgrR3j4ARmwsEVkWe26g/photos/AZLasHpvWIyFnh3IfVeWos2EqyYqUhtCyyfi0prnKxtRTdtpTN79jO2NSIhFuY7QQZKQApHKqtFwDWXxNvmEBRAGOKAE_KBZbWs_sBATJl9QnBzC3CYzj5pwH0kBmR004EOP2ZbjaLKpLA_FqNLNFHV3s-IWYKn536LeNOZZ797F26kUI7TBD81kv_M4ahsPb-ZbZSvcbcYft4mGVIBgxznqoPsWB2fKVXdyTMfhczIHm6CURFQa2HtLvO0m5VlZ8zj2phYoW65QfucdDf9AmqKyXGlwmSULgp6pB4Mm9RXuvaM4dVzwq-diqq4htO_WwFW1F9Nw0jtkKYMgTlHNOZ8NQr15DWUjVrXfarU-TPXzNj0zqj-VhzsPZIW-_zoONxgtlhxi8qmRjLapKrkMC3v6v4dg8BaSymDjANJ6WnQtDCY",
+      "enrichedAt": 1767573237573,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Milk + Tea",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Milk%20%2B%20Tea%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "chain"
+      ],
+      "placeId": "ChIJl-quum21j4ARHNh3FZvPWiI",
+      "rating": 4.5,
+      "userRatingCount": 566,
+      "googleMapsUri": "https://maps.google.com/?cid=2475519210180565020&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJl-quum21j4ARHNh3FZvPWiI/photos/AZLasHo2JFFmEJVerKyffXAxipZbQGqbVx5O0oan2gh4zKhKnlIJDOZ0ONgZ9bOb9U7e7sHA033wDnKq_NKveg4u-DBs1L6SDGKUSU5d_MItqjGGezOg2huS0mniOY2oSZPwD5Lbzpn4XtGR1JyjEowxqUmMq9p2Q3gI_EQY2MJ987i2wv3eTN2Sog4IJgK4Cf12uCZEwPC8ARahsC983vKZlMnX7FiD7G_h3hkDDmMeuybRMxfmsc-OJZNmoK-lD_i7Kh-95_IqMxLaJE6kc3IOSkGIBSClehx7AuP1HLEzzJDrlIb1X2MA2F2CVvQFcMSJxdURokuoqoRFkVHyS7tdhQnocopjkWrKEvoKhIRrtLr_gI4z7UxU7SYg8Vapfxn41e02Xw58VMMibscWvejLZINRZvBVI0O-q8TtmXtKgSi_mg",
+      "enrichedAt": 1767573238934,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Bubble Queen",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Bubble%20Queen%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "local"
+      ],
+      "placeId": "ChIJz2EGLGK3j4ARrNuOobfqk9g",
+      "rating": 4.6,
+      "userRatingCount": 67,
+      "googleMapsUri": "https://maps.google.com/?cid=15606075208179309484&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJz2EGLGK3j4ARrNuOobfqk9g/photos/AZLasHrzowTNNLt9TGquVd1QZcj_FbHfZQ84T9em8Fie5mJmqL9r2EpmE-tdJ3ZimByMHYSmh8xqyVDhmHf2sm14DZyNjYbeToCkNjTbIJyWv98uHdgNWvwdOa4hbAfpVlyeoKEs-gctOCRu0BwAItA_AhjIX-nwdo5J-FLBgDgU3A7T5s89toO-lQthvn8cF9PgUb2y-d5knGqEO3U3_WzdSToG4ko7y4AEGMwcL1mo0KwNWHseIANm6-rcyOwQp6Sm9mY6g7fklHcLQ8qOikl09ZnZZ7LinW3m_Sn8QxFhIB-jhw",
+      "enrichedAt": 1767573241450,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Tea Villa",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Tea%20Villa%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "classic"
+      ],
+      "placeId": "ChIJzbkMurzMj4ARUG3En45oPeI",
+      "rating": 4.1,
+      "userRatingCount": 124,
+      "googleMapsUri": "https://maps.google.com/?cid=16302301187926158672&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJzbkMurzMj4ARUG3En45oPeI/photos/AZLasHrSD7q7OvHzBqh387E_8RNnkG7m8StAxZPpfk4G8Af5h4vFVDs7ohIVDS6ZTAbGiS-NI_gL5qbNLMSd_OgSWm_6t15jujULt_4AUoKzaebWVrF-mK-J5bKt1Hxzm9uaK--jOLKOc2AvVmGdwGBDcduF2eyk6cxTc8swAD7wyF8p8lqv8raDZKrzp23WEc5nrraZeab5ReERT7ywyRIRVF0NadXKmkNmkVuPL1evudk0zseG5MpY1jG4ygBx88DnwtyxOXWPTiqjJjkmu8w0sSfwdKyGFj1CBsIsaz9VShUytmwF1k0t9shmKx3WbpZtNBTkBo7DdMuSHhMOX-T5UChAWTSbY_0ogpAVNa2kdntgZzI7GiSdOz1QSa2neMHzCFaWu5GvowQS18AWO7cD51O-A25mG8CwHtHLzORY9IbhKTXo",
+      "enrichedAt": 1767573244003,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Boba Bar",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Boba%20Bar%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "local"
+      ],
+      "placeId": "ChIJCbM49bnMj4ARVDw_01uK6Xw",
+      "rating": 4.3,
+      "userRatingCount": 674,
+      "googleMapsUri": "https://maps.google.com/?cid=9000877457267440724&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJCbM49bnMj4ARVDw_01uK6Xw/photos/AZLasHoa0Qjy5T1PsRPqBDLqHJGHhFMEJq5B0drhVae_YrTuaPGKMV_miLk9mvBG3Pv50IKPI3iTlycqtOdeI4H2ByBZAA0XbvxmQnzcuaQSWKB1AcAJvzRPdae2w8OiWr-FT39phXdiBcJvQ-jwDQCs85Tpsax51iLPE_nMp4Sd6tsnIpChBEwsnXMU341-VmpKLuqWqFLxBDKKAoghJybSN1EnKuJU0-NEZAxS8sZdOwyHBGfdp7wq1DQ69ZkELffxsOnoeb9yQWgbEKpVVW5jXpzV-4wHvLkdsBycvAsK7c3SRQ",
+      "enrichedAt": 1767573246587,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Tpumps",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Tpumps%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "bubble-tea"
+      ],
+      "placeId": "ChIJq_YTHgO1j4ARevLWLrQVELA",
+      "rating": 4.4,
+      "userRatingCount": 711,
+      "googleMapsUri": "https://maps.google.com/?cid=12686664013926822522&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJq_YTHgO1j4ARevLWLrQVELA/photos/AZLasHp4ZqGU1hHwUKCQG0icN_o-gUxWaDAIisioCbi9CtLdYNpfqj_c9EtS9GKq0QdUS-36UrZyYJQxupyR-Id0CA0y044dln05YXrXJ-LG_st6c_773NQmn7RTXrNGxtf4aZp66zJ2ex09ejsvNHYVneyeFxeI45SCXoZZAmt8MlK2ROIWxx2xsYe5_4ZpWc9b9u_mSW3intKK9nqO52riFEbKqdxbhyr-wYl_IJxMtJ58qH2ul9Rqoq9ZgXhZaQDRzanAl4WDHBBE3QTaG1SZZuWlBzGcmyzV6k4-btGhX7oUcA",
+      "enrichedAt": 1767568408643,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "One Zo",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=One%20Zo%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "bubble-tea"
+      ],
+      "placeId": "ChIJ4yB83PK1j4ARycOdSqjs4J4",
+      "rating": 4.4,
+      "userRatingCount": 62,
+      "googleMapsUri": "https://maps.google.com/?cid=11448410460326314953&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ4yB83PK1j4ARycOdSqjs4J4/photos/AZLasHpsqzSBxujh0pxm2kJwEaJJjRM5P8_9Ju7YWKpoFDECYoJ0TxVwcCX_G-9byUAoC-pM5IoAgE1E5_RT8iVg_Io-4Dm1k0MEKjh1WO7vU1yMp2MPkxiNwaBgeiKLew8l5vfLRHpcZnHmOo9Dw284yNLrQfvFRdt4pJPrF7WLoyQGhiaR7Zlna3NnjQjj3T4xd9o7xa-By6bH2DdJTNkzAlAwxupxDaZSh_1kA6xgAxmGdliRGvIFXqNWyfOYRRqw5iQ2p8w7Bep5z2UXasXWR-PI_bG-hKv-NYxRQYc1Vdrnz9IrDaXc4pnmOGfhjrsZfyDI_q8XDyG2fmeZklnEIBvDAPyZveHlO0f7Ov_dw2sucVnTC1PUhjra8qita94I-9tMldD-Q_KtaaKsn3nISQM2CMW8RZrbrX2taCkjjeLjxg",
+      "enrichedAt": 1767571273055,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Meet Fresh",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Meet%20Fresh%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "bubble-tea"
+      ],
+      "placeId": "ChIJTcIQDp61j4ARAt6_Xlg-ucM",
+      "rating": 3.9,
+      "userRatingCount": 2063,
+      "googleMapsUri": "https://maps.google.com/?cid=14103372257355095554&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJTcIQDp61j4ARAt6_Xlg-ucM/photos/AZLasHrEjY0a8fHyI5k_uFYQ3fRS8RdwDBKqQWZGZlP_PTtqZ2lClpyBEVZw1kyppy5SzRSuxB1KnO821PnIFsMM93DbglKju2Bzf8A-8q-_rf-3FhOXIFDdXltQxm9Q71-a2qZ_OP50SNyDNZuKSAQgJIQiAx1Pv38i4P3yRv2Di3M7QDZ_aEfy8jSipCwt7mwTdwx_u4dE-R4ac56tPrd4jzbgWG1z1uO-WuTU9SIASg20nle4rDP_GHeItGnU4a3tAq74qfHqcx1UFUf6IQQtVpptULyhpcRDOeRWkQnSoec",
+      "enrichedAt": 1767568412450,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Tiger Sugar",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Tiger%20Sugar%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "bubble-tea"
+      ],
+      "placeId": "ChIJTRnPsdm1j4ARgwRQZoltL8Y",
+      "rating": 4.3,
+      "userRatingCount": 263,
+      "googleMapsUri": "https://maps.google.com/?cid=14280753380309599363&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJTRnPsdm1j4ARgwRQZoltL8Y/photos/AZLasHpINdjJ0cVsjSRBFVWYFeiRb8DOjCB08A8V_eTbIeZQaw2UJEYMgr678lnfY2GEQYpmlC68Mxte6IE4WpdS1eLD2wPey-JAGaGGVUcnIyfOCZ8CESLT_isB5uEgwwp6GL4vSxWEOzcb8rFoOA3zGKy9WxiqYnB3fYwcGha0kszsWi3G9EA1WWWV3PUZdiRJ_SjN5xnZt3wrmK_PyyYJrFcJZLF7gQm5qArC6NRNOE1yYCMCBMAwCTY60xH7YnsI8c0QHdUUbB0EWxZt9_HJLHpm_qbnUkbiUvVHCnzve7KXoMJuc4hZ4Gs7GO3-aHr15M7G65IJ2d-yvxQwGECRxOW2O6imZEgkcLBEkiDfMXBvS1ct2ElF8RYWiKe_7-EaYC43-sGtibloG06ORkdANb7Zn0MbxAzYw3YT4hSKXGSw6A",
+      "enrichedAt": 1767568414894,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "The Alley",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=The%20Alley%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "bubble-tea"
+      ],
+      "placeId": "ChIJ3cDxjjS0j4AR80J_Bj4Jh3I",
+      "rating": 4,
+      "userRatingCount": 1367,
+      "googleMapsUri": "https://maps.google.com/?cid=8252575004181349107&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ3cDxjjS0j4AR80J_Bj4Jh3I/photos/AZLasHp8Dj6y9B9xVo2mtb1J7bM-W4IaVz2HkOQ2v-Hh_cbI9jZ4BCWQg-giOCqIrC1oBeNcn42dHKfur4hNG6cbh36BZY3XJSu06my-qaN2YD_VGmN_uEg6jbja1nuboSo-UPyrASwqoBSN3ceNqi_NIiy8iIfXxuMlbQkQsirgJ3E0ztbvWXK7um7vkTmz-26VO9qkhhqxoiftUqrOZBJixY3ozko6qKLx8EmqH9ZYEZoMne99vgVej8JlV-vJ5xbyzAg9LfG8s_-utsBtWu1kmtmhKs2sjJ9-BJaKEtylyd8rMg",
+      "enrichedAt": 1767571273055,
+      "enrichStatus": "ok"
+    }
+  ]
+}

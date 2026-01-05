@@ -1,0 +1,41 @@
+[
+    { "name": "CHICHA San Chen", "city": "Cupertino", "addressHint": "Stevens Creek Blvd Cupertino", "tags": ["premium", "tea-forward", "musthave"] },
+    { "name": "Molly Tea", "city": "Cupertino", "addressHint": "Stevens Creek Blvd Cupertino", "tags": ["milk-tea", "musthave"] },
+    { "name": "WOW Tea Drink", "city": "Cupertino", "addressHint": "Stevens Creek Blvd Cupertino", "tags": ["teapresso", "musthave"] },
+    { "name": "MoonTea", "city": "Cupertino", "addressHint": "Stevens Creek Blvd Cupertino", "tags": ["new", "milk-tea", "musthave"] },
+    { "name": "TP Tea", "city": "Cupertino", "tags": ["taiwanese", "classic", "musthave"] },
+    { "name": "Sunright Tea Studio", "city": "Sunnyvale", "tags": ["fruit-tea", "musthave"] },
+    { "name": "YiFang Taiwan Fruit Tea", "city": "Cupertino", "tags": ["fruit-tea", "chain"] },
+    { "name": "Happy Lemon", "city": "Sunnyvale", "tags": ["salted-cheese", "chain"] },
+  
+    { "name": "Ten Ren Tea", "city": "San Jose", "tags": ["classic", "tea-house", "musthave"] },
+    { "name": "Fantasia Coffee & Tea", "city": "San Jose", "tags": ["boba", "snacks", "musthave"] },
+    { "name": "Gong Cha", "city": "San Jose", "tags": ["chain", "classic"] },
+    { "name": "Sharetea", "city": "Cupertino", "tags": ["chain", "classic"] },
+    { "name": "Teaspoon", "city": "Sunnyvale", "tags": ["chain", "popular"] },
+    { "name": "Boba Guys", "city": "Mountain View", "tags": ["artisan", "popular"] },
+  
+    { "name": "7 Leaves Cafe", "city": "San Jose", "tags": ["chain", "milk-tea"] },
+    { "name": "T4 Tea For U", "city": "San Jose", "tags": ["classic", "taiwanese"] },
+    { "name": "Asha Tea House", "city": "San Jose", "tags": ["tea-forward", "no-boba"] },
+    { "name": "Purple Kow", "city": "San Jose", "tags": ["classic", "late-night"] },
+    { "name": "Ume Tea", "city": "San Jose", "tags": ["cheese-foam"] },
+  
+    { "name": "Tea Era", "city": "Mountain View", "tags": ["classic", "food"] },
+    { "name": "Boba Bliss", "city": "Sunnyvale", "tags": ["local", "popular"] },
+    { "name": "TeaTop", "city": "San Jose", "tags": ["taiwanese"] },
+    { "name": "Urban Ritual", "city": "Sunnyvale", "tags": ["milk-tea", "modern"] },
+    { "name": "Royaltea", "city": "San Jose", "tags": ["fruit-tea", "chain"] },
+  
+    { "name": "Quickly", "city": "Cupertino", "tags": ["old-school", "chain"] },
+    { "name": "Mr. Green Bubble", "city": "San Jose", "tags": ["classic"] },
+    { "name": "Tastea", "city": "San Jose", "tags": ["chain", "fruit-tea"] },
+    { "name": "Happy Lemon", "city": "San Jose", "tags": ["salted-cheese", "chain"] },
+  
+    { "name": "Tiger Tea & Juice", "city": "Santa Clara", "tags": ["local"] },
+    { "name": "Milk + Tea", "city": "San Jose", "tags": ["chain"] },
+    { "name": "Bubble Queen", "city": "Sunnyvale", "tags": ["local"] },
+    { "name": "Tea Villa", "city": "San Jose", "tags": ["classic"] },
+    { "name": "Boba Bar", "city": "San Jose", "tags": ["local"] }
+  ]
+  

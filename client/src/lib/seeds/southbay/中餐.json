@@ -1,0 +1,417 @@
+{
+  "version": 1,
+  "category": "中餐",
+  "region": "southbay",
+  "updatedAt": "2026-01-05T00:26:50.939Z",
+  "items": [
+    {
+      "name": "Din Tai Fung",
+      "city": "Santa Clara",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Din%20Tai%20Fung%20Santa%20Clara%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "taiwanese",
+        "classic"
+      ],
+      "placeId": "ChIJWWIlNx7Lj4ARpe1E0ob-_GI",
+      "rating": 4.4,
+      "userRatingCount": 4501
+    },
+    {
+      "name": "Chef Chu's",
+      "city": "Los Altos",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Chef%20Chu's%20Los%20Altos%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "shanghainese",
+        "classic"
+      ]
+    },
+    {
+      "name": "Fu Lam Mum",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Fu%20Lam%20Mum%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "cantonese",
+        "dim-sum"
+      ],
+      "placeId": "ChIJ57sfDTS3j4ARrjiqh6-gZLQ",
+      "rating": 4.1,
+      "userRatingCount": 1081
+    },
+    {
+      "name": "Tai Pan",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Tai%20Pan%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "cantonese",
+        "dim-sum"
+      ],
+      "placeId": "ChIJ_z0BiJPKj4ARnDraF8pIXKE",
+      "rating": 3.6,
+      "userRatingCount": 277
+    },
+    {
+      "name": "Joy Luck Palace",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Joy%20Luck%20Palace%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "cantonese",
+        "banquet"
+      ],
+      "placeId": "ChIJO7tbcBu1j4ARoay0lgaLw2U",
+      "rating": 3.9,
+      "userRatingCount": 818
+    },
+    {
+      "name": "Koi Palace",
+      "city": "Santa Clara",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Koi%20Palace%20Santa%20Clara%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "cantonese",
+        "high-end"
+      ],
+      "placeId": "ChIJPRCjX4i1j4ARo0hy6xuQHVI",
+      "rating": 3.7,
+      "userRatingCount": 418
+    },
+    {
+      "name": "New Port Dim Sum and Chinese Food",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=New%20Port%20Dim%20Sum%20and%20Chinese%20Food%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "cantonese",
+        "seafood"
+      ],
+      "placeId": "ChIJQxrQXjq1j4ARSb9V-Joogyk",
+      "rating": 4.1,
+      "userRatingCount": 601
+    },
+    {
+      "name": "Cooking Papa",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Cooking%20Papa%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "sichuan"
+      ]
+    },
+    {
+      "name": "Sichuan Impression",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Sichuan%20Impression%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "sichuan"
+      ],
+      "placeId": "ChIJMUDoKhLFwoARnf9iE98ouYc",
+      "rating": 4.3,
+      "userRatingCount": 889
+    },
+    {
+      "name": "Ma's Restaurant",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Ma's%20Restaurant%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "sichuan",
+        "spicy"
+      ],
+      "placeId": "ChIJ9QgKlRDMj4ARJBZ4nIFfZb4",
+      "rating": 4.1,
+      "userRatingCount": 977
+    },
+    {
+      "name": "Liang's Village",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Liang's%20Village%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "taiwanese",
+        "classic"
+      ],
+      "placeId": "ChIJUamHFaG1j4AROTmVVZJjq8I",
+      "rating": 4.1,
+      "userRatingCount": 762
+    },
+    {
+      "name": "QQ Noodle",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=QQ%20Noodle%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "noodles"
+      ],
+      "placeId": "ChIJA0G9Rw61j4AR435CQh9ikyI",
+      "rating": 4.3,
+      "userRatingCount": 1025
+    },
+    {
+      "name": "Din Ding Dumpling House",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Din%20Ding%20Dumpling%20House%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "taiwanese"
+      ],
+      "placeId": "ChIJvQbitWa2j4AR2n46sQ0lsbM",
+      "rating": 4.2,
+      "userRatingCount": 847
+    },
+    {
+      "name": "Taiwan Cafe",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Taiwan%20Cafe%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "taiwanese"
+      ],
+      "placeId": "ChIJL2RJ4tDIj4ARm4aIF-Uy2dM",
+      "rating": 4.4,
+      "userRatingCount": 759
+    },
+    {
+      "name": "Spicy Dragon",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Spicy%20Dragon%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "sichuan"
+      ],
+      "placeId": "ChIJo2H_-k63j4AR2halXqbYCiU",
+      "rating": 4.6,
+      "userRatingCount": 96
+    },
+    {
+      "name": "Chong Qing Xiao Mian",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Chong%20Qing%20Xiao%20Mian%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "noodles",
+        "chongqing"
+      ]
+    },
+    {
+      "name": "Ox 9 Lanzhou",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Ox%209%20Lanzhou%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "lamian"
+      ],
+      "placeId": "ChIJNWe3rNLLj4ARt8EYpfmBseI",
+      "rating": 3,
+      "userRatingCount": 57
+    },
+    {
+      "name": "Lanzhou Hand Pulled Noodles",
+      "city": "Santa Clara",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Lanzhou%20Hand%20Pulled%20Noodles%20Santa%20Clara%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "lamian"
+      ],
+      "placeId": "ChIJNWe3rNLLj4ARt8EYpfmBseI",
+      "rating": 3,
+      "userRatingCount": 57
+    },
+    {
+      "name": "Taste of China",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Taste%20of%20China%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "home-style"
+      ],
+      "placeId": "ChIJ2zODUly2j4ARarCCkZ4qYSE",
+      "rating": 4.2,
+      "userRatingCount": 577
+    },
+    {
+      "name": "Home Eat",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Home%20Eat%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "home-style"
+      ],
+      "placeId": "ChIJn1gLvcK1j4ARQ-cQ0eqQclY",
+      "rating": 4.7,
+      "userRatingCount": 1445
+    },
+    {
+      "name": "Dong Bei Mama",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Dong%20Bei%20Mama%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "northeastern"
+      ]
+    },
+    {
+      "name": "Yummy Tract",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Yummy%20Tract%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "taiwanese"
+      ],
+      "placeId": "ChIJ-VQ9hEMtjoARBuuPq_I5shQ"
+    },
+    {
+      "name": "Big Dish",
+      "city": "Mountain View",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Big%20Dish%20Mountain%20View%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "hunan"
+      ],
+      "placeId": "ChIJtdBL5rWAj4ARv08MgSsneVw",
+      "rating": 4,
+      "userRatingCount": 86
+    },
+    {
+      "name": "Hunan Impression",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Hunan%20Impression%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "hunan"
+      ]
+    },
+    {
+      "name": "Hunan Impression",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Hunan%20Impression%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "chinese"
+      ],
+      "placeId": "ChIJl41rEWC1j4AR9m5ndL7k-Js",
+      "rating": 4.4,
+      "userRatingCount": 1089,
+      "googleMapsUri": "https://maps.google.com/?cid=11238984376750927606&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJl41rEWC1j4AR9m5ndL7k-Js/photos/AZLasHrJdhldE11uJn7LXBckoZ9ERDBQTu0AEKtWtKJsKHFp-2i-rcFWEsbSGPSoiIi8RkTNtZk3TpC15xZn5UhMyaURLKNoLGQRoH5mCW4eY5q9cqoRsUnNaqfcn0p73Vugddmgm1re846EjSVTEARm43lgYLngvDwuHZl8WIXmvpT9WPi4hexXL3pAvzDQmOk1A1B8wCiphw1BRLYeIXkJ4BJSzIT-zqeCC5n-3gBSN8rOeLiPIIakAyzHv474JkGD8xBDS2bdiO_TY6UU2-wd7KwuhRapIzWOE36v9XU2SIj6SkAXUMfqwRoSVPry21Na6zcENwa-BhD1ju9N_eRAxqNPmB58YtRyeASRjE4srFg3eYGC-7IDl4XVh4c01YYOPIBs0m8YvvSEOglPbVLj5Ejm_FEEeaXskR82zeYtAnkkq3ac",
+      "enrichedAt": 1767567916718,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Szechuan Impression",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Szechuan%20Impression%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "chinese"
+      ],
+      "placeId": "ChIJ7dU9cte1j4AR1Badyy7SJQE",
+      "rating": 4.5,
+      "userRatingCount": 105,
+      "googleMapsUri": "https://maps.google.com/?cid=82703266602620628&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ7dU9cte1j4AR1Badyy7SJQE/photos/AZLasHoq46oG79yl2M9zn4IGG015xQkhpYyDaYFr6P7ykZ9pQAIsKRbT8TEh77QFk2btZ2lx8ybt0IyRt5MfvWtVpbuBoFSA2vIojZhoiZ42ZyztdCOJiDxTAXLsxc7VqbXs6RR8cyLRASWyIGnfWnjvsD0azZvs9dnxmsc1763XG_8BPA8YIOjYvTbnMGaJeKQgBfGWx_zsGPXiXzj8Sjysbeyw__ujP99yhu3XmwJd1QN15NyRi3zMYn9p4NORG9H2KRXe_7DHD8tI9JVPppthW6juCVPFy41m72SjPXH4dIhaqSm-ZTbY0xPgeQ9TirqQ3oMSMam0wUW0N8C12vQPhxQEKNXl3BSbexrXqVL25tJRtqf_OPyZ26b__1WxzvoyJr9NXhXsrpyPH6hsu9hI_CN2Gsn0gCvHwM8rbB5plVtzJc6gdnO-UbHNIR_hPamz",
+      "enrichedAt": 1767571273063,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Dumpling Time",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Dumpling%20Time%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "chinese"
+      ],
+      "placeId": "ChIJbbmaN_XLj4ARQQ3SaMyLo7w",
+      "rating": 3.8,
+      "userRatingCount": 451,
+      "googleMapsUri": "https://maps.google.com/?cid=13592861810382474561&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJbbmaN_XLj4ARQQ3SaMyLo7w/photos/AZLasHpuGXcsaTqMz-zmXa_9MmI9WeeQqP0YOKAQV4wY7sQ1jUgrrqbjBGu5hBoTDnXfQjPpgFjVDCjjkWIWST13h-htOrcxtCyY2R0Fj9QZ6lBYnpU7GKNPUndEnwBmCH6MjLdwJb6swFOixJQNdOwcnqz-jg0_4_vJ-dz9pMMUcWSJhgn9QSz9stFkNi1P9VTip-c6wvwZgokq3jTwxi82VvzTdJFDYJWiOUp-ZPfwCTzRncJ3nzPDtyHmIBTkgYt_gvMb_yKsCT5kKCMfKYfoLKAlUyNvMW9oPTEWYAgIAjAMdA",
+      "enrichedAt": 1767567920633,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Hankow Cuisine",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Hankow%20Cuisine%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "chinese"
+      ],
+      "placeId": "ChIJ8fiQYwO1j4ARIpej7lX-sPU",
+      "rating": 4,
+      "userRatingCount": 325,
+      "googleMapsUri": "https://maps.google.com/?cid=17703929780222793506&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ8fiQYwO1j4ARIpej7lX-sPU/photos/AZLasHrB8iYxD8jdY3bb6SMqOzDoICUKaMXZbx0wMuiW4fCisAIFs9X4f7ybP5Ht59VL2HphBFV6mrrn3EpH4m6h3A4xXSc0XdkqPzgqtICX-LxuC1afXqyzutOCb_Ec0QerBk7Genw9ZDz5fCAX1KfbLdzjMHtOi4GIMO82vE7FTNWkXNsTDpdZM4bMFzWAdwUPJD-LUy3NbnqpDBwF1YpQcwtTiK6qR7Dxp8ha2m3nkWrgoo6t-RTjQCWz1xT4RhuaPSn8oMP2sn3FaifNgzn0LERnRgP9N8RPvXyV3v5AbZKuK6GjHeIsvNxDzuzuAIBYjA-lqzqpO5ovemWJHmQvrFcZxQ_pF2Jw3wcNF9Z6xhRsQuRaoTUEu2Y55SYo8T07EswJ10rvXOtFIWjSA7s9Uc5CskL2cpa3K8l3FUp5xQE",
+      "enrichedAt": 1767567923146,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Spicy Hunan",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Spicy%20Hunan%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "chinese"
+      ],
+      "placeId": "ChIJVWa00YO1j4ARC7IHxI4bsQA",
+      "rating": 3.7,
+      "userRatingCount": 224,
+      "googleMapsUri": "https://maps.google.com/?cid=49851370865930763&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJVWa00YO1j4ARC7IHxI4bsQA/photos/AZLasHpAW3DtKHc5xhJ95xcMvIojoF6az_DVYTr8yNlKy8tiipyjW8Ye6MoSxasILxojfH_k6ZhOEsB-n9j6wuQpQrlVAj9d4ImKr5bch98rNanx8bJkiG5skzM0KiT8eYH520CluKeLzXIor9PR8V-IiHvaXry-1Lz6lX7UoIHJ8Fkt8XFDkN2WZV7cGbxg_keKhP_V7tnWtAqd4nnXguyS9HG5nDOm7XX2LJlpT8FSiKcn3pABgjXIECPxx9GWK8O0C5xLv-tg7jYcPK0_lE8D6NVU_P4TOm5htZBthtpy2xiRNyFBgXsrjuoLYn87IyT5ZOmtjnqthasdykDftEa6nt5BFzJHcHFcI1_xR8l9o9TvfhdNf_fgkPO3KKoht6r7mabhTbPbs03fBDgu6i-MTq2U9gDluDCfNtNDhVDUbw_H2CRSk0flxrO3Nm_PJ9up",
+      "enrichedAt": 1767571273063,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Shanghai Garden",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Shanghai%20Garden%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "chinese"
+      ],
+      "placeId": "ChIJKYAPjjS0j4ARbWD_xU1B2gA",
+      "rating": 3.9,
+      "userRatingCount": 366,
+      "googleMapsUri": "https://maps.google.com/?cid=61433347213058157&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJKYAPjjS0j4ARbWD_xU1B2gA/photos/AZLasHo8zYsDLX7Fjek5EulMjPCKMk0gSobY5GD-ltPwLleIOxzO7Vjj8b7PHYrf4htEkcDBXZ55_d4aksJ2cICDDEVar36cxwpfKjyhjeMC-7cqGUxwY5EVnCU-dXhMuUk5xl5cFFeRUkc9QPCKfvi9EG1AOgdXKBkNJ8ikD0zOhE8bQT6H_wkD--MzWZqGMeQUDjiY19p-iBd35h1vqxhQZHQGzpoBJhNBQn6inupRvSBFxsWuiEVa5diiEQ8CQ0F0NuOToQ0f_XRP5PHhRhjZibMuE3kNh0oKkEeHPNo8PIHYKKfgY7GOYyZo4yV6FQZKera1D2YumHhcaLA9jF8IFu6Hx5iyCGQgzYzvGOp-fdtAG9HpMFDuJ484TS5e8CD0SNlPz-nZ6Q2zqFbLKyJ7LxEknde-nptuaOSl8kMIw-yZ24aU",
+      "enrichedAt": 1767567927051,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Chef Chu's",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Chef%20Chu's%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "chinese"
+      ],
+      "placeId": "ChIJ1T9Tk5uwj4ARFI0FkzPKOvI",
+      "rating": 4.5,
+      "userRatingCount": 3052,
+      "googleMapsUri": "https://maps.google.com/?cid=17454485628686535956&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ1T9Tk5uwj4ARFI0FkzPKOvI/photos/AZLasHqAfu-s7mJYEyma3G3dkRMQTxRD45g4uxMJFosPzYLamCiX4n0bi-Tjbyc3fl3JbZ9PI9IOjUEL_iHBQyWCWyFQn_JG6l5qEL6dYPfT95jEWxmA97umi7wVzSYxXOhrfUuHuJua41q8NTEYQLgFfIEhpN9_s7boojGv3csXwVXMIdaWv2oWcHFy7Z2M1l-RPCGJHvdkfqldOP58EAs1RcW23DnQnvyb_PTrz3zyj439EZIjfpoSxydBu2pp4GJuYqeD14irzfXb0IUxrKPb32YyvALzsBdTTzMhuw7o47mFAoF5_JL75NBu-w_E1a8izrvcM8bUji54orVMI_sMY51cNg-MfEIWb60GgfCQc3_UnsF3m700fbsZ8rDhGKn3w-eBhXagZLdVGgt69aUHRcHUSp0DTvu2GcWsTM5zrflH0w",
+      "enrichedAt": 1767567938513,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Beijing Restaurant",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Beijing%20Restaurant%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "chinese"
+      ],
+      "placeId": "ChIJpUrSP_G1j4ARQpBkDaP9Owc",
+      "rating": 4.2,
+      "userRatingCount": 910,
+      "googleMapsUri": "https://maps.google.com/?cid=521289058637615170&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJpUrSP_G1j4ARQpBkDaP9Owc/photos/AZLasHrkuOjnuEzYapZ9i5ByTFGIlDsBKNRuPY7TxD3fdlP7bMIQUW74VqP0MU25Hy-XGgrg9zjIEdihj6v5l3PuEQqsHSFZLORs7uo7PTQqJFukxvpY89RYL-oCzUlDhUVvcMTg4QZJSBdiqhAdJdEUNI4KIiwM5-HF8K7IuIEcAD7MsjzeAwlpua7_BgZ6D_oSAxUFLgCCdjeGqIklu6giUdxuINEx20KvjLMwtWtZEtk7hIbLlCatl2SGHOKjfJetJDlW8shFRgL1L1mwEde_GSnuhomSuVh-3xMj3F7hAjGVxmbKvfrI_QMWQ00-itAyPBme3CC6an0qsfLgNHkEkkcwp_GYyXr_DaoE1b1J1nKmy-2FuAggc4g076SHw-0Be97TDY39hDlkBOmwKbnvyVROUcNomAFNkil5BnTxQ26y2w",
+      "enrichedAt": 1767567941085,
+      "enrichStatus": "ok"
+    }
+  ]
+}
