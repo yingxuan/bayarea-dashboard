@@ -38,6 +38,7 @@ import {
   normalizeStaleResponse,
   formatUpdatedAt,
 } from '../utils.js';
+import { fetchAllPlacesOptimized } from './placesOptimized.js';
 
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
 const SPEND_TODAY_CACHE_TTL = 12 * 60 * 60 * 1000; // 12 hours (increased from 24h for better cost control - food places don't need real-time freshness)
@@ -2551,33 +2552,112 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`[Spend Today] Cache MISS: fetching from API`);
     }
 
-    // Fetch from Google Places API
-    // If API key is not configured, skip API call and go directly to stale cache or seed data fallback
-    let allPlaces: SpendPlace[] = [];
-    if (!GOOGLE_PLACES_API_KEY) {
-      console.warn('[Spend Today] GOOGLE_PLACES_API_KEY not configured, skipping API call and using fallback');
-      console.warn('[Spend Today] Debug: process.env.GOOGLE_PLACES_API_KEY =', process.env.GOOGLE_PLACES_API_KEY ? `[Set, length: ${process.env.GOOGLE_PLACES_API_KEY.length}]` : '[Not set]');
-      console.warn('[Spend Today] All env vars containing "GOOGLE":', Object.keys(process.env).filter(k => k.toUpperCase().includes('GOOGLE')).join(', ') || 'None found');
-      allPlaces = [];
-    } else {
-      // Don't use userLocation - always search from city centers to ensure distance filtering
-      try {
-        // COST OPTIMIZATION DEBUG: Track API calls
-        const apiCallStartTime = Date.now();
-        allPlaces = await fetchAllPlacesFromGoogle(debugMode);
-        const apiCallDuration = Date.now() - apiCallStartTime;
-        
-        // Log API call summary (only in debug mode)
-        if (debugMode) {
-          console.log(`[Spend Today] API calls: ${apiCallDuration}ms, ${allPlaces.length} places`);
-        }
-      } catch (apiError: any) {
-        console.error('[Spend Today] Error fetching from Google Places API:', apiError);
-        // If API fails (e.g., REQUEST_DENIED, billing issue), continue to stale cache or seed data fallback
-        allPlaces = [];
-      }
+    // Check for manual refresh flag FIRST (before any API calls)
+    const manualRefresh = req.query.manual_refresh === '1';
+    
+    // HARD RULE: Normal requests NEVER call Places API
+    if (!manualRefresh) {
+      setCorsHeaders(res);
+      return res.status(200).json({
+        status: 'ok',
+        itemsByCategory: {},
+        items: [],
+        message: 'Use local cache - no API calls on normal load',
+      });
     }
     
+    // Manual refresh: fetch South Bay pools (2 API calls only)
+    // Fetch from Google Places API
+    // If API key is not configured, return error
+    let allPlaces: SpendPlace[] = [];
+    if (!GOOGLE_PLACES_API_KEY) {
+      console.error('[Spend Today] GOOGLE_PLACES_API_KEY not configured for manual refresh');
+      setCorsHeaders(res);
+      return res.status(500).json({
+        status: 'error',
+        error: 'API key not configured',
+        itemsByCategory: {},
+        items: [],
+      });
+    }
+    
+    // Manual refresh: fetch South Bay pools (2 API calls only)
+    try {
+      const { searchNearbyPlaces } = await import('./placesClient.js');
+      const SOUTH_BAY_CENTER = { lat: 37.3230, lng: -122.0322 }; // Cupertino center
+      const RADIUS_METERS = 15000; // ~9.3 miles to cover South Bay
+      
+      // Fetch restaurant pool
+      const restaurantResponse = await searchNearbyPlaces(
+        {
+          city: 'southbay',
+          type: 'restaurant',
+          radiusMeters: RADIUS_METERS,
+          maxResultCount: 20,
+        },
+        SOUTH_BAY_CENTER
+      );
+
+      // Fetch cafe pool
+      const cafeResponse = await searchNearbyPlaces(
+        {
+          city: 'southbay',
+          type: 'cafe',
+          radiusMeters: RADIUS_METERS,
+          maxResultCount: 20,
+        },
+        SOUTH_BAY_CENTER
+      );
+
+      // Convert to SpendPlace format
+      const restaurantPlaces: SpendPlace[] = (restaurantResponse.places || [])
+        .filter((p) => p.id && p.displayName?.text && p.googleMapsUri)
+        .map((p) => ({
+          id: p.id,
+          name: p.displayName!.text,
+          category: '中餐', // Will be filtered client-side
+          rating: p.rating || 0,
+          user_ratings_total: p.userRatingCount || 0,
+          address: p.formattedAddress || '',
+          maps_url: p.googleMapsUri!,
+          photo_url: p.photos?.[0]?.name,
+          city: 'southbay',
+          score: (p.userRatingCount || 0) * (p.rating || 0),
+          distance_miles: undefined,
+        }));
+
+      const cafePlaces: SpendPlace[] = (cafeResponse.places || [])
+        .filter((p) => p.id && p.displayName?.text && p.googleMapsUri)
+        .map((p) => ({
+          id: p.id,
+          name: p.displayName!.text,
+          category: '奶茶',
+          rating: p.rating || 0,
+          user_ratings_total: p.userRatingCount || 0,
+          address: p.formattedAddress || '',
+          maps_url: p.googleMapsUri!,
+          photo_url: p.photos?.[0]?.name,
+          city: 'southbay',
+          score: (p.userRatingCount || 0) * (p.rating || 0),
+          distance_miles: undefined,
+        }));
+
+      // Combine
+      allPlaces = [...restaurantPlaces, ...cafePlaces];
+      
+      console.log(`[Spend Today] Manual refresh: ${restaurantPlaces.length} restaurants, ${cafePlaces.length} cafes`);
+    } catch (apiError: any) {
+      console.error('[Spend Today] Error in manual refresh:', apiError);
+      setCorsHeaders(res);
+      return res.status(500).json({
+        status: 'error',
+        error: apiError.message || 'Manual refresh failed',
+        itemsByCategory: {},
+        items: [],
+      });
+    }
+    
+    // Continue with grouping logic for manual refresh
     if (allPlaces.length === 0) {
       // Try to return stale cache if available
       const stale = getStaleCache(cacheKey);

@@ -11,7 +11,7 @@
  * - Never show empty sections
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { MapPin, Star } from "lucide-react";
 import {
   Carousel,
@@ -20,6 +20,11 @@ import {
   CarouselPrevious,
   CarouselNext,
 } from "@/components/ui/carousel";
+import { refreshNewPlaces, getNewPlacesPool } from "@/hooks/usePlacesCache";
+import { getCacheAgeDays } from "@/lib/places/localCache";
+import { enrichPlace, getEnrichmentStats } from "@/lib/places/placeEnricher";
+import { getEnrichmentKey, getEnriched } from "@/lib/places/enrichmentCache";
+import { config } from "@/config";
 
 interface SpendPlace {
   id: string;
@@ -172,6 +177,9 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
   const [isRolling, setIsRolling] = useState(false);
   const [revealedRandomPlace, setRevealedRandomPlace] = useState<SpendPlace | null>(null);
   const [lastPickedId, setLastPickedId] = useState<string | null>(null);
+  
+  // State for enriched places (rating, photo from Places API)
+  const [enrichedPlaces, setEnrichedPlaces] = useState<Map<string, { rating: number; userRatingCount: number; photoUrl?: string }>>(new Map());
 
   // Debug logging
   console.log(`[SpendCarousel] Category: "${category}", Places count: ${places.length}, Offset: ${offset}`);
@@ -219,20 +227,199 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
 
   // For 新店打卡: show all available places (no minimum requirement)
   // For other categories: select 5 places starting from offset (for "换一批" functionality)
-  let top5Places: SpendPlace[] = [];
-  
-  // Use modulo to cycle through places if offset exceeds array length
-  const normalizedOffset = Math.max(0, Math.min(offset, places.length - 1));
-  
-  if (normalizedOffset + 5 <= places.length) {
-    // Normal case: we have enough places from current offset
-    top5Places = places.slice(normalizedOffset, normalizedOffset + 5);
-  } else {
-    // Wrap around: take remaining from current offset + take from start
-    const fromEnd = places.slice(normalizedOffset);
-    const fromStart = places.slice(0, 5 - fromEnd.length);
-    top5Places = [...fromEnd, ...fromStart];
-  }
+  const top5Places = useMemo(() => {
+    let result: SpendPlace[] = [];
+    
+    // STEP 5: For 夜宵, show all places (no opening hours filter)
+    // Opening hours filter has been removed - all 夜宵 places from seed file are shown
+    if (category === '夜宵') {
+      // Show all places without filtering by opening hours
+      const normalizedOffset = Math.max(0, Math.min(offset, places.length - 1));
+      
+      if (normalizedOffset + 5 <= places.length) {
+        result = places.slice(normalizedOffset, normalizedOffset + 5);
+      } else {
+        const fromEnd = places.slice(normalizedOffset);
+        const fromStart = places.slice(0, 5 - fromEnd.length);
+        result = [...fromEnd, ...fromStart];
+      }
+      
+      if (import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1')) {
+        console.log(`[SpendCarousel] 夜宵: Showing ${result.length} places (no opening hours filter applied)`);
+      }
+      
+      return result;
+    }
+    
+    // STEP 7: For 新店打卡, filter using seed file enriched data (rating, userRatingCount)
+    if (category === '新店打卡') {
+      // Filter places based on seed file enriched data (place.rating, place.user_ratings_total)
+      // or runtime enriched data if available
+      const filtered = places.filter(place => {
+        const enrichmentKey = getEnrichmentKey(place.id, place.name, place.city);
+        const enriched = enrichedPlaces.get(enrichmentKey);
+        
+        // Use runtime enriched data if available, otherwise use seed file enriched data
+        // IMPORTANT: Always check seed file data first to enforce >= 500 filter
+        const seedRatingCount = place.user_ratings_total ?? 0;
+        const enrichedRatingCount = enriched?.userRatingCount;
+        
+        // Use the higher value to ensure we don't miss any >= 500 cases
+        const ratingCount = enrichedRatingCount ?? seedRatingCount;
+        const rating = enriched?.rating ?? (place.rating && place.rating > 0 ? place.rating : 0);
+        
+        // Hard exclude: >= 500 ratingCount is NEVER "new-ish" (MANDATORY FILTER)
+        // This must be checked FIRST, before any other logic
+        if (ratingCount >= 500) {
+          if (import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1')) {
+            console.log(`[SpendCarousel] 新店打卡: Excluding ${place.name} (ratingCount: ${ratingCount} >= 500) - HARD EXCLUDE`);
+          }
+          return false;
+        }
+        
+        // Apply filter using available data (from seed file or runtime enrichment)
+        if (rating > 0 && ratingCount > 0) {
+          // Primary: rating >= 4.0, count <= 150
+          if (rating >= 4.0 && ratingCount <= 150) {
+            if (import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1')) {
+              console.log(`[SpendCarousel] 新店打卡: Including ${place.name} (rating: ${rating}, count: ${ratingCount}) - PRIMARY`);
+            }
+            return true;
+          }
+          // Fallback: rating >= 3.8, count <= 250
+          if (rating >= 3.8 && ratingCount <= 250) {
+            if (import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1')) {
+              console.log(`[SpendCarousel] 新店打卡: Including ${place.name} (rating: ${rating}, count: ${ratingCount}) - FALLBACK`);
+            }
+            return true;
+          }
+          // Extended fallback: rating >= 3.5, count <= 500 (but still exclude >= 500 from hard rule above)
+          if (rating >= 3.5 && ratingCount < 500) {
+            if (import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1')) {
+              console.log(`[SpendCarousel] 新店打卡: Including ${place.name} (rating: ${rating}, count: ${ratingCount}) - EXTENDED FALLBACK`);
+            }
+            return true;
+          }
+          if (import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1')) {
+            console.log(`[SpendCarousel] 新店打卡: Excluding ${place.name} (rating: ${rating}, count: ${ratingCount} - doesn't meet thresholds)`);
+          }
+          return false;
+        }
+        
+        // If no rating/count data available, exclude it (strict filtering)
+        // We cannot include places without rating/count data because we cannot verify they don't have >= 500 count
+        // This ensures the >= 500 filter is always enforced
+        if (import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1')) {
+          console.log(`[SpendCarousel] 新店打卡: Excluding ${place.name} (no rating/count data available, cannot verify < 500, rating: ${rating}, count: ${ratingCount})`);
+        }
+        return false;
+      });
+      
+      // Use modulo to cycle through filtered places
+      const normalizedOffset = Math.max(0, Math.min(offset, filtered.length - 1));
+      
+      if (normalizedOffset + 5 <= filtered.length) {
+        result = filtered.slice(normalizedOffset, normalizedOffset + 5);
+      } else {
+        const fromEnd = filtered.slice(normalizedOffset);
+        const fromStart = filtered.slice(0, 5 - fromEnd.length);
+        result = [...fromEnd, ...fromStart];
+      }
+      
+      return result;
+    }
+    
+    // Other categories: normal rotation
+    const normalizedOffset = Math.max(0, Math.min(offset, places.length - 1));
+    
+    if (normalizedOffset + 5 <= places.length) {
+      // Normal case: we have enough places from current offset
+      result = places.slice(normalizedOffset, normalizedOffset + 5);
+    } else {
+      // Wrap around: take remaining from current offset + take from start
+      const fromEnd = places.slice(normalizedOffset);
+      const fromStart = places.slice(0, 5 - fromEnd.length);
+      result = [...fromEnd, ...fromStart];
+    }
+    
+    return result;
+  }, [places, offset, category, enrichedPlaces]);
+
+  // STEP 5: Load enrichment cache and schedule enrichment for missing items
+  useEffect(() => {
+    async function loadAndEnrich() {
+      // Load ALL places (not just top5) to filter properly
+      const allPlacesToCheck = places;
+      if (allPlacesToCheck.length === 0) return;
+
+      // Load cached enrichments for ALL places (for filtering)
+      const keys = allPlacesToCheck.map(place => 
+        getEnrichmentKey(place.id, place.name, place.city)
+      );
+      
+      const cachedEnrichments = await Promise.all(
+        keys.map(key => getEnriched(key))
+      );
+
+      // Update state with cached enrichments for ALL places
+      const newEnriched = new Map<string, { rating: number; userRatingCount: number; photoUrl?: string }>();
+      for (let i = 0; i < allPlacesToCheck.length; i++) {
+        const place = allPlacesToCheck[i];
+        const enriched = cachedEnrichments[i];
+        if (enriched) {
+          const key = getEnrichmentKey(place.id, place.name, place.city);
+          newEnriched.set(key, {
+            rating: enriched.rating,
+            userRatingCount: enriched.userRatingCount,
+            photoUrl: enriched.photo?.photoUrl,
+          });
+        }
+      }
+      setEnrichedPlaces(newEnriched);
+
+
+      // Schedule enrichment for missing items (non-blocking, respect MAX_ENRICH_CALLS)
+      // Enrich ALL places (not just top5) so filtering works correctly
+      let enrichCount = 0;
+      for (let i = 0; i < allPlacesToCheck.length && enrichCount < 3; i++) {
+        const place = allPlacesToCheck[i];
+        if (!cachedEnrichments[i] && place.id) {
+          enrichCount++;
+          // Enrich in background (don't await)
+          enrichPlace(place.name, place.city, place.id).then(enriched => {
+            if (enriched) {
+              const key = getEnrichmentKey(place.id, place.name, place.city);
+              setEnrichedPlaces(prev => {
+                const updated = new Map(prev);
+                updated.set(key, {
+                  rating: enriched.rating,
+                  userRatingCount: enriched.userRatingCount,
+                  photoUrl: enriched.photo?.photoUrl,
+                });
+                return updated;
+              });
+            }
+          }).catch(error => {
+            console.error('[SpendCarousel] Error enriching place:', error);
+          });
+        }
+      }
+
+
+      // Log stats (dev only)
+      if (import.meta.env.DEV) {
+        const stats = await getEnrichmentStats();
+        console.log('[SpendCarousel] Enrichment stats:', {
+          cacheHitCount: cachedEnrichments.filter(e => e !== null).length,
+          cacheMissCount: cachedEnrichments.filter(e => e === null).length,
+          callsMadeThisSession: stats.callsMadeThisSession,
+          inCooldown: stats.inCooldown,
+        });
+      }
+    }
+
+    loadAndEnrich();
+  }, [places.map(p => `${p.id || ''}_${p.name}_${p.city}`).join('|'), category]);
 
   // Random pool: use all available places (up to 20) for random selection
   const randomPool = places.slice(0, 20);
@@ -278,6 +465,31 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
     setRevealedRandomPlace(selected);
     setLastPickedId(selected.id);
     setIsRolling(false);
+
+    // Enrich the random place if not cached (non-blocking)
+    const enrichmentKey = getEnrichmentKey(selected.id, selected.name, selected.city);
+    if (!enrichedPlaces.has(enrichmentKey)) {
+      getEnriched(enrichmentKey).then(cached => {
+        if (!cached) {
+          // Not in cache, enrich it
+          enrichPlace(selected.name, selected.city, selected.id).then(enriched => {
+            if (enriched) {
+              setEnrichedPlaces(prev => {
+                const updated = new Map(prev);
+                updated.set(enrichmentKey, {
+                  rating: enriched.rating,
+                  userRatingCount: enriched.userRatingCount,
+                  photoUrl: enriched.photo?.photoUrl,
+                });
+                return updated;
+              });
+            }
+          }).catch(error => {
+            console.error('[SpendCarousel] Error enriching random place:', error);
+          });
+        }
+      });
+    }
   };
 
   return (
@@ -287,17 +499,31 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
         <h3 className="text-[13px] font-mono font-medium text-foreground/80">
           {category}
         </h3>
-        {/* For 新店打卡: no "换一批" button (data may be limited) */}
-        {/* For other categories: show "换一批" if places.length > 5 */}
-        {onRefresh && category !== '新店打卡' && places.length > 5 && (
-          <button
-            onClick={onRefresh}
-            className="text-xs opacity-60 hover:opacity-100 transition-opacity font-mono font-normal px-2 py-0.5 rounded hover:bg-primary/10 border border-primary/20 hover:border-primary/40"
-            title="换一批"
-          >
-            换一批
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* For 新店打卡: show manual refresh button (debug mode only) */}
+          {category === '新店打卡' && (() => {
+            const isDev = import.meta.env.DEV;
+            const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+            const debugMode = urlParams?.get('debug') === '1' || isDev;
+            
+            if (!debugMode) return null;
+            
+            return (
+              <NewPlacesRefreshButton />
+            );
+          })()}
+          
+          {/* For other categories: show "换一批" if places.length > 5 */}
+          {onRefresh && category !== '新店打卡' && places.length > 5 && (
+            <button
+              onClick={onRefresh}
+              className="text-xs opacity-60 hover:opacity-100 transition-opacity font-mono font-normal px-2 py-0.5 rounded hover:bg-primary/10 border border-primary/20 hover:border-primary/40"
+              title="换一批"
+            >
+              换一批
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Horizontal Carousel - 6 cards: 5 normal places + 1 random */}
@@ -314,11 +540,130 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
         <CarouselContent className="-ml-2 min-w-0 items-stretch">
           {/* Card 1-5: Normal places */}
           {top5Places.map((place) => {
-            const photoUrl = place.photo_url || getFallbackImage();
+            // STEP 4: Resolve image per item (with enrichment support)
+            const resolveImageSrc = (): { src: string; source: string } => {
+              const enrichmentKey = getEnrichmentKey(place.id, place.name, place.city);
+              const enriched = enrichedPlaces.get(enrichmentKey);
+              
+              // Priority 1: Enriched photo URL (from runtime enrichment)
+              if (enriched?.photoUrl) {
+                return { src: enriched.photoUrl, source: 'enriched_photo' };
+              }
+              
+              // Priority 2: Seed photoName/photoReference (from offline enrichment)
+              // photo_url can be:
+              // - photoName: "places/{place_id}/photos/{photo_id}"
+              // - photoReference: "CmRa..."
+              // - URL: already a full URL
+              if (place.photo_url) {
+                // Check if it's a photoName (New API format)
+                if (place.photo_url.startsWith('places/') || place.photo_url.includes('/photos/')) {
+                  const proxyUrl = `${config.apiBaseUrl}/api/spend/place-photo?photoName=${encodeURIComponent(place.photo_url)}`;
+                  return { src: proxyUrl, source: 'seed_photo_proxy' };
+                }
+                // Check if it's a photoReference (Legacy format - usually starts with "CmRa" or similar)
+                if (place.photo_url.length > 20 && !place.photo_url.startsWith('http')) {
+                  const proxyUrl = `${config.apiBaseUrl}/api/spend/place-photo?photoReference=${encodeURIComponent(place.photo_url)}`;
+                  return { src: proxyUrl, source: 'seed_photo_proxy' };
+                }
+                // Otherwise it's already a URL, use directly
+                if (place.photo_url.startsWith('http')) {
+                  return { src: place.photo_url, source: 'seed_photo_url' };
+                }
+              }
+              
+              // Priority 4: Deterministic fallback based on item identity (NOT index)
+              const itemIdentity = place.id || `${place.name}_${place.city}`;
+              let hash = 0;
+              for (let i = 0; i < itemIdentity.length; i++) {
+                hash = ((hash << 5) - hash) + itemIdentity.charCodeAt(i);
+                hash = hash & hash;
+              }
+              const seed = Math.abs(hash);
+              
+              const categoryImages: Record<string, string[]> = {
+                '奶茶': [
+                  'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=400&h=300&fit=crop',
+                  'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop',
+                  'https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=400&h=300&fit=crop',
+                  'https://images.unsplash.com/photo-1597484662343-072a73a3c0e1?w=400&h=300&fit=crop',
+                  'https://images.unsplash.com/photo-1600298881974-6be191ceeda1?w=400&h=300&fit=crop',
+                ],
+                '中餐': [
+                  'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=300&fit=crop',
+                  'https://images.unsplash.com/photo-1525755662776-9d797cd77072?w=400&h=300&fit=crop',
+                  'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=400&h=300&fit=crop',
+                  'https://images.unsplash.com/photo-1562967914-608f82629710?w=400&h=300&fit=crop',
+                  'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&h=300&fit=crop',
+                ],
+                '夜宵': [
+                  'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=300&fit=crop',
+                  'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&h=300&fit=crop',
+                  'https://images.unsplash.com/photo-1529042410759-befb1204b468?w=400&h=300&fit=crop',
+                  'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400&h=300&fit=crop',
+                  'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400&h=300&fit=crop',
+                ],
+                '新店打卡': [
+                  'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop',
+                  'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400&h=300&fit=crop',
+                  'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop',
+                  'https://images.unsplash.com/photo-1552569973-6103e6a0a0e1?w=400&h=300&fit=crop',
+                  'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop',
+                ],
+              };
+              const images = categoryImages[category] || categoryImages['中餐'];
+              const fallbackSrc = images[seed % images.length];
+              return { src: fallbackSrc, source: 'deterministic_fallback' };
+            };
+            
+            const { src: photoUrl, source: imageSource } = resolveImageSrc();
             const isFallback = (place as any).isFallback;
             
+            // Get enriched rating/userRatingCount if available
+            // Priority: runtime enrichment > seed enriched data > fallback to 0
+            const enrichmentKey = getEnrichmentKey(place.id, place.name, place.city);
+            const enriched = enrichedPlaces.get(enrichmentKey);
+            // Use runtime enriched data if available, otherwise use seed file enriched data (place.rating/user_ratings_total)
+            const displayRating = enriched?.rating ?? (place.rating && place.rating > 0 ? place.rating : 0);
+            const displayUserRatingCount = enriched?.userRatingCount ?? (place.user_ratings_total && place.user_ratings_total > 0 ? place.user_ratings_total : 0);
+            
+            // STEP 1: Hard debug logs per card (MANDATORY)
+            const itemKey = place.id || `${place.name}|${place.city}`.toLowerCase().trim().replace(/\s+/g, '_');
+            const photoIdentifier = enriched?.photoUrl ? 
+              (enriched.photoUrl.includes('photo_reference=') ? 
+                enriched.photoUrl.match(/photo_reference=([^&]+)/)?.[1] : 
+                enriched.photoUrl.match(/photos\/([^/]+)/)?.[1]) : 
+              null;
+            
+            if (import.meta.env.DEV || typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1') {
+              console.log(`[SpendCarousel] Card ${itemKey}:`, {
+                itemKey,
+                itemName: place.name,
+                imageSrc: photoUrl,
+                imageSource,
+                photoIdentifier,
+                reactKey: itemKey,
+                hasPhotoUrl: !!place.photo_url,
+                hasEnriched: !!enriched,
+                enrichedPhotoUrl: enriched?.photoUrl,
+                rating: {
+                  fromRuntime: enriched?.rating,
+                  fromSeed: place.rating,
+                  display: displayRating,
+                },
+                userRatingCount: {
+                  fromRuntime: enriched?.userRatingCount,
+                  fromSeed: place.user_ratings_total,
+                  display: displayUserRatingCount,
+                },
+              });
+            }
+            
+            // STEP 3: Use stable, unique key (NOT index)
+            const stableKey = itemKey;
+            
             return (
-              <CarouselItem key={place.id} className="pl-2 basis-auto flex items-center">
+              <CarouselItem key={stableKey} className="pl-2 basis-auto flex items-center">
                 <a
                   href={isFallback ? '#' : place.maps_url}
                   target={isFallback ? undefined : "_blank"}
@@ -332,10 +677,17 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
                       alt={place.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={(e) => {
-                        // Fallback to category image if photo fails to load
+                        // Fallback: if image fails, use category fallback (but log for debugging)
                         const target = e.target as HTMLImageElement;
-                        if (target.src !== getFallbackImage()) {
-                          target.src = getFallbackImage();
+                        const fallback = getFallbackImage();
+                        if (target.src !== fallback) {
+                          if (import.meta.env.DEV) {
+                            console.warn(`[SpendCarousel] Image failed to load for ${place.name}, using category fallback:`, {
+                              failedSrc: target.src,
+                              fallbackSrc: fallback,
+                            });
+                          }
+                          target.src = fallback;
                         }
                       }}
                     />
@@ -347,7 +699,15 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
                       <h4 className="text-[13px] font-medium mb-0.5 truncate drop-shadow-lg leading-tight">{place.name}</h4>
                       <div className="flex items-baseline gap-1.5 text-[11px] opacity-70 drop-shadow-md font-mono font-normal">
                         <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 flex-shrink-0" />
-                        <span className="tabular-nums">{place.rating.toFixed(1)}</span>
+                        <span className="tabular-nums">
+                          {displayRating > 0 ? displayRating.toFixed(1) : '—'}
+                        </span>
+                        {displayUserRatingCount > 0 && (
+                          <>
+                            <span className="text-white/60">•</span>
+                            <span className="tabular-nums text-[10px]">{displayUserRatingCount}</span>
+                          </>
+                        )}
                         {place.distance_miles !== undefined && (
                           <>
                             <span className="text-white/60">•</span>
@@ -374,23 +734,96 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
                 className="block w-44 rounded-lg overflow-hidden bg-card/50 border border-border/50 hover:border-primary/50 transition-all group"
               >
                 <div className="relative w-full h-32 bg-muted overflow-hidden">
-                  <img
-                    src={revealedRandomPlace.photo_url || getFallbackImage()}
-                    alt={revealedRandomPlace.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      if (target.src !== getFallbackImage()) {
-                        target.src = getFallbackImage();
+                  {(() => {
+                    // Resolve image for random place (same logic as normal places)
+                    const resolveImageSrc = (): string => {
+                      const enrichmentKey = getEnrichmentKey(revealedRandomPlace.id, revealedRandomPlace.name, revealedRandomPlace.city);
+                      const enriched = enrichedPlaces.get(enrichmentKey);
+                      
+                      // Priority 1: Enriched photo URL
+                      if (enriched?.photoUrl) {
+                        return enriched.photoUrl;
                       }
-                    }}
-                  />
+                      
+                      // Priority 2: Original photo_url
+                      if (revealedRandomPlace.photo_url) {
+                        return revealedRandomPlace.photo_url;
+                      }
+                      
+                      // Priority 3: Deterministic fallback
+                      const itemIdentity = revealedRandomPlace.id || `${revealedRandomPlace.name}_${revealedRandomPlace.city}`;
+                      let hash = 0;
+                      for (let i = 0; i < itemIdentity.length; i++) {
+                        hash = ((hash << 5) - hash) + itemIdentity.charCodeAt(i);
+                        hash = hash & hash;
+                      }
+                      const seed = Math.abs(hash);
+                      
+                      const categoryImages: Record<string, string[]> = {
+                        '奶茶': [
+                          'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=400&h=300&fit=crop',
+                          'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop',
+                          'https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=400&h=300&fit=crop',
+                        ],
+                        '中餐': [
+                          'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=300&fit=crop',
+                          'https://images.unsplash.com/photo-1525755662776-9d797cd77072?w=400&h=300&fit=crop',
+                          'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=400&h=300&fit=crop',
+                        ],
+                        '夜宵': [
+                          'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=300&fit=crop',
+                          'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&h=300&fit=crop',
+                          'https://images.unsplash.com/photo-1529042410759-befb1204b468?w=400&h=300&fit=crop',
+                        ],
+                        '新店打卡': [
+                          'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop',
+                          'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400&h=300&fit=crop',
+                          'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop',
+                        ],
+                      };
+                      const images = categoryImages[category] || categoryImages['中餐'];
+                      return images[seed % images.length];
+                    };
+                    const photoUrl = resolveImageSrc();
+                    return (
+                      <img
+                        src={photoUrl}
+                        alt={revealedRandomPlace.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          if (target.src !== getFallbackImage()) {
+                            target.src = getFallbackImage();
+                          }
+                        }}
+                      />
+                    );
+                  })()}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-2 text-white z-10">
                     <h4 className="text-[13px] font-medium mb-0.5 truncate drop-shadow-lg leading-tight">{revealedRandomPlace.name}</h4>
                     <div className="flex items-baseline gap-1.5 text-[11px] opacity-70 drop-shadow-md font-mono font-normal">
                       <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 flex-shrink-0" />
-                      <span className="tabular-nums">{revealedRandomPlace.rating.toFixed(1)}</span>
+                      {(() => {
+                        const enrichmentKey = getEnrichmentKey(revealedRandomPlace.id, revealedRandomPlace.name, revealedRandomPlace.city);
+                        const enriched = enrichedPlaces.get(enrichmentKey);
+                        // Use runtime enriched data if available, otherwise use seed file enriched data
+                        const displayRating = enriched?.rating ?? (revealedRandomPlace.rating && revealedRandomPlace.rating > 0 ? revealedRandomPlace.rating : 0);
+                        const displayUserRatingCount = enriched?.userRatingCount ?? (revealedRandomPlace.user_ratings_total && revealedRandomPlace.user_ratings_total > 0 ? revealedRandomPlace.user_ratings_total : 0);
+                        return (
+                          <>
+                            <span className="tabular-nums">
+                              {displayRating > 0 ? displayRating.toFixed(1) : '—'}
+                            </span>
+                            {displayUserRatingCount > 0 && (
+                              <>
+                                <span className="text-white/60">•</span>
+                                <span className="tabular-nums text-[10px]">{displayUserRatingCount}</span>
+                              </>
+                            )}
+                          </>
+                        );
+                      })()}
                       {revealedRandomPlace.distance_miles !== undefined && (
                         <>
                           <span className="text-white/60">•</span>
@@ -433,6 +866,85 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
           </CarouselItem>
         </CarouselContent>
       </Carousel>
+    </div>
+  );
+}
+
+/**
+ * Manual refresh button for 新店打卡 (debug mode only)
+ */
+function NewPlacesRefreshButton() {
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastResult, setLastResult] = useState<{ success: boolean; message?: string } | null>(null);
+  const [cacheInfo, setCacheInfo] = useState<{ ageDays?: number; poolSize?: number } | null>(null);
+
+  // Load cache info on mount
+  useEffect(() => {
+    async function loadCacheInfo() {
+      const pool = await getNewPlacesPool();
+      if (pool) {
+        setCacheInfo({
+          ageDays: getCacheAgeDays(pool),
+          poolSize: pool.items.length,
+        });
+      }
+    }
+    loadCacheInfo();
+  }, [lastResult]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setLastResult(null);
+    
+    try {
+      const result = await refreshNewPlaces();
+      
+      if (result.success) {
+        setLastResult({
+          success: true,
+          message: `Refreshed: ${result.itemCount} places`,
+        });
+        
+        // Reload page to show new data
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        setLastResult({
+          success: false,
+          message: result.error || 'Refresh failed',
+        });
+      }
+    } catch (error: any) {
+      setLastResult({
+        success: false,
+        message: error.message || 'Unknown error',
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <button
+        onClick={handleRefresh}
+        disabled={refreshing}
+        className="text-[10px] opacity-60 hover:opacity-100 transition-opacity font-mono font-normal px-1.5 py-0.5 rounded hover:bg-primary/10 border border-primary/20 hover:border-primary/40 disabled:opacity-30"
+        title="刷新新店打卡"
+      >
+        {refreshing ? '刷新中...' : '刷新新店打卡'}
+      </button>
+      {cacheInfo && (
+        <div className="text-[8px] font-mono opacity-40">
+          {cacheInfo.ageDays !== undefined ? `${cacheInfo.ageDays}d` : 'N/A'} | {cacheInfo.poolSize || 0}
+        </div>
+      )}
+      {lastResult && (
+        <div className={`text-[8px] font-mono ${lastResult.success ? 'text-green-500' : 'text-red-500'}`}>
+          {lastResult.message}
+        </div>
+      )}
     </div>
   );
 }

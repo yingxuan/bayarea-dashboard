@@ -10,8 +10,7 @@
 
 import { useEffect, useState } from "react";
 import { ExternalLink, MapPin } from "lucide-react";
-import { config } from "@/config";
-import SourceLink from "@/components/SourceLink";
+import { usePlacesCache } from "@/hooks/usePlacesCache";
 
 interface FoodPlace {
   id: string;
@@ -34,44 +33,29 @@ interface TodaySpendRecommendationsProps {
 }
 
 export default function TodaySpendRecommendations({ maxItems = 6 }: TodaySpendRecommendationsProps) {
-  const [places, setPlaces] = useState<FoodPlace[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Use local cache hook - loads from IndexedDB immediately, NEVER calls Places API
+  const { placesByCategory, loading } = usePlacesCache(
+    ['奶茶', '中餐', '夜宵', '新店打卡']
+  );
 
-  useEffect(() => {
-    async function loadRecommendations() {
-      try {
-        const apiUrl = `${config.apiBaseUrl}/api/spend/today`;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-        
-        const response = await fetch(apiUrl, {
-          signal: controller.signal,
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (response.ok) {
-          const result = await response.json();
-          const items = result.items || [];
-          // Always ensure we have items (fallback to empty array if needed, but this should never happen)
-          setPlaces(items.slice(0, maxItems));
-        } else {
-          console.error(`[TodaySpendRecommendations] API error: ${response.status} ${response.statusText}`);
-          // Don't set empty array - keep previous data if available
-        }
-      } catch (error) {
-        console.error("[TodaySpendRecommendations] Failed to fetch recommendations:", error);
-        // Don't set empty array - keep previous data if available
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    loadRecommendations();
-    // Refresh every 30 minutes (cache is 24h, but refresh UI periodically)
-    const interval = setInterval(loadRecommendations, 30 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [maxItems]);
+  // Flatten places from all categories
+  const places: FoodPlace[] = Object.values(placesByCategory)
+    .flat()
+    .slice(0, maxItems)
+    .map(place => ({
+      id: place.id,
+      name: place.name,
+      category: place.category,
+      rating: place.rating,
+      user_ratings_total: place.user_ratings_total,
+      review_count: place.user_ratings_total, // Legacy compatibility
+      address: '', // Not available from cache
+      distance_miles: place.distance_miles,
+      photo_url: place.photo_url,
+      maps_url: place.maps_url,
+      url: place.maps_url, // Legacy compatibility
+      city: place.city,
+    }));
 
   // Group places by category for display
   const groupedByCategory = places.reduce((acc, place) => {

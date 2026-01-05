@@ -33,6 +33,9 @@ export const config = {
   apiBaseUrl: API_BASE_URL,
 };
 
+// Re-export places config
+export { NEW_PLACES_TTL_DAYS, NEW_PLACES_COOLDOWN_DAYS, NEW_PLACES_MAX_API_CALLS_PER_REFRESH } from './config/places';
+
 // Log API base URL for debugging (only in development)
 if (import.meta.env.DEV) {
   console.log('[Config] API Base URL:', API_BASE_URL);
