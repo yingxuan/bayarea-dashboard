@@ -1,0 +1,486 @@
+{
+  "version": 1,
+  "category": "夜宵",
+  "region": "southbay",
+  "updatedAt": "2026-01-05T00:01:18.250Z",
+  "stage": "pre-resolve",
+  "items": [
+    {
+      "name": "Haidilao Hot Pot",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Haidilao%20Hot%20Pot%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "hotpot",
+        "late-night"
+      ],
+      "placeId": "ChIJK5B_3Z21j4ARuIABkYGEC-8",
+      "rating": 4.8,
+      "userRatingCount": 5013,
+      "googleMapsUri": "https://maps.google.com/?cid=17225006891827036344&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJK5B_3Z21j4ARuIABkYGEC-8/photos/AZLasHrdbZtfc32UnO6_KvffGVSenXYBcJiex_yNmVfFXfZZyHRvGIFEs6Ub-9kudJi-keN2_yr4Ro5g-sQDDcwRm7flOgFOnPvIX0Qi7tS7H3Dc6YZ-w3QqQFZw0RaU6Rq9f4H54iqmk6b96Pb_KjOuQjsjNZhKaVTlPhTng1Isp2v7Wmr3wZs3noCbFItLvYR_Klo_FmNloNB6kHHP2a495knYvvJovwVsoI0_1XjyT7QX-4hi_M30uExFmAssmMRd9diNISh0cRMlgV5EM_X59QYZjNhbarT45B8YPublRcAxvw",
+      "enrichedAt": 1767568302441,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Boiling Point",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Boiling%20Point%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "late-night hot-pot"
+      ],
+      "placeId": "ChIJ7xbpAku1j4ARCxSlS5vm98k",
+      "rating": 3.9,
+      "userRatingCount": 137,
+      "googleMapsUri": "https://maps.google.com/?cid=14553354275534476299&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ7xbpAku1j4ARCxSlS5vm98k/photos/AZLasHrAjZ0DDNVid4JXdIdVhJsNg38yu0cBUirfZj-1m_83R-f_n-Xo7DMVtxK3qp_NLzugfMMh_5fjr9cSLXvhyk6lyG7vrghpqiVqdYz9NqjvMnSZomkodQ_gtuVd9WIg4v7yYj_r4UTzRDFE4IX8m_j5TkrusszIjtIkx6DTl_bcj8Ab2bKYxtX9boYP_TUDTQeVOJUd9qYvr8gCH_4hqrRdpxxTvqnJpU_9eKHePltDM0D0LRnFN1KntyGLu28WMA4rqJmG0lxFZB2wK9rXer6jLFAwgt9QOW18UC9RIY479FH6-EdAVOQoKZkisnrA0OywYcl0WIFYz-xy559jjB477xU-S61M8-0FL5PGpr3jnyB4VjgQAUfchZVh4Sqgu13xn2nEq5X-0FzCxaHF3Ur3oYRVx4kmuVZtjgOVH4Ol5w",
+      "enrichedAt": 1767568304961,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Boiling Point",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Boiling%20Point%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "hotpot",
+        "late-night"
+      ],
+      "placeId": "ChIJgWPeIBfMj4AR8Nds4iSIgPk",
+      "rating": 4,
+      "userRatingCount": 637,
+      "googleMapsUri": "https://maps.google.com/?cid=17978519404462004208&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJgWPeIBfMj4AR8Nds4iSIgPk/photos/AZLasHpoyQg6fJDxKXA4idHuVqYGXecO-N280JVTZjMq_urSIBN3NJHmAW7cBSyTgRsUGih4r89U_NeVGzTfnXjPb0lmDa3KZfaBUq5lxw1VL09p3t02x3LUuDGhpgrSekMuryzIKU8jy8xlQEwGLoIrFAmTBFif_SbVhxlEzt3h_kH4e-Y2utOBm84JujO4Rps7Bzj5W5t_oWlqNz4BqqWNG-iBKqQKuokLn3diIk7AFNmlIzNEMelQ1KyIoHNOUQv3hZh6Yfy6VtTzChDR9S_KsCM6_iNxYUdyYlDPo9qMS-9NxzUZpW2_qAk_7R4Nc469lmFt68gx7HTAK_ysgzrmCqggMu3Cb4tEe-_emA-T0Td0Sz3Rt6B7gnOQ9IasV68nzvtH0RQh3vShvN5oW0WLZXkLH048n65CqDBk_4PK2uqrBg",
+      "enrichedAt": 1767568307449,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Ramen Nagi",
+      "city": "Santa Clara",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Ramen%20Nagi%20Santa%20Clara%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "ramen",
+        "late-night"
+      ],
+      "placeId": "ChIJdWkLR9zLj4ARUf7Gj52Rw6Y",
+      "rating": 4.5,
+      "userRatingCount": 1893,
+      "googleMapsUri": "https://maps.google.com/?cid=12016608336662691409&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJdWkLR9zLj4ARUf7Gj52Rw6Y/photos/AZLasHpcEAw85bEMLFKu6VYidjALbgrY6ezr2jqSRJEJBgn4p3ETVEVQAK9BVrACNQKx4cjHhq5MawMEB0mG-KqJhT71BWjenKjqGI8REbjmb_7oW0yzgq8mgrUH5t3kdtniyq18D0tr7bIIw8eU2IP-UbumzVqqyD0MBlWhtqjv3o6cumFRxQ_I5UQ9sYUA4RZ1F3RJva1rIQ3sowBomGVhH7WQnkp4oq-hyVOjm1BUhVZfrA_wiW0iMkAJNNvp73_gYLlUV2mR9ee5i8-rT2Cjp2wAbcGxwHs8TJcWUrghEcIFz3pGUeHmlb7f4JiKN3P81_fLBRJ3zOrd3q6ANRI1euZh6Nzy8AXtmb30yVy8Oi0qSFysw333yXovFIQuMHP9rIVgTfD6mdGqXH8bq0ChuMxPUrOhA0bCTKWo7EjpH1o",
+      "enrichedAt": 1767568309958,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Pho Kim Long",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Pho%20Kim%20Long%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "pho",
+        "late-night"
+      ],
+      "placeId": "ChIJA3nKz6TOj4ARh0PcDaAUmQ0",
+      "rating": 4.2,
+      "userRatingCount": 2798,
+      "googleMapsUri": "https://maps.google.com/?cid=979837071589655431&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJA3nKz6TOj4ARh0PcDaAUmQ0/photos/AZLasHpG9E44v4RVH4Cdz2ERX0jYWWX5z6zA2IhZO4pOY-T8m_kv8xy2nlPRVwEMIBB6lVlXTSc21WIEcPcqHK6ULersVs9KHZn_QpwmHxS6SNvk7p8wLFxWCWZmdRpfYhjB-k6PpP43DiCDcHnwUOgqccAbESEpADHu_NXYGNXYprb4GpZvLGr3AGYxIgSiKNacGWiFO7aug--aiVZmTx3e_aKhauOdFbFII4Bi7qBlutvf2Qwp6TxLQGsPmUJdh7MtH_Nm4F3_q_uUcuksLuec20JPb0PEFGcPJv6qRJ7WXtupT3I0IiTX17YOIq6snYJX_1Rnr_ZmxU1CmI8WM0fN8lAc4fMGZWDR2ze5vH-E83tvjC8FAM4diL_qQsNaTmShSj1wtC2F5h55e9SjM4JcRthV6iG0zxtefyhTo3HCCik",
+      "enrichedAt": 1767568312475,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "The X Pot",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=The%20X%20Pot%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "hotpot",
+        "late-night"
+      ],
+      "placeId": "ChIJVV-QNBC1j4ARjQ8yQ1J10Ao",
+      "rating": 5,
+      "userRatingCount": 61,
+      "googleMapsUri": "https://maps.google.com/?cid=779251731710218125&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJVV-QNBC1j4ARjQ8yQ1J10Ao/photos/AZLasHqTYD3vqnXunJb81orB0tquNNVAhjiHcM93sK6su7kyrnxw8sZYin9890SpQ7iEXTyn5iUujg8im_g-l0SVcmtSbAQcED8ADDsPbTBWevV3KklEozGO7Verp1vnL3JkMQqbZimxGJXzRp6L5q7-2gW1G2AYbkXqcskYsrEpWJ_0CNIt1dAfXFODpBSVtQNd_CxLfCX4om5xrVVJAxR5-UMMTOfrgQ5_BvqV6RifVRPDjUTgUkCFEa-kGC4vWNbkGs6fEUFfGXSl1PosdZjcGjIjqWMVqnuT-3pEJpv8J4Ixwg",
+      "enrichedAt": 1767571276940,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Shabu Shabu",
+      "city": "Cupertino",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Shabu%20Shabu%20Cupertino%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "late-night hot-pot"
+      ],
+      "placeId": "ChIJvy0Dy6G1j4ARV5OKzD1Wzcg",
+      "rating": 4.3,
+      "userRatingCount": 559,
+      "googleMapsUri": "https://maps.google.com/?cid=14469316001235899223&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJvy0Dy6G1j4ARV5OKzD1Wzcg/photos/AZLasHpob-Czzd8mTQsuB2cc008wZflnxK5_BbCMtl9qdUP1f04_WoL5Nn-WtjL475CgfV-fLh8lLGSP3F9w6W_bvMuknfcdvRI3etcMsJzFGaynStGIts74aDVZpjLYvoIhIytfUuLRCrCmSf_fjx_64CR2K0hHb94icImbmAmzKrtvqFVN9zPHa4ZAF8zy6rZu8wgMdceRB50-1DQntK9MBN4CvGNaFj_npG_zvK-YV0XzVRN_F2mCv5VLKjEkAXofl3QXx-K1s5A09tmhFs6DmRc77-bimkeA8HsPOQm9V8oSEay6LJ3kWTH2yix5Vnv2BRTKCX6GwbOsGoaaroSzVnSNtnnEP5nJLcAdjaESZaIBlRIkDwL__FzbweqwRDpxXugvPxCEgJ6T2KxYHEg-H5xDzamwy7sgUS6gSGQhe6ZsZjAoNS4ld57X9XDdoZRh",
+      "enrichedAt": 1767568316331,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Hunan Home's Restaurant",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Hunan%20Home's%20Restaurant%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "hunan",
+        "late-night"
+      ],
+      "placeId": "ChIJRWU8M_a3j4ARt7n30Cdnxhs",
+      "rating": 4.6,
+      "userRatingCount": 380,
+      "googleMapsUri": "https://maps.google.com/?cid=2001400505120045495&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJRWU8M_a3j4ARt7n30Cdnxhs/photos/AZLasHqelVYDf_Rnf8QFjGWfNbE7cqYqmCPZlgm3P1Wx6vzpiIX_exByG09wRneEqHWwIAyvqdDYkced3HLB6yHVERewpunK2ii47S9yX7o786xQhKxa3lZ5pYKBbWxXSf5cQ-RSXP_746Wfo6dc_qn9CVNDy3XkQY9bnjgKwvlZ1ohaJdMov_FaEf76I1HOVDeZfBI0mXlguDtIOK4UdmkxkJPR0eR59IdZX6fXd6TOfCdZNJWtHro5jJlbtzXyn5_KrSip_Tdoujbor9ZFc15D8DTNphPBfYLkjPrnbtHDUFLxbCoI2Oj4bU4k9CgJN8-inAGkUGQVQUG37T5hHDiPksI6qgHHI0H6cBVe3eJ7vTqHjDYtdi_zJHb8onAdBvOGO9XGZwtyo_LSoCqISJ-1d3mDE14lwjkNljgeb-C8wMzOMRdzY1iiolSNeDF8DqvP",
+      "enrichedAt": 1767571276940,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Korean Palace",
+      "city": "Santa Clara",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Korean%20Palace%20Santa%20Clara%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "korean",
+        "bbq",
+        "late-night"
+      ],
+      "placeId": "ChIJKfIgIT3Lj4ARIVM_v2N3i-U",
+      "rating": 4.2,
+      "userRatingCount": 362,
+      "googleMapsUri": "https://maps.google.com/?cid=16540445326742344481&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJKfIgIT3Lj4ARIVM_v2N3i-U/photos/AZLasHp3VL9gXeByZ83qL3SXCYAqNCUHVbW5RqlXLYOk7PBLNFelTG83Qh7VQa9pmfEORx58SQ1S89oGJYDxN98_BkCnP0k73jmIq9UgLuthmrVg7OaZ68U6xeEtwYeasjv51DSz0dzU-qtLb2QNU5a7DGvPWVKKJ9AR3zsnUT_cps3KQv5VS505KFdNFvn4MFNYS7WfGHNY5hkpnnCaGGXFsfFUGTJSzwmFu4N1seqfYkdmJqbVZtr6VXND3R-Tw3iz2d9MAEQ_np-l7KpT3zJviGX-sfb4-PbTYSkVfvlGZdigUwRo4TrJqKtfY_1UGziSwXUKp0fe8AUYXYu8TrLFLxLdQriQwOE53ZUX0lnYFk32l8chO71yDP40ygDbM6MOrjdj5OUw_jpR1PIuoISpAV0A4ZJ_w4mE6dn_1eCfOj1OVA",
+      "enrichedAt": 1767568320184,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Dan Izakaya",
+      "city": "Mountain View",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Dan%20Izakaya%20Mountain%20View%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "izakaya",
+        "late-night"
+      ],
+      "placeId": "ChIJsbLE36_Kj4ARgp_-rkOUYpg",
+      "rating": 4.4,
+      "userRatingCount": 676,
+      "googleMapsUri": "https://maps.google.com/?cid=10980501859902332802&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJsbLE36_Kj4ARgp_-rkOUYpg/photos/AZLasHpXafOQyTOyzjSD55VO9ktDIj6uBZna66fKBES0-v134xZETXDqNUEv4wZXD0rrHhxU9FvTwJ0s_bG0L7zDsnDKTrPWUn0lgUtADXgjIQgzYUoJNSPovTvCnMU2awOlB4Lb_Ilc-1FkTiE8RezfESwOIAMSNZkT2kk7YpwRnMG-asavlHguM8sNJJ7zyvDiDVROcKjGbAnTU-DWCrVHPxV8VzHJs4IJcGflCBuiwRSDs6QQmgiDg-xH9cKVW26CHvMfAO-UfnQ3xkh80taGNGBNAby5dPi5Bmi2I91lCvwyIA",
+      "enrichedAt": 1767571276940,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Izakaya Toribar",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Izakaya%20Toribar%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "izakaya",
+        "late-night"
+      ],
+      "placeId": "ChIJxVYztoXLj4ARegu-bgKfcbY",
+      "rating": 4.5,
+      "userRatingCount": 691,
+      "googleMapsUri": "https://maps.google.com/?cid=13146463620067887994&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJxVYztoXLj4ARegu-bgKfcbY/photos/AZLasHpS5AbxdI3UXb1tSwUCo280Nm_W7MLJP29Uutzq_mCkJ7cFs_zQ4sWIa44HAfvWTR5cORZuXTZHaZS61-TGaaxqUm49uMKejGCgyHFX6RVQbwZR2D9J2DwpIuRTR3RjUv6V4uwQkUSiJAGR5FIjMzim-S7gVhHrs8ZiS09OnApFHCxLRpDlHVONz_eYxKamRqj3-jKMOtC1zlObjXo-gQrdExav9EVfrpz9_7pUBaD3KVaHpoYtEnV1QTsp2r6y-WXU_bHpp781cGITBVzxVLjiNm01Oydfxu4SLFqaaZUriQ",
+      "enrichedAt": 1767568323956,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Kura Sushi",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Kura%20Sushi%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "sushi",
+        "late-night"
+      ],
+      "placeId": "ChIJ55oLs77Nj4AR13aOjzBFO0s",
+      "rating": 4.2,
+      "userRatingCount": 282,
+      "googleMapsUri": "https://maps.google.com/?cid=5421002651339749079&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ55oLs77Nj4AR13aOjzBFO0s/photos/AZLasHr3blFAYmCBI4dJRfANSWxAJudkT0d7SZhNODU6hC0agyJhKxWB-L3v3NMwPavI3wBp9JvplfGNfHP8O1VumrVNGllv7Ny8wPUMAYJql20sYe8sBBv-foEQeL_PSkQ6s5AWbLsXidUHK8Rx25Kpj8BzN2XC26aKq1Mels-GahUikuefE9wWbnVS90E90agQq1qQgbY3dRxlR0fWbwqa9WtEQbaymnr5vgENmOvkLy7X3abLyFHn8bE5Vqr9jxVVNCHPwp6b0yQSq4PNTsnAMUufNycU2hmeJVntxpQrayHMTYHBSSUl4SXbUMYlppgnfOUTn9lQUVgGlM1jU9aRPDFBkjYyxWV20sEZ3K6QGDEmsofF24Lmb7da56_u3wn7g6fBNXuqYxehoODuxj_KHWY8ha-Yc06eRtJvdC1Nlo_YM1w",
+      "enrichedAt": 1767571276941,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Sanraku",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Sanraku%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "japanese",
+        "late-night"
+      ],
+      "placeId": "ChIJh3U4FNYzjoAR5GxY75e8X6A",
+      "rating": 4.5,
+      "userRatingCount": 655,
+      "googleMapsUri": "https://maps.google.com/?cid=11556162529597615332&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJh3U4FNYzjoAR5GxY75e8X6A/photos/AZLasHq-8zhW68_Xy_0j7JD0Y0Bjzb51M91QAxSozZkUbJ8FJH4Pvwq5LRcWVb_JYfV2_yRGZT-h0wX5byINJOVmlszWKx3kKwDCBVo0wIrqpLLBKgrC9XQS-0KGD4MWMkhLH-nACKGj7w-Ca6ZkIxL4KCz0c4WvNQVY7BOgkLNI2JL5LdgUCRwzToduseIR7ek7hS7Q8MmM7bFRIBUCsMbjzQOmO7DRYdPm5UQRSq1PawP4n_BppeWpdqgOnZl01CY0i3Q_cvFo_tq69qSCWyAmBlEUbJKcsK7_jz6aJXWwLujizA",
+      "enrichedAt": 1767568327747,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "La Victoria Taqueria",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Victoria%20Taqueria%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "mexican",
+        "late-night"
+      ],
+      "placeId": "ChIJrQJhi7nMj4ARifu7CGhc2S4",
+      "rating": 4.2,
+      "userRatingCount": 3557,
+      "googleMapsUri": "https://maps.google.com/?cid=3375830997583788937&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJrQJhi7nMj4ARifu7CGhc2S4/photos/AZLasHr4xWuGwixONIz-FEF59T96790uhuZ-UuMgow1HMaUttN9FPrv6Yb3G-X69HuUcVPN-r740Iy2o2RfIK0fO7AE7SnMzkpVbF2QUghf4X5pWt_HcuPh1Teh-iGYc3zZn4KUcisDwngdyxNxMQh_kur8wHt0ihnDkrRxBPk77n8dMX6J-AOw5821QAT8fUwQepWnuNbKfDseTa_ZR00ohHxMidKTSxJGmFfMKOtjc3frE6K_VVmM5qesYJ-j-c-OAFQQPzrN-hEdA4ZHvtwJjkPmOyQeDT0_CQHZchqNf5pWnuhj7O2J_lFE37wJTq5e4uRiwgQ2WofqVgzt7hArBgbYnQdRGLzsJ94OmZ8tyj0_hBd2om6g1nL0Nm_11cBTBMZ16Dneu04k1v2oEvFUYrvFEcc5UI36iUKCy0X7GkpsPYA",
+      "enrichedAt": 1767568330348,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Falafel's Drive-In",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Falafel's%20Drive-In%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "middle-eastern",
+        "late-night"
+      ],
+      "placeId": "ChIJG_GfFFrLj4ARfHGR47FlnZg",
+      "rating": 4.6,
+      "userRatingCount": 2316,
+      "googleMapsUri": "https://maps.google.com/?cid=10997057679810195836&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJG_GfFFrLj4ARfHGR47FlnZg/photos/AZLasHp51BqLElfN6Ml5jGJQdqAc-KIWMVSZu4ZDJOQVTzWLNOBh-tDW3XNbu2wSMpy_-WDzrS65a9HzOzZ7gB8uA892J0tM2QZteWZJGmXi7QQP3xrR97YaL50bwqBQc-jxH1ScVSZSO6Tg5yhv_aIig_gBliGEp5o7R-VUGRJhctTZRsLZfCDbAKkIf-XFU_TQGvtmqiUUVw8dfIwuLI4CZnjoVvf7q1D28H4amW4UOTOYq8ZtIo-SwQRkfr6gdwoiF5_-08clW3shn5oRZI4n7A2SrZs_WpaHNadOlGlSsHC_tQLBb7jq2vTYZTbUO7HpejHSD-1UkborlSb7oMsCv9J2Qh3HEssRurm8eIbbHl7-eT0MAxxiJIJWUAC8OINFaZNqEe1B6AArVd1ir2ZNtDIshQLvlNZWaLVPqZ_pOlT2CPU",
+      "enrichedAt": 1767571276941,
+      "enrichStatus": "ok"
+    },
+    {
+      "name": "Discovery Fusion BBQ 碳所",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Discovery%20Fusion%20BBQ%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "bbq",
+        "skewers",
+        "chinese",
+        "late-night"
+      ],
+      "photoQuery": "Discovery Fusion BBQ 1151 S De Anza Blvd San Jose CA",
+      "lateNightHint": "Open until ~1:00 AM",
+      "enrichStatus": "ok",
+      "placeId": "ChIJOcEtUn21j4ARLhoS3HpFO8g",
+      "rating": 4,
+      "userRatingCount": 199,
+      "googleMapsUri": "https://maps.google.com/?cid=14428202225192016430&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJOcEtUn21j4ARLhoS3HpFO8g/photos/AZLasHr9LZtTb4oTL1tVeIvSUquCC-e8ioexuXjmmx_5mdqbXtC6Pwqs2y_uHnB8dvAnnz0VfZMs6kq6Odg06VbeN45kHxjdsAMUNy7Xog3jFB0e-5PSxLTVLDx-BnSKw2noh3BxSzC8frlOW7_jIi0undKl20Px16O4RrKXzDewX9Egz3yILiudxJ6LRHoOjn_4ww3owkhjxahy6R7S9Ym8OMbJ4psI-I47z-xShdYz7DK3paKl6VLwNCw3iQD89xgtW2xq_csCf_U_iF5fmqQI8oobQG4gsO6pB5qgbq9O2FlIuQ",
+      "enrichedAt": 1767570832130
+    },
+    {
+      "name": "Old Street Skewers",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Old%20Street%20Skewers%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "bbq",
+        "skewers",
+        "chinese",
+        "late-night"
+      ],
+      "photoQuery": "Old Street Skewers San Jose CA",
+      "enrichStatus": "ok",
+      "placeId": "ChIJT6IQyR_Pj4ARq7kJEIsb_ro",
+      "rating": 3.7,
+      "userRatingCount": 190,
+      "googleMapsUri": "https://maps.google.com/?cid=13474237419222579627&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJT6IQyR_Pj4ARq7kJEIsb_ro/photos/AZLasHr5436bsReXT0_5z-mPKh347SFPJT55OkPIRq2NtxAo0PZyskH5eobp40dIOVWED908Z4eZv69KNQPVsTWCDpZ0Cb0HnDeC8ALGAnyUwg2OYlhlj5qylPQdnSIH2uOCFFDwIdunpvKWtaF9OMN68sBCexQtUIbxskXGltu5XuOw_VxfirED46UCclbcQEb7nEydCsnV1bnnsqCVdH4kq4ArCaJWHNNLfIc9LzYxRvMfrVItAyHpuTzN_l_uV3iXwGHq5-zT5bvYTQEaRgotd07aNCqszZ0fNI48oRQSJuWSew",
+      "enrichedAt": 1767571276941
+    },
+    {
+      "name": "Taste of BBQ",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Taste%20of%20BBQ%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "bbq",
+        "chinese",
+        "skewers"
+      ],
+      "photoQuery": "Taste of BBQ San Jose CA",
+      "enrichStatus": "ok",
+      "placeId": "ChIJP52IW-0xjoARJ-5icv-lya0",
+      "rating": 4.3,
+      "userRatingCount": 257,
+      "googleMapsUri": "https://maps.google.com/?cid=12522722755434704423&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJP52IW-0xjoARJ-5icv-lya0/photos/AZLasHrrJqORdvU-dUMoGZavjf7gLyueRS0EmsTC-i0-MIYGjz9aPu1Y85Z8PnW3wTouTFYzvPwLyjSQ3nlRL6u1j2bUmf_H67oDVKjGrzavweH2sYX1Zsg53VlSzHLfj-kKDEdZUB-hgauOSAooFUUiPx10aq3DXXhvpnlVOE2LVdYI3_cURg3MYXgkQuxg8i73-dX0j9xRYYDX72_yihim89DZqgDLBgrVcpsRxh81yDOFFyvraX6iuTLPeVxU_5kfJM3i8b1GQQexoLGc3xq-HIiAt5CeioXAQhcwiDx3duDhSQ",
+      "enrichedAt": 1767571276941
+    },
+    {
+      "name": "QQ Skewers",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=QQ%20Skewers%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "bbq",
+        "skewers",
+        "late-night"
+      ],
+      "photoQuery": "QQ Skewers San Jose CA",
+      "enrichStatus": "ok",
+      "placeId": "ChIJT6IQyR_Pj4ARq7kJEIsb_ro",
+      "rating": 3.7,
+      "userRatingCount": 190,
+      "googleMapsUri": "https://maps.google.com/?cid=13474237419222579627&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJT6IQyR_Pj4ARq7kJEIsb_ro/photos/AZLasHr5436bsReXT0_5z-mPKh347SFPJT55OkPIRq2NtxAo0PZyskH5eobp40dIOVWED908Z4eZv69KNQPVsTWCDpZ0Cb0HnDeC8ALGAnyUwg2OYlhlj5qylPQdnSIH2uOCFFDwIdunpvKWtaF9OMN68sBCexQtUIbxskXGltu5XuOw_VxfirED46UCclbcQEb7nEydCsnV1bnnsqCVdH4kq4ArCaJWHNNLfIc9LzYxRvMfrVItAyHpuTzN_l_uV3iXwGHq5-zT5bvYTQEaRgotd07aNCqszZ0fNI48oRQSJuWSew",
+      "enrichedAt": 1767571276941
+    },
+    {
+      "name": "Yi Pin BBQ",
+      "city": "Milpitas",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Yi%20Pin%20BBQ%20Milpitas%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "bbq",
+        "chinese"
+      ],
+      "photoQuery": "Yi Pin BBQ Milpitas CA",
+      "enrichStatus": "ok",
+      "placeId": "ChIJIzANMYTJj4ARl6as4bGpVZ0",
+      "rating": 4,
+      "userRatingCount": 69,
+      "googleMapsUri": "https://maps.google.com/?cid=11337154218435585687&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJIzANMYTJj4ARl6as4bGpVZ0/photos/AZLasHp9TJS-Ws4QHr7qECCYA5ph46-SajHwW8xmxlHFI08dVoNc642ifz1P9Yd9jqwZPLP5lxYidovL6vuToqnkPB-EdXrdbbQ73KIaJnEqu-lrZ0KDHpiavQeIpe7ejnYJRxFJi8HtEvZPKhG8n30h8iDscFWdIGar0FNLyn0xlKr7hPL6R30X-5XSyjU_Hsshdh6aoWmT_iDcoTBSDgrY4XU_kgemIBC40tjpi1B5HRgv0rH4HTP-snRvUohmyi8ts7EYakFR6feZjVqOZ6HM6jJJJkPozS1gA5FCbhT6W3mdPg",
+      "enrichedAt": 1767571276941
+    },
+    {
+      "name": "Lao Jie BBQ",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Lao%20Jie%20BBQ%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "bbq",
+        "skewers",
+        "late-night"
+      ],
+      "photoQuery": "Lao Jie BBQ San Jose CA",
+      "enrichStatus": "ok",
+      "placeId": "ChIJv5Nla9y1j4ARGt7f0prYWao",
+      "rating": 4.5,
+      "userRatingCount": 623,
+      "googleMapsUri": "https://maps.google.com/?cid=12275080418849447450&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJv5Nla9y1j4ARGt7f0prYWao/photos/AZLasHrJTNbZFS_hPSZ6WLgBFQnI5i7RjeVipleqMYoP7gs4uhL2kh6sbkPYQnrHe0BENyQO3JwY2c5x0TRvKLabXKWygH7u_uL7X0vg-Ecn9gFzp4Dw50vzE4apHCUSkql75nuu5e3vo_vTv6d2d81uta8kLoynf90-QBJua5LBYswVekfWL5par4RDWRBpGcRxC2i5dVo9ynugkem6t2vKeNR6ErUMxdENjdCX-MEWBEigiIn5uEmfxGUO3Ont4-B6pYzQmit9n63Iog6GONG0Se7tRNDoiNp5Bunf5SeG_SwwMZus3-FPIhREjfXN6aB5tg9pfg3NAU219wb0YCaMI0YeWGNeVXiQ13nidQRpKbfMnRSmrYdJAw6Uy3B6RJkv1GP1c9Us0hNmGaLheeLxj48Sg-oHWtHkjfHWDW8Yolo",
+      "enrichedAt": 1767571276942
+    },
+    {
+      "name": "BBQ King 串王",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=BBQ%20King%20Skewers%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "bbq",
+        "skewers"
+      ],
+      "photoQuery": "BBQ King Skewers San Jose CA",
+      "enrichStatus": "ok",
+      "placeId": "ChIJ9wJSEwCHhYARyKtBOW3-7Ro",
+      "rating": 5,
+      "userRatingCount": 8,
+      "googleMapsUri": "https://maps.google.com/?cid=1940486759532047304&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ9wJSEwCHhYARyKtBOW3-7Ro/photos/AZLasHpEpQBW2w0qeMiRj-otQ8ebs0kaQxkmXXKUmxoh5If-UzC9JOeDycgwkWnbQiteFNen-T7CqSzDt4jw-jxZW4LdOvfDT1osS0gdfASAsVtctc7yu7gAo35NWh577-CyAtYdAL0qVLNq-c7KfC639t8KhmPQxCjA3ihN42EiUWM0USJRuZXDyrt8Ka4iRG9J_OoDB_2IGUaha_zZR6KHXXaMAjybnbJAK3K2YUinnJW5xZxHlS7144Pyk_xeX08vJh0fIMrmajS9onX0WVQ6h6ti85liyFh2dGWsIAiv6Y-OTVGz6cUzHDbR4Ws_wYJEVgARvZ6idxFG3oaUDmt61YegfWg2CbwOm-xYnQ0Bs8ph1U4izcCBlcRrFJzlhC_kUJLHNaMFjSTxeD-TGVE0rUgdTRfq5dL84Fjq-ChDSTG4AwOP50u4pWP2VtLsji3U",
+      "enrichedAt": 1767570841215
+    },
+    {
+      "name": "Chuan Yu Skewers 川渝串串",
+      "city": "Sunnyvale",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Chuan%20Yu%20Skewers%20Sunnyvale%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "bbq",
+        "sichuan",
+        "skewers"
+      ],
+      "photoQuery": "Chuan Yu Skewers Sunnyvale CA",
+      "enrichStatus": "ok",
+      "placeId": "ChIJ8TwBDwCBj4ARQ91KI466J3Q",
+      "rating": 3.8,
+      "userRatingCount": 4,
+      "googleMapsUri": "https://maps.google.com/?cid=8369863552131587395&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ8TwBDwCBj4ARQ91KI466J3Q/photos/AZLasHrNJQzNgx2Xmhbw0qt-yktXc1UFdsGiCmYXonhaGyQyKihTaGqm31TdeHvNyu9-5IgfILWYDxHo6VnCVOR1Gn9s37Dw_4wqBIGf_ZdWjLTbUej0puJaQAW7WhHu_mdzTkGZW4K6MVJ0cWxaUc-jMvFCATyvWeCIlct4jhspE3HuzXqoLB_4edt3ZZdejGOIckKC2Nk2zXmZHe60PrsEA7UnCBTs9MvToDKEkn00OWUyME0NZF9CUN-72bPBwPF7WI5gVT1UCwAHd-nPpECjOHCKuwGoagIAsfUlVjYaoCUn3sKIcEaL1AAkoSNB2gvnRdZ3Ds3ME5DNxAZn_o2KJfWxNqmNdxNyT62P9ogbY7Jcy90Rz15nXQy8X-oOT_SzzQxkzslJI6T88VM4GOmhlzn0_LU49V0T8fb-egFnYTQypkqtan4lMJy1OLMexuck",
+      "enrichedAt": 1767571276942
+    },
+    {
+      "name": "Mala Town BBQ",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Mala%20Town%20BBQ%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "bbq",
+        "mala",
+        "late-night"
+      ],
+      "photoQuery": "Mala Town BBQ San Jose CA",
+      "enrichStatus": "ok",
+      "placeId": "ChIJ1WPQ6a7Jj4ARFntIIXcWLUY",
+      "rating": 4.7,
+      "userRatingCount": 688,
+      "googleMapsUri": "https://maps.google.com/?cid=5056722657522252566&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJ1WPQ6a7Jj4ARFntIIXcWLUY/photos/AZLasHpT61u7gUABozJ5lIaT_Hvp5Fyk8tJCunZOI5_zidtW6HV7EQhn1Avplt6t_L3lfAX_aQPvlM-vDi_HgugpA_XoarmNLSjoB6V7lToj_0We9VTkrKYkYe1iC3GNx5D4sHPHpRw8n40MHHtN92e0BFkjhfM6BqT6Bv-K2fqF6kbK4zCzO1Bnoh2oqBNJXT98Ma1gkKE79SIDQVbGhAqVCS92f7RxPExaVV0_9iLmAE2ELSqYKwmy3d58PsUjBT00wGxixiU_dNBSGMA_8T-k_oWrJnPoWytOcDDq3PbNltf-tA",
+      "enrichedAt": 1767571276942
+    },
+    {
+      "name": "Chongqing Street Food",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Chongqing%20Street%20Food%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "bbq",
+        "chongqing",
+        "skewers"
+      ],
+      "photoQuery": "Chongqing Street Food San Jose CA",
+      "enrichStatus": "needs_enrich"
+    },
+    {
+      "name": "Lan Zhou Night BBQ",
+      "city": "San Jose",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Lan%20Zhou%20Night%20BBQ%20San%20Jose%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "bbq",
+        "muslim",
+        "late-night"
+      ],
+      "photoQuery": "Lan Zhou Night BBQ San Jose CA",
+      "enrichStatus": "ok",
+      "placeId": "ChIJe3E4QgC1j4ARbgdzd8Th2Co",
+      "rating": 4.5,
+      "userRatingCount": 184,
+      "googleMapsUri": "https://maps.google.com/?cid=3087465778496341870&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJe3E4QgC1j4ARbgdzd8Th2Co/photos/AZLasHqcTF5HiJPEFPBdWJhM6u1_ZF-ZXKt5FEwR5EMkj-sAlRB9OvmviQzGhBFYfbpYYCqXuoQXGakKLwVENmTEQr2YNfIzHzgvcf8bLs5BMw76w1MuR3Yx7Q-8oafmA_7rTf1IFkIySJB4bZM1eq1gLDniO4_UA9R4g-eTce-HJ1VAEsuW3sYgN4CgMmm-5RuwKWFrNTnhzqcxs_ILNg8b_Sk2t7cL9MbWs9a7k0k0M0UBJNrQbOvcPp5mL4QYQcv4-qKSaB6yyIJUuoYmG3-lpxHufbjjkumNmjoAkffr7kunxY8xE2ZNc50cwS5D_pbFbcubi-sqmiYqkXA0dGk0MKruXn51OcYCYkKsKtaSIQks56iCXUDD4fllwygF3mx2PId3mgpAX9-tyaQbNjMabyN0ZrFSu-UQWPp6Pg00b6RGBWPTxmHwV403-LTM1A",
+      "enrichedAt": 1767571278249
+    },
+    {
+      "name": "Xinjiang BBQ",
+      "city": "Santa Clara",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Xinjiang%20BBQ%20Santa%20Clara%20CA",
+      "mapsType": "search",
+      "categoryTags": [
+        "bbq",
+        "uyghur",
+        "skewers"
+      ],
+      "photoQuery": "Xinjiang BBQ Santa Clara CA",
+      "enrichStatus": "ok",
+      "placeId": "ChIJy4J9i4vLj4ARM0_3KMox7v4",
+      "rating": 4.4,
+      "userRatingCount": 218,
+      "googleMapsUri": "https://maps.google.com/?cid=18369674674431282995&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+      "photoName": "places/ChIJy4J9i4vLj4ARM0_3KMox7v4/photos/AZLasHo6XGnkURRj0El8Q_3L63scSa2CurBp5cdYnzX9p439lYM1xZvNfiTZcjFl7xvCPP9f2CTT8kQqhRanLxmPK5Ox6_ZdrsgUshPR0pU0VcW1v28oQa9Mx1PvH-4dL5JcpJCT92IBFplhb4zrm7oeQZOT7tapTie1BCvtxFyf32tmXXTg_p33ftOGAIdVXaGT0wmyqqsxi-2djfttMQpXjCi5V-iLFTZTVlX8Jllmh3LnFJ08bpAfA8oaWS7pkmg98uFrCyW16cIqJR9pdMlY_Srp4ASuygf62acdlvBhv_3PhA",
+      "enrichedAt": 1767571278249
+    }
+  ]
+}
