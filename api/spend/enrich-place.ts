@@ -182,7 +182,7 @@ async function fetchPlaceDetails(placeId: string): Promise<{
   };
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleEnrichPlace(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

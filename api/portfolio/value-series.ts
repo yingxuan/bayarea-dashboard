@@ -319,7 +319,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Load stored series
     const stored = await loadStoredSeries();
     let points: ValueDataPoint[] = [];
-    let source: "live" | "cache" | "seed" = "live";
+    let source: "live" | "cache" | "seed" | "unavailable" = "live";
     let status: "ok" | "degraded" | "failed" = "ok";
     let note: string | undefined;
 

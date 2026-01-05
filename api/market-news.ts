@@ -365,7 +365,7 @@ function parseRSSFeed(xml: string): MarketNewsItem[] {
     // Extract all <item> tags
     const itemMatches = xml.matchAll(/<item[^>]*>([\s\S]*?)<\/item>/gi);
     
-    for (const match of itemMatches) {
+    for (const match of Array.from(itemMatches)) {
       totalItemsFound++;
       const itemXml = match[1];
       

@@ -53,7 +53,7 @@ interface DealItem {
   sourceLabel: string; // Display label
   publishedAt?: string; // ISO date string
   score: number; // Calculated score for ranking
-  sourceMode: 'live' | 'cache' | 'seed'; // Data source mode
+  sourceMode: 'live' | 'cache' | 'seed' | 'unavailable'; // Data source mode
 }
 
 // Seed data removed - no fallback data
@@ -79,8 +79,8 @@ function normalizeUrl(url: string): string {
 function titleSimilarity(title1: string, title2: string): number {
   const words1 = new Set(title1.toLowerCase().split(/\s+/));
   const words2 = new Set(title2.toLowerCase().split(/\s+/));
-  const intersection = new Set([...words1].filter(x => words2.has(x)));
-  const union = new Set([...words1, ...words2]);
+  const intersection = new Set(Array.from(words1).filter((x) => words2.has(x)));
+  const union = new Set([...Array.from(words1), ...Array.from(words2)]);
   return intersection.size / union.size;
 }
 
@@ -326,7 +326,7 @@ async function fetchRSSFeed(source: typeof RSS_SOURCES[0]): Promise<{ items: Dea
 /**
  * Fetch all deals from RSS sources
  */
-async function fetchAllDeals(nocache: boolean = false): Promise<{ items: DealItem[]; sourceMode: 'live' | 'cache' | 'seed'; debug: any[] }> {
+async function fetchAllDeals(nocache: boolean = false): Promise<{ items: DealItem[]; sourceMode: 'live' | 'cache' | 'seed' | 'unavailable'; debug: any[] }> {
   const cacheKey = 'deals';
   const debug: any[] = [];
   

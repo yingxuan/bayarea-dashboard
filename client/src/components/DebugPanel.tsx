@@ -10,7 +10,7 @@ import { refreshSouthBayPlaces, getCacheStatus, clearNewPlacesCache } from "@/ho
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { SeedCategory, SeedPlace } from "@/shared/types/seeds";
+import type { SeedCategory, SeedPlace } from "@shared/types/seeds";
 
 const isDev = import.meta.env.DEV;
 const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;

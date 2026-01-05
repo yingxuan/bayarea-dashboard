@@ -1,13 +1,12 @@
 {
   "outputDirectory": "dist",
   "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/api/spend/today", "destination": "/api/spend" },
+    { "source": "/api/spend/new-places", "destination": "/api/spend" },
+    { "source": "/api/spend/enrich-place", "destination": "/api/spend" },
+    { "source": "/api/spend/enrich-hours", "destination": "/api/spend" },
+    { "source": "/api/spend/place-photo", "destination": "/api/spend" },
+    { "source": "/api/:path*", "destination": "/api/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

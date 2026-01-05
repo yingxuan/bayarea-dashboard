@@ -595,10 +595,8 @@ export function usePlacesCache(
             // Load seed file directly for 新店打卡
             const { loadSeedFile } = await import('@/lib/places/localCache');
             const seedPlaces = await loadSeedFile('新店打卡');
-            const seedCached = seedPlaces.map((p) => apiPlaceToCached(p));
-            seedPlacesByCategory[category] = seedCached.slice(0, 5).map((p) =>
-              cachedPlaceToSpend(p, category, 'southbay')
-            );
+              const seedCached = seedPlaces.map((p) => cachedPlaceToSpend(p, category, 'southbay'));
+              seedPlacesByCategory[category] = seedCached.slice(0, 5);
             seedCacheInfo[category] = {
               mode: 'seed',
               poolSize: seedPlaces.length,

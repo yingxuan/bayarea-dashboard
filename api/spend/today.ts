@@ -2041,7 +2041,7 @@ function groupPlacesByCategory(places: SpendPlace[]): Record<string, SpendPlace[
   return result;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleToday(req: VercelRequest, res: VercelResponse) {
   // STEP 1 & 2: Sanity checks
   const debugMode = req.query.debug === '1';
   

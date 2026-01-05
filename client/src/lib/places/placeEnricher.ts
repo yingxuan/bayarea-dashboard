@@ -244,11 +244,12 @@ export async function enrichPlace(
         // No calls left, skip
         return null;
       }
-      placeId = await resolvePlaceId(name, city);
-      if (!placeId) {
+      const resolved = await resolvePlaceId(name, city);
+      if (!resolved) {
         // Can't resolve, return null (will use fallback)
         return null;
       }
+      placeId = resolved;
     }
 
     // Step 2: Fetch details (uses 1 call)

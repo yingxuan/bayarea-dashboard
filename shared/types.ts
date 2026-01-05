@@ -80,7 +80,7 @@ export interface MarketDataItem {
  * Used for consistent data structure across all sources
  */
 export interface ModulePayload<T> {
-  source: "live" | "cache" | "seed";
+  source: "live" | "cache" | "seed" | "unavailable";
   status: "ok" | "degraded" | "failed";
   fetchedAt: string; // ISO 8601 timestamp
   ttlSeconds: number;

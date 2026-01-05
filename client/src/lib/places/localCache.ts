@@ -7,7 +7,7 @@
  */
 
 import { get, set, del, clear } from 'idb-keyval';
-import type { SeedCategory } from '../../../shared/types/seeds';
+import type { SeedCategory } from '../../../../shared/types/seeds';
 
 const DB_NAME = 'places-cache';
 const DEFAULT_TTL_DAYS = 14;
@@ -309,9 +309,6 @@ export async function loadSeedFile(category: '奶茶' | '中餐' | '夜宵' | '�
         
         return cachedPlace;
       });
-    
-    console.log(`[LocalCache] Converted ${result.length} places from seed file for ${category}`);
-    return result;
   } catch (error) {
     console.error(`[LocalCache] Failed to load seed file for ${category}:`, error);
     if (error instanceof Error) {

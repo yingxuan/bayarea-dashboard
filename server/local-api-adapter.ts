@@ -11,7 +11,7 @@ import dealsHandler from '../api/deals.js';
 import showsHandler from '../api/shows.js';
 import youtubersHandler from '../api/youtubers.js';
 import quotesHandler from '../api/quotes.js';
-import spendTodayHandler from '../api/spend/today.js';
+import { handleToday as spendTodayHandler } from '../api/spend/today.js';
 import leekCommunityHandler from '../api/community/leeks.js';
 import marketNewsHandler from '../api/market-news.js';
 import gossipCommunityHandler from '../api/community/gossip.js';

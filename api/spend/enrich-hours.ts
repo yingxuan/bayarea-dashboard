@@ -14,7 +14,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
 const PLACES_API_BASE = 'https://places.googleapis.com/v1';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleEnrichHours(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
