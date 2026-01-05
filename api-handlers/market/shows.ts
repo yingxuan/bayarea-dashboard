@@ -304,10 +304,52 @@ async function fetchAllShows(): Promise<Show[]> {
   
   // Combine: first 4 (one from each source) + remaining videos
   allShows.push(...firstFourShows, ...remainingShows);
+
+  // Ensure adjacent videos come from different channels without changing ranking order
+  const ensureChannelDiversity = (items: Show[]): Show[] => {
+    const remaining = [...items];
+    const output: Show[] = [];
+    let prevChannel: string | null = null;
+
+    while (remaining.length > 0) {
+      const idx = remaining.findIndex((show) => show.platform !== prevChannel);
+      const takeIndex = idx >= 0 ? idx : 0;
+      const [nextShow] = remaining.splice(takeIndex, 1);
+      output.push(nextShow);
+      prevChannel = nextShow.platform;
+    }
+
+    return output;
+  };
+
+  const diverseShows = ensureChannelDiversity(allShows);
+  const cycleOrder = ['腾讯视频', '优酷', '芒果TV', 'CCTVDrama'];
+
+  const rotatePrefix = (items: Show[], prefixLength: number): Show[] => {
+    if (items.length <= prefixLength) {
+      return ensureChannelDiversity(items);
+    }
+    const prefix = items.slice(0, prefixLength);
+    const suffix = items.slice(prefixLength);
+    const reordered: Show[] = [];
+    const remaining = [...prefix];
+    let cycleIdx = 0;
+    while (remaining.length > 0) {
+      const targetChannel = cycleOrder[cycleIdx % cycleOrder.length];
+      const idx = remaining.findIndex((s) => s.platform === targetChannel);
+      const takeIndex = idx >= 0 ? idx : 0;
+      const [nextShow] = remaining.splice(takeIndex, 1);
+      reordered.push(nextShow);
+      cycleIdx += 1;
+    }
+    return [...reordered, ...suffix];
+  };
+
+  const rotatedShows = rotatePrefix(diverseShows, Math.min(8, diverseShows.length));
   
   console.log(`[Shows] ✅ Fetched ${allShows.length} total videos from ${TV_CHANNELS.length} channels`);
   console.log(`[Shows] First 4 videos from sources: ${firstFourShows.map(s => s.platform).join(', ')}`);
-  return allShows;
+  return rotatedShows;
 }
 
 export async function handleShows(req: VercelRequest, res: VercelResponse) {
