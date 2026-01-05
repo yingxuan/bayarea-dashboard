@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { handleToday } from './today.js';
 import { handleNewPlaces } from './new-places.js';
-import { handleEnrichPlace } from './enrich-place.js';
-import { handleEnrichHours } from './enrich-hours.js';
-import { handlePlacePhoto } from './place-photo.js';
+import { handleEnrichPlace } from '../../lib/spend/enrich-place.js';
+import { handleEnrichHours } from '../../lib/spend/enrich-hours.js';
+import { handlePlacePhoto } from '../../lib/spend/place-photo.js';
 
 function normalizePath(req: VercelRequest): string {
   const url = new URL(req.url || '/', 'http://localhost');
