@@ -37,7 +37,7 @@ import {
   normalizeCachedResponse,
   normalizeStaleResponse,
   formatUpdatedAt,
-} from '../utils.js';
+} from '../../api/utils.js';
 import { fetchAllPlacesOptimized } from './placesOptimized.js';
 
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;

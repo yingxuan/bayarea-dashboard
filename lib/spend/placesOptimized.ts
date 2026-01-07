@@ -11,7 +11,7 @@
  */
 
 import { searchNearbyPlaces, getCircuitBreakerStatus, clearDedupMap } from './placesClient.js';
-import { getCachedData, setCache, getStaleCache } from '../utils.js';
+import { getCachedData, setCache, getStaleCache } from '../../api/utils.js';
 // City coordinates
 const CITY_COORDS = {
   cupertino: { lat: 37.3230, lng: -122.0322 },

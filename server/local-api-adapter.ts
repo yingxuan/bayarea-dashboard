@@ -8,7 +8,7 @@
 import type { Request, Response } from 'express';
 import marketHandler from '../api/market-all.js';
 import dealsHandler from '../api/deals.js';
-import { handleToday as spendTodayHandler } from '../api/spend/today.js';
+import { handleToday as spendTodayHandler } from '../lib/spend/today.js';
 import communityHandler from '../api/community/[...slug].js';
 import portfolioValueSeriesHandler from '../api/portfolio/value-series.js';
 
