@@ -1,5 +1,15 @@
 {
   "outputDirectory": "dist",
+  "headers": [
+    {
+      "source": "/api/spend/:path*",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
+      ]
+    }
+  ],
   "rewrites": [
     { "source": "/api/market", "destination": "/api/market-all?handler=market" },
     { "source": "/api/market-news", "destination": "/api/market-all?handler=market-news" },
