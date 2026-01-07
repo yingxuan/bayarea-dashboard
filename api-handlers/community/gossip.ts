@@ -27,7 +27,6 @@ import {
   getStaleCache,
   cache,
 } from '../../api/utils.js';
-import { searchGoogle } from '../../server/googleCSE.js';
 
 const GOSSIP_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 const BLIND_TRENDING_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours for Blind trending page cache
@@ -538,7 +537,7 @@ async function fetchBlind(nocache: boolean = false): Promise<ModulePayload<Gossi
     if (!trendingPageUrl) {
       console.log(`[Gossip Blind] 🔍 Searching for "Trending now on Blind" page...`);
       
-      const searchResults = await searchGoogle('site:teamblind.com "Trending now on Blind"', 3);
+      const searchResults: Array<{ link: string }> = [];
       
       if (searchResults.length === 0) {
         console.warn(`[Gossip Blind] ⚠️ Google CSE search returned no results (may be 403/quota issue). Will use fallback.`);

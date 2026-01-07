@@ -36,7 +36,6 @@ interface GossipResponse {
   status: 'ok';
   sources: {
     '1point3acres': ModulePayload<GossipItem>;
-    'blind': ModulePayload<GossipItem>;
   };
   fetchedAt: string;
 }
@@ -47,7 +46,6 @@ interface ChineseGossipProps {
 
 export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipProps) {
   const [source1P3A, setSource1P3A] = useState<ModulePayload<GossipItem> | null>(null);
-  const [sourceBlind, setSourceBlind] = useState<ModulePayload<GossipItem> | null>(null);
   const [loading, setLoading] = useState(true);
   const { handleExternalLinkClick } = useExternalLink();
 
@@ -88,6 +86,11 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
         }
         
         if (response.ok) {
+          const contentType = response.headers.get("content-type") || "";
+          if (!contentType.includes("application/json")) {
+            console.warn('[ChineseGossip] Non-JSON response skipped:', contentType);
+            return;
+          }
           const result: GossipResponse = await response.json();
           console.log('[ChineseGossip] ✅ API Response received:', {
             status: result.status,
@@ -95,7 +98,6 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
           });
           
           setSource1P3A(result.sources['1point3acres']);
-          setSourceBlind(result.sources['blind']);
         } else {
           const errorText = await response.text();
           console.error(`[ChineseGossip] ❌ API error: ${response.status} ${response.statusText}`);
@@ -131,35 +133,12 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
   }
 
   // Get all items with labels, merged from all sources
-  const getAllItemsWithLabels = () => {
-    const allItems: Array<{ item: GossipItem; label: string; source: ModulePayload<GossipItem> | null }> = [];
-    
-    // Add 1P3A items with label
-    if (source1P3A?.items && source1P3A.items.length > 0) {
-      source1P3A.items.slice(0, maxItemsPerSource).forEach(item => {
-        allItems.push({
-          item,
-          label: '', // Removed '湾区生活' prefix as requested
-          source: source1P3A,
-        });
-      });
-    }
-    
-    // Add Blind items with label
-    if (sourceBlind?.items && sourceBlind.items.length > 0) {
-      sourceBlind.items.slice(0, maxItemsPerSource).forEach(item => {
-        allItems.push({
-          item,
-          label: 'Blind',
-          source: sourceBlind,
-        });
-      });
-    }
-    
-    return allItems;
+  const getAllItems = () => {
+    if (!source1P3A?.items) return [];
+    return source1P3A.items.slice(0, maxItemsPerSource);
   };
 
-  const allItems = getAllItemsWithLabels();
+  const allItems = getAllItems();
   const hasAnyData = allItems.length > 0 || source1P3A || sourceBlind;
 
   if (!hasAnyData) {
@@ -177,39 +156,26 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
   return (
     <div className="space-y-2">
       {/* All items merged, showing as "today's gossip" - 帖子列表（5条） */}
-      {allItems.length > 0 ? (
-        allItems.slice(0, 5).map(({ item, label, source }, index) => {
-          const showStatusMessage = source && (source.source === 'seed' || source.status === 'failed' || source.status === 'degraded');
-          
-          return (
-            <a
-              key={`${item.url}-${index}`}
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={handleExternalLinkClick}
-              className="block rounded-sm p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
-            >
-              <div className="flex items-start justify-between gap-2">
-                {/* Title with label */}
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-[13px] font-normal group-hover:text-primary transition-colors line-clamp-2 leading-tight">
-                    {label && <span className="text-[11px] font-normal text-muted-foreground/70 mr-1.5">【{label}】</span>}
-                    {item.title}
-                  </h4>
-                  {showStatusMessage && (
-                    <span className="text-[10px] opacity-50 font-mono font-normal mt-0.5 block">
-                      {source?.source === 'seed' ? '备用' : source?.status === 'failed' ? '暂时抓不到，已用备用' : '已显示上次结果'}
-                    </span>
-                  )}
-                </div>
-                
-                {/* External Link */}
-                <ExternalLinkIcon className="w-4 h-4 opacity-60 text-muted-foreground flex-shrink-0 group-hover:text-primary group-hover:opacity-100 transition-colors mt-0.5" />
+        {allItems.length > 0 ? (
+        allItems.map((item, index) => (
+          <a
+            key={`${item.url}-${index}`}
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={handleExternalLinkClick}
+            className="block rounded-sm p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <h4 className="text-[13px] font-normal group-hover:text-primary transition-colors line-clamp-2 leading-tight">
+                  {item.title}
+                </h4>
               </div>
-            </a>
-          );
-        })
+              <ExternalLinkIcon className="w-4 h-4 opacity-60 text-muted-foreground flex-shrink-0 group-hover:text-primary group-hover:opacity-100 transition-colors mt-0.5" />
+            </div>
+          </a>
+        ))
       ) : (
         <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md">
           <div className="text-center">
@@ -217,7 +183,6 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
               暂时抓不到，点这里去看原帖
             </p>
           </div>
-        </div>
       )}
     </div>
   );

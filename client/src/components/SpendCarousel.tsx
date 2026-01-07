@@ -541,7 +541,7 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
         <CarouselNext className="hidden md:flex right-2 z-10 bg-background/80 backdrop-blur-sm hover:bg-background/90" />
         <CarouselContent className="-ml-2 min-w-0 items-stretch">
           {/* Card 1-5: Normal places */}
-          {top5Places.map((place) => {
+          {top5Places.map((place, index) => {
             // STEP 4: Resolve image per item (with enrichment support)
             const resolveImageSrc = (): { src: string; source: string } => {
               const enrichmentKey = getEnrichmentKey(place.id, place.name, place.city);
@@ -662,7 +662,7 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
             }
             
             // STEP 3: Use stable, unique key (NOT index)
-            const stableKey = itemKey;
+            const stableKey = `${itemKey}-${index}`;
             
             return (
               <CarouselItem key={stableKey} className="pl-2 basis-auto flex items-center">

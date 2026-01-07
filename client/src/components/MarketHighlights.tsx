@@ -34,27 +34,37 @@ export default function MarketHighlights({ marketNews }: MarketHighlightsProps) 
   // Fetch 一亩三分地 posts
   useEffect(() => {
     async function loadLeekPosts() {
+      const apiUrl = `${config.apiBaseUrl}/api/community/leeks`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+    
       try {
-        const apiUrl = `${config.apiBaseUrl}/api/community/leeks`;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-        
-        const response = await fetch(apiUrl, {
-          signal: controller.signal,
-        });
-        
+        const response = await fetch(apiUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
-        
-        if (response.ok) {
-          const result = await response.json();
-          const communityItems = result.items || [];
-          setLeekItems(communityItems.slice(0, 3)); // Top 3 for display
+    
+        // HTTP 不 ok → 直接 fallback
+        if (!response.ok) {
+          return;
         }
-      } catch (error) {
-        console.error("[MarketHighlights] Failed to fetch leek posts:", error);
+    
+        const contentType = response.headers.get("content-type") || "";
+    
+        // ❗核心：非 JSON = 正常失败路径
+        if (!contentType.includes("application/json")) {
+          return;
+        }
+    
+        const result = await response.json();
+        const communityItems = result.items || [];
+    
+        if (communityItems.length > 0) {
+          setLeekItems(communityItems.slice(0, 3));
+        }
+      } catch {
+        // abort / network error → 静默失败
+        return;
       }
     }
-
     loadLeekPosts();
     const interval = setInterval(loadLeekPosts, 30 * 60 * 1000);
     return () => clearInterval(interval);
@@ -63,14 +73,14 @@ export default function MarketHighlights({ marketNews }: MarketHighlightsProps) 
   // Merge and format items
   const allItems: UnifiedItem[] = [
     ...marketNews.slice(0, 3).map((item: any, index: number) => ({
-      id: `news-${index}`,
+      id: `news-${index}-${item.url ?? item.id ?? ''}-${item.title ?? index}`,
       title: item.title || item.title_zh || item.title_en || 'Market News',
       url: item.url || '#',
       source: '新浪财经',
       publishedAt: item.publishedAt,
     })),
     ...leekItems.slice(0, 3).map((item, index) => ({
-      id: `leek-${index}`,
+      id: `leek-${index}-${item.url ?? item.title ?? index}`,
       title: item.title,
       url: item.url,
       source: '一亩三分地',

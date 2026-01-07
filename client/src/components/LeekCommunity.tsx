@@ -107,7 +107,7 @@ export default function LeekCommunity({ maxItems = 5, hideTitle = false }: LeekC
           .slice(0, maxItems)
           .map((item, index) => (
             <a
-              key={`1point3acres-${index}`}
+              key={`1point3acres-${index}-${item.url ?? item.title ?? ''}`}
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
