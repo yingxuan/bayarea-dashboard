@@ -247,16 +247,16 @@ export function createPool(
  */
 export async function loadSeedFile(category: '奶茶' | '中餐' | '夜宵' | '新店打卡'): Promise<CachedPlace[]> {
   try {
-    console.log(`[LocalCache] Loading seed file for category: ${category}`);
+    // console.log(`[LocalCache] Loading seed file for category: ${category}`);
     // Dynamic import of seed JSON (bundled at build time)
     const seedModule = await import(`@/lib/seeds/southbay/${category}.json`);
     const seedFile = seedModule.default || seedModule;
     
-    console.log(`[LocalCache] Seed file loaded for ${category}:`, {
-      hasItems: !!seedFile.items,
-      itemsLength: seedFile.items?.length || 0,
-      version: seedFile.version,
-    });
+    // console.log(`[LocalCache] Seed file loaded for ${category}:`, {
+    //   hasItems: !!seedFile.items,
+    //   itemsLength: seedFile.items?.length || 0,
+    //   version: seedFile.version,
+    // });
     
     if (!seedFile.items || !Array.isArray(seedFile.items)) {
       console.warn(`[LocalCache] Invalid seed file for ${category}:`, seedFile);
@@ -303,10 +303,9 @@ export async function loadSeedFile(category: '奶茶' | '中餐' | '夜宵' | '�
         };
         
         // Debug log for places with rating data
-        if (cachedPlace.rating > 0 || cachedPlace.userRatingCount > 0) {
-          console.log(`[LocalCache] Loaded ${category} place "${item.name}" with rating: ${cachedPlace.rating}, count: ${cachedPlace.userRatingCount}`);
+          if (cachedPlace.rating > 0 || cachedPlace.userRatingCount > 0) {
+          // console.log(`[LocalCache] Loaded ${category} place "${item.name}" with rating: ${cachedPlace.rating}, count: ${cachedPlace.userRatingCount}`);
         }
-        
         return cachedPlace;
       });
   } catch (error) {

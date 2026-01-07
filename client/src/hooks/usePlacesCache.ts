@@ -99,11 +99,6 @@ function cachedPlaceToSpend(cached: CachedPlace, category: string, city: string)
     city: finalCity, // Preserve city from seed data
   };
   
-  // Debug log for places with rating data
-  if ((cached.rating > 0 || cached.userRatingCount > 0) && import.meta.env.DEV) {
-    console.log(`[cachedPlaceToSpend] Converting ${category} place "${cached.name}": rating=${cached.rating}, count=${cached.userRatingCount} -> rating=${result.rating}, user_ratings_total=${result.user_ratings_total}`);
-  }
-  
   return result;
 }
 

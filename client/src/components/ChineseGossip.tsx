@@ -117,7 +117,7 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
     return () => clearInterval(interval);
   }, []);
 
-  if (loading && !source1P3A && !sourceBlind) {
+  if (loading && !source1P3A) {
     return (
       <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md">
           <div className="animate-pulse">
@@ -139,7 +139,7 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
   };
 
   const allItems = getAllItems();
-  const hasAnyData = allItems.length > 0 || source1P3A || sourceBlind;
+  const hasAnyData = allItems.length > 0 || !!source1P3A;
 
   if (!hasAnyData) {
     return (
@@ -183,6 +183,7 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
               暂时抓不到，点这里去看原帖
             </p>
           </div>
+        </div>
       )}
     </div>
   );
