@@ -1,4 +1,5 @@
 import type { FortuneModelPayload } from "./schema.js";
+import { bulletToString } from "./coerce.js";
 
 const DEFAULT_TEXT = "信息不足，先以保守取象。";
 
@@ -59,6 +60,63 @@ const BACKUPS = {
     "整理桌面5分钟",
   ],
 } as const;
+
+type CategoryLabel = "上班" | "财运" | "人际" | "生活";
+const CATEGORY_ORDER: CategoryLabel[] = ["上班", "财运", "人际", "生活"];
+const CATEGORY_PLACEHOLDERS: Record<CategoryLabel, string> = {
+  上班: "上班：【】（未生成）",
+  财运: "财运：【】（未生成）",
+  人际: "人际：【】（未生成）",
+  生活: "生活：【】（未生成）",
+};
+
+const LABEL_REGEX = new RegExp(`^(${CATEGORY_ORDER.join("|")})[:：]`);
+const BULLET_PREFIX_REGEX = /^[•\-\u2022\*0-9\.\s]+/;
+
+function cleanBulletText(value: string) {
+  return value
+    .replace(BULLET_PREFIX_REGEX, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function normalizeCompactBullets(bullets: string[] = []): string[] {
+  const cleaned = bullets.map((item) => cleanBulletText(item)).filter(Boolean);
+  const labelMap = new Map<CategoryLabel, string>();
+  const unlabeled: string[] = [];
+
+  cleaned.forEach((text) => {
+    const match = text.match(LABEL_REGEX);
+    if (match) {
+      const label = match[1] as CategoryLabel;
+      if (!labelMap.has(label)) {
+        labelMap.set(label, text);
+        return;
+      }
+    }
+    unlabeled.push(text);
+  });
+
+  const result: string[] = [];
+  CATEGORY_ORDER.forEach((category) => {
+    if (labelMap.has(category)) {
+      result.push(labelMap.get(category)!);
+    } else if (unlabeled.length > 0) {
+      result.push(unlabeled.shift()!);
+    } else {
+      result.push(CATEGORY_PLACEHOLDERS[category]);
+    }
+  });
+
+  return result.slice(0, 4);
+}
+
+function ensureCompactDayBullets(day: any) {
+  if (!day) return;
+  if (!Array.isArray(day.bullets)) return;
+  const mapped = day.bullets.map((item: unknown) => bulletToString(item));
+  day.bullets = normalizeCompactBullets(mapped);
+}
 
 type SchemaVariant = "compact" | "ten_god" | "legacy";
 
@@ -237,16 +295,11 @@ export function normalizeFortunePayload(
     ...raw,
   };
 
+  ensureCompactDayBullets(normalized.day);
+
   // Compact variant: trust the compact day, just clean bullets
   if (variant === "compact" && normalized.day?.headline && Array.isArray(normalized.day?.bullets)) {
-    const bullets = normalized.day.bullets
-      .map((b: any) => (typeof b === "string" ? b.trim() : ""))
-      .filter(Boolean)
-      .slice(0, 4);
-    while (bullets.length < 4) {
-      bullets.push("补齐提示");
-      meta.usedDefaults = true;
-    }
+    const bullets = normalizeCompactBullets(normalized.day.bullets);
     normalized.dayCompact = {
       headline: typeof normalized.day.headline === "string" ? normalized.day.headline : "专注主线，少添新事。",
       bullets,
@@ -279,12 +332,13 @@ export function normalizeFortunePayload(
       compactBullets.push(`${item.label}：${fallbackGod}，${fallback}`.slice(0, 22));
     }
   });
+  const normalizedBullets = normalizeCompactBullets(compactBullets);
   normalized.dayCompact = {
     headline:
       (normalized.day as any).summary ||
       (normalized.summary_line as any) ||
       "专注主线，少添新事。",
-    bullets: compactBullets.slice(0, 4),
+    bullets: normalizedBullets,
   };
   normalized.day = normalized.dayCompact;
 

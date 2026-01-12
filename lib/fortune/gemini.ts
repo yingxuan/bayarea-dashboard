@@ -5,6 +5,7 @@ import { buildFortunePrompt } from "./prompt.js";
 import { normalizeFortunePayload } from "./normalize.js";
 import { extractJsonObject } from "./json.js";
 import { parseFortunePayload } from "./parse.js";
+import { coerceDayBulletsToStrings } from "./coerce.js";
 
 const API_KEY = process.env.GEMINI_API_KEY;
 const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
@@ -37,7 +38,8 @@ function parseResponse(text: string, birthdate: string, todayLabel: string) {
     console.log("[fortune] raw response snippet", text.slice(0, 200));
     const jsonText = extractJsonObject(text);
     const payload = JSON.parse(jsonText);
-    const { variant, parsed } = parseFortunePayload(payload);
+    const coerced = coerceDayBulletsToStrings(payload);
+    const { variant, parsed } = parseFortunePayload(coerced);
     const { payload: normalized, meta } = normalizeFortunePayload(parsed, variant);
     return { parsed: normalized, meta };
   } catch (error) {
