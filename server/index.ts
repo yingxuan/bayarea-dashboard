@@ -16,7 +16,8 @@ import {
   gossipCommunityRoute,
   marketNewsRoute,
   portfolioValueSeriesRoute,
-  fortuneRoute
+  fortuneRoute,
+  fanwanRoute,
 } from "./local-api-adapter.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -63,6 +64,8 @@ async function startServer() {
   app.options('/api/portfolio/value-series', (_req, res) => res.sendStatus(200));
   app.get('/api/fortune', fortuneRoute);
   app.options('/api/fortune', (_req, res) => res.sendStatus(200));
+  app.get('/api/youtube/fanwan', fanwanRoute);
+  app.options('/api/youtube/fanwan', (_req, res) => res.sendStatus(200));
 
 
   app.get("/api/spend/place-photo", async (req, res) => {

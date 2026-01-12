@@ -12,6 +12,7 @@ import dealsHandler from '../api/deals.js';
 import { handleToday as spendTodayHandler } from '../lib/spend/today.js';
 import communityHandler from '../api/community/[...slug].js';
 import portfolioValueSeriesHandler from '../api/portfolio/value-series.js';
+import fanwanHandler from '../api/youtube/fanwan.js';
 
 /**
  * Convert Express Request/Response to Vercel Request/Response
@@ -149,6 +150,22 @@ export async function fortuneRoute(req: Request, res: Response) {
     await fortuneHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Fortune route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Fanwan YouTube API route
+ */
+export async function fanwanRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await fanwanHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Fanwan route error:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

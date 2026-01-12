@@ -22,6 +22,7 @@ import ChineseGossip from "@/components/ChineseGossip";
 import PortfolioHero from "@/components/PortfolioHero";
 import MarketHighlights from "@/components/MarketHighlights";
 import USStockYouTubers from "@/components/USStockYouTubers";
+import FanwanCarousel from "@/components/FanwanCarousel";
 import IndicesCard from "@/components/IndicesCard";
 import ShowsCarousel from "@/components/ShowsCarousel";
 import SectionHeader from "@/components/SectionHeader";
@@ -66,6 +67,7 @@ export default function Home() {
   const [chineseNews, setChineseNews] = useState<any[]>([]); // Top 3 中文美股新闻
   const [stockYoutubers, setStockYoutubers] = useState<any[]>([]); // 美股博主视频（每频道1条）
   const [stockYoutubersOffset, setStockYoutubersOffset] = useState(0); // Offset for "换一批" functionality
+  const [fanwanVideos, setFanwanVideos] = useState<any[]>([]);
   const { holdings, isLoaded: holdingsLoaded, ytdBaseline, updateYtdBaseline } = useHoldings();
   
   // Fetch quotes for PortfolioHero
@@ -199,6 +201,21 @@ export default function Home() {
         setStockYoutubersOffset(0);
       }
 
+      // Section 1: 打工耽误赚钱 - 关于饭碗 YouTube
+      try {
+        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/youtube/fanwan`);
+        if (response.ok) {
+          const result = await response.json();
+          const videos = result.videos || [];
+          setFanwanVideos(videos);
+        } else {
+          setFanwanVideos([]);
+        }
+      } catch (error) {
+        console.error("[Home] Failed to fetch fanwan videos:", error);
+        setFanwanVideos([]);
+      }
+
       // Section 3: 追剧吃瓜薅羊毛 - 追剧
       try {
         // Build API URL - handle both absolute URLs and relative paths
@@ -324,6 +341,10 @@ export default function Home() {
                   });
                 }}
               />
+            </div>
+            {/* 4) 关于饭碗 (新 carousel) */}
+            <div className="w-full min-w-0">
+              <FanwanCarousel videos={fanwanVideos} />
             </div>
           </section>
 
