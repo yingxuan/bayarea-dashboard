@@ -120,6 +120,34 @@ export default function FortuneWidget() {
     ? "加载中..."
     : keyTip || "";
 
+  const renderBullet = (text: string) => {
+    const [first, ...restParts] = text.split("；");
+    const dispositionMatch = first.match(/(顺风|偏保守|风险偏高)/);
+    if (!dispositionMatch) {
+      return text;
+    }
+    const [before, after] = first.split(dispositionMatch[1]);
+    const color =
+      dispositionMatch[1] === "顺风"
+        ? "text-emerald-300"
+        : dispositionMatch[1] === "风险偏高"
+        ? "text-amber-300"
+        : "text-muted-foreground";
+    const rebuiltFirst = (
+      <>
+        {before}
+        <span className={color}>{dispositionMatch[1]}</span>
+        {after}
+      </>
+    );
+    return (
+      <>
+        {rebuiltFirst}
+        {restParts.length > 0 ? `；${restParts.join("；")}` : ""}
+      </>
+    );
+  };
+
   return (
     <>
       <div className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-lg">
@@ -135,24 +163,28 @@ export default function FortuneWidget() {
                 <span className="leading-snug">{summaryLine}</span>
               )}
             </div>
+            <div className="text-xs text-muted-foreground/70">今日吉凶提示（基于生辰八字）</div>
             <div className="mt-1 text-sm font-medium text-muted-foreground">
               {keyTip || currentTip}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setModalOpen(true)}
-            className="rounded-full border border-border/50 bg-card px-2 py-1 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
-          >
-            ⚙️ 配置生日
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground">今日已生成</span>
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="rounded-full border border-border/50 bg-card px-2 py-1 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
+            >
+              ⚙️ 配置生日
+            </button>
+          </div>
         </div>
         {bullets.length === 4 && (
           <div className="mt-4 space-y-1 text-sm text-foreground">
             {bullets.map((b) => (
               <div key={b} className="flex items-start gap-2">
                 <span className="mt-[2px]">•</span>
-                <span className="leading-tight">{b}</span>
+                <span className="leading-tight">{renderBullet(b)}</span>
               </div>
             ))}
           </div>
