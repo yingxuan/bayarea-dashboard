@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useState } from "react";
+import FortuneWidget from "@/components/FortuneWidget";
 import Navigation from "@/components/Navigation";
 import TodaySpendCarousels from "@/components/TodaySpendCarousels";
 import ChineseGossip from "@/components/ChineseGossip";
@@ -272,6 +273,10 @@ export default function Home() {
 
       <main className="w-full min-w-0">
         <div className="mx-auto w-full max-w-6xl px-4 md:px-6 py-3 space-y-4">
+          <div className="w-full min-w-0 mb-4">
+            <FortuneWidget />
+          </div>
+
           {/* SECTION 1: 打工耽误赚钱 */}
           <section className="flex flex-col gap-4 min-w-0">
             <div className="mb-2 mt-2">

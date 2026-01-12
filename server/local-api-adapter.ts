@@ -6,6 +6,7 @@
  */
 
 import type { Request, Response } from 'express';
+import fortuneHandler from '../api/fortune.js';
 import marketHandler from '../api/market-all.js';
 import dealsHandler from '../api/deals.js';
 import { handleToday as spendTodayHandler } from '../lib/spend/today.js';
@@ -132,6 +133,22 @@ export async function quotesRoute(req: Request, res: Response) {
     await marketHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Quotes route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Fortune API route
+ */
+export async function fortuneRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await fortuneHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Fortune route error:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

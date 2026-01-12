@@ -13,17 +13,17 @@
 
 // API Base URL - prioritize environment variable, fallback based on environment
 const getApiBaseUrl = () => {
-  // If explicitly set, use it
+  // In development, force relative path so calls hit local dev proxy/backend
+  if (import.meta.env.DEV) {
+    return '';
+  }
+
+  // In production, allow explicit override
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
-  
-  // In development, use relative path (Vite proxy will forward to localhost:3001)
-  if (import.meta.env.DEV) {
-    return ''; // Empty string = relative path, uses Vite proxy
-  }
-  
-  // In production, use Vercel URL
+
+  // Default production base
   return 'https://bayarea-dashboard.vercel.app';
 };
 
