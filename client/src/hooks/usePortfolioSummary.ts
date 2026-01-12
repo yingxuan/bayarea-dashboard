@@ -20,6 +20,7 @@ export interface PortfolioMetrics {
   dailyChangeAmount: number;
   dailyChangePercent: number;
   ytdPercent: number | null;
+  ytdChangeAmount: number | null;
 }
 
 /**
@@ -141,11 +142,15 @@ export function usePortfolioSummary(
     }
 
     // Return normalized values (ensure all are proper numbers, rounded for stability)
+    const ytdChangeAmount =
+      ytdBaseline !== null && ytdBaseline > 0 && portfolioValue > 0 ? portfolioValue - ytdBaseline : null;
+
     const result = {
       portfolioValue: Math.round(Number(portfolioValue) * 100) / 100 || 0,
       dailyChangeAmount: Math.round(Number(dailyChangeAmount) * 100) / 100 || 0,
       dailyChangePercent: Math.round(Number(dailyChangePercent) * 10000) / 10000 || 0,
       ytdPercent: ytdPercent !== null ? Math.round(Number(ytdPercent) * 10000) / 10000 : null,
+      ytdChangeAmount: ytdChangeAmount !== null ? Math.round(Number(ytdChangeAmount) * 100) / 100 : null,
     };
     
     // Trace market value computation

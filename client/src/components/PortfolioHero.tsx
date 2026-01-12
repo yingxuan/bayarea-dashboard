@@ -13,12 +13,15 @@ import { generateMarketExplanation } from "@/lib/judgment";
 import { useMemo, useState, useEffect } from "react";
 import PortfolioSparkline from "@/components/PortfolioSparkline";
 import { config } from "@/config";
+import { Input } from "@/components/ui/input";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface PortfolioHeroProps {
   quotesData: Record<string, QuoteData>;
@@ -35,9 +38,26 @@ export default function PortfolioHero({
   ytdBaseline,
   onYtdBaselineChange,
 }: PortfolioHeroProps) {
-  // Mobile tab state for movers - must be called before any conditional returns
-  const [mobileMoverTab, setMobileMoverTab] = useState<'positive' | 'negative'>('positive');
-  
+  const [ytdDialogOpen, setYtdDialogOpen] = useState(false);
+  const [ytdInputValue, setYtdInputValue] = useState(ytdBaseline?.toString() || "");
+  const [ytdInputError, setYtdInputError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!ytdDialogOpen) {
+      setYtdInputValue(ytdBaseline?.toString() || "");
+      setYtdInputError(null);
+    }
+  }, [ytdBaseline, ytdDialogOpen]);
+
+  const handleYtdSave = () => {
+    const parsed = parseFloat(ytdInputValue);
+    if (!isNaN(parsed) && parsed > 0) {
+      onYtdBaselineChange(parsed);
+      setYtdDialogOpen(false);
+    } else {
+      setYtdInputError("请输入有效数字（大于 0）");
+    }
+  };
   const portfolioMetrics = usePortfolioSummary(holdings, quotesData, ytdBaseline);
 
   // Fetch portfolio value series for sparkline
@@ -129,66 +149,6 @@ export default function PortfolioHero({
     return `更新 ${hours}:${minutes} · live`;
   }, []);
 
-  // Calculate performance metrics (5D, 1M, YTD)
-  const performanceMetrics = useMemo(() => {
-    const currentValue = portfolioMetrics.portfolioValue;
-    if (!currentValue || currentValue <= 0) {
-      return {
-        fiveDay: null,
-        oneMonth: null,
-        ytd: portfolioMetrics.ytdPercent,
-      };
-    }
-
-    // Calculate 5D and 1M from value series if available
-    let fiveDay: number | null = null;
-    let oneMonth: number | null = null;
-
-    if (valueSeries?.items && Array.isArray(valueSeries.items) && valueSeries.items.length > 0) {
-      const now = new Date();
-      const fiveDaysAgo = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
-      const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-      // Sort items by time (oldest first)
-      const sortedItems = [...valueSeries.items]
-        .map(item => ({
-          t: item.t,
-          v: typeof item.v === 'number' ? item.v : parseFloat(String(item.v)) || 0,
-          time: new Date(item.t).getTime(),
-        }))
-        .filter(item => !isNaN(item.time) && item.v > 0)
-        .sort((a, b) => a.time - b.time);
-
-      if (sortedItems.length > 0) {
-        // Find closest historical value for 5D (find the latest value before or at 5 days ago)
-        const fiveDaysAgoTime = fiveDaysAgo.getTime();
-        const fiveDayItem = sortedItems
-          .filter(item => item.time <= fiveDaysAgoTime)
-          .pop(); // Get the latest value before or at 5 days ago
-        
-        if (fiveDayItem && fiveDayItem.v > 0 && currentValue > 0) {
-          fiveDay = ((currentValue / fiveDayItem.v) - 1) * 100;
-        }
-
-        // Find closest historical value for 1M (find the latest value before or at 1 month ago)
-        const oneMonthAgoTime = oneMonthAgo.getTime();
-        const oneMonthItem = sortedItems
-          .filter(item => item.time <= oneMonthAgoTime)
-          .pop(); // Get the latest value before or at 1 month ago
-        
-        if (oneMonthItem && oneMonthItem.v > 0 && currentValue > 0) {
-          oneMonth = ((currentValue / oneMonthItem.v) - 1) * 100;
-        }
-      }
-    }
-
-    return {
-      fiveDay: fiveDay !== null && !isNaN(fiveDay) ? Math.round(fiveDay * 100) / 100 : null,
-      oneMonth: oneMonth !== null && !isNaN(oneMonth) ? Math.round(oneMonth * 100) / 100 : null,
-      ytd: portfolioMetrics.ytdPercent,
-    };
-  }, [portfolioMetrics.portfolioValue, portfolioMetrics.ytdPercent, valueSeries]);
-
   // Calculate top movers: separate positive and negative
   const { topPositive, topNegative } = useMemo(() => {
     const positive: Array<{ ticker: string; dailyChangePercent: number }> = [];
@@ -237,6 +197,45 @@ export default function PortfolioHero({
     };
   }, [holdings, quotesData]);
 
+  const renderMoverColumn = (
+    title: string,
+    movers: Array<{ ticker: string; dailyChangePercent: number }>,
+    isPositive: boolean
+  ) => (
+    <div className="min-w-0">
+      <div className="text-xs font-mono font-normal mb-1 uppercase tracking-wide text-foreground/70">
+        {title}
+      </div>
+      <div className="space-y-0.5" style={{ lineHeight: '1.35' }}>
+        {movers.length > 0 ? (
+          movers.map((mover) => (
+            <div
+              key={mover.ticker}
+              className="grid grid-cols-[48px_1fr] items-baseline gap-2"
+            >
+              <span className="text-[14px] font-medium font-mono text-foreground w-12">
+                {mover.ticker}
+              </span>
+              <div className="flex items-baseline gap-0 text-[14px] font-medium font-mono tabular-nums justify-end">
+                {isPositive ? (
+                  <TrendingUp className="w-2.5 h-2.5 mr-0.5 text-green-500/70 flex-shrink-0" />
+                ) : (
+                  <TrendingDown className="w-2.5 h-2.5 mr-0.5 text-red-500/70 flex-shrink-0" />
+                )}
+                <span className={`text-right ${isPositive ? "text-green-500/70" : "text-red-500/70"}`}>
+                  {mover.dailyChangePercent >= 0 ? "+" : ""}
+                  {mover.dailyChangePercent.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="text-xs opacity-60 font-mono font-normal">—</div>
+        )}
+      </div>
+    </div>
+  );
+
   if (!holdingsLoaded) {
     return (
       <div className="p-3 bg-card rounded-sm">
@@ -248,10 +247,11 @@ export default function PortfolioHero({
   }
 
   return (
-    <div className="bg-card rounded-sm shadow-md border border-border/40 h-full flex flex-col">
+    <>
+      <div className="bg-card rounded-sm shadow-md border border-border/40 h-full flex flex-col">
       {/* CardBody: 主栅格，高价值内容 */}
       <div className="p-4 flex-1">
-        <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr_0.6fr] gap-2 md:gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr] gap-2 md:gap-4">
           {/* 左列: 市值 + 今日盈亏 + Sparkline */}
           <div className="min-w-0 flex flex-col">
             {/* 市值（S级，单独一行） */}
@@ -261,28 +261,75 @@ export default function PortfolioHero({
               </span>
             </div>
             {/* Daily Change（M级，加粗，单独一行） */}
-            <div className="flex items-baseline gap-0.5 mb-1.5">
-              {portfolioMetrics.dailyChangeAmount >= 0 ? (
-                <TrendingUp className="w-3 h-3 flex-shrink-0 text-green-500/70" />
-              ) : (
-                <TrendingDown className="w-3 h-3 flex-shrink-0 text-red-500/70" />
-              )}
-              <span
-                className={`text-[14px] font-mono font-semibold tabular-nums ${
-                  portfolioMetrics.dailyChangeAmount >= 0 ? "text-green-500/70" : "text-red-500/70"
-                }`}
-              >
-                {portfolioMetrics.dailyChangeAmount >= 0 ? "+" : ""}
-                ${portfolioMetrics.dailyChangeAmount.toLocaleString()}
-              </span>
-              <span
-                className={`text-[14px] font-mono font-semibold tabular-nums ${
-                  portfolioMetrics.dailyChangePercent >= 0 ? "text-green-500/70" : "text-red-500/70"
-                }`}
-              >
-                {portfolioMetrics.dailyChangePercent >= 0 ? "+" : ""}
-                {portfolioMetrics.dailyChangePercent.toFixed(2)}%
-              </span>
+            <div className="space-y-1 mb-1.5 text-[14px]">
+              <div className="flex items-baseline gap-2">
+                <span className="text-xs font-mono text-muted-foreground">Today:</span>
+                <span
+                  className={`font-mono tabular-nums ${
+                    portfolioMetrics.dailyChangeAmount >= 0 ? "text-green-500/70" : "text-red-500/70"
+                  }`}
+                >
+                  {portfolioMetrics.dailyChangeAmount >= 0 ? "+" : "-"}
+                  ${Math.abs(portfolioMetrics.dailyChangeAmount).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </span>
+                <span
+                  className={`font-mono tabular-nums ${
+                    portfolioMetrics.dailyChangePercent >= 0 ? "text-green-500/70" : "text-red-500/70"
+                  }`}
+                >
+                  (
+                  {portfolioMetrics.dailyChangePercent >= 0 ? "+" : ""}
+                  {portfolioMetrics.dailyChangePercent.toFixed(2)}%)
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-xs font-mono text-muted-foreground">YTD:</span>
+                {portfolioMetrics.ytdChangeAmount !== null && portfolioMetrics.ytdPercent !== null ? (
+                  <>
+                    <span
+                      className={`font-mono tabular-nums ${
+                        portfolioMetrics.ytdChangeAmount >= 0 ? "text-green-500/70" : "text-red-500/70"
+                      }`}
+                    >
+                      {portfolioMetrics.ytdChangeAmount >= 0 ? "+" : "-"}
+                      ${Math.abs(portfolioMetrics.ytdChangeAmount).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                    <span
+                      className={`font-mono tabular-nums ${
+                        portfolioMetrics.ytdPercent >= 0 ? "text-green-500/70" : "text-red-500/70"
+                      }`}
+                    >
+                      (
+                      {portfolioMetrics.ytdPercent >= 0 ? "+" : ""}
+                      {portfolioMetrics.ytdPercent.toFixed(2)}%)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setYtdDialogOpen(true)}
+                      className="text-xs text-muted-foreground hover:text-foreground ml-1"
+                    >
+                      配置YTD
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-xs opacity-60 font-mono">
+                    未配置
+                    <button
+                      type="button"
+                      onClick={() => setYtdDialogOpen(true)}
+                      className="ml-1 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      设置
+                    </button>
+                  </span>
+                )}
+              </div>
             </div>
             {/* Sparkline - 垂直居中对齐到数字块 */}
             <div className="w-full -mx-2 md:-mx-3 mt-0.5 flex items-center">
@@ -296,214 +343,53 @@ export default function PortfolioHero({
             </div>
           </div>
 
-          {/* 中列: Top Movers - Top 3 ↑ / Top 3 ↓ */}
-          <div className="min-w-0">
-            {/* Mobile: Tab切换 */}
-            <div className="md:hidden flex gap-1 mb-2 border-b border-border/30">
-              <button
-                onClick={() => setMobileMoverTab('positive')}
-                className={`px-2 py-1 text-xs font-medium font-mono transition-colors ${
-                  mobileMoverTab === 'positive'
-                    ? 'text-foreground border-b-2 border-green-500/70'
-                    : 'text-muted-foreground opacity-60'
-                }`}
-              >
-                Top 3 ↑
-              </button>
-              <button
-                onClick={() => setMobileMoverTab('negative')}
-                className={`px-2 py-1 text-xs font-medium font-mono transition-colors ${
-                  mobileMoverTab === 'negative'
-                    ? 'text-foreground border-b-2 border-red-500/70'
-                    : 'text-muted-foreground opacity-60'
-                }`}
-              >
-                Top 3 ↓
-              </button>
+          {/* 中列: Top Movers */}
+          <div className="min-w-0 flex flex-col space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              {renderMoverColumn("Top 3 ↑", topPositive, true)}
+              {renderMoverColumn("Top 3 ↓", topNegative, false)}
             </div>
-
-            {/* Desktop: 两列并排（Top↑ / Top↓） */}
-            <div className="hidden md:grid grid-cols-2 gap-3">
-              {/* Positive column */}
-              <div className="min-w-0">
-                <div className="text-xs opacity-50 font-mono font-normal mb-1">Top 3 ↑</div>
-                <div className="space-y-0.5" style={{ lineHeight: '1.3' }}>
-                  {topPositive.length > 0 ? (
-                    topPositive.map((mover) => (
-                      <div
-                        key={mover.ticker}
-                        className="grid grid-cols-[48px_1fr] items-baseline gap-2"
-                      >
-                        <span className="text-[14px] font-medium font-mono text-foreground w-12">
-                          {mover.ticker}
-                        </span>
-                        <div className="flex items-baseline gap-0 text-[14px] font-medium font-mono tabular-nums justify-end">
-                          <TrendingUp className="w-2.5 h-2.5 mr-0.5 text-green-500/70 flex-shrink-0" />
-                          <span className="text-right text-green-500/70 tabular-nums">+{mover.dailyChangePercent.toFixed(1)}%</span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-xs opacity-60 font-mono font-normal">—</div>
-                  )}
-                </div>
-              </div>
-
-              {/* Negative column */}
-              <div className="min-w-0">
-                <div className="text-xs opacity-60 font-mono font-normal mb-1.5">Top 3 ↓</div>
-                <div className="space-y-0.5" style={{ lineHeight: '1.35' }}>
-                  {topNegative.length > 0 ? (
-                    topNegative.map((mover) => (
-                      <div
-                        key={mover.ticker}
-                        className="grid grid-cols-[48px_1fr] items-baseline gap-2"
-                      >
-                        <span className="text-[14px] font-medium font-mono text-foreground w-12">
-                          {mover.ticker}
-                        </span>
-                        <div className="flex items-baseline gap-0 text-[14px] font-medium font-mono tabular-nums justify-end">
-                          <TrendingDown className="w-2.5 h-2.5 mr-0.5 text-red-500/70 flex-shrink-0" />
-                          <span className="text-right text-red-500/70 tabular-nums">{mover.dailyChangePercent.toFixed(1)}%</span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-xs opacity-60 font-mono font-normal">—</div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Mobile: 单列显示（根据tab） */}
-            <div className="md:hidden space-y-0.5" style={{ lineHeight: '1.35' }}>
-              {(mobileMoverTab === 'positive' ? topPositive : topNegative).length > 0 ? (
-                (mobileMoverTab === 'positive' ? topPositive : topNegative).map((mover) => {
-                  const isPositive = mover.dailyChangePercent >= 0;
-                  return (
-                    <div
-                      key={mover.ticker}
-                      className="grid grid-cols-[48px_1fr] items-baseline gap-2"
-                    >
-                      <span className="text-[14px] font-medium font-mono text-foreground w-12">
-                        {mover.ticker}
-                      </span>
-                      <div className="flex items-baseline gap-0 text-[14px] font-medium font-mono tabular-nums justify-end">
-                        {isPositive ? (
-                          <TrendingUp className="w-2.5 h-2.5 mr-0.5 text-green-500/70 flex-shrink-0" />
-                        ) : (
-                          <TrendingDown className="w-2.5 h-2.5 mr-0.5 text-red-500/70 flex-shrink-0" />
-                        )}
-                        <span className={`text-right tabular-nums ${isPositive ? "text-green-500/70" : "text-red-500/70"}`}>
-                          {isPositive ? "+" : ""}{mover.dailyChangePercent.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-xs opacity-60 font-mono font-normal">暂无数据</div>
-              )}
-            </div>
-
-            {/* 更新时间（在 Top Movers 下方） */}
             <div className="mt-2 pt-1.5 border-t border-border/20">
-              <div className="text-xs opacity-60 font-mono font-normal">
-                {updateInfo}
-              </div>
+              <div className="text-xs opacity-60 font-mono font-normal">{updateInfo}</div>
             </div>
-          </div>
-
-          {/* 右列: Performance（5D / 1M / YTD） */}
-          <div className="min-w-0 flex flex-col">
-            <div className="text-xs opacity-50 font-mono font-normal mb-1">Performance</div>
-            <TooltipProvider>
-              <div className="space-y-0.5" style={{ lineHeight: '1.3' }}>
-                {/* 5D */}
-                <div className="grid grid-cols-[auto_1fr] items-baseline gap-2">
-                  <span className="text-[14px] font-medium font-mono text-foreground w-8">
-                    5D
-                  </span>
-                  <div className="text-[14px] font-medium font-mono tabular-nums text-right">
-                    {performanceMetrics.fiveDay !== null ? (
-                      <span className={`tabular-nums ${performanceMetrics.fiveDay >= 0 ? "text-green-500/70" : "text-red-500/70"}`}>
-                        {performanceMetrics.fiveDay >= 0 ? "+" : ""}
-                        {performanceMetrics.fiveDay.toFixed(2)}%
-                      </span>
-                    ) : (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="opacity-60 cursor-help">N/A</span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">数据不足（&lt;5 个交易日）</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
-                </div>
-
-                {/* 1M */}
-                <div className="grid grid-cols-[auto_1fr] items-baseline gap-2">
-                  <span className="text-[14px] font-medium font-mono text-foreground w-8">
-                    1M
-                  </span>
-                  <div className="text-[14px] font-medium font-mono tabular-nums text-right">
-                    {performanceMetrics.oneMonth !== null ? (
-                      <span className={`tabular-nums ${performanceMetrics.oneMonth >= 0 ? "text-green-500/70" : "text-red-500/70"}`}>
-                        {performanceMetrics.oneMonth >= 0 ? "+" : ""}
-                        {performanceMetrics.oneMonth.toFixed(2)}%
-                      </span>
-                    ) : (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="opacity-60 cursor-help">N/A</span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">数据不足（&lt;5 个交易日）</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
-                </div>
-
-                {/* YTD */}
-                <div className="grid grid-cols-[auto_1fr] items-baseline gap-2">
-                  <span className="text-[14px] font-medium font-mono text-foreground w-8">
-                    YTD
-                  </span>
-                  <div className="text-[14px] font-medium font-mono tabular-nums text-right">
-                    {performanceMetrics.ytd !== null && performanceMetrics.ytd !== undefined ? (
-                      <span className={`tabular-nums ${performanceMetrics.ytd >= 0 ? "text-green-500/70" : "text-red-500/70"}`}>
-                        {performanceMetrics.ytd >= 0 ? "+" : ""}
-                        {performanceMetrics.ytd.toFixed(2)}%
-                      </span>
-                    ) : (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="opacity-60 cursor-help">N/A</span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">数据不足</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </TooltipProvider>
-            
-            {/* 编辑仓位按钮（与 Performance 纵向左对齐） */}
-            <div className="mt-auto pt-2">
-              <HoldingsEditor trigger={
-                <Button variant="outline" size="sm" className="text-xs h-7 px-2 font-mono font-normal">
-                  <PencilIcon className="w-3 h-3 mr-1" /> 编辑仓位
-                </Button>
-              } />
+            <div className="flex justify-end mt-auto">
+              <HoldingsEditor
+                trigger={
+                  <Button variant="outline" size="sm" className="text-xs h-7 px-2 font-mono font-normal">
+                    <PencilIcon className="w-3 h-3 mr-1" /> 编辑仓位
+                  </Button>
+                }
+              />
             </div>
           </div>
         </div>
       </div>
     </div>
+      <Dialog open={ytdDialogOpen} onOpenChange={(open) => setYtdDialogOpen(open)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>设置年初基准</DialogTitle>
+          <DialogDescription>输入您期望的 YTD 起始市值（美元）。</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <Input
+            type="number"
+            placeholder="e.g. 5400000"
+            value={ytdInputValue}
+            onChange={(e) => setYtdInputValue(e.target.value)}
+          />
+          {ytdInputError && (
+            <p className="text-xs text-destructive">{ytdInputError}</p>
+          )}
+        </div>
+        <DialogFooter className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setYtdDialogOpen(false)}>
+            取消
+          </Button>
+          <Button onClick={handleYtdSave}>保存</Button>
+        </DialogFooter>
+      </DialogContent>
+      </Dialog>
+    </>
   );
 }
