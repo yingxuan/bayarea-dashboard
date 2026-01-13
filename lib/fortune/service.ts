@@ -2,7 +2,7 @@ import { generateFortune } from "./gemini.js";
 import { formatDateLA, normalizeYMD } from "./date.js";
 import { getLosAngelesDateInfo } from "./cache.js";
 import { fortuneResponseSchema } from "./schema.js";
-import { acquireLock, getJSON, isRedisAvailable, setJSON } from "./kv.js";
+import { acquireLock, getJSON, isRedisAvailable, releaseLock, setJSON } from "./kv.js";
 
 const CACHE_TTL_SECONDS = 36 * 60 * 60; // 36 hours
 const LOCK_TTL_SECONDS = 90;
@@ -101,28 +101,34 @@ export async function getFortuneService(birthdateRaw: string) {
   }
 
   console.log(`[fortune] lock_acquired cacheKey=${cacheKey}`);
-  const started = Date.now();
-  console.log(`[fortune] gemini_call start cacheKey=${cacheKey}`);
-  const { parsed: modelPayload, meta } = await generateFortune(birthdate, laInfo.todayLabel);
-  const duration = Date.now() - started;
-  console.log(`[fortune] gemini_call done cacheKey=${cacheKey} ms=${duration}`);
+  let responsePayload: any;
+  try {
+    const started = Date.now();
+    console.log(`[fortune] gemini_call start cacheKey=${cacheKey}`);
+    const { parsed: modelPayload, meta } = await generateFortune(birthdate, laInfo.todayLabel);
+    const duration = Date.now() - started;
+    console.log(`[fortune] gemini_call done cacheKey=${cacheKey} ms=${duration}`);
 
-  const finalPayload = {
-    ...modelPayload,
-    birthdate,
-    today: todayLA,
-    timezone: "America/Los_Angeles",
-    generated_at: new Date().toISOString(),
-    disclaimer: modelPayload.disclaimer || "本功能仅供娱乐参考，不构成医疗或投资建议。",
-  };
+    const finalPayload = {
+      ...modelPayload,
+      birthdate,
+      today: todayLA,
+      timezone: "America/Los_Angeles",
+      generated_at: new Date().toISOString(),
+      disclaimer: modelPayload.disclaimer || "本功能仅供娱乐参考，不构成医疗或投资建议。",
+    };
 
-  const enriched = fortuneResponseSchema.parse(finalPayload);
-  await setJSON(cacheKey, JSON.stringify(enriched), CACHE_TTL_SECONDS);
-  console.log(`[fortune] kv_set cacheKey=${cacheKey} ttl=${CACHE_TTL_SECONDS}`);
+    const enriched = fortuneResponseSchema.parse(finalPayload);
+    await setJSON(cacheKey, JSON.stringify(enriched), CACHE_TTL_SECONDS);
+    console.log(`[fortune] kv_set cacheKey=${cacheKey} ttl=${CACHE_TTL_SECONDS}`);
 
-  return {
-    ...enriched,
-    cache_status: "fresh",
-    meta: buildMeta(meta, cacheKey, "acquired", false),
-  };
+    responsePayload = {
+      ...enriched,
+      cache_status: "fresh",
+      meta: buildMeta(meta, cacheKey, "acquired", false),
+    };
+    return responsePayload;
+  } finally {
+    await releaseLock(lockKey);
+  }
 }

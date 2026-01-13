@@ -59,3 +59,11 @@ export async function acquireLock(lockKey: string, ttlSeconds: number): Promise<
   fallbackLocks.set(lockKey, Date.now() + ttlSeconds * 1000);
   return true;
 }
+
+export async function releaseLock(lockKey: string): Promise<void> {
+  if (redis) {
+    await redis.del(lockKey);
+    return;
+  }
+  fallbackLocks.delete(lockKey);
+}
