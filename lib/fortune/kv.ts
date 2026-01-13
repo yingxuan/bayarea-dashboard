@@ -32,8 +32,15 @@ export async function getJSON(key: string): Promise<string | null> {
 export async function setJSON(key: string, value: string, ttlSeconds: number): Promise<void> {
   if (hasKVEnv) {
     await kv.set(key, value, { ex: ttlSeconds });
-    const verify = await kv.get<string>(key);
-    console.log("[fortune] kv_write_verify", { key, ok: !!verify, len: verify?.length });
+    const verify = await kv.get(key);
+    const isString = typeof verify === "string";
+    const len = isString ? verify.length : undefined;
+    console.log("[fortune] kv_write_verify", {
+      key,
+      ok: !!verify,
+      type: typeof verify,
+      len: len ?? (verify ? JSON.stringify(verify).length : undefined),
+    });
     return;
   }
   const expiresAt = Date.now() + ttlSeconds * 1000;

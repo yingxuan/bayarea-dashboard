@@ -43,12 +43,21 @@ function buildMeta(base: any, cacheKey: string, lockStatus: "none" | "acquired" 
 }
 
 async function parseCachedResponse(
-  raw: string,
+  raw: any,
   cacheKey: string,
   lockStatus: "none" | "contended"
 ) {
   try {
-    const cached = JSON.parse(raw);
+    let cached: any;
+    if (typeof raw === "string") {
+      cached = JSON.parse(raw);
+    } else if (raw && typeof raw === "object") {
+      cached = raw;
+      // normalize: rewrite as string for future stability
+      await setJSON(cacheKey, JSON.stringify(raw), CACHE_TTL_SECONDS);
+    } else {
+      return null;
+    }
     return {
       ...cached,
       cache_status: "cache",
@@ -136,7 +145,8 @@ export async function getFortuneService(birthdateRaw: string) {
     };
 
     const enriched = fortuneResponseSchema.parse(finalPayload);
-    await setJSON(cacheKey, JSON.stringify(enriched), CACHE_TTL_SECONDS);
+    const payloadStr = JSON.stringify(enriched);
+    await setJSON(cacheKey, payloadStr, CACHE_TTL_SECONDS);
     console.log(`[fortune] kv_set cacheKey=${cacheKey} ttl=${CACHE_TTL_SECONDS}`);
 
     responsePayload = {
