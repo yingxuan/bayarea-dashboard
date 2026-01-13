@@ -84,6 +84,7 @@ export async function getFortuneService(birthdateRaw: string) {
   const laInfo = getLosAngelesDateInfo(laNow.toJSDate());
   const cacheKey = getCacheKey(birthdate, laDate);
   const lockKey = getLockKey(birthdate, laDate);
+  const todayLA = laDate;
   console.log(`[fortune] cache_key ${cacheKey}`);
 
   console.log(
