@@ -1,5 +1,6 @@
+import { DateTime } from "luxon";
 import { generateFortune } from "./gemini.js";
-import { formatDateLA, normalizeYMD } from "./date.js";
+import { normalizeYMD } from "./date.js";
 import { getLosAngelesDateInfo } from "./cache.js";
 import { fortuneResponseSchema } from "./schema.js";
 import { acquireLock, deleteJSON, getJSON, isRedisAvailable, releaseLock, setJSON } from "./kv.js";
@@ -78,10 +79,12 @@ export async function getFortuneService(birthdateRaw: string) {
   const birthdate = normalizeYMD(birthdateRaw || "");
   if (!birthdate) throw new Error("Invalid birthdate");
 
-  const laInfo = getLosAngelesDateInfo();
-  const todayLA = formatDateLA(new Date());
-  const cacheKey = getCacheKey(birthdate, laInfo.dateKey);
-  const lockKey = getLockKey(birthdate, laInfo.dateKey);
+  const laNow = DateTime.now().setZone("America/Los_Angeles");
+  const laDate = laNow.toISODate();
+  const laInfo = getLosAngelesDateInfo(laNow.toJSDate());
+  const cacheKey = getCacheKey(birthdate, laDate);
+  const lockKey = getLockKey(birthdate, laDate);
+  console.log(`[fortune] cache_key ${cacheKey}`);
 
   console.log(
     `[fortune] redis_enabled=${isRedisAvailable} birthdate=${birthdate} todayLA=${laInfo.dateKey}`
