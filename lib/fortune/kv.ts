@@ -67,3 +67,11 @@ export async function releaseLock(lockKey: string): Promise<void> {
   }
   fallbackLocks.delete(lockKey);
 }
+
+export async function deleteJSON(key: string): Promise<void> {
+  if (redis) {
+    await redis.del(key);
+    return;
+  }
+  fallbackCache.delete(key);
+}

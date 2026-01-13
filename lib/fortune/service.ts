@@ -2,7 +2,7 @@ import { generateFortune } from "./gemini.js";
 import { formatDateLA, normalizeYMD } from "./date.js";
 import { getLosAngelesDateInfo } from "./cache.js";
 import { fortuneResponseSchema } from "./schema.js";
-import { acquireLock, getJSON, isRedisAvailable, releaseLock, setJSON } from "./kv.js";
+import { acquireLock, deleteJSON, getJSON, isRedisAvailable, releaseLock, setJSON } from "./kv.js";
 
 const CACHE_TTL_SECONDS = 36 * 60 * 60; // 36 hours
 const LOCK_TTL_SECONDS = 90;
@@ -41,13 +41,23 @@ function buildMeta(base: any, cacheKey: string, lockStatus: "none" | "acquired" 
   };
 }
 
-async function parseCachedResponse(raw: string, cacheKey: string, lockStatus: "none" | "contended") {
-  const cached = JSON.parse(raw);
-  return {
-    ...cached,
-    cache_status: "cache",
-    meta: buildMeta(cached.meta, cacheKey, lockStatus, true),
-  };
+async function parseCachedResponse(
+  raw: string,
+  cacheKey: string,
+  lockStatus: "none" | "contended"
+) {
+  try {
+    const cached = JSON.parse(raw);
+    return {
+      ...cached,
+      cache_status: "cache",
+      meta: buildMeta(cached.meta, cacheKey, lockStatus, true),
+    };
+  } catch (error) {
+    console.error(`[fortune] cache_parse_failed cacheKey=${cacheKey}`, error);
+    await deleteJSON(cacheKey);
+    return null;
+  }
 }
 
 async function pollForCachedValue(cacheKey: string) {
@@ -79,10 +89,13 @@ export async function getFortuneService(birthdateRaw: string) {
 
   const cachedRaw = await getJSON(cacheKey);
   if (cachedRaw) {
-    console.log(
-      `[fortune] birthdate=${birthdate} todayLA=${laInfo.dateKey} cacheKey=${cacheKey} kv_hit=true`
-    );
-    return parseCachedResponse(cachedRaw, cacheKey, "none");
+    const cachedResponse = await parseCachedResponse(cachedRaw, cacheKey, "none");
+    if (cachedResponse) {
+      console.log(
+        `[fortune] birthdate=${birthdate} todayLA=${laInfo.dateKey} cacheKey=${cacheKey} kv_hit=true`
+      );
+      return cachedResponse;
+    }
   }
 
   console.log(
