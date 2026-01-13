@@ -109,6 +109,9 @@ importers:
       '@upstash/redis':
         specifier: ^1.6.1
         version: 1.36.1
+      '@vercel/kv':
+        specifier: ^2.0.0
+        version: 2.0.0
       axios:
         specifier: ^1.12.0
         version: 1.12.2
@@ -2576,6 +2579,10 @@ packages:
 
   '@vercel/introspection@0.0.7':
     resolution: {integrity: sha512-8JjxYqUsdxHaExbUANvGftAJeRTxVGYwTmaV9KcOA+C3SVvYSUertnQeTgKiau0Fc2cHmxh9e0poLxs2N3gZ2A==}
+
+  '@vercel/kv@2.0.0':
+    resolution: {integrity: sha512-zdVrhbzZBYo5d1Hfn4bKtqCeKf0FuzW8rSHauzQVMUgv1+1JOwof2mWcBuI+YMJy8s0G0oqAUfQ7HgUDzb8EbA==}
+    engines: {node: '>=14.6'}
 
   '@vercel/nestjs@0.2.19':
     resolution: {integrity: sha512-Fy/7TjPLZOptkpA66Cp6sulzTNEh6NPeLPXrjAThB8utRCoFDT1gWQQUALz/6y886wor2cPnj4kFHqjKreO38Q==}
@@ -8142,6 +8149,10 @@ snapshots:
     dependencies:
       path-to-regexp: 8.3.0
       zod: 3.22.4
+
+  '@vercel/kv@2.0.0':
+    dependencies:
+      '@upstash/redis': 1.36.1
 
   '@vercel/nestjs@0.2.19(rollup@4.52.4)':
     dependencies:

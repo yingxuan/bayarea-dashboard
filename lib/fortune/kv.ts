@@ -1,14 +1,4 @@
-import { Redis } from "@upstash/redis";
-
-const redis =
-  process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
-    ? new Redis({
-        url: process.env.KV_REST_API_URL,
-        token: process.env.KV_REST_API_TOKEN,
-      })
-    : null;
-
-console.log(`[fortune] redis_enabled=${Boolean(redis)}`);
+import { kv } from "@vercel/kv";
 
 type CacheEntry = {
   value: string;
@@ -17,17 +7,18 @@ type CacheEntry = {
 
 const fallbackCache = new Map<string, CacheEntry>();
 const fallbackLocks = new Map<string, number>();
+const hasKVEnv = Boolean(process.env.KV_REST_API_URL) && Boolean(process.env.KV_REST_API_TOKEN);
 
 function isExpired(entry: CacheEntry): boolean {
   return entry.expiresAt <= Date.now();
 }
 
-export const isRedisAvailable = Boolean(redis);
+export const isRedisAvailable = hasKVEnv;
 
 export async function getJSON(key: string): Promise<string | null> {
-  if (redis) {
-    console.log(`[fortune] redis_enabled=${Boolean(redis)} cacheKey=${key}`);
-    return redis.get(key);
+  if (hasKVEnv) {
+    const value = await kv.get<string>(key);
+    return value ?? null;
   }
   const entry = fallbackCache.get(key);
   if (!entry) return null;
@@ -39,8 +30,10 @@ export async function getJSON(key: string): Promise<string | null> {
 }
 
 export async function setJSON(key: string, value: string, ttlSeconds: number): Promise<void> {
-  if (redis) {
-    await redis.set(key, value, { ex: ttlSeconds });
+  if (hasKVEnv) {
+    await kv.set(key, value, { ex: ttlSeconds });
+    const verify = await kv.get<string>(key);
+    console.log("[fortune] kv_write_verify", { key, ok: !!verify, len: verify?.length });
     return;
   }
   const expiresAt = Date.now() + ttlSeconds * 1000;
@@ -48,8 +41,8 @@ export async function setJSON(key: string, value: string, ttlSeconds: number): P
 }
 
 export async function acquireLock(lockKey: string, ttlSeconds: number): Promise<boolean> {
-  if (redis) {
-    const result = await redis.set(lockKey, "1", { nx: true, ex: ttlSeconds });
+  if (hasKVEnv) {
+    const result = await kv.set(lockKey, "1", { nx: true, ex: ttlSeconds });
     return result === "OK";
   }
   const existing = fallbackLocks.get(lockKey);
@@ -61,16 +54,16 @@ export async function acquireLock(lockKey: string, ttlSeconds: number): Promise<
 }
 
 export async function releaseLock(lockKey: string): Promise<void> {
-  if (redis) {
-    await redis.del(lockKey);
+  if (hasKVEnv) {
+    await kv.del(lockKey);
     return;
   }
   fallbackLocks.delete(lockKey);
 }
 
 export async function deleteJSON(key: string): Promise<void> {
-  if (redis) {
-    await redis.del(key);
+  if (hasKVEnv) {
+    await kv.del(key);
     return;
   }
   fallbackCache.delete(key);

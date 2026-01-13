@@ -85,7 +85,7 @@ export async function getFortuneService(birthdateRaw: string) {
   const cacheKey = getCacheKey(birthdate, laDate);
   const lockKey = getLockKey(birthdate, laDate);
   const todayLA = laDate;
-  console.log(`[fortune] cache_key ${cacheKey}`);
+  console.log("[fortune] kv_key", { birthdate, laDate, key: cacheKey, lockKey });
 
   console.log(
     `[fortune] redis_enabled=${isRedisAvailable} birthdate=${birthdate} todayLA=${laInfo.dateKey}`
