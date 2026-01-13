@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 import { setCorsHeaders, handleOptions } from "./utils.js";
 import { normalizeYMD } from "../lib/fortune/date.js";
-import { getFortuneService } from "../lib/fortune/service.js";
+import { getFortuneService, LockContentionError } from "../lib/fortune/service.js";
 
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT_MAX = 30;
@@ -73,8 +73,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const result = await getFortuneService(birthdate);
+    const cacheHeader = result.cache_status === "cache" ? "kv-hit" : "kv-miss";
+    const lockHeader = result.meta?.lockStatus || "none";
+    res.setHeader("X-Fortune-Cache", cacheHeader);
+    res.setHeader("X-Fortune-Lock", lockHeader);
     return res.status(200).json(result);
   } catch (error) {
+    if (error instanceof LockContentionError) {
+      res.setHeader("X-Fortune-Cache", "kv-miss");
+      res.setHeader("X-Fortune-Lock", "contended");
+      res.setHeader("Retry-After", error.retryAfter.toString());
+      return res.status(503).json({
+        error: "Fortune generation in progress",
+        message: error.message,
+      });
+    }
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("[fortune] Failed to generate fortune:", message);
     return res.status(500).json({

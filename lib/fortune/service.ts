@@ -2,33 +2,66 @@ import { generateFortune } from "./gemini.js";
 import { formatDateLA, normalizeYMD } from "./date.js";
 import { getLosAngelesDateInfo } from "./cache.js";
 import { fortuneResponseSchema } from "./schema.js";
+import { acquireLock, getJSON, isRedisAvailable, setJSON } from "./kv.js";
 
-type CacheEntry = { value: any; expiresAt: number };
+const CACHE_TTL_SECONDS = 36 * 60 * 60; // 36 hours
+const LOCK_TTL_SECONDS = 90;
+const POLL_ATTEMPTS = 6;
+const POLL_DELAY_MIN_MS = 250;
+const POLL_DELAY_MAX_MS = 400;
+const CACHE_PREFIX = "fortune:v1";
 
-const memoryCache = new Map<string, CacheEntry>();
-const PROMPT_VERSION = "v7";
-
-function getCacheKey(params: { birthdate: string; today: string; model?: string }) {
-  const model = params.model || process.env.GEMINI_MODEL || "gemini-3-flash-preview";
-  return `fortune:${PROMPT_VERSION}:model=${model}:today=${params.today}:birth=${params.birthdate}`;
-}
-
-function getFromCache(key: string) {
-  const hit = memoryCache.get(key);
-  if (!hit) return null;
-  if (hit.expiresAt <= Date.now()) {
-    memoryCache.delete(key);
-    return null;
+export class LockContentionError extends Error {
+  public readonly retryAfter = 2;
+  constructor(message = "Fortune generation in progress, please retry shortly") {
+    super(message);
+    this.name = "LockContentionError";
   }
-  return hit.value;
 }
 
-function setCache(key: string, value: any, ttlMs: number) {
-  memoryCache.set(key, { value, expiresAt: Date.now() + ttlMs });
+function getCacheKey(birthdate: string, laDate: string) {
+  return `${CACHE_PREFIX}:${birthdate}:${laDate}`;
 }
 
-export function clearFortuneCache() {
-  memoryCache.clear();
+function getLockKey(birthdate: string, laDate: string) {
+  return `fortune_lock:v1:${birthdate}:${laDate}`;
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function buildMeta(base: any, cacheKey: string, lockStatus: "none" | "acquired" | "contended", cacheHit: boolean) {
+  return {
+    ...(base || {}),
+    cacheHit,
+    cacheKey,
+    lockStatus,
+    cacheSource: isRedisAvailable ? "kv" : "memory",
+  };
+}
+
+async function parseCachedResponse(raw: string, cacheKey: string, lockStatus: "none" | "contended") {
+  const cached = JSON.parse(raw);
+  return {
+    ...cached,
+    cache_status: "cache",
+    meta: buildMeta(cached.meta, cacheKey, lockStatus, true),
+  };
+}
+
+async function pollForCachedValue(cacheKey: string) {
+  for (let attempt = 0; attempt < POLL_ATTEMPTS; attempt++) {
+    const cachedRaw = await getJSON(cacheKey);
+    if (cachedRaw) {
+      return cachedRaw;
+    }
+    const delay =
+      POLL_DELAY_MIN_MS +
+      Math.floor(Math.random() * (POLL_DELAY_MAX_MS - POLL_DELAY_MIN_MS + 1));
+    await sleep(delay);
+  }
+  return null;
 }
 
 export async function getFortuneService(birthdateRaw: string) {
@@ -37,15 +70,37 @@ export async function getFortuneService(birthdateRaw: string) {
 
   const laInfo = getLosAngelesDateInfo();
   const todayLA = formatDateLA(new Date());
-  const cacheKey = getCacheKey({ birthdate, today: laInfo.dateKey });
+  const cacheKey = getCacheKey(birthdate, laInfo.dateKey);
+  const lockKey = getLockKey(birthdate, laInfo.dateKey);
 
-  const cached = getFromCache(cacheKey);
-  if (cached) {
-    console.log(`[fortune] birthdate=${birthdate} todayLA=${laInfo.dateKey} cacheKey=${cacheKey} hit=true`);
-    return { ...cached, cache_status: "cache", meta: { ...(cached.meta || {}), cacheHit: true, cacheKey } };
+  console.log(
+    `[fortune] redis_enabled=${isRedisAvailable} birthdate=${birthdate} todayLA=${laInfo.dateKey}`
+  );
+
+  const cachedRaw = await getJSON(cacheKey);
+  if (cachedRaw) {
+    console.log(
+      `[fortune] birthdate=${birthdate} todayLA=${laInfo.dateKey} cacheKey=${cacheKey} kv_hit=true`
+    );
+    return parseCachedResponse(cachedRaw, cacheKey, "none");
   }
 
-  console.log(`[fortune] birthdate=${birthdate} todayLA=${laInfo.dateKey} cacheKey=${cacheKey} hit=false`);
+  console.log(
+    `[fortune] birthdate=${birthdate} todayLA=${laInfo.dateKey} cacheKey=${cacheKey} kv_hit=false kv_miss=true`
+  );
+  const lockAcquired = await acquireLock(lockKey, LOCK_TTL_SECONDS);
+  if (!lockAcquired) {
+    console.log(`[fortune] lock_contended cacheKey=${cacheKey}`);
+    const polledRaw = await pollForCachedValue(cacheKey);
+    if (polledRaw) {
+      console.log(`[fortune] lock_contended -> kv_hit cacheKey=${cacheKey}`);
+      return parseCachedResponse(polledRaw, cacheKey, "contended");
+    }
+    console.log(`[fortune] lock_contended_timeout cacheKey=${cacheKey}`);
+    throw new LockContentionError();
+  }
+
+  console.log(`[fortune] lock_acquired cacheKey=${cacheKey}`);
   const started = Date.now();
   console.log(`[fortune] gemini_call start cacheKey=${cacheKey}`);
   const { parsed: modelPayload, meta } = await generateFortune(birthdate, laInfo.todayLabel);
@@ -62,11 +117,12 @@ export async function getFortuneService(birthdateRaw: string) {
   };
 
   const enriched = fortuneResponseSchema.parse(finalPayload);
-  setCache(cacheKey, enriched, laInfo.ttlMs);
+  await setJSON(cacheKey, JSON.stringify(enriched), CACHE_TTL_SECONDS);
+  console.log(`[fortune] kv_set cacheKey=${cacheKey} ttl=${CACHE_TTL_SECONDS}`);
 
   return {
     ...enriched,
     cache_status: "fresh",
-    meta: { ...meta, cacheHit: false, cacheKey },
+    meta: buildMeta(meta, cacheKey, "acquired", false),
   };
 }
