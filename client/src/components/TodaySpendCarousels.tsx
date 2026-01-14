@@ -29,7 +29,7 @@ const CATEGORIES = ['奶茶', '中餐', '夜宵', '新店打卡'] as const;
 
 export default function TodaySpendCarousels() {
   // Use local cache hook - loads from IndexedDB immediately, NEVER calls Places API
-  const { placesByCategory, loading, cacheInfo, categoryOffsets, handleRefresh } = usePlacesCache(
+  const { placesByCategory, loading, cacheInfo, categoryOffsets, handleRefresh, debugByCategory } = usePlacesCache(
     ['奶茶', '中餐', '夜宵', '新店打卡']
   );
 
@@ -73,6 +73,7 @@ export default function TodaySpendCarousels() {
               places={places}
               offset={offset}
               onRefresh={() => handleRefreshCategory(category)}
+              debugInfo={debugByCategory?.[category]}
             />
             {/* Debug info (dev-only) - only for non-新店打卡 categories */}
             {/* {debugMode && info && category !== '新店打卡' && (

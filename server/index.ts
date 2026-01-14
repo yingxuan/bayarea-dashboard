@@ -5,9 +5,9 @@ import path from "path";
 import { fileURLToPath } from "url";
 import apiRouter from "./api.js";
 // Use production API functions (Vercel serverless functions) for local dev
-import { 
-  marketRoute, 
-  dealsRoute, 
+import {
+  marketRoute,
+  dealsRoute,
   showsRoute,
   youtubersRoute,
   quotesRoute,
@@ -18,6 +18,7 @@ import {
   portfolioValueSeriesRoute,
   fortuneRoute,
   fanwanRoute,
+  devPlacesClearCacheRoute,
 } from "./local-api-adapter.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -66,6 +67,8 @@ async function startServer() {
   app.options('/api/fortune', (_req, res) => res.sendStatus(200));
   app.get('/api/youtube/fanwan', fanwanRoute);
   app.options('/api/youtube/fanwan', (_req, res) => res.sendStatus(200));
+  app.post('/api/dev/places/clear-cache', devPlacesClearCacheRoute);
+  app.options('/api/dev/places/clear-cache', (_req, res) => res.sendStatus(200));
 
 
   app.get("/api/spend/place-photo", async (req, res) => {

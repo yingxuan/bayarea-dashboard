@@ -13,6 +13,8 @@ import { handleToday as spendTodayHandler } from '../lib/spend/today.js';
 import communityHandler from '../api/community/[...slug].js';
 import portfolioValueSeriesHandler from '../api/portfolio/value-series.js';
 import fanwanHandler from '../api/youtube/fanwan.js';
+import { cache } from '../api/utils.ts';
+import { clearDedupMap } from '../lib/spend/placesClient.ts';
 
 /**
  * Convert Express Request/Response to Vercel Request/Response
@@ -166,6 +168,43 @@ export async function fanwanRoute(req: Request, res: Response) {
     await fanwanHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Fanwan route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Dev-only: Clear Places cache
+ */
+export async function devPlacesClearCacheRoute(req: Request, res: Response) {
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST, OPTIONS');
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  if (process.env.NODE_ENV === 'production' && req.headers['x-dev-admin-token'] !== process.env.DEV_ADMIN_TOKEN) {
+    return res.status(403).json({ error: 'Dev cache clearing is disabled' });
+  }
+
+  try {
+    const cleared: string[] = [];
+    for (const key of cache.keys()) {
+      if (key.startsWith('places_pool:')) {
+        cache.delete(key);
+        cleared.push(key);
+      }
+    }
+    clearDedupMap();
+    res.status(200).json({ ok: true, cleared, cacheEntries: cache.size });
+  } catch (error) {
+    console.error('[local-api-adapter] Dev places clear cache route error:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

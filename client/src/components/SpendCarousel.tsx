@@ -11,7 +11,7 @@
  * - Never show empty sections
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { MapPin, Star } from "lucide-react";
 import {
   Carousel,
@@ -21,10 +21,21 @@ import {
   CarouselNext,
 } from "@/components/ui/carousel";
 import { refreshNewPlaces, getNewPlacesPool } from "@/hooks/usePlacesCache";
-import { getCacheAgeDays } from "@/lib/places/localCache";
+import { getCacheAgeDays, clearAllPools } from "@/lib/places/localCache";
 import { enrichPlace, getEnrichmentStats } from "@/lib/places/placeEnricher";
 import { getEnrichmentKey, getEnriched } from "@/lib/places/enrichmentCache";
 import { config } from "@/config";
+
+declare global {
+  interface Window {
+    __clearPlacesCache?: () => Promise<void>;
+    __placesDebug?: {
+      enable: () => void;
+      disable: () => void;
+      clearPools: () => Promise<void>;
+    };
+  }
+}
 
 interface SpendPlace {
   id: string;
@@ -38,12 +49,20 @@ interface SpendPlace {
   city: string;
 }
 
+interface PlacesDebugInfo {
+  region?: string;
+  tiersUsed?: number;
+  excludedSamples?: Array<{ name: string; reason: string; types?: string[] }>;
+  includedBreakdown?: Record<string, any>;
+}
+
 interface SpendCarouselProps {
   category: string;
   places: SpendPlace[];
   fallbackImage?: string;
   offset?: number; // Current display offset (for "换一批" functionality)
   onRefresh?: () => void; // Callback for "换一批" button
+  debugInfo?: PlacesDebugInfo;
 }
 
 // Category fallback images (placeholder URLs - can be replaced with actual images)
@@ -169,7 +188,62 @@ function DiceAnimation() {
   );
 }
 
-export default function SpendCarousel({ category, places, fallbackImage, offset = 0, onRefresh }: SpendCarouselProps) {
+const CLEAR_CACHE_ENDPOINT = "/api/dev/places/clear-cache";
+
+export default function SpendCarousel({ category, places, fallbackImage, offset = 0, onRefresh, debugInfo }: SpendCarouselProps) {
+  const isDevMode = import.meta.env.DEV;
+  const devAdminToken = import.meta.env.VITE_DEV_ADMIN_TOKEN;
+  const devCacheEnabled = isDevMode || Boolean(devAdminToken);
+  const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const debugPlaces = urlParams?.get("debugPlaces") === "1" || (typeof window !== "undefined" && localStorage.getItem("places_debug") === "1") || isDevMode;
+  const [showDebug, setShowDebug] = useState(false);
+
+  const clearPlacesCache = useCallback(async () => {
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (devAdminToken) {
+        headers["x-dev-admin-token"] = devAdminToken;
+      }
+      const response = await fetch(CLEAR_CACHE_ENDPOINT, {
+        method: "POST",
+        headers,
+      });
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+      await response.json();
+      await clearAllPools();
+      window.location.reload();
+    } catch (error) {
+      console.error("[SpendCarousel] failed to clear places cache:", error);
+      throw error;
+    }
+  }, [devAdminToken]);
+
+  const handleClearCacheClick = useCallback(async () => {
+    try {
+      await clearPlacesCache();
+    } catch (error) {
+      console.error("[SpendCarousel] failed to clear places cache:", error);
+    }
+  }, [clearPlacesCache]);
+
+  useEffect(() => {
+    if (devCacheEnabled && typeof window !== "undefined") {
+      window.__clearPlacesCache = handleClearCacheClick;
+      window.__placesDebug = {
+        enable: () => localStorage.setItem("places_debug", "1"),
+        disable: () => localStorage.removeItem("places_debug"),
+        clearPools: async () => {
+          await clearAllPools();
+          window.location.reload();
+        },
+      };
+    }
+  }, [devCacheEnabled, handleClearCacheClick]);
+
   // Get fallback image for this category
   const getFallbackImage = () => fallbackImage || CATEGORY_FALLBACK_IMAGES[category] || CATEGORY_FALLBACK_IMAGES['中餐'];
 
@@ -225,9 +299,11 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
     );
   }
 
+  const windowSize = 10;
+
   // For 新店打卡: show all available places (no minimum requirement)
-  // For other categories: select 5 places starting from offset (for "换一批" functionality)
-  const top5Places = useMemo(() => {
+  // For other categories: select a window of places starting from offset (for "换一批" functionality)
+  const topPlaces = useMemo(() => {
     let result: SpendPlace[] = [];
     
     // STEP 5: For 夜宵, show all places (no opening hours filter)
@@ -236,11 +312,13 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
       // Show all places without filtering by opening hours
       const normalizedOffset = Math.max(0, Math.min(offset, places.length - 1));
       
-      if (normalizedOffset + 5 <= places.length) {
-        result = places.slice(normalizedOffset, normalizedOffset + 5);
+      if (places.length <= windowSize) {
+        result = places;
+      } else if (normalizedOffset + windowSize <= places.length) {
+        result = places.slice(normalizedOffset, normalizedOffset + windowSize);
       } else {
         const fromEnd = places.slice(normalizedOffset);
-        const fromStart = places.slice(0, 5 - fromEnd.length);
+        const fromStart = places.slice(0, windowSize - fromEnd.length);
         result = [...fromEnd, ...fromStart];
       }
       
@@ -253,99 +331,35 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
     
     // STEP 7: For 新店打卡, filter using seed file enriched data (rating, userRatingCount)
     if (category === '新店打卡') {
-      // Filter places based on seed file enriched data (place.rating, place.user_ratings_total)
-      // or runtime enriched data if available
-      const filtered = places.filter(place => {
-        const enrichmentKey = getEnrichmentKey(place.id, place.name, place.city);
-        const enriched = enrichedPlaces.get(enrichmentKey);
-        
-        // Use runtime enriched data if available, otherwise use seed file enriched data
-        // IMPORTANT: Always check seed file data first to enforce >= 500 filter
-        const seedRatingCount = place.user_ratings_total ?? 0;
-        const enrichedRatingCount = enriched?.userRatingCount;
-        
-        // Use the higher value to ensure we don't miss any >= 500 cases
-        const ratingCount = enrichedRatingCount ?? seedRatingCount;
-        const rating = enriched?.rating ?? (place.rating && place.rating > 0 ? place.rating : 0);
-        
-        // Hard exclude: >= 500 ratingCount is NEVER "new-ish" (MANDATORY FILTER)
-        // This must be checked FIRST, before any other logic
-        if (ratingCount >= 500) {
-          if (import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1')) {
-            console.log(`[SpendCarousel] 新店打卡: Excluding ${place.name} (ratingCount: ${ratingCount} >= 500) - HARD EXCLUDE`);
-          }
-          return false;
-        }
-        
-        // Apply filter using available data (from seed file or runtime enrichment)
-        if (rating > 0 && ratingCount > 0) {
-          // Primary: rating >= 4.0, count <= 150
-          if (rating >= 4.0 && ratingCount <= 150) {
-            if (import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1')) {
-              console.log(`[SpendCarousel] 新店打卡: Including ${place.name} (rating: ${rating}, count: ${ratingCount}) - PRIMARY`);
-            }
-            return true;
-          }
-          // Fallback: rating >= 3.8, count <= 250
-          if (rating >= 3.8 && ratingCount <= 250) {
-            if (import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1')) {
-              console.log(`[SpendCarousel] 新店打卡: Including ${place.name} (rating: ${rating}, count: ${ratingCount}) - FALLBACK`);
-            }
-            return true;
-          }
-          // Extended fallback: rating >= 3.5, count <= 500 (but still exclude >= 500 from hard rule above)
-          if (rating >= 3.5 && ratingCount < 500) {
-            if (import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1')) {
-              console.log(`[SpendCarousel] 新店打卡: Including ${place.name} (rating: ${rating}, count: ${ratingCount}) - EXTENDED FALLBACK`);
-            }
-            return true;
-          }
-          if (import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1')) {
-            console.log(`[SpendCarousel] 新店打卡: Excluding ${place.name} (rating: ${rating}, count: ${ratingCount} - doesn't meet thresholds)`);
-          }
-          return false;
-        }
-        
-        // If no rating/count data available, allow it (new places may not have data yet)
-        // For "新店打卡", we allow places without rating/count data because:
-        // 1. They are new places that may not have enough reviews yet
-        // 2. Seed data may not be enriched yet
-        // 3. We'll enrich them later and filter out >= 500 if needed
-        if (import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1')) {
-          console.log(`[SpendCarousel] 新店打卡: Including ${place.name} (no rating/count data yet, will enrich later)`);
-        }
-        return true;
-      });
-      
-      // Use modulo to cycle through filtered places
-      const normalizedOffset = Math.max(0, Math.min(offset, filtered.length - 1));
-      
-      if (normalizedOffset + 5 <= filtered.length) {
-        result = filtered.slice(normalizedOffset, normalizedOffset + 5);
-      } else {
-        const fromEnd = filtered.slice(normalizedOffset);
-        const fromStart = filtered.slice(0, 5 - fromEnd.length);
-        result = [...fromEnd, ...fromStart];
+      const normalizedOffset = Math.max(0, Math.min(offset, places.length - 1));
+      if (places.length <= windowSize) {
+        return places;
       }
-      
-      return result;
+      if (normalizedOffset + windowSize <= places.length) {
+        return places.slice(normalizedOffset, normalizedOffset + windowSize);
+      }
+      const fromEnd = places.slice(normalizedOffset);
+      const fromStart = places.slice(0, windowSize - fromEnd.length);
+      return [...fromEnd, ...fromStart];
     }
     
     // Other categories: normal rotation
     const normalizedOffset = Math.max(0, Math.min(offset, places.length - 1));
     
-    if (normalizedOffset + 5 <= places.length) {
+    if (places.length <= windowSize) {
+      result = places;
+    } else if (normalizedOffset + windowSize <= places.length) {
       // Normal case: we have enough places from current offset
-      result = places.slice(normalizedOffset, normalizedOffset + 5);
+      result = places.slice(normalizedOffset, normalizedOffset + windowSize);
     } else {
       // Wrap around: take remaining from current offset + take from start
       const fromEnd = places.slice(normalizedOffset);
-      const fromStart = places.slice(0, 5 - fromEnd.length);
+      const fromStart = places.slice(0, windowSize - fromEnd.length);
       result = [...fromEnd, ...fromStart];
     }
     
     return result;
-  }, [places, offset, category, enrichedPlaces]);
+  }, [places, offset, category, enrichedPlaces, windowSize]);
 
   // STEP 5: Load enrichment cache and schedule enrichment for missing items
   useEffect(() => {
@@ -423,8 +437,8 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
     loadAndEnrich();
   }, [places.map(p => `${p.id || ''}_${p.name}_${p.city}`).join('|'), category]);
 
-  // Random pool: use all available places (up to 20) for random selection
-  const randomPool = places.slice(0, 20);
+  // Random pool: use all available curated places (not just the visible window)
+  const randomPool = places;
 
   // Handle random place selection
   const handleRandomClick = () => {
@@ -525,10 +539,28 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
               换一批
             </button>
           )}
+          {(devCacheEnabled || debugPlaces) && (
+            <button
+              onClick={handleClearCacheClick}
+              className="text-xs opacity-60 hover:opacity-100 transition-opacity font-mono font-normal px-2 py-0.5 rounded hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-500/60"
+              title="Clear Places Cache"
+            >
+              Clear Places Cache
+            </button>
+          )}
+          {debugPlaces && (
+            <button
+              onClick={() => setShowDebug((prev) => !prev)}
+              className="text-xs opacity-60 hover:opacity-100 transition-opacity font-mono font-normal px-2 py-0.5 rounded hover:bg-primary/10 border border-primary/20 hover:border-primary/40"
+              title="Why this place"
+            >
+              Why?
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Horizontal Carousel - 6 cards: 5 normal places + 1 random */}
+      {/* Horizontal Carousel - up to 10 curated places + optional random */}
       <Carousel
         opts={{
           align: "start",
@@ -540,8 +572,8 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
         <CarouselPrevious className="hidden md:flex left-2 z-10 bg-background/80 backdrop-blur-sm hover:bg-background/90" />
         <CarouselNext className="hidden md:flex right-2 z-10 bg-background/80 backdrop-blur-sm hover:bg-background/90" />
         <CarouselContent className="-ml-2 min-w-0 items-stretch">
-          {/* Card 1-5: Normal places */}
-          {top5Places.map((place, index) => {
+          {/* Curated places */}
+          {topPlaces.map((place, index) => {
             // STEP 4: Resolve image per item (with enrichment support)
             const resolveImageSrc = (): { src: string; source: string } => {
               const enrichmentKey = getEnrichmentKey(place.id, place.name, place.city);
@@ -718,6 +750,18 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
                           </>
                         )}
                       </div>
+                      {place.badges && place.badges.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {place.badges.map((badge) => (
+                            <span
+                              key={badge}
+                              className="text-[9px] font-mono uppercase tracking-[0.08em] bg-white/10 border border-white/20 text-white/80 rounded px-1 py-0.5"
+                            >
+                              {badge}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </a>
@@ -868,6 +912,52 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
           </CarouselItem>
         </CarouselContent>
       </Carousel>
+      {debugPlaces && showDebug && (
+        <div className="mt-3 border border-border/50 rounded-sm bg-card/70 p-3 text-[11px] font-mono text-foreground/80 max-h-80 overflow-auto">
+          <div className="font-semibold mb-2">Debug: {category} (region: {debugInfo?.region || "n/a"})</div>
+          {places.map((place) => {
+            const breakdown = debugInfo?.includedBreakdown?.[place.id];
+            return (
+              <div key={place.id} className="mb-3 border-b border-border/30 pb-2 last:border-b-0">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">{place.name}</span>
+                  <span className="text-xs opacity-70">score: {breakdown?.score ?? (place as any).score ?? 'n/a'}</span>
+                </div>
+                {place.badges && place.badges.length > 0 && (
+                  <div className="flex gap-1 flex-wrap mt-1">
+                    {place.badges.map((b) => (
+                      <span key={b} className="text-[10px] px-1 py-0.5 rounded bg-white/10 border border-white/20 text-white/80">
+                        {b}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {breakdown && (
+                  <div className="mt-1 space-y-1 text-[10px]">
+                    <div>popularity: {breakdown.popularity?.toFixed?.(2) ?? breakdown.popularity}</div>
+                    {breakdown.priors?.length ? <div>priors: {breakdown.priors.join(", ")}</div> : null}
+                    {breakdown.penalties?.length ? <div>penalties: {breakdown.penalties.join(", ")}</div> : null}
+                    {breakdown.positiveSignals?.length ? <div>signals: {breakdown.positiveSignals.join(", ")}</div> : null}
+                    <div>tier: {breakdown.tier ?? "?"}</div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {debugInfo?.excludedSamples?.length ? (
+            <div className="mt-2">
+              <div className="font-semibold">Excluded samples</div>
+              <ul className="list-disc list-inside text-[10px] opacity-80">
+                {debugInfo.excludedSamples.slice(0, 10).map((ex, idx) => (
+                  <li key={`${ex.name}-${idx}`}>
+                    {ex.name} – {ex.reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
