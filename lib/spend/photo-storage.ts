@@ -1,4 +1,5 @@
 import { put } from '@vercel/blob';
+import { PHOTO_VERSION } from './photo-cache.js';
 
 const BLOB_BASE_PATH = 'place-photos';
 
@@ -10,9 +11,15 @@ export interface StoredPhoto {
 export async function storePhotoBytes(
   placeId: string,
   data: ArrayBuffer,
-  contentType?: string
+  contentType?: string,
+  options?: { version?: string; uniqueSuffix?: string | number | boolean }
 ): Promise<StoredPhoto> {
-  const path = `${BLOB_BASE_PATH}/${placeId}/0.jpg`;
+  const version = options?.version || PHOTO_VERSION;
+  const suffix =
+    options?.uniqueSuffix === undefined || options?.uniqueSuffix === false
+      ? ''
+      : `-${options.uniqueSuffix === true ? Date.now() : options.uniqueSuffix}`;
+  const path = `${BLOB_BASE_PATH}/${version}/${placeId}/0${suffix}.jpg`;
   const res = await put(path, data, {
     access: 'public',
     contentType: contentType || 'image/jpeg',

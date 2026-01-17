@@ -1,6 +1,8 @@
 import { kv } from '@vercel/kv';
 import crypto from 'node:crypto';
 
+export const PHOTO_VERSION = 'v3';
+
 export type PhotoSource = 'prefetch' | 'ondemand';
 
 export interface PhotoRecord {
@@ -12,14 +14,19 @@ export interface PhotoRecord {
     place_id: string;
     google_photo_reference?: string;
     reason?: string;
+    photo_candidates_count?: number;
+    food_score?: number;
+    version?: string;
+    selected_photo_name?: string;
+    top_scores?: { label: string; score: number }[];
   };
   // Explicit retry / expiry markers to avoid indefinite suppression.
   expiresAt?: string;
   nextRetryAt?: string;
 }
 
-const INDEX_PREFIX = 'placephoto:v1:';
-const LOCK_PREFIX = 'placephoto:lock:v1:';
+const INDEX_PREFIX = `placephoto:${PHOTO_VERSION}:`;
+const LOCK_PREFIX = `placephoto:lock:${PHOTO_VERSION}:`;
 
 // TTLs (seconds)
 const TTL_HIT = 60 * 60 * 24 * 365; // 365 days

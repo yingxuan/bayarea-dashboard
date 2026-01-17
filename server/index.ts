@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { ensurePlacePhoto } from "../lib/spend/ensurePlacePhoto.js";
 import { kv } from "@vercel/kv";
+import { PHOTO_VERSION } from "../lib/spend/photo-cache.js";
 import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -75,19 +76,28 @@ async function startServer() {
 
   app.get("/api/spend/place-photo", async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-Photo-Version", PHOTO_VERSION);
 
     const placeId = (req.query.place_id as string | undefined)?.trim();
+    const refresh = req.query.refresh === "1" || req.query.refresh === "true";
+    res.setHeader("X-Photo-Refresh", refresh ? "1" : "0");
     const photoName = req.query.photoName as string | undefined;
 
     // If place_id is provided, use the serverless-style handler to resolve/store the photo.
     if (placeId) {
       try {
-        const result = await ensurePlacePhoto(placeId, "ondemand");
+        const result = await ensurePlacePhoto(placeId, "ondemand", { refresh });
         try {
           const count = (await kv.get<number>(`metrics:google_places_fetch:v1:${placeId}`)) ?? 0;
           res.setHeader("X-Google-Fetch-Count", String(count));
         } catch {
           res.setHeader("X-Google-Fetch-Count", "unknown");
+        }
+        if (result.debug?.selected) {
+          res.setHeader("X-Photo-Selected", result.debug.selected);
+        }
+        if (refresh) {
+          res.setHeader("X-Photo-Cache", "bypass");
         }
         res
           .status(200)

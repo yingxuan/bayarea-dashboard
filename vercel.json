@@ -17,6 +17,6 @@
     { "source": "/api/shows", "destination": "/api/market-all?handler=shows" },
     { "source": "/api/youtubers", "destination": "/api/market-all?handler=youtubers" },
     { "source": "/api/:path*", "destination": "/api/:path*" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/index.html", "has": [{ "type": "host", "value": "(?!api).*" }] }
   ]
 }

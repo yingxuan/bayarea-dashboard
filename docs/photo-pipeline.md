@@ -27,6 +27,7 @@ Lock: `placephoto:lock:v1:<place_id>` (60s) to avoid thundering herd.
   - Calls `ensurePlacePhoto`.
   - Returns `{ place_id, photo_local_url, status }`.
   - Headers: `X-Photo-Source` (kv-hit/miss), `X-Photo-Fetch` (started/failed), `X-Photo-Lock` (acquired/waited).
+- Versioning: photo cache and blob paths are versioned (current PHOTO_VERSION=v3). Use `refresh=1` to bypass cached hits and force a new selection/upload (writes a unique blob key).
 - `/api/spend/today`, `/api/spend/new-places`
   - If KV has record, returns `photo_local_url` (non-blocking; no fetch).
   - Frontend will fetch on-demand if missing.
@@ -41,6 +42,12 @@ Run: `pnpm tsx scripts/prefetch-must-have-photos.ts`
 - Uses `photo_local_url` if present.
 - If missing, triggers `/api/spend/place-photo?place_id=...` once per place on first show; updates in-memory override when hit.
 - While fetching, still shows deterministic fallback image.
+
+## Selection logic (v3)
+- Fetch up to 8 photo candidates via Places API (`photos.name,widthPx,heightPx`).
+- Score up to 6 thumbnails (320px) with zero-shot CLIP; positive labels favor drink/food (bubble tea, milk tea, boba, drink, beverage, dessert, food), negative labels penalize storefront/interior/menu/logo/people.
+- Score = best positive - best negative; must be >= 0.15 to select; otherwise fall back to first candidate.
+- Final fetch at 800px stored to `place-photos/v3/<place_id>/0.jpg` (or `0-<ts>.jpg` when refresh=1).
 
 ## Env Vars
 - `GOOGLE_PLACES_API_KEY` (required).

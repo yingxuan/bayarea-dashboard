@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { kv } from '@vercel/kv';
 import { ensurePlacePhoto } from './ensurePlacePhoto.js';
 import { getPhotoRecord } from './photo-cache.js';
+import { PHOTO_VERSION } from './photo-cache.js';
 
 const RATE_LIMIT_MAX = 15;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
@@ -94,12 +95,15 @@ async function setFetchCountHeader(res: VercelResponse, placeId: string): Promis
 
 export async function handlePlacePhoto(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Photo-Version', PHOTO_VERSION);
 
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const placeId = ((req.query.place_id as string) || '').trim();
+  const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
+  res.setHeader('X-Photo-Refresh', refresh ? '1' : '0');
   if (!placeId) {
     return res.status(400).json({ error: 'place_id required' });
   }
@@ -127,11 +131,12 @@ export async function handlePlacePhoto(req: VercelRequest, res: VercelResponse) 
         ? 'failed-hit'
         : 'kv-miss';
 
-    if (cached?.status === 'hit' && cached.url) {
+    if (!refresh && cached?.status === 'hit' && cached.url && cached.meta?.version === PHOTO_VERSION) {
       await setFetchCountHeader(res, placeId);
       res.setHeader('X-Photo-Source', cacheDebug);
       res.setHeader('X-Photo-Fetch', 'skipped');
       res.setHeader('X-Photo-Lock', 'none');
+      res.setHeader('X-Photo-Cache', 'hit');
       return res.status(200).json({
         place_id: placeId,
         photo_local_url: cached.url,
@@ -140,11 +145,12 @@ export async function handlePlacePhoto(req: VercelRequest, res: VercelResponse) 
       });
     }
 
-    if ((cached?.status === 'miss' || cached?.status === 'failed') && !isRetryable(cached)) {
+    if (!refresh && (cached?.status === 'miss' || cached?.status === 'failed') && !isRetryable(cached)) {
       await setFetchCountHeader(res, placeId);
       res.setHeader('X-Photo-Source', cacheDebug);
       res.setHeader('X-Photo-Fetch', 'skipped');
       res.setHeader('X-Photo-Lock', 'none');
+      res.setHeader('X-Photo-Cache', 'hit');
       return res.status(200).json({
         place_id: placeId,
         photo_local_url: null,
@@ -154,13 +160,23 @@ export async function handlePlacePhoto(req: VercelRequest, res: VercelResponse) 
       });
     }
 
-    const result = await ensurePlacePhoto(placeId, 'ondemand');
+    if (refresh) {
+      res.setHeader('X-Photo-Cache', 'bypass');
+    }
+
+    const result = await ensurePlacePhoto(placeId, 'ondemand', { refresh });
     const safeDebug = result.debug || { cache: 'kv-miss', fetch: 'skipped', lock: 'none' };
     await setFetchCountHeader(res, placeId);
+    if (safeDebug.selected) {
+      res.setHeader('X-Photo-Selected', safeDebug.selected);
+    }
 
     res.setHeader('X-Photo-Source', safeDebug.cache);
     res.setHeader('X-Photo-Fetch', safeDebug.fetch);
     res.setHeader('X-Photo-Lock', safeDebug.lock);
+    if (!refresh) {
+      res.setHeader('X-Photo-Cache', safeDebug.cache === 'kv-hit' ? 'hit' : 'miss');
+    }
 
     return res.status(200).json({
       place_id: placeId,

@@ -1,9 +1,11 @@
+/// <reference path="../../types/transformers.d.ts" />
 import {
   acquirePhotoLock,
   getPhotoRecord,
   releasePhotoLock,
   setPhotoRecord,
   hitTtlSeconds,
+  PHOTO_VERSION,
   type PhotoRecord,
 } from './photo-cache.js';
 import { storePhotoBytes } from './photo-storage.js';
@@ -12,10 +14,15 @@ import { kv } from '@vercel/kv';
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
 const PLACES_API_BASE = 'https://places.googleapis.com/v1';
 const LOCK_WAIT_BACKOFF_MS = [400, 800, 1200];
+const CANDIDATE_LIMIT = 8;
+const SCORE_LIMIT = 6; // score only the first N candidates for cost control
+const POSITIVE_LABELS = ['bubble tea', 'milk tea', 'boba', 'drink', 'beverage', 'dessert', 'food'];
+const NEGATIVE_LABELS = ['storefront', 'building exterior', 'menu', 'logo', 'interior', 'people'];
+const SCORE_THRESHOLD = 0.15;
 
-type PhotoReferenceResult = { photoName: string | null; rawPhoto?: any };
+type PhotoCandidatesResult = { photoNames: string[]; rawPhotos: any[] };
 
-async function fetchPhotoReference(placeId: string): Promise<PhotoReferenceResult> {
+async function fetchPhotoCandidates(placeId: string): Promise<PhotoCandidatesResult> {
   const url = `${PLACES_API_BASE}/places/${placeId}`;
   const resp = await fetch(url, {
     method: 'GET',
@@ -30,20 +37,26 @@ async function fetchPhotoReference(placeId: string): Promise<PhotoReferenceResul
     throw new Error(`place details error ${resp.status}`);
   }
   const data: any = await resp.json();
-  const photos = data.photos || [];
-  if (!photos.length) return { photoName: null };
-  const first = photos[0];
-  const name = typeof first?.name === 'string' ? first.name : null;
-  const isValidName = name?.startsWith('places/');
-  return { photoName: isValidName ? name : null, rawPhoto: first };
+  const photos = Array.isArray(data.photos) ? data.photos : [];
+  const photoNames: string[] = [];
+  for (const p of photos.slice(0, CANDIDATE_LIMIT)) {
+    const name = typeof p?.name === 'string' ? p.name : null;
+    if (name && name.startsWith('places/')) {
+      photoNames.push(name);
+    }
+  }
+  return { photoNames, rawPhotos: photos };
 }
 
-async function fetchPhotoBytes(photoName: string): Promise<{ data: ArrayBuffer; contentType?: string }> {
+async function fetchPhotoBytes(
+  photoName: string,
+  maxWidthPx = 800
+): Promise<{ data: ArrayBuffer; contentType?: string }> {
   if (!photoName.startsWith('places/')) {
     throw new Error('invalid_photo_name');
   }
   // Try skipHttpRedirect to get direct URI; fall back to redirect mode if parsing fails.
-  const skipRedirectUrl = `${PLACES_API_BASE}/${photoName}/media?maxWidthPx=800&skipHttpRedirect=true&key=${GOOGLE_PLACES_API_KEY}`;
+  const skipRedirectUrl = `${PLACES_API_BASE}/${photoName}/media?maxWidthPx=${maxWidthPx}&skipHttpRedirect=true&key=${GOOGLE_PLACES_API_KEY}`;
   let mediaUrl = skipRedirectUrl;
   let useRedirectFallback = false;
 
@@ -65,7 +78,7 @@ async function fetchPhotoBytes(photoName: string): Promise<{ data: ArrayBuffer; 
   }
 
   if (useRedirectFallback) {
-    mediaUrl = `${PLACES_API_BASE}/${photoName}/media?maxWidthPx=800&key=${GOOGLE_PLACES_API_KEY}`;
+    mediaUrl = `${PLACES_API_BASE}/${photoName}/media?maxWidthPx=${maxWidthPx}&key=${GOOGLE_PLACES_API_KEY}`;
   }
 
   resp = await fetch(mediaUrl);
@@ -89,7 +102,41 @@ export interface EnsurePhotoResult {
     fetch: 'skipped' | 'started' | 'failed';
     lock: 'none' | 'acquired' | 'waited';
     choices?: number;
+    selected?: 'food' | 'fallback-first';
   };
+}
+
+type ClipResult = { foodScore: number; top3: { label: string; score: number }[] };
+let clipPipelinePromise: Promise<any> | null = null;
+
+async function loadClipPipeline() {
+  if (!clipPipelinePromise) {
+    clipPipelinePromise = (async () => {
+      const { pipeline } = await import('@xenova/transformers');
+      return pipeline('zero-shot-image-classification', 'Xenova/clip-vit-base-patch32', { quantized: true });
+    })().catch((err) => {
+      console.warn('[places-photo] failed to load clip pipeline', err);
+      clipPipelinePromise = null;
+      return null;
+    });
+  }
+  return clipPipelinePromise;
+}
+
+async function scoreFood(bytes: ArrayBuffer): Promise<ClipResult | null> {
+  const pipe = await loadClipPipeline();
+  if (!pipe) return null;
+  const labels = [...POSITIVE_LABELS, ...NEGATIVE_LABELS];
+  const blob = new Blob([bytes]);
+  const result = await pipe(blob, { candidate_labels: labels });
+  const scores = Array.isArray(result) ? result : [];
+  if (!scores.length) return null;
+  const sorted = [...scores].sort((a: any, b: any) => (b.score || 0) - (a.score || 0));
+  const maxPos = scores.filter((r: any) => POSITIVE_LABELS.includes(r.label)).reduce((m: number, r: any) => Math.max(m, r.score || 0), 0);
+  const maxNeg = scores.filter((r: any) => NEGATIVE_LABELS.includes(r.label)).reduce((m: number, r: any) => Math.max(m, r.score || 0), 0);
+  const foodScore = maxPos - maxNeg;
+  const top3 = sorted.slice(0, 3).map((r: any) => ({ label: r.label, score: r.score }));
+  return { foodScore, top3 };
 }
 
 function isRetryable(record: PhotoRecord): boolean {
@@ -145,8 +192,10 @@ function cachedResult(
 
 export async function ensurePlacePhoto(
   placeId: string,
-  source: 'prefetch' | 'ondemand'
+  source: 'prefetch' | 'ondemand',
+  options?: { refresh?: boolean }
 ): Promise<EnsurePhotoResult> {
+  const refresh = options?.refresh === true;
   let debug: EnsurePhotoResult['debug'] = { cache: 'kv-miss', fetch: 'skipped', lock: 'none' };
   if (!GOOGLE_PLACES_API_KEY) {
     return {
@@ -158,7 +207,8 @@ export async function ensurePlacePhoto(
   }
 
   const existing = await getPhotoRecord(placeId);
-  const existingResult = cachedResult(existing, placeId, source, debug);
+  const versionMismatch = existing?.meta?.version && existing.meta.version !== PHOTO_VERSION;
+  const existingResult = refresh || versionMismatch ? null : cachedResult(existing, placeId, source, debug);
   if (existingResult) {
     return existingResult;
   } else if (existing) {
@@ -199,12 +249,12 @@ export async function ensurePlacePhoto(
     }
 
     console.log('[VERIFY] GOOGLE_CALL_START', { placeId, time: Date.now() });
-    const { photoName, rawPhoto } = await fetchPhotoReference(placeId);
+    const { photoNames, rawPhotos } = await fetchPhotoCandidates(placeId);
     console.log('[VERIFY] GOOGLE_CALL_END', { placeId, time: Date.now() });
     if (process.env.DEBUG_PLACES_PHOTO === '1' && !existing) {
-      console.log('[places-photo] ref result', { placeId, photoName, rawPhoto });
+      console.log('[places-photo] ref candidates', { placeId, count: photoNames.length, first: photoNames[0], raw: rawPhotos.slice(0, 3) });
     }
-    if (!photoName) {
+    if (!photoNames.length) {
       await setPhotoRecord(
         placeId,
         {
@@ -223,20 +273,65 @@ export async function ensurePlacePhoto(
       };
     }
 
+    let selectedPhoto = photoNames[0];
+    let selectedScore = -1;
+    let selectedMode: EnsurePhotoResult['debug']['selected'] = 'fallback-first';
+    let topScores: { label: string; score: number }[] | undefined;
+    const toScore = photoNames.slice(0, SCORE_LIMIT);
+
+    for (const candidate of toScore) {
+      try {
+        console.log('[VERIFY] GOOGLE_CALL_START', { placeId, time: Date.now() });
+        const small = await fetchPhotoBytes(candidate, 400);
+        console.log('[VERIFY] GOOGLE_CALL_END', { placeId, time: Date.now() });
+        const score = await scoreFood(small.data);
+        if (score) {
+          if (process.env.DEBUG_PLACES_PHOTO === '1') {
+            console.log('[places-photo] candidate score', { placeId, candidate, foodScore: score.foodScore, top3: score.top3 });
+          }
+          if (score.foodScore > selectedScore && score.foodScore >= SCORE_THRESHOLD) {
+            selectedScore = score.foodScore;
+            selectedPhoto = candidate;
+            selectedMode = 'food';
+            topScores = score.top3;
+          }
+        }
+      } catch {
+        // ignore scoring failures; fallback will apply
+      }
+    }
+
     console.log('[VERIFY] GOOGLE_CALL_START', { placeId, time: Date.now() });
-    const { data, contentType } = await fetchPhotoBytes(photoName);
+    const { data, contentType } = await fetchPhotoBytes(selectedPhoto);
     console.log('[VERIFY] GOOGLE_CALL_END', { placeId, time: Date.now() });
-    const stored = await storePhotoBytes(placeId, data, contentType);
+    const stored = await storePhotoBytes(placeId, data, contentType, {
+      version: PHOTO_VERSION,
+      uniqueSuffix: refresh ? true : undefined,
+    });
     await setPhotoRecord(
       placeId,
       {
         url: stored.url,
         source,
-        meta: { place_id: placeId, google_photo_reference: photoName },
+        meta: {
+          place_id: placeId,
+          google_photo_reference: selectedPhoto,
+          photo_candidates_count: photoNames.length,
+          food_score: selectedScore >= 0 ? selectedScore : undefined,
+          selected_photo_name: selectedPhoto,
+          top_scores: topScores,
+          version: PHOTO_VERSION,
+        },
       },
       'hit'
     );
-    return { place_id: placeId, status: 'hit', photo_local_url: stored.url, source, debug };
+    return {
+      place_id: placeId,
+      status: 'hit',
+      photo_local_url: stored.url,
+      source,
+      debug: { ...debug, selected: selectedMode, choices: photoNames.length },
+    };
   } catch (error: any) {
     const reason = error?.message || 'fetch_failed';
     await setPhotoRecord(
