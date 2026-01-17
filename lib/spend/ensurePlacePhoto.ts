@@ -103,6 +103,7 @@ export interface EnsurePhotoResult {
     lock: 'none' | 'acquired' | 'waited';
     choices?: number;
     selected?: 'food' | 'fallback-first';
+    stage?: string;
   };
 }
 
@@ -110,6 +111,7 @@ type ClipResult = { foodScore: number; top3: { label: string; score: number }[] 
 let clipPipelinePromise: Promise<any> | null = null;
 
 async function loadClipPipeline() {
+  if (process.env.DISABLE_CLIP === '1') return null;
   if (!clipPipelinePromise) {
     clipPipelinePromise = (async () => {
       const { pipeline } = await import('@xenova/transformers');
@@ -128,15 +130,29 @@ async function scoreFood(bytes: ArrayBuffer): Promise<ClipResult | null> {
   if (!pipe) return null;
   const labels = [...POSITIVE_LABELS, ...NEGATIVE_LABELS];
   const blob = new Blob([bytes]);
-  const result = await pipe(blob, { candidate_labels: labels });
-  const scores = Array.isArray(result) ? result : [];
-  if (!scores.length) return null;
-  const sorted = [...scores].sort((a: any, b: any) => (b.score || 0) - (a.score || 0));
-  const maxPos = scores.filter((r: any) => POSITIVE_LABELS.includes(r.label)).reduce((m: number, r: any) => Math.max(m, r.score || 0), 0);
-  const maxNeg = scores.filter((r: any) => NEGATIVE_LABELS.includes(r.label)).reduce((m: number, r: any) => Math.max(m, r.score || 0), 0);
-  const foodScore = maxPos - maxNeg;
-  const top3 = sorted.slice(0, 3).map((r: any) => ({ label: r.label, score: r.score }));
-  return { foodScore, top3 };
+  const timeoutMs = 3000;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const result = await pipe(blob, { candidate_labels: labels, signal: controller.signal });
+    const scores = Array.isArray(result) ? result : [];
+    if (!scores.length) return null;
+    const sorted = [...scores].sort((a: any, b: any) => (b.score || 0) - (a.score || 0));
+    const maxPos = scores
+      .filter((r: any) => POSITIVE_LABELS.includes(r.label))
+      .reduce((m: number, r: any) => Math.max(m, r.score || 0), 0);
+    const maxNeg = scores
+      .filter((r: any) => NEGATIVE_LABELS.includes(r.label))
+      .reduce((m: number, r: any) => Math.max(m, r.score || 0), 0);
+    const foodScore = maxPos - maxNeg;
+    const top3 = sorted.slice(0, 3).map((r: any) => ({ label: r.label, score: r.score }));
+    return { foodScore, top3 };
+  } catch (err) {
+    console.warn('[places-photo] scoreFood failed', err);
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function isRetryable(record: PhotoRecord): boolean {
@@ -197,6 +213,7 @@ export async function ensurePlacePhoto(
 ): Promise<EnsurePhotoResult> {
   const refresh = options?.refresh === true;
   let debug: EnsurePhotoResult['debug'] = { cache: 'kv-miss', fetch: 'skipped', lock: 'none' };
+  let stage: string = 'init';
   if (!GOOGLE_PLACES_API_KEY) {
     return {
       place_id: placeId,
@@ -240,6 +257,7 @@ export async function ensurePlacePhoto(
   }
 
   try {
+    stage = 'fetch-details';
     debug = { ...debug, fetch: 'started' };
     // Metric: count real Google Places fetch attempts.
     const metricKey = `metrics:google_places_fetch:v1:${placeId}`;
@@ -273,41 +291,50 @@ export async function ensurePlacePhoto(
       };
     }
 
+    stage = 'score';
     let selectedPhoto = photoNames[0];
     let selectedScore = -1;
     let selectedMode: EnsurePhotoResult['debug']['selected'] = 'fallback-first';
     let topScores: { label: string; score: number }[] | undefined;
     const toScore = photoNames.slice(0, SCORE_LIMIT);
 
-    for (const candidate of toScore) {
-      try {
-        console.log('[VERIFY] GOOGLE_CALL_START', { placeId, time: Date.now() });
-        const small = await fetchPhotoBytes(candidate, 400);
-        console.log('[VERIFY] GOOGLE_CALL_END', { placeId, time: Date.now() });
-        const score = await scoreFood(small.data);
-        if (score) {
-          if (process.env.DEBUG_PLACES_PHOTO === '1') {
-            console.log('[places-photo] candidate score', { placeId, candidate, foodScore: score.foodScore, top3: score.top3 });
+    if (process.env.DISABLE_CLIP === '1') {
+      selectedMode = 'fallback-first';
+    } else {
+      for (const candidate of toScore) {
+        try {
+          console.log('[VERIFY] GOOGLE_CALL_START', { placeId, time: Date.now() });
+          const small = await fetchPhotoBytes(candidate, 400);
+          console.log('[VERIFY] GOOGLE_CALL_END', { placeId, time: Date.now() });
+          const score = await scoreFood(small.data);
+          if (score) {
+            if (process.env.DEBUG_PLACES_PHOTO === '1') {
+              console.log('[places-photo] candidate score', { placeId, candidate, foodScore: score.foodScore, top3: score.top3 });
+            }
+            if (score.foodScore > selectedScore && score.foodScore >= SCORE_THRESHOLD) {
+              selectedScore = score.foodScore;
+              selectedPhoto = candidate;
+              selectedMode = 'food';
+              topScores = score.top3;
+            }
           }
-          if (score.foodScore > selectedScore && score.foodScore >= SCORE_THRESHOLD) {
-            selectedScore = score.foodScore;
-            selectedPhoto = candidate;
-            selectedMode = 'food';
-            topScores = score.top3;
-          }
+        } catch (err) {
+          console.warn('[places-photo] scoring failed', { placeId, err });
+          // ignore scoring failures; fallback will apply
         }
-      } catch {
-        // ignore scoring failures; fallback will apply
       }
     }
 
+    stage = 'fetch-photo';
     console.log('[VERIFY] GOOGLE_CALL_START', { placeId, time: Date.now() });
     const { data, contentType } = await fetchPhotoBytes(selectedPhoto);
     console.log('[VERIFY] GOOGLE_CALL_END', { placeId, time: Date.now() });
+    stage = 'blob-put';
     const stored = await storePhotoBytes(placeId, data, contentType, {
       version: PHOTO_VERSION,
       uniqueSuffix: refresh ? true : undefined,
     });
+    stage = 'kv-set';
     await setPhotoRecord(
       placeId,
       {
@@ -343,7 +370,13 @@ export async function ensurePlacePhoto(
       },
       'failed'
     );
-    return { place_id: placeId, status: 'failed', source, reason, debug: { ...debug, fetch: 'failed' } };
+    return {
+      place_id: placeId,
+      status: 'failed',
+      source,
+      reason,
+      debug: { ...debug, fetch: 'failed', stage },
+    };
   } finally {
     if (lockToken) {
       await releasePhotoLock(placeId, lockToken);

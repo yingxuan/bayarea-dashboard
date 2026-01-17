@@ -187,6 +187,12 @@ export async function handlePlacePhoto(req: VercelRequest, res: VercelResponse) 
     });
   } catch (error: any) {
     console.error('[place-photo] error', error);
-    return res.status(500).json({ error: 'failed', message: error?.message || 'unknown' });
+    res.setHeader('X-Photo-Version', PHOTO_VERSION);
+    res.setHeader('X-Photo-Stage', 'handler');
+    return res.status(200).json({
+      place_id: placeId || '',
+      status: 'failed',
+      reason: error?.message || 'unknown',
+    });
   }
 }
