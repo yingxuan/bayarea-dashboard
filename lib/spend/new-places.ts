@@ -12,7 +12,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { searchTextPlaces } from './placesClient';
+import { searchTextPlaces } from './placesClient.js';
 import { getPhotoRecord } from './photo-cache.js';
 
 interface CachedPlace {
