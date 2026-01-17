@@ -118,7 +118,8 @@ async function fetchPlaceDetails(placeId: string): Promise<{
   googleMapsUri?: string;
 }> {
   const url = `${PLACES_API_BASE}/places/${placeId}`;
-  const fieldMask = 'places.id,places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.photos,places.googleMapsUri';
+  // v1 field mask should not prefix with "places." and must include photos.name explicitly
+  const fieldMask = 'id,displayName,rating,userRatingCount,formattedAddress,photos.name,googleMapsUri';
 
   const response = await fetch(url, {
     method: 'GET',
@@ -134,7 +135,7 @@ async function fetchPlaceDetails(placeId: string): Promise<{
     if (response.status === 429 || response.status === 403 || errorText.includes('quota')) {
       throw new Error('QUOTA_EXCEEDED');
     }
-    throw new Error(`Places API error: ${response.status}`);
+    throw new Error(`Places API error: ${response.status} ${errorText}`);
   }
 
   const data = await response.json();
