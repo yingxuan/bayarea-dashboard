@@ -15,6 +15,14 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
 const PLACES_API_BASE = 'https://places.googleapis.com/v1';
+const SEED_PREFIX = 'seed_';
+
+function isGooglePlaceId(id: string | undefined | null): boolean {
+  if (!id) return false;
+  if (id.startsWith(SEED_PREFIX)) return false;
+  // Basic shape check: most place_ids start with "Ch" and are 20-200 chars of safe set
+  return /^[A-Za-z0-9_-]{10,200}$/.test(id);
+}
 
 interface PlaceSearchResult {
   id: string;
@@ -117,6 +125,9 @@ async function fetchPlaceDetails(placeId: string): Promise<{
   };
   googleMapsUri?: string;
 }> {
+  if (!isGooglePlaceId(placeId)) {
+    throw new Error('INVALID_PLACE_ID');
+  }
   const url = `${PLACES_API_BASE}/places/${placeId}`;
   // v1 field mask should not prefix with "places." and must include photos.name explicitly
   const fieldMask = 'id,displayName,rating,userRatingCount,formattedAddress,photos.name,googleMapsUri';
@@ -218,7 +229,17 @@ export async function handleEnrichPlace(req: VercelRequest, res: VercelResponse)
         return res.status(400).json({ error: 'Missing placeId parameter' });
       }
 
+      if (!isGooglePlaceId(placeId)) {
+        res.setHeader('X-Enrich-Input', 'seed');
+        return res.status(200).json({
+          placeId,
+          reason: 'seed_skip_enrich',
+        });
+      }
+
       const details = await fetchPlaceDetails(placeId);
+      res.setHeader('X-Enrich-Input', 'place_id');
+      res.setHeader('X-Enrich-Resolved', placeId);
       return res.status(200).json(details);
     }
 
