@@ -14,6 +14,7 @@ interface SpendPlace {
   user_ratings_total: number;
   distance_miles?: number;
   photo_url?: string;
+  photo_local_url?: string;
   maps_url: string;
   city: string;
 }
@@ -193,7 +194,7 @@ export default function BlindBoxCard({ randomPool, fallbackImage, onReveal }: Bl
 
   // If revealed, show as normal place card
   if (revealedPlace && !isRolling) {
-    const photoUrl = revealedPlace.photo_url || fallbackImage;
+    const photoUrl = revealedPlace.photo_local_url || revealedPlace.photo_url || fallbackImage;
     return (
       <a
         href={revealedPlace.maps_url}

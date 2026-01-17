@@ -23,6 +23,7 @@ export interface CachedPlace {
   lat?: number;
   lng?: number;
   photoRef?: string; // Can be photoName (New API) or photoReference (Legacy) or photoUrl
+  photoLocalUrl?: string;
   city?: string; // Optional city field for seed data
 }
 

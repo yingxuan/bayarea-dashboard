@@ -36,6 +36,7 @@ interface SpendPlace {
   user_ratings_total: number;
   distance_miles?: number;
   photo_url?: string;
+  photo_local_url?: string;
   maps_url: string;
   city: string;
   score?: number;
@@ -70,6 +71,7 @@ function apiPlaceToCached(place: SpendPlace): CachedPlace {
     lat: undefined, // Can calculate if needed
     lng: undefined,
     photoRef: place.photo_url,
+    photoLocalUrl: place.photo_local_url,
   };
 }
 
@@ -80,24 +82,9 @@ function cachedPlaceToSpend(cached: CachedPlace, category: string, city: string)
   // Use cached.city if available (from seed data), otherwise use provided city
   const finalCity = cached.city || city;
   
-  // Build photo_url from photoRef
-  // photoRef can be:
-  // - photoName (New API): "places/{place_id}/photos/{photo_id}"
-  // - photoReference (Legacy): "CmRa..."
-  // - photoUrl: direct URL
-  let photo_url: string | undefined;
-  if (cached.photoRef) {
-    if (cached.photoRef.startsWith('http')) {
-      // Already a URL
-      photo_url = cached.photoRef;
-    } else if (cached.photoRef.startsWith('places/')) {
-      // New API photoName - will be proxied via server
-      photo_url = cached.photoRef;
-    } else {
-      // Legacy photoReference - will be proxied via server
-      photo_url = cached.photoRef;
-    }
-  }
+  // Prefer local cached photo; avoid hitting Google Photos at runtime
+  const photo_local_url = cached.photoLocalUrl || (cached.photoRef?.startsWith('/') ? cached.photoRef : undefined);
+  const photo_url = photo_local_url;
   
   const result: SpendPlace = {
     id: cached.placeId,
@@ -106,7 +93,8 @@ function cachedPlaceToSpend(cached: CachedPlace, category: string, city: string)
     rating: cached.rating,
     user_ratings_total: cached.userRatingCount,
     distance_miles: undefined,
-    photo_url, // Can be photoName, photoReference, or URL
+    photo_url,
+    photo_local_url,
     maps_url: cached.mapsUrl,
     city: finalCity, // Preserve city from seed data
   };

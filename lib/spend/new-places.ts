@@ -13,6 +13,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { searchTextPlaces } from './placesClient';
+import { getPhotoRecord } from './photo-cache.js';
 
 interface CachedPlace {
   placeId: string;
@@ -47,6 +48,12 @@ interface NewPlacesResponse {
   places?: NewPlacesPlace[];
 }
 
+type PhotoStats = {
+  hits: number;
+  misses: number;
+  choices: number;
+};
+
 export async function handleNewPlaces(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -58,6 +65,7 @@ export async function handleNewPlaces(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const photoStats: PhotoStats = { hits: 0, misses: 0, choices: 0 };
     console.log('[New Places API] Starting refresh...');
 
     // Make exactly 1 API call
@@ -73,23 +81,42 @@ export async function handleNewPlaces(req: VercelRequest, res: VercelResponse) {
     console.log(`[New Places API] Received ${places.length} places from API`);
 
     // Convert to CachedPlace format
-    const cachedPlaces = places
-      .filter((p) => 
-        p.rating !== undefined && 
-        p.userRatingCount !== undefined && 
-        p.id && 
-        p.displayName &&
-        typeof p.rating === 'number' &&
-        typeof p.userRatingCount === 'number'
-      )
-      .map((p) => ({
-        placeId: p.id,
-        name: p.displayName!.text,
-        rating: p.rating as number,
-        userRatingCount: p.userRatingCount as number,
-        address: p.formattedAddress || '',
-        mapsUrl: p.googleMapsUri || `https://www.google.com/maps/place/?q=place_id:${p.id}`,
-      }));
+    const cachedPlaces = await Promise.all(
+      places
+        .filter((p) => 
+          p.rating !== undefined && 
+          p.userRatingCount !== undefined && 
+          p.id && 
+          p.displayName &&
+          typeof p.rating === 'number' &&
+          typeof p.userRatingCount === 'number'
+        )
+        .map(async (p) => {
+          const rec = await getPhotoRecord(p.id);
+          if (rec) {
+            if (rec.url) {
+              photoStats.hits += 1;
+              photoStats.choices += 1;
+            } else {
+              photoStats.misses += 1;
+            }
+          } else {
+            photoStats.misses += 1;
+          }
+
+          return {
+            placeId: p.id,
+            name: p.displayName!.text,
+            rating: p.rating as number,
+            userRatingCount: p.userRatingCount as number,
+            address: p.formattedAddress || '',
+            mapsUrl: p.googleMapsUri || `https://www.google.com/maps/place/?q=place_id:${p.id}`,
+            photoRef: rec?.url,
+            photo_local_url: rec?.url,
+            photoLocalUrl: rec?.url,
+          };
+        })
+    );
 
     // STEP 3: Hard enforce new-ish constraints (exclude >= 500 ratingCount ALWAYS)
     // First, exclude all places with >= 500 ratingCount (never "new-ish")
@@ -131,9 +158,15 @@ export async function handleNewPlaces(req: VercelRequest, res: VercelResponse) {
       items: filtered,
     };
 
+    res.setHeader('X-Photo-Index', 'kv');
+    res.setHeader('X-Photo-Source', photoStats.hits > 0 ? 'local-hit' : 'local-miss');
+    res.setHeader('X-Photo-Choices', String(photoStats.choices));
     return res.status(200).json(pool);
   } catch (error: any) {
     console.error('[New Places API] Error:', error);
+    res.setHeader('X-Photo-Index', 'kv');
+    res.setHeader('X-Photo-Source', 'local-miss');
+    res.setHeader('X-Photo-Choices', '0');
 
     // Handle quota exceeded
     if (error.message === 'QUOTA_EXCEEDED' || error.message?.includes('QUOTA')) {

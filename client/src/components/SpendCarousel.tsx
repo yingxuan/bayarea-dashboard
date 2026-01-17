@@ -11,7 +11,7 @@
  * - Never show empty sections
  */
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { MapPin, Star } from "lucide-react";
 import {
   Carousel,
@@ -45,6 +45,7 @@ interface SpendPlace {
   user_ratings_total: number;
   distance_miles?: number;
   photo_url?: string;
+  photo_local_url?: string;
   maps_url: string;
   city: string;
 }
@@ -254,6 +255,8 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
   
   // State for enriched places (rating, photo from Places API)
   const [enrichedPlaces, setEnrichedPlaces] = useState<Map<string, { rating: number; userRatingCount: number; photoUrl?: string }>>(new Map());
+  const [photoOverrides, setPhotoOverrides] = useState<Record<string, string>>({});
+  const inflightPhotos = useRef<Set<string>>(new Set());
 
   // Debug logging
   console.log(`[SpendCarousel] Category: "${category}", Places count: ${places.length}, Offset: ${offset}`);
@@ -360,6 +363,33 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
     
     return result;
   }, [places, offset, category, enrichedPlaces, windowSize]);
+
+  // On-demand photo fetch (first show) for places missing local photo
+  useEffect(() => {
+    topPlaces.forEach((p) => {
+      if (!p.id) return;
+      if (p.photo_local_url || photoOverrides[p.id]) return;
+      const key = p.id;
+      if (inflightPhotos.current.has(key)) return;
+      inflightPhotos.current.add(key);
+
+      const url = `${config.apiBaseUrl}/api/spend/place-photo?place_id=${encodeURIComponent(key)}`;
+      fetch(url)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.photo_local_url) {
+            setPhotoOverrides((prev) => ({
+              ...prev,
+              [key]: data.photo_local_url,
+            }));
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          setTimeout(() => inflightPhotos.current.delete(key), 1000);
+        });
+    });
+  }, [topPlaces, photoOverrides]);
 
   // STEP 5: Load enrichment cache and schedule enrichment for missing items
   useEffect(() => {
@@ -579,34 +609,23 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
               const enrichmentKey = getEnrichmentKey(place.id, place.name, place.city);
               const enriched = enrichedPlaces.get(enrichmentKey);
               
-              // Priority 1: Enriched photo URL (from runtime enrichment)
-              if (enriched?.photoUrl) {
-                return { src: enriched.photoUrl, source: 'enriched_photo' };
+              const overrideLocal = photoOverrides[place.id];
+              if (overrideLocal) {
+                return { src: overrideLocal, source: 'local_photo_cached' };
+              }
+
+              // Priority 1: Local cached photo (never call Google Photos at runtime)
+              const localPhoto = place.photo_local_url || (place.photo_url?.startsWith('/') ? place.photo_url : undefined);
+              if (localPhoto) {
+                return { src: localPhoto, source: 'local_photo' };
+              }
+
+              // Priority 2: Enriched photo URL only if it is already a local/static path
+              if (enriched?.photoUrl && enriched.photoUrl.startsWith('/')) {
+                return { src: enriched.photoUrl, source: 'local_enriched_photo' };
               }
               
-              // Priority 2: Seed photoName/photoReference (from offline enrichment)
-              // photo_url can be:
-              // - photoName: "places/{place_id}/photos/{photo_id}"
-              // - photoReference: "CmRa..."
-              // - URL: already a full URL
-              if (place.photo_url) {
-                // Check if it's a photoName (New API format)
-                if (place.photo_url.startsWith('places/') || place.photo_url.includes('/photos/')) {
-                  const proxyUrl = `${config.apiBaseUrl}/api/spend/place-photo?photoName=${encodeURIComponent(place.photo_url)}`;
-                  return { src: proxyUrl, source: 'seed_photo_proxy' };
-                }
-                // Check if it's a photoReference (Legacy format - usually starts with "CmRa" or similar)
-                if (place.photo_url.length > 20 && !place.photo_url.startsWith('http')) {
-                  const proxyUrl = `${config.apiBaseUrl}/api/spend/place-photo?photoReference=${encodeURIComponent(place.photo_url)}`;
-                  return { src: proxyUrl, source: 'seed_photo_proxy' };
-                }
-                // Otherwise it's already a URL, use directly
-                if (place.photo_url.startsWith('http')) {
-                  return { src: place.photo_url, source: 'seed_photo_url' };
-                }
-              }
-              
-              // Priority 4: Deterministic fallback based on item identity (NOT index)
+              // Priority 3: Deterministic fallback based on item identity (NOT index)
               const itemIdentity = place.id || `${place.name}_${place.city}`;
               let hash = 0;
               for (let i = 0; i < itemIdentity.length; i++) {

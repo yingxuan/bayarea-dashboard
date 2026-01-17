@@ -22,6 +22,7 @@ interface FoodPlace {
   address: string;
   distance_miles?: number; // Optional, may not be available from Google Places
   photo_url?: string; // Optional
+  photo_local_url?: string;
   maps_url: string; // New field from Google Places API
   url?: string; // Legacy field for backward compatibility
   city: string; // Cupertino / Sunnyvale / San Jose
@@ -51,7 +52,8 @@ export default function TodaySpendRecommendations({ maxItems = 6 }: TodaySpendRe
       review_count: place.user_ratings_total, // Legacy compatibility
       address: '', // Not available from cache
       distance_miles: place.distance_miles,
-      photo_url: place.photo_url,
+      photo_url: place.photo_local_url || place.photo_url,
+      photo_local_url: place.photo_local_url,
       maps_url: place.maps_url,
       url: place.maps_url, // Legacy compatibility
       city: place.city,

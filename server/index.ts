@@ -1,5 +1,7 @@
 import "dotenv/config";
 import express from "express";
+import { ensurePlacePhoto } from "../lib/spend/ensurePlacePhoto.js";
+import { kv } from "@vercel/kv";
 import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -72,7 +74,38 @@ async function startServer() {
 
 
   app.get("/api/spend/place-photo", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+
+    const placeId = (req.query.place_id as string | undefined)?.trim();
     const photoName = req.query.photoName as string | undefined;
+
+    // If place_id is provided, use the serverless-style handler to resolve/store the photo.
+    if (placeId) {
+      try {
+        const result = await ensurePlacePhoto(placeId, "ondemand");
+        try {
+          const count = (await kv.get<number>(`metrics:google_places_fetch:v1:${placeId}`)) ?? 0;
+          res.setHeader("X-Google-Fetch-Count", String(count));
+        } catch {
+          res.setHeader("X-Google-Fetch-Count", "unknown");
+        }
+        res
+          .status(200)
+          .json({
+            place_id: placeId,
+            photo_local_url: result.photo_local_url ?? null,
+            status: result.status,
+            source: result.source,
+            reason: result.reason,
+          });
+        return;
+      } catch (e: any) {
+        console.error("[dev place-photo] failed", e);
+        return res.status(500).json({ error: "failed", message: e?.message || "unknown" });
+      }
+    }
+
+    // Legacy direct-photo proxy by photoName (used by clients requesting the raw image).
     const wRaw = (req.query.w as string | undefined) || "480";
     const allowed = new Set(["320", "480", "640"]);
     if (!photoName || !photoName.startsWith("places/")) {

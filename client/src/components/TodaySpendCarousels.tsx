@@ -20,6 +20,7 @@ interface SpendPlace {
   user_ratings_total: number;
   distance_miles?: number;
   photo_url?: string;
+  photo_local_url?: string;
   maps_url: string;
   city: string;
 }

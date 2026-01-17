@@ -1,129 +1,176 @@
-/**
- * API endpoint for proxying Google Places photos
- * 
- * Prevents API key exposure in client code
- * Caches mediaUri aggressively (30+ days)
- * 
- * Usage: GET /api/spend/place-photo?photoName=... OR ?photoReference=...
- */
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { kv } from '@vercel/kv';
+import { ensurePlacePhoto } from './ensurePlacePhoto.js';
+import { getPhotoRecord } from './photo-cache.js';
 
-const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
-const PLACES_API_BASE = 'https://places.googleapis.com/v1';
-const PHOTO_CACHE_TTL_DAYS = 30;
+const RATE_LIMIT_MAX = 15;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_KV_TTL_SEC = 120;
 
-// Simple in-memory cache (for serverless, consider using Redis or similar for production)
-const photoCache = new Map<string, { url: string; cachedAt: number }>();
+// best-effort in-memory fallback (cold starts reset)
+const rateMap = new Map<string, { count: number; ts: number }>();
 
-/**
- * Get cached photo URL
- */
-function getCachedPhotoUrl(key: string): string | null {
-  const cached = photoCache.get(key);
-  if (!cached) return null;
-  
-  const ageMs = Date.now() - cached.cachedAt;
-  const ttlMs = PHOTO_CACHE_TTL_DAYS * 24 * 60 * 60 * 1000;
-  if (ageMs > ttlMs) {
-    photoCache.delete(key);
+function getClientIp(req: VercelRequest): string {
+  const xff = req.headers['x-forwarded-for'];
+  const xffValue = Array.isArray(xff) ? xff[0] : typeof xff === 'string' ? xff : undefined;
+  const forwarded = xffValue ? xffValue.split(',')[0]?.trim() : undefined;
+  const xReal = req.headers['x-real-ip'];
+  const realIp = Array.isArray(xReal) ? xReal[0] : xReal;
+  const socketIp = req.socket.remoteAddress;
+  return forwarded || (typeof realIp === 'string' ? realIp : undefined) || socketIp || 'unknown';
+}
+
+function isPlaceIdValid(placeId: string): boolean {
+  // Google place_id are typically ~27 chars; allow safe chars and reasonable length.
+  return /^[A-Za-z0-9_-]{5,256}$/.test(placeId);
+}
+
+function isRetryable(record?: { nextRetryAt?: string; expiresAt?: string }): boolean {
+  if (!record) return true;
+  const now = Date.now();
+  if (record.nextRetryAt && new Date(record.nextRetryAt).getTime() <= now) return true;
+  if (record.expiresAt && new Date(record.expiresAt).getTime() <= now) return true;
+  return false;
+}
+
+function checkRateLimitMemory(ip: string): { allowed: boolean; remaining: number; resetSec: number } {
+  const now = Date.now();
+  const rec = rateMap.get(ip);
+  if (!rec || now - rec.ts > RATE_LIMIT_WINDOW_MS) {
+    rateMap.set(ip, { count: 1, ts: now });
+    return { allowed: true, remaining: RATE_LIMIT_MAX - 1, resetSec: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000) };
+  }
+  if (rec.count >= RATE_LIMIT_MAX) {
+    const elapsed = now - rec.ts;
+    const resetSec = Math.max(1, Math.ceil((RATE_LIMIT_WINDOW_MS - elapsed) / 1000));
+    return { allowed: false, remaining: 0, resetSec };
+  }
+  rec.count += 1;
+  const elapsed = now - rec.ts;
+  const resetSec = Math.max(1, Math.ceil((RATE_LIMIT_WINDOW_MS - elapsed) / 1000));
+  return { allowed: true, remaining: RATE_LIMIT_MAX - rec.count, resetSec };
+}
+
+async function checkRateLimitKV(
+  ip: string
+): Promise<{ allowed: boolean; remaining: number; resetSec: number } | null> {
+  const now = Date.now();
+  const bucket = Math.floor(now / RATE_LIMIT_WINDOW_MS);
+  const key = `rl:place-photo:v1:${ip}:${bucket}`;
+  try {
+    const count = await kv.incr(key);
+    if (count === 1) {
+      await kv.expire(key, RATE_LIMIT_KV_TTL_SEC);
+    }
+    const allowed = count <= RATE_LIMIT_MAX;
+    const remaining = Math.max(0, RATE_LIMIT_MAX - count);
+    const resetMs = (bucket + 1) * RATE_LIMIT_WINDOW_MS - now;
+    const resetSec = Math.max(1, Math.ceil(resetMs / 1000));
+    return { allowed, remaining, resetSec };
+  } catch (err) {
+    console.warn('[place-photo] rate limit KV fallback', err);
     return null;
   }
-  
-  return cached.url;
 }
 
-/**
- * Cache photo URL
- */
-function cachePhotoUrl(key: string, url: string): void {
-  photoCache.set(key, { url, cachedAt: Date.now() });
+function writeRateHeaders(
+  res: VercelResponse,
+  info: { remaining: number; resetSec: number },
+  limit: number = RATE_LIMIT_MAX
+) {
+  res.setHeader('X-RateLimit-Limit', String(limit));
+  res.setHeader('X-RateLimit-Remaining', String(Math.max(0, info.remaining)));
+  res.setHeader('X-RateLimit-Reset', String(Math.max(0, Math.ceil(info.resetSec))));
 }
 
-/**
- * Get photo media URL from photoName (New API)
- */
-async function getPhotoUrlFromName(photoName: string): Promise<string> {
-  const cacheKey = `name:${photoName}`;
-  const cached = getCachedPhotoUrl(cacheKey);
-  if (cached) {
-    return cached;
-  }
-
+async function setFetchCountHeader(res: VercelResponse, placeId: string): Promise<void> {
   try {
-    // Use getMedia endpoint with skipHttpRedirect to get actual mediaUri
-    const url = `${PLACES_API_BASE}/${photoName}/media?maxWidthPx=600&skipHttpRedirect=true&key=${GOOGLE_PLACES_API_KEY}`;
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Photo API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const mediaUri = data.photoUri || data.mediaUri;
-    
-    if (mediaUri) {
-      cachePhotoUrl(cacheKey, mediaUri);
-      return mediaUri;
-    }
-
-    // Fallback: use redirect URL
-    const redirectUrl = `${PLACES_API_BASE}/${photoName}/media?maxWidthPx=600&key=${GOOGLE_PLACES_API_KEY}`;
-    cachePhotoUrl(cacheKey, redirectUrl);
-    return redirectUrl;
-  } catch (error: any) {
-    console.error('[PlacePhoto] Error fetching photo from name:', error);
-    // Fallback to redirect URL
-    const redirectUrl = `${PLACES_API_BASE}/${photoName}/media?maxWidthPx=600&key=${GOOGLE_PLACES_API_KEY}`;
-    return redirectUrl;
+    const count = (await kv.get<number>(`metrics:google_places_fetch:v1:${placeId}`)) ?? 0;
+    res.setHeader('X-Google-Fetch-Count', String(count));
+  } catch {
+    res.setHeader('X-Google-Fetch-Count', 'unknown');
   }
-}
-
-/**
- * Get photo URL from photoReference (Legacy API)
- */
-function getPhotoUrlFromReference(photoReference: string): string {
-  return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=600&photo_reference=${photoReference}&key=${GOOGLE_PLACES_API_KEY}`;
 }
 
 export async function handlePlacePhoto(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Cache-Control', 'no-store');
+
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const placeId = ((req.query.place_id as string) || '').trim();
+  if (!placeId) {
+    return res.status(400).json({ error: 'place_id required' });
+  }
+  if (!isPlaceIdValid(placeId)) {
+    return res.status(400).json({ error: 'invalid_place_id' });
+  }
+
+  const ip = getClientIp(req);
+  const kvRate = await checkRateLimitKV(ip);
+  const rate = kvRate ?? checkRateLimitMemory(ip);
+  writeRateHeaders(res, rate);
+  if (!rate.allowed) {
+    res.setHeader('Retry-After', String(Math.max(1, Math.ceil(rate.resetSec))));
+    return res.status(429).json({ error: 'rate_limited' });
+  }
+
   try {
-    const photoName = req.query.photoName as string | undefined;
-    const photoReference = req.query.photoReference as string | undefined;
+    const cached = await getPhotoRecord(placeId);
+    const cacheDebug =
+      cached?.status === 'hit'
+        ? 'kv-hit'
+        : cached?.status === 'miss'
+        ? 'negative-hit'
+        : cached?.status === 'failed'
+        ? 'failed-hit'
+        : 'kv-miss';
 
-    if (!photoName && !photoReference) {
-      return res.status(400).json({ error: 'Missing photoName or photoReference parameter' });
+    if (cached?.status === 'hit' && cached.url) {
+      await setFetchCountHeader(res, placeId);
+      res.setHeader('X-Photo-Source', cacheDebug);
+      res.setHeader('X-Photo-Fetch', 'skipped');
+      res.setHeader('X-Photo-Lock', 'none');
+      return res.status(200).json({
+        place_id: placeId,
+        photo_local_url: cached.url,
+        status: cached.status,
+        source: cached.source,
+      });
     }
 
-    let photoUrl: string;
-
-    if (photoName) {
-      // New API format
-      photoUrl = await getPhotoUrlFromName(photoName);
-    } else if (photoReference) {
-      // Legacy format
-      photoUrl = getPhotoUrlFromReference(photoReference);
-    } else {
-      return res.status(400).json({ error: 'Invalid parameters' });
+    if ((cached?.status === 'miss' || cached?.status === 'failed') && !isRetryable(cached)) {
+      await setFetchCountHeader(res, placeId);
+      res.setHeader('X-Photo-Source', cacheDebug);
+      res.setHeader('X-Photo-Fetch', 'skipped');
+      res.setHeader('X-Photo-Lock', 'none');
+      return res.status(200).json({
+        place_id: placeId,
+        photo_local_url: null,
+        status: cached.status,
+        source: cached.source,
+        reason: cached.meta?.reason,
+      });
     }
 
-    // Redirect to photo URL
-    return res.redirect(302, photoUrl);
-  } catch (error: any) {
-    console.error('[PlacePhoto] Error:', error);
-    return res.status(500).json({
-      error: 'FETCH_FAIL',
-      message: error.message || 'Unknown error',
+    const result = await ensurePlacePhoto(placeId, 'ondemand');
+    const safeDebug = result.debug || { cache: 'kv-miss', fetch: 'skipped', lock: 'none' };
+    await setFetchCountHeader(res, placeId);
+
+    res.setHeader('X-Photo-Source', safeDebug.cache);
+    res.setHeader('X-Photo-Fetch', safeDebug.fetch);
+    res.setHeader('X-Photo-Lock', safeDebug.lock);
+
+    return res.status(200).json({
+      place_id: placeId,
+      photo_local_url: result.photo_local_url ?? null,
+      status: result.status,
+      source: result.source,
+      reason: result.reason,
     });
+  } catch (error: any) {
+    console.error('[place-photo] error', error);
+    return res.status(500).json({ error: 'failed', message: error?.message || 'unknown' });
   }
 }

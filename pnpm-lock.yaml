@@ -109,6 +109,9 @@ importers:
       '@upstash/redis':
         specifier: ^1.6.1
         version: 1.36.1
+      '@vercel/blob':
+        specifier: ^0.24.1
+        version: 0.24.1
       '@vercel/kv':
         specifier: ^2.0.0
         version: 2.0.0
@@ -2525,6 +2528,10 @@ packages:
 
   '@vercel/backends@0.0.17':
     resolution: {integrity: sha512-T1wTYvBbOuSStMM3GO2YK39YOZaCsT8GpkSOP0+3Ya9MO7qkOsOTIkzIzMY4SRO1e1CiVqqlbkGgwsGirgc6mA==}
+
+  '@vercel/blob@0.24.1':
+    resolution: {integrity: sha512-wHzgKzvAuF4tRDoXk3wGBYzQZ9z2fLr4oftiR1hOclPEdA1aj2/0mizvO2l5w91eZlTAaFth0S1DlqrrXqpntg==}
+    engines: {node: '>=16.14'}
 
   '@vercel/blob@1.0.2':
     resolution: {integrity: sha512-Im/KeFH4oPx7UsM+QiteimnE07bIUD7JK6CBafI9Z0jRFogaialTBMiZj8EKk/30ctUYsrpIIyP9iIY1YxWnUQ==}
@@ -8010,6 +8017,13 @@ snapshots:
       - rollup
       - supports-color
       - typescript
+
+  '@vercel/blob@0.24.1':
+    dependencies:
+      async-retry: 1.3.3
+      bytes: 3.1.2
+      is-buffer: 2.0.5
+      undici: 5.29.0
 
   '@vercel/blob@1.0.2':
     dependencies:

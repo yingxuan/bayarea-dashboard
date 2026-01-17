@@ -39,6 +39,7 @@ import {
   formatUpdatedAt,
 } from '../../api/utils.js';
 import { fetchAllPlacesOptimized } from './placesOptimized.js';
+import { getPhotoRecord } from './photo-cache.js';
 
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
 const SPEND_TODAY_CACHE_TTL = 12 * 60 * 60 * 1000; // 12 hours (increased from 24h for better cost control - food places don't need real-time freshness)
@@ -140,10 +141,64 @@ interface SpendPlace {
   address: string;
   maps_url: string;
   photo_url?: string;
+  photo_local_url?: string;
+  photo_status?: 'hit' | 'miss' | 'failed';
   city: string;
   score: number;
   distance_miles?: number; // Optional, calculated from coordinates
   googlePlacesRank?: number; // Google Places ranking (lower = better, from placeOrderMap)
+}
+
+type PhotoStats = {
+  hits: number;
+  misses: number;
+  choices: number;
+};
+
+async function applyLocalPhoto(place: SpendPlace, stats?: PhotoStats): Promise<SpendPlace> {
+  const rec = await getPhotoRecord(place.id);
+  if (rec) {
+    place.photo_status = rec.status;
+    if (rec.url) {
+      place.photo_local_url = rec.url;
+      place.photo_url = rec.url;
+    }
+    if (stats) {
+      if (rec.url) stats.hits += 1;
+      else stats.misses += 1;
+      stats.choices += rec.url ? 1 : 0;
+    }
+  }
+  return place;
+}
+
+async function applyLocalPhotosToPayload(
+  payload: { itemsByCategory?: Record<string, SpendPlace[]>; items?: SpendPlace[] },
+  stats?: PhotoStats
+) {
+  const tasks: Promise<SpendPlace>[] = [];
+  if (payload.itemsByCategory) {
+    for (const key of Object.keys(payload.itemsByCategory)) {
+      payload.itemsByCategory[key] = (payload.itemsByCategory[key] || []).map((p) => {
+        const t = applyLocalPhoto(p, stats);
+        tasks.push(t);
+        return p;
+      });
+    }
+  }
+  if (Array.isArray(payload.items)) {
+    payload.items = payload.items.map((p) => {
+      tasks.push(applyLocalPhoto(p, stats));
+      return p;
+    });
+  }
+  await Promise.all(tasks);
+}
+
+function setPhotoDebugHeaders(res: VercelResponse, stats: PhotoStats) {
+  res.setHeader('X-Photo-Index', 'kv');
+  res.setHeader('X-Photo-Source', stats.hits > 0 ? 'local-hit' : 'local-miss');
+  res.setHeader('X-Photo-Choices', String(stats.choices));
 }
 
 /**
@@ -890,20 +945,6 @@ async function fetchPlacesForCategory(
           }
         }
         
-        // COST OPTIMIZATION: Get photo from searchNearby result (already in fieldMask)
-        // Use first photo only, small size (200px - UI displays at ~176px width, so 200px is sufficient)
-        let photoUrl: string | undefined;
-        if (result.photos && result.photos.length > 0 && result.photos[0].photo_reference) {
-          const photoRef = result.photos[0].photo_reference;
-          // New API uses photo name (format: places/{place_id}/photos/{photo_id})
-          if (photoRef.startsWith('places/')) {
-            photoUrl = `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=200&key=${GOOGLE_PLACES_API_KEY}`;
-          } else {
-            // Fallback to legacy format
-            photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=200&photo_reference=${photoRef}&key=${GOOGLE_PLACES_API_KEY}`;
-          }
-        }
-
         // COST OPTIMIZATION: Construct Google Maps URL from place_id (no API call needed)
         const mapsUrl = `https://www.google.com/maps/place/?q=place_id:${result.place_id}`;
 
@@ -922,12 +963,14 @@ async function fetchPlacesForCategory(
           user_ratings_total: finalUserRatingsTotal,
           address: result.formatted_address || '',
           maps_url: mapsUrl,
-          photo_url: photoUrl,
+          photo_url: undefined,
+          photo_local_url: undefined,
           city: cityName,
           score: calculatePopularityScore(finalRating, finalUserRatingsTotal), // Keep for backward compatibility
           distance_miles: parseFloat(distanceMiles.toFixed(1)),
           googlePlacesRank: googlePlacesRank, // Store Google Places ranking
         };
+        await applyLocalPhoto(place, photoStats);
 
         allPlaces.push(place);
         
@@ -1161,17 +1204,6 @@ async function processResultsWithTieredThresholds(
       // STEP 4: Calculate relevance score (boost, not filter)
       const relevanceScore = calculateRelevanceScore(nameLower, addressLower, isForChinese);
       
-      // Get photo
-      let photoUrl: string | undefined;
-      if (result.photos && result.photos.length > 0 && result.photos[0].photo_reference) {
-        const photoRef = result.photos[0].photo_reference;
-        if (photoRef.startsWith('places/')) {
-          photoUrl = `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=200&key=${GOOGLE_PLACES_API_KEY}`;
-        } else {
-          photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=200&photo_reference=${photoRef}&key=${GOOGLE_PLACES_API_KEY}`;
-        }
-      }
-      
       const mapsUrl = result.google_maps_uri || `https://www.google.com/maps/place/?q=place_id:${result.place_id}`;
       const finalUserRatingsTotal = userRatingsTotal || 0;
       const newnessScore = calculateNewnessScore(rating, finalUserRatingsTotal);
@@ -1180,7 +1212,7 @@ async function processResultsWithTieredThresholds(
       const finalScore = newnessScore + (relevanceScore * 0.1); // 10% boost from relevance
       
       seenPlaceIds.add(result.place_id);
-      tierPlaces.push({
+      const place: SpendPlace = {
         id: result.place_id,
         name: result.name,
         category: '新店打卡',
@@ -1188,11 +1220,14 @@ async function processResultsWithTieredThresholds(
         user_ratings_total: finalUserRatingsTotal,
         address: result.formatted_address || '',
         maps_url: mapsUrl,
-        photo_url: photoUrl,
+        photo_url: undefined,
+        photo_local_url: undefined,
         city: cityName,
         score: finalScore,
         distance_miles: parseFloat(distanceMiles.toFixed(1)),
-      });
+      };
+      await applyLocalPhoto(place, photoStats);
+      tierPlaces.push(place);
     }
     
     // Update drop counters
@@ -1494,24 +1529,13 @@ async function fetchNewPlaces(debugMode: boolean = false): Promise<SpendPlace[]>
               continue;
             }
             
-            // Get photo (max 1)
-            let photoUrl: string | undefined;
-            if (result.photos && result.photos.length > 0 && result.photos[0].photo_reference) {
-              const photoRef = result.photos[0].photo_reference;
-              if (photoRef.startsWith('places/')) {
-                photoUrl = `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=200&key=${GOOGLE_PLACES_API_KEY}`;
-              } else {
-                photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=200&photo_reference=${photoRef}&key=${GOOGLE_PLACES_API_KEY}`;
-              }
-            }
-            
             // Use googleMapsUri if available, otherwise construct from place_id
             const mapsUrl = result.google_maps_uri || `https://www.google.com/maps/place/?q=place_id:${result.place_id}`;
             // Use 0 for userRatingCount if missing (for scoring purposes)
             const finalUserRatingsTotal = userRatingsTotal || 0;
             const newnessScore = calculateNewnessScore(rating, finalUserRatingsTotal);
             
-            allPlaces.push({
+            const place: SpendPlace = {
               id: result.place_id,
               name: result.name,
               category: '新店打卡',
@@ -1519,11 +1543,14 @@ async function fetchNewPlaces(debugMode: boolean = false): Promise<SpendPlace[]>
               user_ratings_total: finalUserRatingsTotal,
               address: result.formatted_address || '',
               maps_url: mapsUrl,
-              photo_url: photoUrl,
+              photo_url: undefined,
+              photo_local_url: undefined,
               city: cityName,
               score: newnessScore,
               distance_miles: parseFloat(distanceMiles.toFixed(1)),
-            });
+            };
+            await applyLocalPhoto(place, photoStats);
+            allPlaces.push(place);
           }
           
         // STEP 2: Log filtered count (debug only)
@@ -1627,23 +1654,12 @@ async function fetchNewPlaces(debugMode: boolean = false): Promise<SpendPlace[]>
             
             if (!isChinese) continue;
             
-            // Get photo
-            let photoUrl: string | undefined;
-            if (result.photos && result.photos.length > 0 && result.photos[0].photo_reference) {
-              const photoRef = result.photos[0].photo_reference;
-              if (photoRef.startsWith('places/')) {
-                photoUrl = `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=200&key=${GOOGLE_PLACES_API_KEY}`;
-              } else {
-                photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=200&photo_reference=${photoRef}&key=${GOOGLE_PLACES_API_KEY}`;
-              }
-            }
-            
             const mapsUrl = result.google_maps_uri || `https://www.google.com/maps/place/?q=place_id:${result.place_id}`;
             // Use 0 for userRatingCount if missing (for scoring purposes)
             const finalUserRatingsTotal = userRatingsTotal || 0;
             const newnessScore = calculateNewnessScore(rating, finalUserRatingsTotal);
             
-            relaxedPlaces.push({
+            const place: SpendPlace = {
               id: result.place_id,
               name: result.name,
               category: '新店打卡',
@@ -1651,11 +1667,14 @@ async function fetchNewPlaces(debugMode: boolean = false): Promise<SpendPlace[]>
               user_ratings_total: finalUserRatingsTotal,
               address: result.formatted_address || '',
               maps_url: mapsUrl,
-              photo_url: photoUrl,
+              photo_url: undefined,
+              photo_local_url: undefined,
               city: cityName,
               score: newnessScore,
               distance_miles: parseFloat(distanceMiles.toFixed(1)),
-            });
+            };
+            await applyLocalPhoto(place, photoStats);
+            relaxedPlaces.push(place);
           }
           
           await new Promise(resolve => setTimeout(resolve, 100));
@@ -1711,22 +1730,12 @@ async function fetchNewPlaces(debugMode: boolean = false): Promise<SpendPlace[]>
               
               if (!isBubbleTea) continue;
               
-              let photoUrl: string | undefined;
-              if (result.photos && result.photos.length > 0 && result.photos[0].photo_reference) {
-                const photoRef = result.photos[0].photo_reference;
-                if (photoRef.startsWith('places/')) {
-                  photoUrl = `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=200&key=${GOOGLE_PLACES_API_KEY}`;
-                } else {
-                  photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=200&photo_reference=${photoRef}&key=${GOOGLE_PLACES_API_KEY}`;
-                }
-              }
-              
               const mapsUrl = result.google_maps_uri || `https://www.google.com/maps/place/?q=place_id:${result.place_id}`;
               // Use 0 for userRatingCount if missing (for scoring purposes)
               const finalUserRatingsTotal = userRatingsTotal || 0;
               const newnessScore = calculateNewnessScore(rating, finalUserRatingsTotal);
               
-              relaxedPlaces.push({
+              const place: SpendPlace = {
                 id: result.place_id,
                 name: result.name,
                 category: '新店打卡',
@@ -1734,11 +1743,14 @@ async function fetchNewPlaces(debugMode: boolean = false): Promise<SpendPlace[]>
                 user_ratings_total: finalUserRatingsTotal,
                 address: result.formatted_address || '',
                 maps_url: mapsUrl,
-                photo_url: photoUrl,
+                photo_url: undefined,
+                photo_local_url: undefined,
                 city: cityName,
                 score: newnessScore,
                 distance_miles: parseFloat(distanceMiles.toFixed(1)),
-              });
+              };
+              await applyLocalPhoto(place, photoStats);
+              relaxedPlaces.push(place);
             }
             
             await new Promise(resolve => setTimeout(resolve, 100));
@@ -2044,6 +2056,7 @@ function groupPlacesByCategory(places: SpendPlace[]): Record<string, SpendPlace[
 export async function handleToday(req: VercelRequest, res: VercelResponse) {
   // STEP 1 & 2: Sanity checks
   const debugMode = req.query.debug === '1';
+  const photoStats: PhotoStats = { hits: 0, misses: 0, choices: 0 };
   
   // STEP 1 & 2: Sanity checks for Hankow Cuisine (夜宵)
   const nightSnackSanityCheck = req.query.nightSnackSanityCheck === '1';
@@ -2536,6 +2549,8 @@ export async function handleToday(req: VercelRequest, res: VercelResponse) {
       const totalPlaces = cachedData.items?.length || Object.values(cachedData.itemsByCategory || {}).reduce((sum: number, arr: any) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
       console.log(`[Spend Today] ✅ Cache HIT: ${totalPlaces} total places, age: ${cached.cacheAgeSeconds}s`);
       
+      await applyLocalPhotosToPayload(cachedData, photoStats);
+      setPhotoDebugHeaders(res, photoStats);
       // Ensure proper encoding for JSON response
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       return res.status(200).json({
@@ -2558,6 +2573,7 @@ export async function handleToday(req: VercelRequest, res: VercelResponse) {
     // HARD RULE: Normal requests NEVER call Places API
     if (!manualRefresh) {
       setCorsHeaders(res);
+      setPhotoDebugHeaders(res, photoStats);
       return res.status(200).json({
         status: 'ok',
         itemsByCategory: {},
@@ -2573,6 +2589,7 @@ export async function handleToday(req: VercelRequest, res: VercelResponse) {
     if (!GOOGLE_PLACES_API_KEY) {
       console.error('[Spend Today] GOOGLE_PLACES_API_KEY not configured for manual refresh');
       setCorsHeaders(res);
+      setPhotoDebugHeaders(res, photoStats);
       return res.status(500).json({
         status: 'error',
         error: 'API key not configured',
@@ -2610,37 +2627,51 @@ export async function handleToday(req: VercelRequest, res: VercelResponse) {
       );
 
       // Convert to SpendPlace format
-      const restaurantPlaces: SpendPlace[] = (restaurantResponse.places || [])
-        .filter((p) => p.id && p.displayName?.text && p.googleMapsUri)
-        .map((p) => ({
-          id: p.id,
-          name: p.displayName!.text,
-          category: '中餐', // Will be filtered client-side
-          rating: p.rating || 0,
-          user_ratings_total: p.userRatingCount || 0,
-          address: p.formattedAddress || '',
-          maps_url: p.googleMapsUri!,
-          photo_url: p.photos?.[0]?.name,
-          city: 'southbay',
-          score: (p.userRatingCount || 0) * (p.rating || 0),
-          distance_miles: undefined,
-        }));
+      const restaurantPlaces: SpendPlace[] = await Promise.all(
+        (restaurantResponse.places || [])
+          .filter((p) => p.id && p.displayName?.text && p.googleMapsUri)
+          .map(async (p) => {
+            const place: SpendPlace = {
+              id: p.id,
+              name: p.displayName!.text,
+              category: '中餐', // Will be filtered client-side
+              rating: p.rating || 0,
+              user_ratings_total: p.userRatingCount || 0,
+              address: p.formattedAddress || '',
+              maps_url: p.googleMapsUri!,
+              photo_url: undefined,
+              photo_local_url: undefined,
+              city: 'southbay',
+              score: (p.userRatingCount || 0) * (p.rating || 0),
+              distance_miles: undefined,
+            };
+            await applyLocalPhoto(place, photoStats);
+            return place;
+          })
+      );
 
-      const cafePlaces: SpendPlace[] = (cafeResponse.places || [])
-        .filter((p) => p.id && p.displayName?.text && p.googleMapsUri)
-        .map((p) => ({
-          id: p.id,
-          name: p.displayName!.text,
-          category: '奶茶',
-          rating: p.rating || 0,
-          user_ratings_total: p.userRatingCount || 0,
-          address: p.formattedAddress || '',
-          maps_url: p.googleMapsUri!,
-          photo_url: p.photos?.[0]?.name,
-          city: 'southbay',
-          score: (p.userRatingCount || 0) * (p.rating || 0),
-          distance_miles: undefined,
-        }));
+      const cafePlaces: SpendPlace[] = await Promise.all(
+        (cafeResponse.places || [])
+          .filter((p) => p.id && p.displayName?.text && p.googleMapsUri)
+          .map(async (p) => {
+            const place: SpendPlace = {
+              id: p.id,
+              name: p.displayName!.text,
+              category: '奶茶',
+              rating: p.rating || 0,
+              user_ratings_total: p.userRatingCount || 0,
+              address: p.formattedAddress || '',
+              maps_url: p.googleMapsUri!,
+              photo_url: undefined,
+              photo_local_url: undefined,
+              city: 'southbay',
+              score: (p.userRatingCount || 0) * (p.rating || 0),
+              distance_miles: undefined,
+            };
+            await applyLocalPhoto(place, photoStats);
+            return place;
+          })
+      );
 
       // Combine
       allPlaces = [...restaurantPlaces, ...cafePlaces];
@@ -2649,6 +2680,7 @@ export async function handleToday(req: VercelRequest, res: VercelResponse) {
     } catch (apiError: any) {
       console.error('[Spend Today] Error in manual refresh:', apiError);
       setCorsHeaders(res);
+      setPhotoDebugHeaders(res, photoStats);
       return res.status(500).json({
         status: 'error',
         error: apiError.message || 'Manual refresh failed',
@@ -3063,6 +3095,7 @@ export async function handleToday(req: VercelRequest, res: VercelResponse) {
     console.log(`[Spend Today] 📤 Sending response...`);
     // Ensure proper encoding for JSON response
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    setPhotoDebugHeaders(res, photoStats);
     res.status(200).json(response);
     console.log(`[Spend Today] ✅ Response sent successfully`);
   } catch (error: any) {
@@ -3158,6 +3191,8 @@ export async function handleToday(req: VercelRequest, res: VercelResponse) {
       items = Object.values(normalizedItemsByCategory).flat();
       
       // Ensure proper encoding for JSON response
+      await applyLocalPhotosToPayload({ itemsByCategory: normalizedItemsByCategory, items }, photoStats);
+      setPhotoDebugHeaders(res, photoStats);
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       return res.status(200).json({
         ...staleData,
@@ -3174,6 +3209,7 @@ export async function handleToday(req: VercelRequest, res: VercelResponse) {
     const errorAtISO = new Date().toISOString();
 
     // Ensure proper encoding for JSON response
+    setPhotoDebugHeaders(res, photoStats);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.status(200).json({
       status: 'unavailable' as const,
