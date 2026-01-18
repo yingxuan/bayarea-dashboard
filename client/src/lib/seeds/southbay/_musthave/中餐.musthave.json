@@ -2,7 +2,7 @@
   { "name": "Din Tai Fung", "city": "Santa Clara", "tags": ["taiwanese", "classic", "musthave"] },
   { "name": "Chef Chu's", "city": "Los Altos", "tags": ["shanghainese", "classic", "musthave"] },
   { "name": "Fu Lam Mum", "city": "Sunnyvale", "tags": ["cantonese", "dim-sum", "musthave"] },
-  { "name": "Tai Pan", "city": "San Jose", "tags": ["cantonese", "dim-sum", "musthave"] },
+  { "name": "Tai Pan", "city": "San Jose", "tags": ["cantonese", "dim-sum"], "disabled": true, "reason": "removed from musthave" },
   { "name": "Joy Luck Palace", "city": "San Jose", "tags": ["cantonese", "banquet", "musthave"] },
 
   { "name": "Koi Palace", "city": "Santa Clara", "tags": ["cantonese", "high-end", "musthave"] },
