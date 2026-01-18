@@ -15,10 +15,6 @@ const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
 const PLACES_API_BASE = 'https://places.googleapis.com/v1';
 const LOCK_WAIT_BACKOFF_MS = [400, 800, 1200];
 const CANDIDATE_LIMIT = 8;
-const SCORE_LIMIT = 6; // score only the first N candidates for cost control
-const POSITIVE_LABELS = ['bubble tea', 'milk tea', 'boba', 'drink', 'beverage', 'dessert', 'food'];
-const NEGATIVE_LABELS = ['storefront', 'building exterior', 'menu', 'logo', 'interior', 'people'];
-const SCORE_THRESHOLD = 0.15;
 
 type PhotoCandidatesResult = { photoNames: string[]; rawPhotos: any[] };
 
@@ -102,57 +98,9 @@ export interface EnsurePhotoResult {
     fetch: 'skipped' | 'started' | 'failed';
     lock: 'none' | 'acquired' | 'waited';
     choices?: number;
-    selected?: 'food' | 'fallback-first';
+    selected?: 'first-photo' | 'fallback-first';
     stage?: string;
   };
-}
-
-type ClipResult = { foodScore: number; top3: { label: string; score: number }[] };
-let clipPipelinePromise: Promise<any> | null = null;
-
-async function loadClipPipeline() {
-  if (process.env.DISABLE_CLIP === '1') return null;
-  if (!clipPipelinePromise) {
-    clipPipelinePromise = (async () => {
-      const { pipeline } = await import('@xenova/transformers');
-      return pipeline('zero-shot-image-classification', 'Xenova/clip-vit-base-patch32', { quantized: true });
-    })().catch((err) => {
-      console.warn('[places-photo] failed to load clip pipeline', err);
-      clipPipelinePromise = null;
-      return null;
-    });
-  }
-  return clipPipelinePromise;
-}
-
-async function scoreFood(bytes: ArrayBuffer): Promise<ClipResult | null> {
-  const pipe = await loadClipPipeline();
-  if (!pipe) return null;
-  const labels = [...POSITIVE_LABELS, ...NEGATIVE_LABELS];
-  const blob = new Blob([bytes]);
-  const timeoutMs = 3000;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const result = await pipe(blob, { candidate_labels: labels, signal: controller.signal });
-    const scores = Array.isArray(result) ? result : [];
-    if (!scores.length) return null;
-    const sorted = [...scores].sort((a: any, b: any) => (b.score || 0) - (a.score || 0));
-    const maxPos = scores
-      .filter((r: any) => POSITIVE_LABELS.includes(r.label))
-      .reduce((m: number, r: any) => Math.max(m, r.score || 0), 0);
-    const maxNeg = scores
-      .filter((r: any) => NEGATIVE_LABELS.includes(r.label))
-      .reduce((m: number, r: any) => Math.max(m, r.score || 0), 0);
-    const foodScore = maxPos - maxNeg;
-    const top3 = sorted.slice(0, 3).map((r: any) => ({ label: r.label, score: r.score }));
-    return { foodScore, top3 };
-  } catch (err) {
-    console.warn('[places-photo] scoreFood failed', err);
-    return null;
-  } finally {
-    clearTimeout(timeout);
-  }
 }
 
 function isRetryable(record: PhotoRecord): boolean {
@@ -291,39 +239,9 @@ export async function ensurePlacePhoto(
       };
     }
 
-    stage = 'score';
+    stage = 'select';
     let selectedPhoto = photoNames[0];
-    let selectedScore = -1;
-    let selectedMode: EnsurePhotoResult['debug']['selected'] = 'fallback-first';
-    let topScores: { label: string; score: number }[] | undefined;
-    const toScore = photoNames.slice(0, SCORE_LIMIT);
-
-    if (process.env.DISABLE_CLIP === '1') {
-      selectedMode = 'fallback-first';
-    } else {
-      for (const candidate of toScore) {
-        try {
-          console.log('[VERIFY] GOOGLE_CALL_START', { placeId, time: Date.now() });
-          const small = await fetchPhotoBytes(candidate, 400);
-          console.log('[VERIFY] GOOGLE_CALL_END', { placeId, time: Date.now() });
-          const score = await scoreFood(small.data);
-          if (score) {
-            if (process.env.DEBUG_PLACES_PHOTO === '1') {
-              console.log('[places-photo] candidate score', { placeId, candidate, foodScore: score.foodScore, top3: score.top3 });
-            }
-            if (score.foodScore > selectedScore && score.foodScore >= SCORE_THRESHOLD) {
-              selectedScore = score.foodScore;
-              selectedPhoto = candidate;
-              selectedMode = 'food';
-              topScores = score.top3;
-            }
-          }
-        } catch (err) {
-          console.warn('[places-photo] scoring failed', { placeId, err });
-          // ignore scoring failures; fallback will apply
-        }
-      }
-    }
+    let selectedMode: EnsurePhotoResult['debug']['selected'] = 'first-photo';
 
     stage = 'fetch-photo';
     console.log('[VERIFY] GOOGLE_CALL_START', { placeId, time: Date.now() });
@@ -344,9 +262,9 @@ export async function ensurePlacePhoto(
           place_id: placeId,
           google_photo_reference: selectedPhoto,
           photo_candidates_count: photoNames.length,
-          food_score: selectedScore >= 0 ? selectedScore : undefined,
+          food_score: undefined,
           selected_photo_name: selectedPhoto,
-          top_scores: topScores,
+          top_scores: undefined,
           version: PHOTO_VERSION,
         },
       },

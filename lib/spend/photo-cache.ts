@@ -1,7 +1,7 @@
 import { kv } from '@vercel/kv';
 import crypto from 'node:crypto';
 
-export const PHOTO_VERSION = 'v3';
+export const PHOTO_VERSION = 'v4';
 
 export type PhotoSource = 'prefetch' | 'ondemand';
 

@@ -8,7 +8,7 @@
   { "name": "Koi Palace", "city": "Santa Clara", "tags": ["cantonese", "high-end", "musthave"] },
   { "name": "New Port Dim Sum and Chinese Food", "city": "Cupertino", "tags": ["cantonese", "seafood", "musthave"] },
   { "name": "Cooking Papa", "city": "Sunnyvale", "tags": ["sichuan", "musthave"] },
-  { "name": "Sichuan Impression", "city": "Sunnyvale", "tags": ["sichuan", "musthave"] },
+  { "name": "Sichuan Impression", "city": "Sunnyvale", "tags": ["sichuan", "musthave"], "disabled": true, "reason": "not in bay area" },
   { "name": "Ma's Restaurant", "city": "Sunnyvale", "tags": ["sichuan", "spicy", "musthave"] },
 
   { "name": "Liang's Village", "city": "Cupertino", "tags": ["taiwanese", "classic"] },
