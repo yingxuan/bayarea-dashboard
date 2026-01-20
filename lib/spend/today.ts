@@ -155,6 +155,8 @@ type PhotoStats = {
   choices: number;
 };
 
+let photoStats: PhotoStats = { hits: 0, misses: 0, choices: 0 };
+
 async function applyLocalPhoto(place: SpendPlace, stats?: PhotoStats): Promise<SpendPlace> {
   const rec = await getPhotoRecord(place.id);
   if (rec) {
@@ -2056,7 +2058,7 @@ function groupPlacesByCategory(places: SpendPlace[]): Record<string, SpendPlace[
 export async function handleToday(req: VercelRequest, res: VercelResponse) {
   // STEP 1 & 2: Sanity checks
   const debugMode = req.query.debug === '1';
-  const photoStats: PhotoStats = { hits: 0, misses: 0, choices: 0 };
+  photoStats = { hits: 0, misses: 0, choices: 0 };
   
   // STEP 1 & 2: Sanity checks for Hankow Cuisine (夜宵)
   const nightSnackSanityCheck = req.query.nightSnackSanityCheck === '1';
