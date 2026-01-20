@@ -13,6 +13,7 @@ import { handleToday as spendTodayHandler } from '../lib/spend/today.js';
 import communityHandler from '../api/community/[...slug].js';
 import portfolioValueSeriesHandler from '../api/portfolio/value-series.js';
 import fanwanHandler from '../api/youtube/fanwan.js';
+import musthaveHandler from '../api/spend/musthave.js';
 import { cache } from '../api/utils.ts';
 import { clearDedupMap } from '../lib/spend/placesClient.ts';
 
@@ -205,6 +206,22 @@ export async function devPlacesClearCacheRoute(req: Request, res: Response) {
     res.status(200).json({ ok: true, cleared, cacheEntries: cache.size });
   } catch (error) {
     console.error('[local-api-adapter] Dev places clear cache route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Must-have canonical data
+ */
+export async function musthaveRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await musthaveHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Must-have route error:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

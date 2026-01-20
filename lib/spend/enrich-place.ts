@@ -24,6 +24,10 @@ function isGooglePlaceId(id: string | undefined | null): boolean {
   return /^[A-Za-z0-9_-]{10,200}$/.test(id);
 }
 
+function isSeedId(id: string | undefined | null): boolean {
+  return !!id && id.startsWith(SEED_PREFIX);
+}
+
 interface PlaceSearchResult {
   id: string;
   displayName?: { text: string };
@@ -124,13 +128,14 @@ async function fetchPlaceDetails(placeId: string): Promise<{
     photoUrl?: string;
   };
   googleMapsUri?: string;
+  earliestReviewDate?: string;
 }> {
   if (!isGooglePlaceId(placeId)) {
     throw new Error('INVALID_PLACE_ID');
   }
   const url = `${PLACES_API_BASE}/places/${placeId}`;
   // v1 field mask should not prefix with "places." and must include photos.name explicitly
-  const fieldMask = 'id,displayName,rating,userRatingCount,formattedAddress,photos.name,googleMapsUri';
+  const fieldMask = 'id,displayName,rating,userRatingCount,formattedAddress,photos.name,googleMapsUri,reviews.publishTime';
 
   const response = await fetch(url, {
     method: 'GET',
@@ -174,6 +179,18 @@ async function fetchPlaceDetails(placeId: string): Promise<{
     }
   }
 
+  // Extract earliest review date
+  let earliestReviewDate: string | undefined;
+  if (data.reviews && data.reviews.length > 0) {
+    const reviewDates = data.reviews
+      .map((review: any) => review.publishTime)
+      .filter((date: string) => date)
+      .sort();
+    if (reviewDates.length > 0) {
+      earliestReviewDate = reviewDates[0];
+    }
+  }
+
   // Extract city from address
   let city = '';
   if (data.formattedAddress) {
@@ -191,6 +208,7 @@ async function fetchPlaceDetails(placeId: string): Promise<{
     userRatingCount: data.userRatingCount || 0,
     photo,
     googleMapsUri: data.googleMapsUri,
+    earliestReviewDate,
   };
 }
 
@@ -229,12 +247,9 @@ export async function handleEnrichPlace(req: VercelRequest, res: VercelResponse)
         return res.status(400).json({ error: 'Missing placeId parameter' });
       }
 
-      if (!isGooglePlaceId(placeId)) {
+      if (isSeedId(placeId) || !isGooglePlaceId(placeId)) {
         res.setHeader('X-Enrich-Input', 'seed');
-        return res.status(200).json({
-          placeId,
-          reason: 'seed_skip_enrich',
-        });
+        return res.status(400).json({ error: 'invalid_place_id' });
       }
 
       const details = await fetchPlaceDetails(placeId);

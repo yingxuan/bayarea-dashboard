@@ -107,6 +107,9 @@ export async function handlePlacePhoto(req: VercelRequest, res: VercelResponse) 
   if (!placeId) {
     return res.status(400).json({ error: 'place_id required' });
   }
+  if (placeId.startsWith('seed_')) {
+    return res.status(400).json({ error: 'invalid_place_id' });
+  }
   if (!isPlaceIdValid(placeId)) {
     return res.status(400).json({ error: 'invalid_place_id' });
   }

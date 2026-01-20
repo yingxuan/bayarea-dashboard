@@ -1,0 +1,16 @@
+[
+  { "name": "HEYTEA", "city": "Santa Clara", "tags": ["fruit-tea", "top", "musthave"], "addressHint": "Valley Fair" },
+  { "name": "WOW TEA", "city": "Cupertino", "tags": ["fruit-tea", "cheese-foam", "musthave"], "addressHint": "Cupertino" },
+
+  { "name": "CHICHA San Chen", "city": "Cupertino", "tags": ["tea-forward", "ritual", "musthave"], "addressHint": "Cupertino" },
+  { "name": "Shu Shia", "city": "Cupertino", "tags": ["original-tea", "guochao", "musthave"], "addressHint": "Cupertino" },
+
+  { "name": "Molly Tea", "city": "Cupertino", "tags": ["jasmine", "fresh-milk", "musthave"], "addressHint": "Cupertino" },
+  { "name": "Shuyi Tealicious", "city": "Cupertino", "tags": ["grass-jelly", "toppings", "musthave"], "addressHint": "Cupertino" },
+
+  { "name": "TP TEA", "city": "Cupertino", "tags": ["tieguanyin", "classic", "musthave"], "addressHint": "Stevens Creek Blvd" },
+  { "name": "UME Tea", "city": "Cupertino", "tags": ["limited", "aesthetic", "musthave"], "addressHint": "Cupertino" },
+
+  { "name": "WANPO Tea Shop", "city": "Cupertino", "tags": ["taiwanese", "nostalgia", "musthave"], "addressHint": "Cupertino" },
+  { "name": "Sunright Tea Studio", "city": "Cupertino", "tags": ["cheese-foam", "fruit-tea", "musthave"], "addressHint": "Cupertino" }
+]

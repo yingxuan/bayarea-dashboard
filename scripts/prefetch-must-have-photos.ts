@@ -6,13 +6,12 @@
  * resolves place_id from seed files, and calls ensurePlacePhoto(place_id, 'prefetch').
  */
 
-import { readFileSync, readdirSync } from 'fs';
+import { readFileSync } from 'fs';
 import path from 'path';
 import { ensurePlacePhoto } from '../lib/spend/ensurePlacePhoto.js';
 
-type SeedPlace = {
-  placeId?: string;
-  name: string;
+type CanonicalPayload = {
+  places?: Array<{ place_id?: string; disabled?: boolean }>;
 };
 
 function loadJson<T>(p: string): T {
@@ -20,39 +19,21 @@ function loadJson<T>(p: string): T {
   return JSON.parse(raw);
 }
 
-function buildSeedIndex(): Map<string, string> {
-  const categories = ['奶茶', '中餐', '夜宵', '新店打卡'];
-  const base = path.join(process.cwd(), 'client', 'src', 'lib', 'seeds', 'southbay');
-  const index = new Map<string, string>();
-  categories.forEach((cat) => {
-    const file = path.join(base, `${cat}.json`);
-    const data = loadJson<{ items: SeedPlace[] }>(file);
-    (data.items || []).forEach((item) => {
-      if (item.placeId) {
-        index.set(item.name.toLowerCase(), item.placeId);
-      }
-    });
-  });
-  return index;
+function loadCanonicalPlaceIds(): string[] {
+  const p = path.join(process.cwd(), 'data', 'spend', 'musthave.placeids.json');
+  try {
+    const data = loadJson<CanonicalPayload>(p);
+    return (data.places || [])
+      .filter((entry) => entry.place_id && !entry.disabled)
+      .map((entry) => entry.place_id as string);
+  } catch (err) {
+    console.warn('[prefetch] could not load musthave.placeids.json', err);
+    return [];
+  }
 }
 
 async function main() {
-  const mustHaveDir = path.join(process.cwd(), 'client', 'src', 'lib', 'seeds', 'southbay', '_musthave');
-  const files = readdirSync(mustHaveDir).filter((f) => f.endsWith('.json'));
-  const seedIndex = buildSeedIndex();
-
-  const placeIds: string[] = [];
-  for (const file of files) {
-    const data = loadJson<Array<{ name: string }>>(path.join(mustHaveDir, file));
-    data.forEach((item) => {
-      const pid = seedIndex.get(item.name.toLowerCase());
-      if (pid) {
-        placeIds.push(pid);
-      } else {
-        console.warn(`[prefetch] placeId not found in seeds for "${item.name}" from ${file}`);
-      }
-    });
-  }
+  const placeIds = loadCanonicalPlaceIds();
 
   const unique = Array.from(new Set(placeIds));
   console.log(`[prefetch] must-have place_ids: ${unique.length}`);

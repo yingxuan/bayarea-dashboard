@@ -4,10 +4,11 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "vite --host",
-    "dev:server": "tsx server/index.ts",
-    "dev:full": "tsx server/index.ts & vite --host",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "sync-musthave": "tsx scripts/sync-musthave-to-public.ts",
+    "dev": "pnpm sync-musthave && vite --host",
+    "dev:server": "pnpm sync-musthave && tsx server/index.ts",
+    "dev:full": "pnpm sync-musthave && tsx server/index.ts & pnpm dev",
+    "build": "pnpm sync-musthave && vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "preview": "vite preview --host",
     "check": "tsc --noEmit",
@@ -16,7 +17,9 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "test": "vitest",
     "test:api": "tsx scripts/test-local-api.ts",
-    "test:wenxuecity": "vitest server/__tests__/wenxuecity-parser.test.ts"
+    "test:wenxuecity": "vitest server/__tests__/wenxuecity-parser.test.ts",
+    "weekly-new-places": "tsx scripts/refresh-new-places.ts",
+    "refresh-new-places": "tsx scripts/refresh-new-places.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-01-19T07:11:48.609Z",
+  "pool": {
+    "version": 1,
+    "updatedAt": 1768806708609,
+    "ttlDays": 14,
+    "sourceMode": "seed",
+    "requestMeta": {
+      "radiusMeters": 15000,
+      "maxResultCount": 20,
+      "includedTypes": [
+        "restaurant",
+        "cafe"
+      ],
+      "keyword": "restaurant OR cafe"
+    },
+    "items": []
+  }
+}

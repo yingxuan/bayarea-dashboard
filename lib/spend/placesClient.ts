@@ -136,6 +136,7 @@ export async function searchNearbyPlaces(
       if (!response.ok) {
         const errorText = await response.text();
         const status = response.status;
+        console.error(`[PlacesClient] searchText ${requestKey} error payload:`, errorText);
 
         // Check for quota exceeded
         if (status === 429 || status === 403 || errorText.includes('quota') || errorText.includes('QUOTA')) {
@@ -243,11 +244,6 @@ export async function searchTextPlaces(
       },
     };
 
-    // Add includedTypes if provided
-    if (includedTypes && includedTypes.length > 0) {
-      body.includedTypes = includedTypes;
-    }
-
     // Field mask for required fields
     const fieldMask = 'places.id,places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.googleMapsUri';
 
@@ -318,4 +314,58 @@ export async function searchTextPlaces(
   requestDedupMap.set(requestKey, requestPromise);
 
   return requestPromise;
+}
+
+export interface PlaceDetailsResponse {
+  id: string;
+  displayName?: { text?: string };
+  formattedAddress?: string;
+  rating?: number;
+  userRatingCount?: number;
+  reviews?: Array<{ publishTime?: string }>;
+}
+
+export async function fetchPlaceDetails(placeId: string): Promise<PlaceDetailsResponse> {
+  if (isCircuitBreakerOpen()) {
+    throw new Error('QUOTA_EXCEEDED: Circuit breaker is open');
+  }
+
+  const url = `${PLACES_API_BASE}/places/${encodeURIComponent(placeId)}`;
+  const fieldMask = 'id,displayName,formattedAddress,rating,userRatingCount,reviews.publishTime';
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${GOOGLE_PLACES_API_KEY}`,
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+        'X-Goog-FieldMask': fieldMask,
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+    if (!response.ok) {
+      const errorText = await response.text();
+      if (response.status === 429 || response.status === 403 || errorText.includes('quota')) {
+        openCircuitBreaker();
+        throw new Error('QUOTA_EXCEEDED');
+      }
+      throw new Error(`Places API error: ${response.status}`);
+    }
+
+    const data: PlaceDetailsResponse = await response.json();
+    return data;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      console.error(`[PlacesClient] Timeout details: ${placeId}`);
+      throw new Error('REQUEST_TIMEOUT');
+    }
+    console.error(`[PlacesClient] Details error for ${placeId}:`, error);
+    throw error;
+  }
 }

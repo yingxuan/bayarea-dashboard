@@ -1,6 +1,9 @@
 import "dotenv/config";
 import express from "express";
 import { ensurePlacePhoto } from "../lib/spend/ensurePlacePhoto.js";
+import { handleEnrichPlace } from "../lib/spend/enrich-place.js";
+import { refreshNewPlacesSnapshot } from "../lib/spend/new-places-job.js";
+import { handleNewPlaces } from "../lib/spend/new-places-runtime.js";
 import { kv } from "@vercel/kv";
 import { PHOTO_VERSION } from "../lib/spend/photo-cache.js";
 import { createServer } from "http";
@@ -22,6 +25,7 @@ import {
   fortuneRoute,
   fanwanRoute,
   devPlacesClearCacheRoute,
+  musthaveRoute,
 } from "./local-api-adapter.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -58,6 +62,10 @@ async function startServer() {
   app.options('/api/quotes', (_req, res) => res.sendStatus(200));
   app.get('/api/spend/today', spendTodayRoute);
   app.options('/api/spend/today', (_req, res) => res.sendStatus(200));
+  app.get('/api/spend/new-places', handleNewPlaces);
+  app.options('/api/spend/new-places', (_req, res) => res.sendStatus(200));
+  app.get('/api/spend/musthave', musthaveRoute);
+  app.options('/api/spend/musthave', (_req, res) => res.sendStatus(200));
   app.get('/api/community/leeks', leekCommunityRoute);
   app.options('/api/community/leeks', (_req, res) => res.sendStatus(200));
   app.get('/api/community/gossip', gossipCommunityRoute);
@@ -73,6 +81,10 @@ async function startServer() {
   app.post('/api/dev/places/clear-cache', devPlacesClearCacheRoute);
   app.options('/api/dev/places/clear-cache', (_req, res) => res.sendStatus(200));
 
+
+  app.post("/api/spend/enrich-place", handleEnrichPlace);
+  app.get("/api/spend/enrich-place", handleEnrichPlace);
+  app.options("/api/spend/enrich-place", (_req, res) => res.sendStatus(200));
 
   app.get("/api/spend/place-photo", async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
@@ -155,6 +167,35 @@ async function startServer() {
   
   // Mount legacy API routes (if any)
   app.use(apiRouter);
+
+  const refreshSecret = process.env.NEW_PLACES_REFRESH_SECRET;
+  if (refreshSecret) {
+    app.post("/api/admin/refresh-new-places", async (req, res) => {
+      const token = req.header("x-refresh-new-places-token") || req.query.secret;
+      if (token !== refreshSecret) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const previousJobMode = process.env.JOB_MODE;
+      try {
+        process.env.JOB_MODE = '1';
+        const snapshot = await refreshNewPlacesSnapshot();
+        return res.json({
+          success: true,
+          generatedAt: snapshot.generatedAt,
+          count: snapshot.places.length,
+        });
+      } catch (error: any) {
+        console.error("[admin refresh new places] failed", error);
+        return res.status(500).json({ error: "refresh_failed", message: error?.message });
+      } finally {
+        if (previousJobMode === undefined) {
+          delete process.env.JOB_MODE;
+        } else {
+          process.env.JOB_MODE = previousJobMode;
+        }
+      }
+    });
+  }
 
   // Only serve static files in production mode
   // In development, Vite dev server handles frontend

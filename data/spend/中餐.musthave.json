@@ -1,0 +1,52 @@
+[
+  { "name": "Shao Mountain", "city": "Fremont", "tags": ["hunan", "spicy", "musthave"], "addressHint": "Warm Springs" },
+  { "name": "Home Eat", "city": "Cupertino", "tags": ["sichuan", "grilled-fish", "musthave"], "addressHint": "Cupertino" },
+  { "name": "Home Eat", "city": "Santa Clara", "tags": ["sichuan", "grilled-fish", "musthave"], "addressHint": "Santa Clara" },
+  { "name": "Hometown Lakeview", "city": "San Jose", "tags": ["hunan", "smoked", "musthave"], "addressHint": "South San Jose" },
+  { "name": "Jin Li Rock Pot", "city": "Sunnyvale", "tags": ["sichuan", "stone-pot", "musthave"], "addressHint": "Sunnyvale" },
+  { "name": "Sichuan Fusion", "city": "Richmond", "tags": ["sichuan", "classic", "musthave"], "addressHint": "Richmond" },
+  { "name": "Wu Ji's Mala House", "city": "San Jose", "tags": ["mala", "taiwanese", "musthave"], "addressHint": "Berryessa" },
+  { "name": "Hunan Impression", "city": "San Jose", "tags": ["hunan", "spicy", "musthave"], "addressHint": "San Jose" },
+
+  { "name": "Saigon Seafood Harbor", "city": "Sunnyvale", "tags": ["dim-sum", "cantonese", "musthave"], "addressHint": "Lawrence Expy" },
+  { "name": "King-Wha Restaurant", "city": "Cupertino", "tags": ["cantonese", "seafood", "musthave"], "addressHint": "Cupertino" },
+  { "name": "Grand Dynasty", "city": "San Jose", "tags": ["dim-sum", "banquet", "musthave"], "addressHint": "North San Jose" },
+  { "name": "Tai Kee Wonton", "city": "San Jose", "tags": ["wonton", "hongkong", "musthave"], "addressHint": "San Jose" },
+  { "name": "Asian Pearl", "city": "Sunnyvale", "tags": ["dim-sum", "cantonese", "musthave"], "addressHint": "Sunnyvale" },
+
+  { "name": "Shanghai Bun Dynasty", "city": "Cupertino", "tags": ["shanghai", "shengjian", "musthave"], "addressHint": "Cupertino" },
+  { "name": "Shanghai Family Cuisine", "city": "Sunnyvale", "tags": ["shanghai", "home-style", "musthave"], "addressHint": "Sunnyvale" },
+  { "name": "Din Tai Fung", "city": "Santa Clara", "tags": ["xiaolongbao", "taiwanese", "musthave"], "addressHint": "Valley Fair" },
+  { "name": "Golden Leaf", "city": "San Jose", "tags": ["jiangnan", "classic", "musthave"], "addressHint": "San Jose" },
+  { "name": "Su Hong", "city": "Palo Alto", "tags": ["jiangnan", "refined", "musthave"], "addressHint": "Palo Alto" },
+
+  { "name": "Dynasty BBQ", "city": "Newark", "tags": ["bbq", "northern", "skewers", "musthave"], "addressHint": "Newark" },
+  { "name": "Dynasty BBQ", "city": "San Jose", "tags": ["bbq", "northern", "skewers", "musthave"], "addressHint": "San Jose" },
+  { "name": "QD Venue", "city": "San Jose", "tags": ["shandong", "northern", "musthave"], "addressHint": "San Jose" },
+  { "name": "QD Venue", "city": "Cupertino", "tags": ["shandong", "northern", "musthave"], "addressHint": "Cupertino" },
+  { "name": "Dough Zone", "city": "Cupertino", "tags": ["noodles", "dumplings", "musthave"], "addressHint": "Cupertino" },
+  { "name": "Dough Zone", "city": "Sunnyvale", "tags": ["noodles", "dumplings", "musthave"], "addressHint": "Sunnyvale" },
+  { "name": "Chef Zhao Kitchen", "city": "Mountain View", "tags": ["northern", "home-style", "musthave"], "addressHint": "Mountain View" },
+  { "name": "Dun Huang", "city": "Cupertino", "tags": ["lanzhou", "noodles", "musthave"], "addressHint": "Cupertino" },
+  { "name": "Dun Huang", "city": "San Jose", "tags": ["lanzhou", "noodles", "musthave"], "addressHint": "San Jose" },
+  { "name": "Old River", "city": "San Jose", "tags": ["beijing", "noodles", "musthave"], "addressHint": "San Jose" },
+
+  { "name": "Liang's Village Cuisine", "city": "Cupertino", "tags": ["taiwanese", "comfort", "musthave"], "addressHint": "Cupertino" },
+  { "name": "Red Hot Wok", "city": "Cupertino", "tags": ["taiwanese", "stir-fry", "musthave"], "addressHint": "Cupertino" },
+  { "name": "Taiwan Bento", "city": "San Jose", "tags": ["taiwanese", "bento", "musthave"], "addressHint": "Downtown" },
+  { "name": "A-Plus", "city": "San Jose", "tags": ["taiwanese", "quick", "musthave"], "addressHint": "San Jose" },
+
+  { "name": "Ming's Restaurant", "city": "San Jose", "tags": ["bbq-duck", "roast-meat", "musthave"], "addressHint": "Berryessa" },
+  { "name": "Hong Kong Cookery", "city": "Cupertino", "tags": ["hk-cafe", "quick", "musthave"], "addressHint": "Cupertino" },
+
+  { "name": "Haidilao Hotpot", "city": "Cupertino", "tags": ["hotpot", "service", "musthave"], "addressHint": "Stevens Creek Blvd" },
+  { "name": "Happy Lamb Hot Pot", "city": "Mountain View", "tags": ["mongolian", "hotpot", "musthave"], "addressHint": "Mountain View" },
+  { "name": "Liuyishou Hot Pot", "city": "San Jose", "tags": ["chongqing", "hotpot", "spicy", "musthave"], "addressHint": "San Jose" },
+
+  { "name": "Bingbox", "city": "Cupertino", "tags": ["roujiamo", "quick", "musthave"], "addressHint": "Cupertino" },
+  { "name": "Master Xi", "city": "Cupertino", "tags": ["roujiamo", "quick", "musthave"], "addressHint": "Cupertino" },
+  { "name": "Egglicious", "city": "San Jose", "tags": ["jianbing", "breakfast", "musthave"], "addressHint": "San Jose" },
+  { "name": "Tofu Plus", "city": "Cupertino", "tags": ["tofu-soup", "quick", "musthave"], "addressHint": "Cupertino" },
+
+  { "name": "Chef Chu's", "city": "Los Altos", "tags": ["classic", "history", "musthave"], "addressHint": "Los Altos" }
+]

@@ -1,0 +1,1258 @@
+{
+  "generatedAt": "2026-01-19T06:33:40.334Z",
+  "places": [
+    {
+      "key": "home-eat-cupertino-cupertino",
+      "name": "Home Eat",
+      "city": "Cupertino",
+      "tags": [
+        "sichuan",
+        "grilled-fish",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "place_id": "ChIJn1gLvcK1j4ARQ-cQ0eqQclY",
+      "resolved": {
+        "displayName": "Home Eat汉家宴 - Cupertino",
+        "formattedAddress": "20588 Stevens Creek Blvd, Cupertino, CA 95014, USA",
+        "rating": 4.7,
+        "userRatingCount": 1474
+      }
+    },
+    {
+      "key": "home-eat-santa-clara-santa-clara",
+      "name": "Home Eat",
+      "city": "Santa Clara",
+      "tags": [
+        "sichuan",
+        "grilled-fish",
+        "musthave"
+      ],
+      "addressHint": "Santa Clara",
+      "place_id": "ChIJr9UBfwDLj4ARtkrOIWIUgT4",
+      "resolved": {
+        "displayName": "Home Eat汉家宴 - Santa Clara",
+        "formattedAddress": "638 El Camino Real, Santa Clara, CA 95050, USA",
+        "rating": 4.9,
+        "userRatingCount": 1160
+      }
+    },
+    {
+      "key": "sichuan-fusion-richmond-richmond",
+      "name": "Sichuan Fusion",
+      "city": "Richmond",
+      "tags": [
+        "sichuan",
+        "classic",
+        "musthave"
+      ],
+      "addressHint": "Richmond",
+      "place_id": "ChIJG_gPBSF5hYARzwmt16r61mI",
+      "resolved": {
+        "displayName": "Sichuan Fusion",
+        "formattedAddress": "3288 Pierce St Ste B-109, Richmond, CA 94804, USA",
+        "rating": 4.4,
+        "userRatingCount": 233
+      }
+    },
+    {
+      "key": "wu-ji-s-mala-house-san-jose-berryessa",
+      "name": "Wu Ji's Mala House",
+      "city": "San Jose",
+      "tags": [
+        "mala",
+        "taiwanese",
+        "musthave"
+      ],
+      "addressHint": "Berryessa",
+      "place_id": "ChIJ9QgKlRDMj4ARW4Gi2lOfpuA",
+      "resolved": {
+        "displayName": "WuJi's Mala House",
+        "formattedAddress": "1715 Lundy Ave #100, San Jose, CA 95131, USA",
+        "rating": 4,
+        "userRatingCount": 217
+      }
+    },
+    {
+      "key": "hunan-impression-san-jose-san-jose",
+      "name": "Hunan Impression",
+      "city": "San Jose",
+      "tags": [
+        "hunan",
+        "spicy",
+        "musthave"
+      ],
+      "addressHint": "San Jose",
+      "place_id": "ChIJl41rEWC1j4AR9m5ndL7k-Js",
+      "resolved": {
+        "displayName": "Hunan Impression",
+        "formattedAddress": "5152 Moorpark Ave #30, San Jose, CA 95129, USA",
+        "rating": 4.4,
+        "userRatingCount": 1093
+      }
+    },
+    {
+      "key": "saigon-seafood-harbor-sunnyvale-lawrence-expy",
+      "name": "Saigon Seafood Harbor",
+      "city": "Sunnyvale",
+      "tags": [
+        "dim-sum",
+        "cantonese",
+        "musthave"
+      ],
+      "addressHint": "Lawrence Expy",
+      "place_id": "ChIJIRNiaSm2j4ARVFI4lMxUF7g",
+      "resolved": {
+        "displayName": "Saigon Seafood Harbor",
+        "formattedAddress": "1135 Lawrence Expy, Sunnyvale, CA 94089, USA",
+        "rating": 4,
+        "userRatingCount": 2353
+      }
+    },
+    {
+      "key": "grand-dynasty-san-jose-north-san-jose",
+      "name": "Grand Dynasty",
+      "city": "San Jose",
+      "tags": [
+        "dim-sum",
+        "banquet",
+        "musthave"
+      ],
+      "addressHint": "North San Jose",
+      "place_id": "ChIJLSaUToO1j4ARdVELfKk7U_U",
+      "resolved": {
+        "displayName": "Grand Dynasty Chinese Seafood Restaurant",
+        "formattedAddress": "6164 Bollinger Rd, San Jose, CA 95129, USA",
+        "rating": 4,
+        "userRatingCount": 552
+      }
+    },
+    {
+      "key": "tai-kee-wonton-san-jose-san-jose",
+      "name": "Tai Kee Wonton",
+      "city": "San Jose",
+      "tags": [
+        "wonton",
+        "hongkong",
+        "musthave"
+      ],
+      "addressHint": "San Jose",
+      "place_id": "ChIJh26YHJPKj4AR7Vp0KQNq-w8",
+      "resolved": {
+        "displayName": "Tai Kee Wonton",
+        "formattedAddress": "2092 Concourse Dr STE 1, San Jose, CA 95131, USA",
+        "rating": 4.2,
+        "userRatingCount": 538
+      }
+    },
+    {
+      "key": "shanghai-bun-dynasty-cupertino-cupertino",
+      "name": "Shanghai Bun Dynasty",
+      "city": "Cupertino",
+      "tags": [
+        "shanghai",
+        "shengjian",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "place_id": "ChIJhafzm7y1j4ARgdm5WGVYhhk",
+      "resolved": {
+        "displayName": "Shanghai Bun Dynasty",
+        "formattedAddress": "19634 Stevens Creek Blvd, Cupertino, CA 95014, USA",
+        "rating": 4.3,
+        "userRatingCount": 751
+      }
+    },
+    {
+      "key": "din-tai-fung-santa-clara-valley-fair",
+      "name": "Din Tai Fung",
+      "city": "Santa Clara",
+      "tags": [
+        "xiaolongbao",
+        "taiwanese",
+        "musthave"
+      ],
+      "addressHint": "Valley Fair",
+      "place_id": "ChIJWWIlNx7Lj4ARpe1E0ob-_GI",
+      "resolved": {
+        "displayName": "Din Tai Fung",
+        "formattedAddress": "2855 Stevens Creek Blvd #1259, Santa Clara, CA 95050, USA",
+        "rating": 4.4,
+        "userRatingCount": 4529
+      }
+    },
+    {
+      "key": "golden-leaf-san-jose-san-jose",
+      "name": "Golden Leaf",
+      "city": "San Jose",
+      "tags": [
+        "jiangnan",
+        "classic",
+        "musthave"
+      ],
+      "addressHint": "San Jose",
+      "place_id": "ChIJXQlhUDgyjoARdz1w88exu-8",
+      "resolved": {
+        "displayName": "Golden Leaf Court",
+        "formattedAddress": "Golden Leaf Ct, San Jose, CA 95136, USA"
+      }
+    },
+    {
+      "key": "dynasty-bbq-newark-newark",
+      "name": "Dynasty BBQ",
+      "city": "Newark",
+      "tags": [
+        "bbq",
+        "northern",
+        "skewers",
+        "musthave"
+      ],
+      "addressHint": "Newark",
+      "place_id": "ChIJFcszvj6_j4ARqVyL1TinmfQ",
+      "resolved": {
+        "displayName": "Dynasty BBQ",
+        "formattedAddress": "5492 Central Ave, Newark, CA 94560, USA",
+        "rating": 4.5,
+        "userRatingCount": 373
+      }
+    },
+    {
+      "key": "dough-zone-cupertino-cupertino",
+      "name": "Dough Zone",
+      "city": "Cupertino",
+      "tags": [
+        "noodles",
+        "dumplings",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "place_id": "ChIJxw4ZHzG1j4ARxpDmjdv6Oi4",
+      "resolved": {
+        "displayName": "Dough Zone Dumpling House Cupertino",
+        "formattedAddress": "19600 Vallco Pkwy Suite 130, Cupertino, CA 95014, USA",
+        "rating": 4.3,
+        "userRatingCount": 614
+      }
+    },
+    {
+      "key": "liang-s-village-cuisine-cupertino-cupertino",
+      "name": "Liang's Village Cuisine",
+      "city": "Cupertino",
+      "tags": [
+        "taiwanese",
+        "comfort",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "place_id": "ChIJUamHFaG1j4AROTmVVZJjq8I",
+      "resolved": {
+        "displayName": "Liang's Village",
+        "formattedAddress": "20530 Stevens Creek Blvd, Cupertino, CA 95014, USA",
+        "rating": 4.1,
+        "userRatingCount": 766
+      }
+    },
+    {
+      "key": "red-hot-wok-cupertino-cupertino",
+      "name": "Red Hot Wok",
+      "city": "Cupertino",
+      "tags": [
+        "taiwanese",
+        "stir-fry",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "place_id": "ChIJ-_IgjZ-1j4ARyGIo8Uk0i80",
+      "resolved": {
+        "displayName": "Red Hot Wok",
+        "formattedAddress": "10074 E Estates Dr, Cupertino, CA 95014, USA",
+        "rating": 4.3,
+        "userRatingCount": 1018
+      }
+    },
+    {
+      "key": "taiwan-bento-san-jose-downtown",
+      "name": "Taiwan Bento",
+      "city": "San Jose",
+      "tags": [
+        "taiwanese",
+        "bento",
+        "musthave"
+      ],
+      "addressHint": "Downtown",
+      "place_id": "ChIJs0lTBVkzjoAR2w9E6CG9bv8",
+      "resolved": {
+        "displayName": "Taiwan Restaurant",
+        "formattedAddress": "1306 Lincoln Ave, San Jose, CA 95125, USA",
+        "rating": 4.3,
+        "userRatingCount": 648
+      }
+    },
+    {
+      "key": "a-plus-san-jose-san-jose",
+      "name": "A-Plus",
+      "city": "San Jose",
+      "tags": [
+        "taiwanese",
+        "quick",
+        "musthave"
+      ],
+      "addressHint": "San Jose",
+      "place_id": "ChIJW5P6ph7Nj4AR4A03H7PjbQ8",
+      "resolved": {
+        "displayName": "A Plus Cleaners & Alteration",
+        "formattedAddress": "1939 Alum Rock Ave, San Jose, CA 95116, USA",
+        "rating": 4.3,
+        "userRatingCount": 21
+      }
+    },
+    {
+      "key": "ming-s-restaurant-san-jose-berryessa",
+      "name": "Ming's Restaurant",
+      "city": "San Jose",
+      "tags": [
+        "bbq-duck",
+        "roast-meat",
+        "musthave"
+      ],
+      "addressHint": "Berryessa",
+      "place_id": "ChIJuW4nk4QzjoARQ5rIWahLIYs",
+      "resolved": {
+        "displayName": "Ming's Garden",
+        "formattedAddress": "1431 Foxworthy Ave, San Jose, CA 95118, USA",
+        "rating": 3.9,
+        "userRatingCount": 92
+      }
+    },
+    {
+      "key": "happy-lamb-hot-pot-mountain-view-mountain-view",
+      "name": "Happy Lamb Hot Pot",
+      "city": "Mountain View",
+      "tags": [
+        "mongolian",
+        "hotpot",
+        "musthave"
+      ],
+      "addressHint": "Mountain View",
+      "place_id": "ChIJJ9KvLjS3j4ARVZyJ6HSBT0A",
+      "resolved": {
+        "displayName": "Happy Lamb Hot Pot | Mountain View",
+        "formattedAddress": "102 Castro St, Mountain View, CA 94041, USA",
+        "rating": 4.4,
+        "userRatingCount": 1658
+      }
+    },
+    {
+      "key": "liuyishou-hot-pot-san-jose-san-jose",
+      "name": "Liuyishou Hot Pot",
+      "city": "San Jose",
+      "tags": [
+        "chongqing",
+        "hotpot",
+        "spicy",
+        "musthave"
+      ],
+      "addressHint": "San Jose",
+      "place_id": "ChIJv5Nla9y1j4ARGt7f0prYWao",
+      "resolved": {
+        "displayName": "Liuyishou Hot Pot (San Jose) 刘一手(圣何塞)",
+        "formattedAddress": "1199 S De Anza Blvd Suite 10, San Jose, CA 95129, USA",
+        "rating": 4.5,
+        "userRatingCount": 625
+      }
+    },
+    {
+      "key": "tofu-plus-cupertino-cupertino",
+      "name": "Tofu Plus",
+      "city": "Cupertino",
+      "tags": [
+        "tofu-soup",
+        "quick",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "place_id": "ChIJJ2lh8ZW1j4AR6dt9a7ReLfs",
+      "resolved": {
+        "displayName": "Tofu Plus | Korean BBQ",
+        "formattedAddress": "10971 N Wolfe Rd, Cupertino, CA 95014, USA",
+        "rating": 4.3,
+        "userRatingCount": 808
+      }
+    },
+    {
+      "key": "chef-chu-s-los-altos-los-altos",
+      "name": "Chef Chu's",
+      "city": "Los Altos",
+      "tags": [
+        "classic",
+        "history",
+        "musthave"
+      ],
+      "addressHint": "Los Altos",
+      "place_id": "ChIJ1T9Tk5uwj4ARFI0FkzPKOvI",
+      "resolved": {
+        "displayName": "Chef Chu's",
+        "formattedAddress": "1067 N San Antonio Rd, Los Altos, CA 94022, USA",
+        "rating": 4.5,
+        "userRatingCount": 3061
+      }
+    },
+    {
+      "key": "chef-yang-s-bbq-cupertino-cupertino",
+      "name": "Chef Yang's BBQ",
+      "city": "Cupertino",
+      "tags": [
+        "bbq",
+        "skewers",
+        "late-night",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "place_id": "ChIJAxPI-JW1j4AR8E2xe51iij8",
+      "resolved": {
+        "displayName": "Chef Yang's BBQ",
+        "formattedAddress": "10831 N Wolfe Rd, Cupertino, CA 95014, USA",
+        "rating": 3.6,
+        "userRatingCount": 530
+      }
+    },
+    {
+      "key": "discovery-fusion-san-jose-san-jose",
+      "name": "Discovery Fusion",
+      "city": "San Jose",
+      "tags": [
+        "bbq",
+        "skewers",
+        "quality",
+        "late-night",
+        "musthave"
+      ],
+      "addressHint": "San Jose",
+      "place_id": "ChIJOcEtUn21j4ARLhoS3HpFO8g",
+      "resolved": {
+        "displayName": "Discovery Fusion BBQ 碳所",
+        "formattedAddress": "1151 S De Anza Blvd, San Jose, CA 95129, USA",
+        "rating": 4,
+        "userRatingCount": 199
+      }
+    },
+    {
+      "key": "dynasty-bbq-sunnyvale-sunnyvale",
+      "name": "Dynasty BBQ",
+      "city": "Sunnyvale",
+      "tags": [
+        "bbq",
+        "skewers",
+        "classic",
+        "late-night",
+        "musthave"
+      ],
+      "addressHint": "Sunnyvale",
+      "place_id": "ChIJrQAMMEi1j4ARf-auOsP-qr0",
+      "resolved": {
+        "displayName": "人间烟火小酒馆（Dynasty BBQ)",
+        "formattedAddress": "1653 Hollenbeck Ave, Sunnyvale, CA 94087, USA",
+        "rating": 4.3,
+        "userRatingCount": 182
+      }
+    },
+    {
+      "key": "meet-you-bbq-cupertino-cupertino",
+      "name": "Meet You BBQ",
+      "city": "Cupertino",
+      "tags": [
+        "bbq",
+        "skewers",
+        "classic",
+        "late-night",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "place_id": "ChIJR26X-sG1j4ARdorvaSiF-xI",
+      "resolved": {
+        "displayName": "遇见烧烤Meet You BBQ Cupertino",
+        "formattedAddress": "10883B S Blaney Ave, Cupertino, CA 95014, USA",
+        "rating": 4.2,
+        "userRatingCount": 29
+      }
+    },
+    {
+      "key": "beijing-bbq-cupertino-cupertino",
+      "name": "Beijing BBQ",
+      "city": "Cupertino",
+      "tags": [
+        "bbq",
+        "skewers",
+        "classic",
+        "late-night",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "place_id": "ChIJxbVMAQC1j4ARgn4Q68Jr3bo",
+      "resolved": {
+        "displayName": "Beijing BBQ",
+        "formattedAddress": "20916 Homestead Rd, Cupertino, CA 95014, USA",
+        "rating": 4.3,
+        "userRatingCount": 92
+      }
+    },
+    {
+      "key": "friendship-bbq-santa-clara-santa-clara",
+      "name": "FRIENDSHIP BBQ",
+      "city": "Santa Clara",
+      "tags": [
+        "bbq",
+        "skewers",
+        "classic",
+        "late-night",
+        "musthave"
+      ],
+      "addressHint": "Santa Clara",
+      "place_id": "ChIJwetg5s7Lj4ARYoPLCCnqvBY",
+      "resolved": {
+        "displayName": "FRIENDSHIP BBQ",
+        "formattedAddress": "2783 El Camino Real, Santa Clara, CA 95051, USA",
+        "rating": 4.2,
+        "userRatingCount": 494
+      }
+    },
+    {
+      "key": "tlt-grill-soup-cupertino-cupertino",
+      "name": "TLT & Grill Soup",
+      "city": "Cupertino",
+      "tags": [
+        "bbq",
+        "skewers",
+        "classic",
+        "late-night",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "place_id": "ChIJIX2O_661j4ARGsbF5BT0D2g",
+      "resolved": {
+        "displayName": "TLT & Grill Soup",
+        "formattedAddress": "20371 Stevens Creek Blvd, Cupertino, CA 95014, USA",
+        "rating": 3.8,
+        "userRatingCount": 236
+      }
+    },
+    {
+      "key": "heytea-santa-clara-valley-fair",
+      "name": "HEYTEA",
+      "city": "Santa Clara",
+      "tags": [
+        "fruit-tea",
+        "top",
+        "musthave"
+      ],
+      "addressHint": "Valley Fair",
+      "place_id": "ChIJRxBAmB7Lj4ARi76qilC8Ggo",
+      "resolved": {
+        "displayName": "Lucky Tea",
+        "formattedAddress": "Second floor adjacent to ICON theater, 2855 Stevens Creek Blvd #2170, Santa Clara, CA 95050, USA",
+        "rating": 3.4,
+        "userRatingCount": 109
+      }
+    },
+    {
+      "key": "wow-tea-cupertino-cupertino",
+      "name": "WOW TEA",
+      "city": "Cupertino",
+      "tags": [
+        "fruit-tea",
+        "cheese-foam",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "place_id": "ChIJN5DyVOe1j4ARPp0DxRdNf_8",
+      "resolved": {
+        "displayName": "Wow Tea Drink",
+        "formattedAddress": "19505 Stevens Creek Blvd #102, Cupertino, CA 95014, USA",
+        "rating": 4.5,
+        "userRatingCount": 117
+      }
+    },
+    {
+      "key": "chicha-san-chen-cupertino-cupertino",
+      "name": "CHICHA San Chen",
+      "city": "Cupertino",
+      "tags": [
+        "tea-forward",
+        "ritual",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "place_id": "ChIJ1eXBjKO1j4AR05oLL0LbXPA",
+      "resolved": {
+        "displayName": "Chicha San Chen 吃茶三千",
+        "formattedAddress": "20688 Stevens Creek Blvd, Cupertino, CA 95014, USA",
+        "rating": 4.6,
+        "userRatingCount": 1355
+      }
+    },
+    {
+      "key": "shu-shia-cupertino-cupertino",
+      "name": "Shu Shia",
+      "city": "Cupertino",
+      "tags": [
+        "original-tea",
+        "guochao",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "place_id": "ChIJtVzUJc21j4ARWD0WEl8tBH8",
+      "resolved": {
+        "displayName": "Shu Shia 树夏",
+        "formattedAddress": "10525 S De Anza Blvd #145, Cupertino, CA 95014, USA",
+        "rating": 4.3,
+        "userRatingCount": 189
+      }
+    },
+    {
+      "key": "molly-tea-cupertino-cupertino",
+      "name": "Molly Tea",
+      "city": "Cupertino",
+      "tags": [
+        "jasmine",
+        "fresh-milk",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "place_id": "ChIJlVLJP721j4ARUiYhXSJB8Do",
+      "resolved": {
+        "displayName": "Molly Tea (Cupertino)",
+        "formattedAddress": "19110 Stevens Creek Blvd ste a, Cupertino, CA 95014, USA",
+        "rating": 4.4,
+        "userRatingCount": 81
+      }
+    },
+    {
+      "key": "shuyi-tealicious-cupertino-cupertino",
+      "name": "Shuyi Tealicious",
+      "city": "Cupertino",
+      "tags": [
+        "grass-jelly",
+        "toppings",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "place_id": "ChIJExpGRQC1j4AReqLJ-8UwrVQ",
+      "resolved": {
+        "displayName": "Shuyi Grass Jelly & Tea 书亦烧仙草 (Cupertino)",
+        "formattedAddress": "10963 N Wolfe Rd, Cupertino, CA 95014, USA",
+        "rating": 4.9,
+        "userRatingCount": 192
+      }
+    },
+    {
+      "key": "tp-tea-cupertino-stevens-creek-blvd",
+      "name": "TP TEA",
+      "city": "Cupertino",
+      "tags": [
+        "tieguanyin",
+        "classic",
+        "musthave"
+      ],
+      "addressHint": "Stevens Creek Blvd",
+      "place_id": "ChIJTRDQZ_K1j4ARqdjFU7FbSes",
+      "resolved": {
+        "displayName": "TP TEA – Cupertino",
+        "formattedAddress": "10787 S Blaney Ave, Cupertino, CA 95014, USA",
+        "rating": 4.4,
+        "userRatingCount": 1119
+      }
+    },
+    {
+      "key": "ume-tea-cupertino-cupertino",
+      "name": "UME Tea",
+      "city": "Cupertino",
+      "tags": [
+        "limited",
+        "aesthetic",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "place_id": "ChIJRQR1jXi1j4ARjm8Wk4ZbOP4",
+      "resolved": {
+        "displayName": "UMe | Tea & Snacks",
+        "formattedAddress": "10887 N Wolfe Rd, Cupertino, CA 95014, USA",
+        "rating": 4.5,
+        "userRatingCount": 742
+      }
+    },
+    {
+      "key": "wanpo-tea-shop-cupertino-cupertino",
+      "name": "WANPO Tea Shop",
+      "city": "Cupertino",
+      "tags": [
+        "taiwanese",
+        "nostalgia",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "place_id": "ChIJE6itKDe1j4ARgUt0_iojJgQ",
+      "resolved": {
+        "displayName": "Wanpo Tea Shop",
+        "formattedAddress": "19319 Stevens Creek Blvd, Cupertino, CA 95014, USA",
+        "rating": 4.4,
+        "userRatingCount": 180
+      }
+    }
+  ],
+  "disabled": [
+    {
+      "name": "Shao Mountain",
+      "city": "Fremont",
+      "tags": [
+        "hunan",
+        "spicy",
+        "musthave"
+      ],
+      "addressHint": "Warm Springs",
+      "reason": "no_city_match_or_closed",
+      "candidates": [
+        {
+          "place_id": "ChIJBWjgZmzHj4ART2rYldrJ938",
+          "displayName": "Shao Mountain",
+          "formattedAddress": "43749 Boscell Rd, Fremont, CA 94538, USA",
+          "userRatingCount": 48
+        }
+      ]
+    },
+    {
+      "name": "Hometown Lakeview",
+      "city": "San Jose",
+      "tags": [
+        "hunan",
+        "smoked",
+        "musthave"
+      ],
+      "addressHint": "South San Jose",
+      "reason": "name_ambiguous",
+      "candidates": [
+        {
+          "place_id": "ChIJgVzHLmQxjoARE1T7WEfoihw",
+          "displayName": "Almaden Lakeview Picnic Area",
+          "formattedAddress": "6099 Winfield Blvd, San Jose, CA 95120, USA",
+          "userRatingCount": 8
+        },
+        {
+          "place_id": "ChIJz3neBLLNj4AR60Ah1fAthew",
+          "displayName": "Hometown Living LLC",
+          "formattedAddress": "302 Toyon Ave Suite 119, San Jose, CA 95127, USA"
+        }
+      ]
+    },
+    {
+      "name": "Jin Li Rock Pot",
+      "city": "Sunnyvale",
+      "tags": [
+        "sichuan",
+        "stone-pot",
+        "musthave"
+      ],
+      "addressHint": "Sunnyvale",
+      "reason": "name_ambiguous",
+      "candidates": [
+        {
+          "place_id": "ChIJr-6DkF-3j4ARdRld_i6iFjk",
+          "displayName": "Seapot Hot Pot & Bar",
+          "formattedAddress": "740 E El Camino Real, Sunnyvale, CA 94087, USA",
+          "userRatingCount": 923
+        },
+        {
+          "place_id": "ChIJk0wFRtS3j4ARcASoUURDqpY",
+          "displayName": "Mumu Hot Pot",
+          "formattedAddress": "1273 Lawrence Station Rd, Sunnyvale, CA 94089, USA",
+          "userRatingCount": 550
+        }
+      ]
+    },
+    {
+      "name": "King-Wha Restaurant",
+      "city": "Cupertino",
+      "tags": [
+        "cantonese",
+        "seafood",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "reason": "no_city_match_or_closed",
+      "candidates": [
+        {
+          "place_id": "ChIJRZ9nuii3j4ARJ4y2C7fVSjY",
+          "displayName": "King Wah Chinese Restaurant",
+          "formattedAddress": "219 E Washington Ave, Sunnyvale, CA 94086, USA",
+          "userRatingCount": 78
+        }
+      ]
+    },
+    {
+      "name": "Asian Pearl",
+      "city": "Sunnyvale",
+      "tags": [
+        "dim-sum",
+        "cantonese",
+        "musthave"
+      ],
+      "addressHint": "Sunnyvale",
+      "reason": "no_city_match_or_closed",
+      "candidates": [
+        {
+          "place_id": "ChIJ0zXddxm3j4AR9Sh4p4Ppgss",
+          "displayName": "Asia Village Restaurant",
+          "formattedAddress": "747 S Wolfe Rd, Sunnyvale, CA 94086, USA",
+          "userRatingCount": 170
+        },
+        {
+          "place_id": "ChIJHUNMIs7Hj4AR-plCcjp1ewU",
+          "displayName": "Pearl Bay",
+          "formattedAddress": "43635 Boscell Rd, Fremont, CA 94538, USA",
+          "userRatingCount": 566
+        },
+        {
+          "place_id": "ChIJZUdBcnd3j4ARfd9Y8mZM1_4",
+          "displayName": "New Asian Pearl Peninsula",
+          "formattedAddress": "1671 El Camino Real, Millbrae, CA 94030, USA",
+          "userRatingCount": 487
+        }
+      ]
+    },
+    {
+      "name": "Shanghai Family Cuisine",
+      "city": "Sunnyvale",
+      "tags": [
+        "shanghai",
+        "home-style",
+        "musthave"
+      ],
+      "addressHint": "Sunnyvale",
+      "reason": "no_city_match_or_closed",
+      "candidates": [
+        {
+          "place_id": "ChIJ31rX5bbIj4ARsMwO5-uy7ng",
+          "displayName": "Shanghai Family Cuisine",
+          "formattedAddress": "1470 N Milpitas Blvd, Milpitas, CA 95035, USA",
+          "userRatingCount": 298
+        }
+      ]
+    },
+    {
+      "name": "Su Hong",
+      "city": "Palo Alto",
+      "tags": [
+        "jiangnan",
+        "refined",
+        "musthave"
+      ],
+      "addressHint": "Palo Alto",
+      "reason": "name_ambiguous",
+      "candidates": [
+        {
+          "place_id": "ChIJtRLy85ywj4AR38KYK7uJ0Yc",
+          "displayName": "Hong Kong Restaurant",
+          "formattedAddress": "3691 El Camino Real, Palo Alto, CA 94306, USA",
+          "userRatingCount": 761
+        },
+        {
+          "place_id": "ChIJTamC_qi7j4ARMAC_ZB2hHMI",
+          "displayName": "Chef Zhao Kitchen",
+          "formattedAddress": "2180 W Bayshore Rd #120, Palo Alto, CA 94303, USA",
+          "userRatingCount": 787
+        },
+        {
+          "place_id": "ChIJiQTY0LGkj4ARaKrhEgWBgHk",
+          "displayName": "Chef Kwan's",
+          "formattedAddress": "630 Menlo Ave, Menlo Park, CA 94025, USA",
+          "userRatingCount": 283
+        }
+      ]
+    },
+    {
+      "name": "Dynasty BBQ",
+      "city": "San Jose",
+      "tags": [
+        "bbq",
+        "northern",
+        "skewers",
+        "musthave"
+      ],
+      "addressHint": "San Jose",
+      "reason": "no_city_match_or_closed",
+      "candidates": [
+        {
+          "place_id": "ChIJrQAMMEi1j4ARf-auOsP-qr0",
+          "displayName": "人间烟火小酒馆（Dynasty BBQ)",
+          "formattedAddress": "1653 Hollenbeck Ave, Sunnyvale, CA 94087, USA",
+          "userRatingCount": 182
+        },
+        {
+          "place_id": "ChIJFcszvj6_j4ARqVyL1TinmfQ",
+          "displayName": "Dynasty BBQ",
+          "formattedAddress": "5492 Central Ave, Newark, CA 94560, USA",
+          "userRatingCount": 373
+        },
+        {
+          "place_id": "ChIJe1hpqKGfj4ARWBFCgo71nII",
+          "displayName": "人间烟火小酒馆（Dynasty BBQ)",
+          "formattedAddress": "105 W 25th Ave, San Mateo, CA 94403, USA",
+          "userRatingCount": 440
+        }
+      ]
+    },
+    {
+      "name": "QD Venue",
+      "city": "San Jose",
+      "tags": [
+        "shandong",
+        "northern",
+        "musthave"
+      ],
+      "addressHint": "San Jose",
+      "reason": "name_ambiguous",
+      "candidates": [
+        {
+          "place_id": "ChIJawoQR1bNj4ARZi44Hm_jzHw",
+          "displayName": "The Prestige Venue",
+          "formattedAddress": "18 S Almaden Ave, San Jose, CA 95113, USA",
+          "userRatingCount": 73
+        },
+        {
+          "place_id": "ChIJP1AjXH_Nj4ARBc8-y45O_dI",
+          "displayName": "Blanco Urban Venue",
+          "formattedAddress": "12 N San Pedro St, San Jose, CA 95110, USA",
+          "userRatingCount": 56
+        },
+        {
+          "place_id": "ChIJAX0FagDNj4ARaOjc34td288",
+          "displayName": "The Prestige Hall",
+          "formattedAddress": "29 N San Pedro St #200, San Jose, CA 95110, USA"
+        }
+      ]
+    },
+    {
+      "name": "QD Venue",
+      "city": "Cupertino",
+      "tags": [
+        "shandong",
+        "northern",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "reason": "no_city_match_or_closed",
+      "candidates": [
+        {
+          "place_id": "ChIJzYEPQqi1j4AR1vjGMgFmFWQ",
+          "displayName": "Cupertino Community Hall",
+          "formattedAddress": "10350 Torre Ave, Cupertino, CA 95014, USA",
+          "userRatingCount": 55
+        }
+      ]
+    },
+    {
+      "name": "Dough Zone",
+      "city": "Sunnyvale",
+      "tags": [
+        "noodles",
+        "dumplings",
+        "musthave"
+      ],
+      "addressHint": "Sunnyvale",
+      "reason": "no_city_match_or_closed",
+      "candidates": [
+        {
+          "place_id": "ChIJxw4ZHzG1j4ARxpDmjdv6Oi4",
+          "displayName": "Dough Zone Dumpling House Cupertino",
+          "formattedAddress": "19600 Vallco Pkwy Suite 130, Cupertino, CA 95014, USA",
+          "userRatingCount": 614
+        },
+        {
+          "place_id": "ChIJs7Oyr8PNj4ARcZgT0ytZNt8",
+          "displayName": "Dough Zone Dumpling House North San Jose",
+          "formattedAddress": "1701 Lundy Ave #100, San Jose, CA 95131, USA",
+          "userRatingCount": 584
+        },
+        {
+          "place_id": "ChIJvQbitWa2j4AR2n46sQ0lsbM",
+          "displayName": "Dumpling Depot 水饺家园",
+          "formattedAddress": "562 S Murphy Ave, Sunnyvale, CA 94086, USA",
+          "userRatingCount": 848
+        }
+      ]
+    },
+    {
+      "name": "Chef Zhao Kitchen",
+      "city": "Mountain View",
+      "tags": [
+        "northern",
+        "home-style",
+        "musthave"
+      ],
+      "addressHint": "Mountain View",
+      "reason": "no_city_match_or_closed",
+      "candidates": [
+        {
+          "place_id": "ChIJTamC_qi7j4ARMAC_ZB2hHMI",
+          "displayName": "Chef Zhao Kitchen",
+          "formattedAddress": "2180 W Bayshore Rd #120, Palo Alto, CA 94303, USA",
+          "userRatingCount": 787
+        }
+      ]
+    },
+    {
+      "name": "Dun Huang",
+      "city": "Cupertino",
+      "tags": [
+        "lanzhou",
+        "noodles",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "reason": "no_city_match_or_closed",
+      "candidates": [
+        {
+          "place_id": "ChIJDdLjLcq1j4ARCW9KknzX-Y4",
+          "displayName": "Duan Chun Zhen Noodle House",
+          "formattedAddress": "10118 Bandley Dr Suite H, Cupertino, CA 95014, USA",
+          "userRatingCount": 803
+        },
+        {
+          "place_id": "ChIJe3E4QgC1j4ARbgdzd8Th2Co",
+          "displayName": "DH Noodles & Grill 敦煌兰州牛肉拉面",
+          "formattedAddress": "1183 S De Anza Blvd suit 60, San Jose, CA 95129, USA",
+          "userRatingCount": 189
+        },
+        {
+          "place_id": "ChIJt-HdUam1j4ARZlx9CHuqpoI",
+          "displayName": "Yu Noodle 愚小面",
+          "formattedAddress": "10893 N Wolfe Rd, Cupertino, CA 95014, USA",
+          "userRatingCount": 198
+        }
+      ]
+    },
+    {
+      "name": "Dun Huang",
+      "city": "San Jose",
+      "tags": [
+        "lanzhou",
+        "noodles",
+        "musthave"
+      ],
+      "addressHint": "San Jose",
+      "reason": "no_city_match_or_closed",
+      "candidates": [
+        {
+          "place_id": "ChIJe3E4QgC1j4ARbgdzd8Th2Co",
+          "displayName": "DH Noodles & Grill 敦煌兰州牛肉拉面",
+          "formattedAddress": "1183 S De Anza Blvd suit 60, San Jose, CA 95129, USA",
+          "userRatingCount": 189
+        },
+        {
+          "place_id": "ChIJGzDDQdPJj4ARXeknz6BPSAA",
+          "displayName": "DH Noodles & Grill 敦煌兰州牛肉拉面",
+          "formattedAddress": "496 Barber Ln, Milpitas, CA 95035, USA",
+          "userRatingCount": 300
+        },
+        {
+          "place_id": "ChIJ86__RQAzjoAR7o1UcANA2kI",
+          "displayName": "Duan's Kitchen 段純貞",
+          "formattedAddress": "925 Blossom Hill Rd #1605, San Jose, CA 95123, USA",
+          "userRatingCount": 180
+        }
+      ]
+    },
+    {
+      "name": "Old River",
+      "city": "San Jose",
+      "tags": [
+        "beijing",
+        "noodles",
+        "musthave"
+      ],
+      "addressHint": "San Jose",
+      "reason": "name_ambiguous",
+      "candidates": [
+        {
+          "place_id": "ChIJdT7dx2oFkIARvGeBTzwgs3I",
+          "displayName": "Old River",
+          "formattedAddress": "Old River, California, USA",
+          "userRatingCount": 78
+        },
+        {
+          "place_id": "ChIJAbdJa2LLj4ARkimX9gu_Edg",
+          "displayName": "Guadalupe River Park",
+          "formattedAddress": "438 Coleman Ave, San Jose, CA 95110, USA",
+          "userRatingCount": 1619
+        },
+        {
+          "place_id": "ChIJU-bvPQvLj4ARHkG9n8vhiUY",
+          "displayName": "Guadalupe River",
+          "formattedAddress": "Guadalupe River, California, USA",
+          "userRatingCount": 12
+        }
+      ]
+    },
+    {
+      "name": "Hong Kong Cookery",
+      "city": "Cupertino",
+      "tags": [
+        "hk-cafe",
+        "quick",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "reason": "no_city_match_or_closed",
+      "candidates": [
+        {
+          "place_id": "ChIJxb-mbmTKj4ARJ1TPNq4WNrM",
+          "displayName": "Cooking Cooking",
+          "formattedAddress": "2830 Homestead Rd, Santa Clara, CA 95051, USA",
+          "userRatingCount": 703
+        },
+        {
+          "place_id": "ChIJUfCDo0sAMhURSLx-iM2PiZQ",
+          "displayName": "Local Cafe",
+          "formattedAddress": "20956 Homestead Rd Ste.H, Cupertino, CA 95014, USA",
+          "userRatingCount": 444
+        },
+        {
+          "place_id": "ChIJ-_IgjZ-1j4ARyGIo8Uk0i80",
+          "displayName": "Red Hot Wok",
+          "formattedAddress": "10074 E Estates Dr, Cupertino, CA 95014, USA",
+          "userRatingCount": 1018
+        }
+      ]
+    },
+    {
+      "name": "Haidilao Hotpot",
+      "city": "Cupertino",
+      "tags": [
+        "hotpot",
+        "service",
+        "musthave"
+      ],
+      "addressHint": "Stevens Creek Blvd",
+      "reason": "name_ambiguous",
+      "candidates": [
+        {
+          "place_id": "ChIJK5B_3Z21j4ARuIABkYGEC-8",
+          "displayName": "Haidilao Hot Pot Cupertino",
+          "formattedAddress": "19409 Stevens Creek Blvd #100, Cupertino, CA 95014, USA",
+          "userRatingCount": 5024
+        }
+      ]
+    },
+    {
+      "name": "Bingbox",
+      "city": "Cupertino",
+      "tags": [
+        "roujiamo",
+        "quick",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "reason": "no_city_match_or_closed",
+      "candidates": [
+        {
+          "place_id": "ChIJH3S3l5e1j4AR3apDLZd2AeI",
+          "displayName": "Matcha Town",
+          "formattedAddress": "10815 N Wolfe Rd Suite 102, Cupertino, CA 95014, USA",
+          "userRatingCount": 142
+        },
+        {
+          "place_id": "ChIJYbHgcwW1j4ARnPizUmRuEq8",
+          "displayName": "Somisomi",
+          "formattedAddress": "19540 Vallco Pkwy #160, Cupertino, CA 95014, USA",
+          "userRatingCount": 1117
+        },
+        {
+          "place_id": "ChIJCbJ8Oi-1j4ARrH2Bsc4Ifr4",
+          "displayName": "Sul & Beans",
+          "formattedAddress": "19540 Vallco Pkwy #160, Cupertino, CA 95014, USA",
+          "userRatingCount": 295
+        }
+      ]
+    },
+    {
+      "name": "Master Xi",
+      "city": "Cupertino",
+      "tags": [
+        "roujiamo",
+        "quick",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "reason": "name_ambiguous",
+      "candidates": [
+        {
+          "place_id": "ChIJ8TwwwnW1j4ARRKttPTMxvfw",
+          "displayName": "Cupertino Morningmasters - Toastmasters",
+          "formattedAddress": "https://cupertinomorningmasters.com, 10181 Finch Ave, Cupertino, CA 95014, USA",
+          "userRatingCount": 10
+        },
+        {
+          "place_id": "ChIJ99m2TE-1j4ARLHM7MREr_i4",
+          "displayName": "Daniel Xi, Coldwell Banker Realty",
+          "formattedAddress": "19330 Stevens Creek Blvd Floor 1, Cupertino, CA 95014, USA",
+          "userRatingCount": 14
+        },
+        {
+          "place_id": "ChIJhavWvqe1j4AR0T0iWq_Pa0E",
+          "displayName": "Tai Ji Men Qigong Academy - Cupertino",
+          "formattedAddress": "10590 S De Anza Blvd, Cupertino, CA 95014, USA",
+          "userRatingCount": 10
+        }
+      ]
+    },
+    {
+      "name": "Egglicious",
+      "city": "San Jose",
+      "tags": [
+        "jianbing",
+        "breakfast",
+        "musthave"
+      ],
+      "addressHint": "San Jose",
+      "reason": "no_city_match_or_closed",
+      "candidates": [
+        {
+          "place_id": "ChIJW76axsjLj4ARTk6Npe8W0h0",
+          "displayName": "Egglicious India",
+          "formattedAddress": "4996 Stevens Creek Blvd, San Jose, CA 95129, USA",
+          "userRatingCount": 426
+        }
+      ]
+    },
+    {
+      "name": "Sunright Tea Studio",
+      "city": "Cupertino",
+      "tags": [
+        "cheese-foam",
+        "fruit-tea",
+        "musthave"
+      ],
+      "addressHint": "Cupertino",
+      "reason": "no_city_match_or_closed",
+      "candidates": [
+        {
+          "place_id": "ChIJt6567V21j4ARtfy-hZfx27U",
+          "displayName": "Sunright Tea Studio - Sunnyvale",
+          "formattedAddress": "795 E El Camino Real, Sunnyvale, CA 94087, USA",
+          "userRatingCount": 496
+        },
+        {
+          "place_id": "ChIJE6Mt1aXJj4ARswbEziZLXUE",
+          "displayName": "Sunright Tea Studio - Milpitas",
+          "formattedAddress": "1693 N Milpitas Blvd, Milpitas, CA 95035, USA",
+          "userRatingCount": 119
+        },
+        {
+          "place_id": "ChIJvWqIR9TLj4ARsx6AlUIVQiU",
+          "displayName": "Sunright Tea Studio - San Jose",
+          "formattedAddress": "1401 W San Carlos St, San Jose, CA 95126, USA",
+          "userRatingCount": 71
+        }
+      ]
+    }
+  ]
+}

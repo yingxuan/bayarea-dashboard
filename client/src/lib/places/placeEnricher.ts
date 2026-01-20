@@ -198,6 +198,7 @@ async function fetchPlaceDetails(placeId: string): Promise<EnrichedPlace | null>
         photoUrl: data.photo.photoUrl,
       } : undefined,
       googleMapsUri: data.googleMapsUri,
+      earliestReviewDate: data.earliestReviewDate,
       updatedAt: Date.now(),
     };
 

@@ -25,6 +25,7 @@ export interface EnrichedPlace {
     photoUrl?: string; // Pre-computed URL
   };
   googleMapsUri?: string;
+  earliestReviewDate?: string;
   updatedAt: number; // epochMs
 }
 

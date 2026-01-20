@@ -264,44 +264,6 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
     console.log(`[SpendCarousel] First place:`, places[0]);
   }
 
-  // For 新店打卡: no minimum requirement, show all available places
-  // For other categories: if we have < 5 places, show compact placeholder
-  if (category !== '新店打卡' && places.length < 5) {
-    console.warn(`[SpendCarousel] Category "${category}" has only ${places.length} places, showing compact placeholder`);
-    return (
-      <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md flex flex-col min-h-[120px]">
-        <div className="mb-2 flex-shrink-0 flex items-center justify-between">
-          <h3 className="text-[28px] md:text-[32px] font-mono font-semibold text-foreground">
-            {category}
-          </h3>
-        </div>
-        <div className="flex-1 flex items-center justify-center min-h-0">
-          <p className="text-xs opacity-60 font-mono font-normal text-center line-clamp-2">
-            {places.length === 0 ? '暂无推荐' : '数据不足'}
-          </p>
-        </div>
-      </div>
-    );
-  }
-  
-  // For 新店打卡: if empty, show placeholder
-  if (category === '新店打卡' && places.length === 0) {
-    return (
-      <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md flex flex-col min-h-[120px]">
-        <div className="mb-2 flex-shrink-0 flex items-center justify-between">
-          <h3 className="text-[28px] md:text-[32px] font-mono font-semibold text-foreground">
-            {category}
-          </h3>
-        </div>
-        <div className="flex-1 flex items-center justify-center min-h-0">
-          <p className="text-xs opacity-60 font-mono font-normal text-center line-clamp-2">
-            暂无推荐
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   const windowSize = 10;
 
   // For 新店打卡: show all available places (no minimum requirement)
@@ -413,6 +375,17 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
         const place = allPlacesToCheck[i];
         const enriched = cachedEnrichments[i];
         if (enriched) {
+          // For "新店打卡", check if first review is within 6 months
+          if (category === '新店打卡' && enriched.earliestReviewDate) {
+            const reviewDate = new Date(enriched.earliestReviewDate);
+            const sixMonthsAgo = new Date();
+            sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+            if (reviewDate < sixMonthsAgo) {
+              // Too old, skip this cached enrichment
+              continue;
+            }
+          }
+
           const key = getEnrichmentKey(place.id, place.name, place.city);
           newEnriched.set(key, {
             rating: enriched.rating,
@@ -434,6 +407,17 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
           // Enrich in background (don't await)
           enrichPlace(place.name, place.city, place.id).then(enriched => {
             if (enriched) {
+              // For "新店打卡", check if first review is within 6 months
+              if (category === '新店打卡' && enriched.earliestReviewDate) {
+                const reviewDate = new Date(enriched.earliestReviewDate);
+                const sixMonthsAgo = new Date();
+                sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+                if (reviewDate < sixMonthsAgo) {
+                  // Too old, don't include in enriched places
+                  return;
+                }
+              }
+
               const key = getEnrichmentKey(place.id, place.name, place.city);
               setEnrichedPlaces(prev => {
                 const updated = new Map(prev);
@@ -469,6 +453,30 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
 
   // Random pool: use all available curated places (not just the visible window)
   const randomPool = places;
+
+  const isCompactPlaceholder = category !== '新店打卡' && places.length < 5;
+  const isNewPlacesEmpty = category === '新店打卡' && places.length === 0;
+
+  if (isCompactPlaceholder || isNewPlacesEmpty) {
+    const message =
+      isCompactPlaceholder && places.length > 0 ? '数据不足' :
+      isNewPlacesEmpty ? '暂无推荐' :
+      '暂无推荐';
+    return (
+      <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md flex flex-col min-h-[120px]">
+        <div className="mb-2 flex-shrink-0 flex items-center justify-between">
+          <h3 className="text-[28px] md:text-[32px] font-mono font-semibold text-foreground">
+            {category}
+          </h3>
+        </div>
+        <div className="flex-1 flex items-center justify-center min-h-0">
+          <p className="text-xs opacity-60 font-mono font-normal text-center line-clamp-2">
+            {message}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Handle random place selection
   const handleRandomClick = () => {

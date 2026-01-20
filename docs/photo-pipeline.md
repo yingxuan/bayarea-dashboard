@@ -34,8 +34,8 @@ Lock: `placephoto:lock:v1:<place_id>` (60s) to avoid thundering herd.
 
 ## Prefetch Script
 Run: `pnpm tsx scripts/prefetch-must-have-photos.ts`
-- Reads must-have lists under `client/src/lib/seeds/southbay/_musthave`.
-- Resolves `place_id` via seed files.
+- Reads canonical must-have JSON (`data/musthave.placeids.json`) synced into `client/public/data`.
+- Resolves `place_id` from that list (falls back to `data/*.musthave.json` if necessary).
 - Calls `ensurePlacePhoto(place_id, 'prefetch')` with small concurrency.
 
 ## Frontend

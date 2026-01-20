@@ -248,74 +248,45 @@ export function createPool(
  */
 export async function loadSeedFile(category: '奶茶' | '中餐' | '夜宵' | '新店打卡'): Promise<CachedPlace[]> {
   try {
-    // console.log(`[LocalCache] Loading seed file for category: ${category}`);
-    // Dynamic import of seed JSON (bundled at build time)
-    const seedModule = await import(`@/lib/seeds/southbay/${category}.json`);
-    const seedFile = seedModule.default || seedModule;
-    
-    // console.log(`[LocalCache] Seed file loaded for ${category}:`, {
-    //   hasItems: !!seedFile.items,
-    //   itemsLength: seedFile.items?.length || 0,
-    //   version: seedFile.version,
-    // });
-    
-    if (!seedFile.items || !Array.isArray(seedFile.items)) {
-      console.warn(`[LocalCache] Invalid seed file for ${category}:`, seedFile);
+    const url = `/data/${encodeURIComponent(category)}.musthave.json`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`seed fetch failed ${response.status}`);
+    }
+    const seedItems = await response.json();
+    if (!Array.isArray(seedItems)) {
+      console.warn(`[LocalCache] Invalid seed file for ${category}:`, seedItems);
       return [];
     }
 
-    // Convert SeedPlace to CachedPlace
-    // Runtime preference: prefer mapsType="place" over "search" for exact store pages
-    return seedFile.items
-      .filter((item: any) => item.mapsUrl && item.name) // Filter invalid items
+    return seedItems
+      .filter((item: any) => item.name)
       .map((item: any): CachedPlace => {
-        // Infer mapsType if not provided
-        const mapsType = item.mapsType || 
-          (item.mapsUrl.includes('/search/') || item.mapsUrl.includes('?q=') ? 'search' : 'place');
-        
-        // Prefer placeId if available (from resolved seeds)
         const placeId = item.placeId || `seed_${category}_${item.name.replace(/\s+/g, '_').toLowerCase()}`;
-        
-        // Prefer exact place URL (mapsType="place") over search URLs
-        // If both exist, prefer the place link
-        const mapsUrl = item.mapsUrl; // Already resolved to exact place URI if placeId exists
-        
-        // Build photo URL from photoName or photoReference if available
-        let photoRef: string | undefined;
-        if (item.photoName) {
-          // New API format: store photoName, will be resolved via server proxy
-          photoRef = item.photoName;
-        } else if (item.photoReference) {
-          // Legacy format: use directly
-          photoRef = item.photoReference;
-        }
-
+        const mapsUrl =
+          item.mapsUrl ||
+          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name + ' ' + item.city)}`;
+        let photoRef;
+        if (item.photoName) photoRef = item.photoName;
+        else if (item.photoReference) photoRef = item.photoReference;
         const cachedPlace: CachedPlace = {
           placeId,
           name: item.name,
-          rating: item.rating ?? 0, // Use enriched rating if available
-          userRatingCount: item.userRatingCount ?? 0, // Use enriched count if available
+          rating: item.rating ?? 0,
+          userRatingCount: item.userRatingCount ?? 0,
           address: item.address || item.city || 'South Bay',
-          mapsUrl: item.googleMapsUri || mapsUrl, // Prefer enriched googleMapsUri if available
+          mapsUrl,
           lat: item.lat,
           lng: item.lng,
-          photoRef, // Use enriched photo if available
-          city: item.city, // Preserve city from seed data
+          photoRef,
+          city: item.city,
         };
-        
-        // Debug log for places with rating data
-          if (cachedPlace.rating > 0 || cachedPlace.userRatingCount > 0) {
-          // console.log(`[LocalCache] Loaded ${category} place "${item.name}" with rating: ${cachedPlace.rating}, count: ${cachedPlace.userRatingCount}`);
-        }
         return cachedPlace;
       });
   } catch (error) {
     console.error(`[LocalCache] Failed to load seed file for ${category}:`, error);
     if (error instanceof Error) {
-      console.error(`[LocalCache] Error details:`, {
-        message: error.message,
-        stack: error.stack,
-      });
+      console.error(`[LocalCache] Error details:`, { message: error.message, stack: error.stack });
     }
     return [];
   }

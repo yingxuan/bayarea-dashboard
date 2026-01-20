@@ -16,6 +16,7 @@ import {
   rotatePlaces,
   createPool,
   getSeedPool,
+  loadSeedFile,
   getNewPlacesPool as getNewPlacesPoolFromCache,
   setNewPlacesPool as setNewPlacesPoolToCache,
   clearNewPlacesPool,
@@ -27,6 +28,7 @@ import { curatePlaces, type CategoryKey } from '@/lib/places/curation/curatePlac
 import { getRegionProfile } from '@/lib/places/curation/regionProfiles';
 import { config } from '@/config';
 import { NEW_PLACES_TTL_DAYS, NEW_PLACES_COOLDOWN_DAYS } from '@/config/places';
+import { loadMusthavePlaceIds, MUSTHAVE_VERSION_KEY } from '@/lib/musthave/loadMusthave';
 
 interface SpendPlace {
   id: string;
@@ -132,6 +134,13 @@ const SOUTH_BAY_MILK_TEA_WHITELIST = [
   "happy lemon",
   "sunright tea studio",
   "teaspoon",
+  "wow tea",
+  "shu shia",
+  "ume tea",
+  "wanpo tea shop",
+  "molly tea",
+  "shuyi tealicious",
+  "chicha san chen",
 ];
 
 const CN_MILK_TEA_BRANDS = [
@@ -196,6 +205,37 @@ const CHINESE_CHAR_REGEX = /[\p{Script=Han}]/u;
 function containsChineseCharacters(text?: string): boolean {
   if (!text) return false;
   return CHINESE_CHAR_REGEX.test(text);
+}
+
+function isMilkTeaName(name: string): boolean {
+  if (!name) return false;
+  const normalized = name.toLowerCase();
+  const mentionInList = SOUTH_BAY_MILK_TEA_WHITELIST.some((brand) => normalized.includes(brand));
+  if (mentionInList) return true;
+  return CN_MILK_TEA_BRANDS.some((brand) => normalized.includes(brand));
+}
+
+function isLateNightName(name: string): boolean {
+  if (!name) return false;
+  const normalized = name.toLowerCase();
+  return normalized.includes('hot pot') ||
+         normalized.includes('hotpot') ||
+         normalized.includes('bbq') ||
+         normalized.includes('malatang') ||
+         normalized.includes('mala') ||
+         normalized.includes('skewers') ||
+         normalized.includes('yang guo fu') ||
+         normalized.includes('haidilao') ||
+         normalized.includes('liuyishou') ||
+         normalized.includes('dynasty bbq') ||
+         normalized.includes('chef yang') ||
+         normalized.includes('tan suo') ||
+         normalized.includes('phoenix bbq') ||
+         normalized.includes('fat ni') ||
+         normalized.includes('bbq king') ||
+         normalized.includes('wu ji') ||
+         normalized.includes('xiyue') ||
+         normalized.includes('old river');
 }
 
 type MilkTeaMeta = {
@@ -440,16 +480,23 @@ function filterPlacesForCategory(
       break;
 
     case '新店打卡':
-      // Combine both pools, filter by low review count
+      // New openings: South Bay only, first review within 6 months
       const combinedPlaces: CachedPlace[] = [];
       if (restaurantPool) combinedPlaces.push(...restaurantPool.items);
       if (cafePool) combinedPlaces.push(...cafePool.items);
       const deduped = Array.from(new Map(combinedPlaces.map((p) => [p.placeId, p])).values());
       sourcePool = deduped.length > 0 ? createPool(deduped, restaurantPool?.sourceMode || 'cache') : null;
       if (relaxed) {
-        filterFn = (p) => p.rating >= 3.5; // Relaxed: just need decent rating
+        filterFn = (p) => {
+          const isSouthBay = isSouthBayPlace(p, city);
+          return isSouthBay && p.rating >= 3.5;
+        };
       } else {
         filterFn = (p) => {
+          // Must be South Bay
+          const isSouthBay = isSouthBayPlace(p, city);
+          if (!isSouthBay) return false;
+
           const nameLower = p.name.toLowerCase();
           const types = [
             ...((p as any).types || []),
@@ -458,27 +505,22 @@ function filterPlacesForCategory(
           const exclusionReason = hasHardExclusion(nameLower, types);
           if (exclusionReason) return false;
 
-          const isSouthBay = isSouthBayPlace(p, city);
-          const reviewOK = p.userRatingCount < 100 && p.rating >= 4.0;
+          // Basic criteria for potential new places
+          const reviewOK = p.userRatingCount < 200 && p.rating >= 3.8;
           const sbWhitelist = SOUTH_BAY_NEW_OPENING_WHITELIST.some((w) => nameLower.includes(w.toLowerCase()));
           const chineseSignal = CHINESE_CHAR_REGEX.test(p.name);
-          if (isSouthBay) {
-            return reviewOK || sbWhitelist || chineseSignal;
-          }
-          return reviewOK;
+
+          return reviewOK || sbWhitelist || chineseSignal;
         };
       }
       scoreFn = (p) => {
         const newnessScore = 100 - Math.min(p.userRatingCount, 100);
-        const isSouthBay = isSouthBayPlace(p, city);
         let score = newnessScore + (p.rating * 10);
         const nameLower = p.name.toLowerCase();
-        if (isSouthBay) {
-          if (SOUTH_BAY_NEW_OPENING_WHITELIST.some((w) => nameLower.includes(w.toLowerCase()))) {
-            score += 60;
-          }
-          if (CHINESE_CHAR_REGEX.test(p.name)) score += 20;
+        if (SOUTH_BAY_NEW_OPENING_WHITELIST.some((w) => nameLower.includes(w.toLowerCase()))) {
+          score += 60;
         }
+        if (CHINESE_CHAR_REGEX.test(p.name)) score += 20;
         return { score };
       };
       break;
@@ -660,6 +702,80 @@ export function usePlacesCache(
   useEffect(() => {
     async function loadPlaces() {
       setLoading(true);
+      let canonicalSeedPool: CachedPool | null = null;
+      let canonicalVersion = '';
+      let canonicalMilkTeaPlaces: SpendPlace[] = [];
+      let canonicalLateNightPlaces: SpendPlace[] = [];
+      try {
+        const canonical = await loadMusthavePlaceIds();
+        canonicalVersion = canonical.version;
+        const canonicalEntries = canonical.places.filter((entry) => entry.place_id && !entry.disabled);
+        if (canonicalEntries.length > 0) {
+        const buildEntryMapsUrl = (entry: typeof canonicalEntries[number]) =>
+          entry.place_id
+            ? `https://www.google.com/maps/place/?q=place_id:${entry.place_id}`
+            : entry.validation?.resolvedAddress
+            ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                entry.validation.resolvedAddress
+              )}`
+            : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                entry.name + ' ' + entry.city
+              )}`;
+
+        const poolItems = canonicalEntries.map((entry) => ({
+          placeId: entry.place_id!,
+          name: entry.name,
+          rating: entry.validation?.rating ?? 0,
+          userRatingCount: entry.validation?.userRatingCount ?? 0,
+          address: entry.addressHint || entry.city || 'South Bay',
+          mapsUrl: buildEntryMapsUrl(entry),
+          city: entry.city,
+          photoRef: undefined,
+        }));
+          canonicalSeedPool = createPool(poolItems, 'seed');
+          canonicalMilkTeaPlaces = canonicalEntries
+            .filter((entry) => entry.place_id && entry.name && isMilkTeaName(entry.name))
+            .map((entry) => ({
+              id: entry.place_id!,
+              name: entry.name,
+              category: '奶茶',
+              rating: entry.validation?.rating ?? 0,
+              user_ratings_total: entry.validation?.userRatingCount ?? 0,
+              maps_url: buildEntryMapsUrl(entry),
+              city: entry.city || 'South Bay',
+              score: 0,
+              badges: entry.tags,
+            }));
+          canonicalLateNightPlaces = canonicalEntries
+            .filter((entry) =>
+              entry.place_id &&
+              entry.name &&
+              isLateNightName(entry.name)
+            )
+            .map((entry) => ({
+              id: entry.place_id!,
+              name: entry.name,
+              category: '夜宵',
+              rating: entry.validation?.rating ?? 0,
+              user_ratings_total: entry.validation?.userRatingCount ?? 0,
+              maps_url: buildEntryMapsUrl(entry),
+              city: entry.city || 'South Bay',
+              score: 0,
+              badges: entry.tags,
+            }));
+
+          if (typeof window !== 'undefined') {
+            const storedVersion = localStorage.getItem(MUSTHAVE_VERSION_KEY);
+            if (storedVersion && storedVersion !== canonical.version) {
+              await clearAllPools();
+            }
+            localStorage.setItem(MUSTHAVE_VERSION_KEY, canonical.version);
+          }
+          console.debug(`[musthave] canonical version=${canonical.version} count=${poolItems.length}`);
+        }
+      } catch (error) {
+        console.warn('[musthave] canonical load failed, falling back to existing seeds', error);
+      }
 
       try {
         // Load South Bay pools from cache (single region)
@@ -689,10 +805,10 @@ export function usePlacesCache(
         // If cache is empty, use seed data and store it
         let finalRestaurantPool = restaurantPool && restaurantPool.items.length > 0
           ? restaurantPool
-          : await getSeedPool('cupertino', 'restaurant'); // Use cupertino seed as South Bay seed
+          : canonicalSeedPool ?? await getSeedPool('cupertino', 'restaurant');
         let finalCafePool = cafePool && cafePool.items.length > 0
           ? cafePool
-          : await getSeedPool('cupertino', 'cafe');
+          : canonicalSeedPool ?? await getSeedPool('cupertino', 'cafe');
         
         // Check and update caches if needed
         const seedRestaurantPool = await getSeedPool('cupertino', 'restaurant');
@@ -714,6 +830,45 @@ export function usePlacesCache(
         const newDebug: Record<string, PlacesDebugInfo> = {};
 
         for (const category of categories) {
+          // For 奶茶 and 夜宵, use canonical data directly if available
+          if (category === '奶茶' && canonicalMilkTeaPlaces.length > 0) {
+            newPlacesByCategory[category] = canonicalMilkTeaPlaces;
+            newCacheInfo[category] = {
+              mode: 'seed',
+              cacheAgeDays: 0,
+              poolSize: canonicalMilkTeaPlaces.length,
+              refreshAttempted: false,
+            };
+            if (debugMode) {
+              newDebug[category] = {
+                region: 'canonical',
+                tiersUsed: 1,
+                excludedSamples: [],
+                includedBreakdown: { canonical: canonicalMilkTeaPlaces.length },
+              };
+            }
+            continue; // Skip the rest of the filtering logic
+          }
+
+          if (category === '夜宵' && canonicalLateNightPlaces.length > 0) {
+            newPlacesByCategory[category] = canonicalLateNightPlaces;
+            newCacheInfo[category] = {
+              mode: 'seed',
+              cacheAgeDays: 0,
+              poolSize: canonicalLateNightPlaces.length,
+              refreshAttempted: false,
+            };
+            if (debugMode) {
+              newDebug[category] = {
+                region: 'canonical',
+                tiersUsed: 1,
+                excludedSamples: [],
+                includedBreakdown: { canonical: canonicalLateNightPlaces.length },
+              };
+            }
+            continue; // Skip the rest of the filtering logic
+          }
+
           // Build candidates from pools
           const toCandidate = (p: CachedPlace) => ({
             id: p.placeId,
@@ -732,24 +887,7 @@ export function usePlacesCache(
             candidates = finalCafePool?.items || [];
           } else if (category === '新店打卡') {
             let newPlacesPool = await getNewPlacesPoolFromCache();
-            let shouldReloadFromSeed = false;
-            if (newPlacesPool) {
-              try {
-                const seedModule = await import('@/lib/seeds/southbay/新店打卡.json');
-                const seedFile = seedModule.default || seedModule;
-                const seedUpdatedAt = seedFile.updatedAt ? new Date(seedFile.updatedAt).getTime() : 0;
-                const cacheUpdatedAt = newPlacesPool.updatedAt;
-                if (seedUpdatedAt > cacheUpdatedAt) {
-                  await clearNewPlacesPool();
-                  newPlacesPool = null;
-                  shouldReloadFromSeed = true;
-                }
-              } catch (error) {
-                console.warn('[usePlacesCache] Could not check seed file timestamp:', error);
-              }
-            }
-            if (!newPlacesPool || newPlacesPool.items.length === 0 || shouldReloadFromSeed) {
-              const { loadSeedFile } = await import('@/lib/places/localCache');
+            if (!newPlacesPool || newPlacesPool.items.length === 0) {
               const seedPlaces = await loadSeedFile('新店打卡');
               newPlacesPool = createPool(seedPlaces, 'seed');
               if (seedPlaces.length > 0) {
@@ -780,39 +918,53 @@ export function usePlacesCache(
           });
 
           let finalItems = curated.items;
-          if (finalItems.length < 10) {
-            // Fallback 1: run with default region profile to relax priors
-            const relaxedResult = curatePlaces(candidates.map(toCandidate), {
-              category: catKey,
-              regionKey: 'default',
-              city: 'South Bay',
-              debug: debugMode,
-            });
-            const mergedRelaxed = [...finalItems, ...relaxedResult.items];
-            finalItems = Array.from(new Map(mergedRelaxed.map((p) => [p.id, p])).values());
-            if (debugMode && curated.debug) {
-              curated.debug.excludedSamples = [...(curated.debug.excludedSamples || []), ...(relaxedResult.debug?.excludedSamples || [])].slice(0, 10);
-              curated.debug.includedBreakdown = { ...(curated.debug.includedBreakdown || {}), ...(relaxedResult.debug?.includedBreakdown || {}) };
+          if (category !== '新店打卡') {
+            if (finalItems.length < 10) {
+              // Fallback 1: run with default region profile to relax priors
+              const relaxedResult = curatePlaces(candidates.map(toCandidate), {
+                category: catKey,
+                regionKey: 'default',
+                city: 'South Bay',
+                debug: debugMode,
+              });
+              const mergedRelaxed = [...finalItems, ...relaxedResult.items];
+              finalItems = Array.from(new Map(mergedRelaxed.map((p) => [p.id, p])).values());
+              if (debugMode && curated.debug) {
+                curated.debug.excludedSamples = [...(curated.debug.excludedSamples || []), ...(relaxedResult.debug?.excludedSamples || [])].slice(0, 10);
+                curated.debug.includedBreakdown = { ...(curated.debug.includedBreakdown || {}), ...(relaxedResult.debug?.includedBreakdown || {}) };
+              }
             }
-          }
-          if (finalItems.length < 10) {
-            const seedPool = category === '奶茶'
-              ? await getSeedPool('cupertino', 'cafe')
-              : await getSeedPool('cupertino', category === '新店打卡' ? 'restaurant' : 'restaurant');
-            const seedResult = curatePlaces((seedPool.items || []).map(toCandidate), {
-              category: catKey,
-              regionKey: 'southbay',
-              city: 'South Bay',
-              debug: debugMode,
-            });
-            const merged = [...finalItems, ...seedResult.items];
-            finalItems = Array.from(new Map(merged.map((p) => [p.id, p])).values());
-            if (debugMode && curated.debug) {
-              curated.debug.excludedSamples = [...(curated.debug.excludedSamples || []), ...(seedResult.debug?.excludedSamples || [])].slice(0, 10);
-              curated.debug.includedBreakdown = { ...(curated.debug.includedBreakdown || {}), ...(seedResult.debug?.includedBreakdown || {}) };
+            if (finalItems.length < 10) {
+              const seedPool = canonicalSeedPool
+                ? canonicalSeedPool
+                : category === '奶茶'
+                  ? await getSeedPool('cupertino', 'cafe')
+                  : await getSeedPool('cupertino', 'restaurant');
+              const seedResult = curatePlaces((seedPool.items || []).map(toCandidate), {
+                category: catKey,
+                regionKey: 'southbay',
+                city: 'South Bay',
+                debug: debugMode,
+              });
+              const merged = [...finalItems, ...seedResult.items];
+              finalItems = Array.from(new Map(merged.map((p) => [p.id, p])).values());
+              if (debugMode && curated.debug) {
+                curated.debug.excludedSamples = [...(curated.debug.excludedSamples || []), ...(seedResult.debug?.excludedSamples || [])].slice(0, 10);
+                curated.debug.includedBreakdown = { ...(curated.debug.includedBreakdown || {}), ...(seedResult.debug?.includedBreakdown || {}) };
+              }
             }
           }
 
+          if (category === '奶茶' && canonicalMilkTeaPlaces.length > 0) {
+            finalItems = Array.from(
+              new Map(canonicalMilkTeaPlaces.map((p) => [p.id, p])).values()
+            );
+          }
+          if (category === '夜宵' && canonicalLateNightPlaces.length > 0) {
+            finalItems = Array.from(
+              new Map(canonicalLateNightPlaces.map((p) => [p.id, p])).values()
+            );
+          }
           newPlacesByCategory[category] = finalItems.map((p) => ({
             id: p.id,
             name: p.name,
@@ -860,11 +1012,9 @@ export function usePlacesCache(
         const seedCacheInfo: Record<string, PlacesCacheInfo> = {};
         for (const category of categories) {
           if (category === '新店打卡') {
-            // Load seed file directly for 新店打卡
-            const { loadSeedFile } = await import('@/lib/places/localCache');
             const seedPlaces = await loadSeedFile('新店打卡');
-              const seedCached = seedPlaces.map((p) => cachedPlaceToSpend(p, category, 'southbay'));
-              seedPlacesByCategory[category] = seedCached.slice(0, 5);
+            const seedCached = seedPlaces.map((p) => cachedPlaceToSpend(p, category, 'southbay'));
+            seedPlacesByCategory[category] = seedCached.slice(0, 5);
             seedCacheInfo[category] = {
               mode: 'seed',
               poolSize: seedPlaces.length,

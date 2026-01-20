@@ -1,0 +1,10 @@
+[
+  { "name": "Chef Yang's BBQ", "city": "Cupertino", "tags": ["bbq", "skewers", "late-night", "musthave"], "addressHint": "Cupertino" },
+  { "name": "Discovery Fusion", "city": "San Jose", "tags": ["bbq", "skewers", "quality", "late-night", "musthave"], "addressHint": "San Jose" },
+
+  { "name": "Dynasty BBQ", "city": "Sunnyvale", "tags": ["bbq", "skewers", "classic", "late-night", "musthave"], "addressHint": "Sunnyvale" },
+  { "name": "Meet You BBQ", "city": "Cupertino", "tags": ["bbq", "skewers", "classic", "late-night", "musthave"], "addressHint": "Cupertino" },
+  { "name": "Beijing BBQ", "city": "Cupertino", "tags": ["bbq", "skewers", "classic", "late-night", "musthave"], "addressHint": "Cupertino" },
+  { "name": "FRIENDSHIP BBQ", "city": "Santa Clara", "tags": ["bbq", "skewers", "classic", "late-night", "musthave"], "addressHint": "Santa Clara" },
+  { "name": "TLT & Grill Soup", "city": "Cupertino", "tags": ["bbq", "skewers", "classic", "late-night", "musthave"], "addressHint": "Cupertino" }
+]
