@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import { generateFortune } from "./gemini.js";
+import { generateFortune, FortunePromptArgs } from "./gemini.js";
 import { normalizeYMD } from "./date.js";
 import { getLosAngelesDateInfo } from "./cache.js";
 import { fortuneResponseSchema } from "./schema.js";
@@ -131,20 +131,40 @@ export async function getFortuneService(birthdateRaw: string) {
   try {
     const started = Date.now();
     console.log(`[fortune] gemini_call start cacheKey=${cacheKey}`);
-    const { parsed: modelPayload, meta } = await generateFortune(birthdate, laInfo.todayLabel);
+    const todayDateStr = laInfo.dateKey;
+    const yesterdayDate = DateTime.fromISO(todayDateStr).minus({ days: 1 }).toISODate();
+    const next3Days = [1, 2, 3]
+      .map((offset) => DateTime.fromISO(todayDateStr).plus({ days: offset }).toISODate())
+      .join("、");
+    const lunarFormatter = new Intl.DateTimeFormat("zh-CN-u-ca-chinese", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    const lunarDate = lunarFormatter.format(laInfo.now);
+    const promptArgs: FortunePromptArgs = {
+      birthEightChar: birthdate,
+      todayDate: todayDateStr,
+      lunarDate,
+      yesterdayDate,
+      next3Days,
+    };
+    const { parsed: modelPayload, meta } = await generateFortune(
+      birthdate,
+      laInfo.todayLabel,
+      promptArgs
+    );
     const duration = Date.now() - started;
     console.log(`[fortune] gemini_call done cacheKey=${cacheKey} ms=${duration}`);
 
-    const finalPayload = {
+    const enriched = fortuneResponseSchema.parse({
       ...modelPayload,
       birthdate,
       today: todayLA,
       timezone: "America/Los_Angeles",
       generated_at: new Date().toISOString(),
-      disclaimer: modelPayload.disclaimer || "本功能仅供娱乐参考，不构成医疗或投资建议。",
-    };
-
-    const enriched = fortuneResponseSchema.parse(finalPayload);
+      disclaimer: "本功能仅供娱乐参考，不构成医疗或投资建议。",
+    });
     const payloadStr = JSON.stringify(enriched);
     await setJSON(cacheKey, payloadStr, CACHE_TTL_SECONDS);
     console.log(`[fortune] kv_set cacheKey=${cacheKey} ttl=${CACHE_TTL_SECONDS}`);

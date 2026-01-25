@@ -86,23 +86,42 @@ export const dayCompactSchema = z.object({
   bullets: z.array(z.string().min(1)).length(4),
 });
 
-export const fortuneResponseSchema = z
+export const fortuneFlatSchema = z
   .object({
-    birthdate: z.string().min(1),
-    timezone: z.string().min(1),
-    today: z.string().min(1),
-    generated_at: z.string(),
+    headline: z.string().min(1).transform((value) => value.trim()),
+    verdict: z.string().min(1).transform((value) => value.trim()),
+    do: z.string().min(1).transform((value) => value.trim()),
+    dont: z.string().min(1).transform((value) => value.trim()),
+    timeHint: z.string().min(1).transform((value) => value.trim()),
+    importance: z.enum(["high", "medium", "low"]),
+  })
+  .strict();
+
+export const fortuneLegacySchema = z
+  .object({
+    generated_at: z.string().optional(),
     summary_line: z.string().min(1),
     key_tip: z.string().min(1).max(60),
-    day: dayCompactSchema,
-    disclaimer: z.string().min(1),
-    meta: z.any().optional(),
+    day: daySchemaTenGod,
+    month: daySchemaTenGod.optional(),
+    year: daySchemaTenGod.optional(),
+    disclaimer: z.string().min(1).optional(),
   })
   .passthrough();
+
+export const fortuneAnySchema = z.union([fortuneFlatSchema, fortuneLegacySchema]);
 
 export type CompactDayPayload = z.infer<typeof compactDaySchema>;
 export type TenGodPayload = z.infer<typeof tenGodPayloadSchema>;
 export type LegacyPayload = z.infer<typeof legacyPayloadSchema>;
 export type DayCompact = z.infer<typeof dayCompactSchema>;
-export type FortuneResponse = z.infer<typeof fortuneResponseSchema>;
+export type FortuneResponse = z.infer<typeof fortuneAnySchema>;
 export type FortuneModelPayload = CompactDayPayload | TenGodPayload | LegacyPayload;
+
+export const fortuneResponseSchema = fortuneFlatSchema.extend({
+  birthdate: z.string().min(1),
+  today: z.string().min(1),
+  timezone: z.string().min(1),
+  generated_at: z.string(),
+  disclaimer: z.string().min(1),
+});

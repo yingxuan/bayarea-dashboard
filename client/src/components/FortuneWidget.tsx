@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { Info, Settings } from "lucide-react";
-
 import FortuneConfigModal from "@/components/FortuneConfigModal";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { config } from "@/config";
 
 const STORAGE_KEY = "uf_fortune_birthdate";
@@ -14,18 +11,13 @@ interface FortuneData {
   birthdate: string;
   today: string;
   generated_at: string;
-  summary_line: string;
-  key_tip: string;
+  headline: string;
+  verdict: string;
+  do: string;
+  dont: string;
+  timeHint: string;
+  importance: "high" | "medium" | "low";
   disclaimer: string;
-  day: Record<string, any>;
-  dayCompact?: {
-    headline: string;
-    bullets: string[];
-  };
-  meta?: {
-    schemaVariant?: string;
-    usedDefaults?: boolean;
-  };
 }
 
 export default function FortuneWidget() {
@@ -102,51 +94,34 @@ export default function FortuneWidget() {
     setRetryKey((prev) => prev + 1);
   };
 
-  const bullets = useMemo(() => {
-    if (data?.dayCompact?.bullets?.length === 4) return data.dayCompact.bullets;
-    return [];
-  }, [data]);
-
   const showSummary = useMemo(() => !!data && !loading && !error, [data, loading, error]);
+  const fortuneValid =
+    showSummary &&
+    !!data?.headline &&
+    !!data?.verdict &&
+    !!data?.do &&
+    !!data?.dont &&
+    !!data?.timeHint &&
+    !!data?.importance;
 
-  const summaryLine = showSummary ? data?.dayCompact?.headline || data?.summary_line : "";
-  const keyTip = showSummary ? data?.key_tip : "";
-
-  const currentTip = error
+  const statusMessage = error
     ? "读取今日运势失败"
     : !birthdate
     ? "请先点击齿轮设置生日"
     : loading
     ? "加载中..."
-    : keyTip || "";
+    : fortuneValid
+    ? "今日已生成"
+    : "数据格式异常，请稍后重试";
 
-  const renderBullet = (text: string) => {
-    const [first, ...restParts] = text.split("；");
-    const dispositionMatch = first.match(/(顺风|偏保守|风险偏高)/);
-    if (!dispositionMatch) {
-      return text;
-    }
-    const [before, after] = first.split(dispositionMatch[1]);
-    const color =
-      dispositionMatch[1] === "顺风"
-        ? "text-emerald-300"
-        : dispositionMatch[1] === "风险偏高"
-        ? "text-amber-300"
-        : "text-muted-foreground";
-    const rebuiltFirst = (
-      <>
-        {before}
-        <span className={color}>{dispositionMatch[1]}</span>
-        {after}
-      </>
-    );
-    return (
-      <>
-        {rebuiltFirst}
-        {restParts.length > 0 ? `；${restParts.join("；")}` : ""}
-      </>
-    );
-  };
+  const isLowImportance = data?.importance === "low";
+  const headlineContent = loading ? (
+    <Skeleton className="h-4 w-60" />
+  ) : fortuneValid && data ? (
+    data.headline
+  ) : (
+    "数据异常"
+  );
 
   return (
     <>
@@ -156,17 +131,15 @@ export default function FortuneWidget() {
             <div className="text-lg font-semibold uppercase text-muted-foreground">
               今日运势
             </div>
-            <div className="text-base font-semibold text-foreground">
-              {loading ? (
-                <Skeleton className="h-4 w-60" />
-              ) : (
-                <span className="leading-snug">{summaryLine}</span>
-              )}
+            <div
+              className={`text-base font-semibold leading-snug ${
+                isLowImportance ? "text-muted-foreground" : "text-foreground"
+              }`}
+            >
+              {headlineContent}
             </div>
             <div className="text-xs text-muted-foreground/70">今日吉凶提示（基于生辰八字）</div>
-            <div className="mt-1 text-sm font-medium text-muted-foreground">
-              {keyTip || currentTip}
-            </div>
+            <div className="mt-1 text-sm font-medium text-muted-foreground">{statusMessage}</div>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-muted-foreground">今日已生成</span>
@@ -179,33 +152,31 @@ export default function FortuneWidget() {
             </button>
           </div>
         </div>
-        {bullets.length === 4 && (
-          <div className="mt-4 space-y-1 text-sm text-foreground">
-            {bullets.map((b) => (
-              <div key={b} className="flex items-start gap-2">
-                <span className="mt-[2px]">•</span>
-                <span className="leading-tight">{renderBullet(b)}</span>
+        {fortuneValid ? (
+          <div className="mt-4 space-y-3 text-sm text-foreground">
+            <p className="text-base">{data!.verdict}</p>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-start gap-2">
+                <span className="text-emerald-400">✅</span>
+                <span className="leading-tight">{data!.do}</span>
               </div>
-            ))}
+              <div className="flex items-start gap-2">
+                <span className="text-destructive">⛔</span>
+                <span className="leading-tight">{data!.dont}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+              <span>⏰</span>
+              <span>{data!.timeHint}</span>
+            </div>
+            {isLowImportance && (
+              <div className="text-[11px] text-muted-foreground">今日非关键决策日</div>
+            )}
           </div>
+        ) : (
+          <div className="mt-4 text-sm text-destructive">数据格式异常或缺失，请稍后再试</div>
         )}
-        {process.env.NODE_ENV !== "production" && data?.meta && (
-          <div className="mt-3 text-[10px] text-muted-foreground">
-            schema={data.meta.schemaVariant || "unknown"} defaults={String(data.meta.usedDefaults ?? false)}
-          </div>
-        )}
-        {error && (
-          <div className="mt-4 flex items-center justify-between rounded-md border border-destructive/60 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
-            <span>拉取失败：{error}</span>
-            <button
-              type="button"
-              onClick={() => setRetryKey((prev) => prev + 1)}
-              className="text-primary underline"
-            >
-              重试
-            </button>
-          </div>
-        )}
+        <div className="mt-4 text-[11px] text-muted-foreground">{disclaimerText}</div>
       </div>
       <FortuneConfigModal
         open={modalOpen}
