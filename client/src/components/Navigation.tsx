@@ -6,6 +6,7 @@
  */
 
 import { Link, useLocation } from "wouter";
+import UserMenu from "./UserMenu";
 
 const navItems = [
   { label: "主页", path: "/" },
@@ -50,6 +51,11 @@ export default function Navigation() {
                 </Link>
               );
             })}
+          </div>
+
+          {/* User Menu */}
+          <div className="hidden md:flex items-center">
+            <UserMenu />
           </div>
 
           {/* Mobile menu button - placeholder */}

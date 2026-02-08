@@ -14,6 +14,9 @@ import communityHandler from '../api/community/[...slug].js';
 import portfolioValueSeriesHandler from '../api/portfolio/value-series.js';
 import fanwanHandler from '../api/youtube/fanwan.js';
 import musthaveHandler from '../api/spend/musthave.js';
+import authHandler from '../api/auth/[...slug].js';
+import portfolioHoldingsHandler from '../api/portfolio/holdings.js';
+import portfolioSettingsHandler from '../api/portfolio/settings.js';
 import { cache } from '../api/utils.ts';
 import { clearDedupMap } from '../lib/spend/placesClient.ts';
 
@@ -305,6 +308,60 @@ export async function portfolioValueSeriesRoute(req: Request, res: Response) {
     await portfolioValueSeriesHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Portfolio Value Series route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Auth API route (handles /api/auth/*)
+ */
+export async function authRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    // Extract slug from URL path
+    const path = req.path.replace('/api/auth/', '');
+    vercelReq.query = {
+      ...(vercelReq.query || {}),
+      slug: path ? path.split('/') : [],
+    };
+    await authHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Auth route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Portfolio Holdings API route
+ */
+export async function portfolioHoldingsRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await portfolioHoldingsHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Portfolio Holdings route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Portfolio Settings API route
+ */
+export async function portfolioSettingsRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await portfolioSettingsHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Portfolio Settings route error:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

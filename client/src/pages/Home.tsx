@@ -30,7 +30,7 @@ import TimeAgo from "@/components/TimeAgo";
 import ReturnHintToast, { ReturnToDashboardToast } from "@/components/ReturnHintToast";
 import PiaoziEntryCard from "@/components/PiaoziEntryCard";
 import ChiheEntryCard from "@/components/ChiheEntryCard";
-import { useHoldings } from "@/hooks/useHoldings";
+import { useAuthAwareHoldings } from "@/hooks/useAuthAwareHoldings";
 import { QuoteData } from "@/hooks/usePortfolioSummary";
 import { useExternalLink } from "@/hooks/useExternalLink";
 import { config } from "@/config";
@@ -70,7 +70,8 @@ export default function Home() {
   const [stockYoutubers, setStockYoutubers] = useState<any[]>([]); // 美股博主视频（每频道1条）
   const [stockYoutubersOffset, setStockYoutubersOffset] = useState(0); // Offset for "换一批" functionality
   const [fanwanVideos, setFanwanVideos] = useState<any[]>([]);
-  const { holdings, isLoaded: holdingsLoaded, ytdBaseline, updateYtdBaseline } = useHoldings();
+  // Use auth-aware holdings (auto-syncs with server when authenticated)
+  const { holdings, isLoaded: holdingsLoaded, ytdBaseline, updateYtdBaseline } = useAuthAwareHoldings();
   
   // Fetch quotes for PortfolioHero
   const [quotesData, setQuotesData] = useState<Record<string, QuoteData>>({});

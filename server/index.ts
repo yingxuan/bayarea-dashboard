@@ -22,10 +22,13 @@ import {
   gossipCommunityRoute,
   marketNewsRoute,
   portfolioValueSeriesRoute,
+  portfolioHoldingsRoute,
+  portfolioSettingsRoute,
   fortuneRoute,
   fanwanRoute,
   devPlacesClearCacheRoute,
   musthaveRoute,
+  authRoute,
 } from "./local-api-adapter.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -38,9 +41,16 @@ async function startServer() {
   // Enable JSON parsing
   app.use(express.json());
 
-  // Enable CORS for development
+  // Enable CORS for development (with credentials for auth cookies)
   app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*");
+    const origin = req.headers.origin;
+    // Allow localhost origins for development
+    if (origin && (origin.includes("localhost") || origin.includes("127.0.0.1"))) {
+      res.header("Access-Control-Allow-Origin", origin);
+      res.header("Access-Control-Allow-Credentials", "true");
+    } else {
+      res.header("Access-Control-Allow-Origin", "*");
+    }
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
     res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
     if (req.method === "OPTIONS") {
@@ -80,6 +90,21 @@ async function startServer() {
   app.options('/api/youtube/fanwan', (_req, res) => res.sendStatus(200));
   app.post('/api/dev/places/clear-cache', devPlacesClearCacheRoute);
   app.options('/api/dev/places/clear-cache', (_req, res) => res.sendStatus(200));
+
+  // Auth routes
+  app.post('/api/auth/register', authRoute);
+  app.post('/api/auth/login', authRoute);
+  app.post('/api/auth/logout', authRoute);
+  app.get('/api/auth/me', authRoute);
+  app.options('/api/auth/*', (_req, res) => res.sendStatus(200));
+
+  // Portfolio routes (protected)
+  app.get('/api/portfolio/holdings', portfolioHoldingsRoute);
+  app.put('/api/portfolio/holdings', portfolioHoldingsRoute);
+  app.options('/api/portfolio/holdings', (_req, res) => res.sendStatus(200));
+  app.get('/api/portfolio/settings', portfolioSettingsRoute);
+  app.put('/api/portfolio/settings', portfolioSettingsRoute);
+  app.options('/api/portfolio/settings', (_req, res) => res.sendStatus(200));
 
 
   app.post("/api/spend/enrich-place", handleEnrichPlace);

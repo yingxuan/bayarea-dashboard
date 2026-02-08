@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { useHoldings, type Holding } from "@/hooks/useHoldings";
+import { useAuthAwareHoldings, type Holding } from "@/hooks/useAuthAwareHoldings";
 import {
   Drawer,
   DrawerClose,
@@ -43,7 +43,8 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
     importHoldings,
     exportHoldings,
     addExampleHoldings,
-  } = useHoldings();
+    isSyncing,
+  } = useAuthAwareHoldings();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Holding>>({

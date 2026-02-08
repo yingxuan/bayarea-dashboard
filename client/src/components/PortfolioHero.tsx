@@ -22,6 +22,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useAuth } from "@/hooks/useAuth";
+import LoginPromptCard from "@/components/LoginPromptCard";
 
 interface PortfolioHeroProps {
   quotesData: Record<string, QuoteData>;
@@ -38,9 +40,14 @@ export default function PortfolioHero({
   ytdBaseline,
   onYtdBaselineChange,
 }: PortfolioHeroProps) {
+  // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [ytdDialogOpen, setYtdDialogOpen] = useState(false);
   const [ytdInputValue, setYtdInputValue] = useState(ytdBaseline?.toString() || "");
   const [ytdInputError, setYtdInputError] = useState<string | null>(null);
+  const [valueSeries, setValueSeries] = useState<any>(null);
+
+  const portfolioMetrics = usePortfolioSummary(holdings, quotesData, ytdBaseline);
 
   useEffect(() => {
     if (!ytdDialogOpen) {
@@ -49,20 +56,6 @@ export default function PortfolioHero({
     }
   }, [ytdBaseline, ytdDialogOpen]);
 
-  const handleYtdSave = () => {
-    const parsed = parseFloat(ytdInputValue);
-    if (!isNaN(parsed) && parsed > 0) {
-      onYtdBaselineChange(parsed);
-      setYtdDialogOpen(false);
-    } else {
-      setYtdInputError("请输入有效数字（大于 0）");
-    }
-  };
-  const portfolioMetrics = usePortfolioSummary(holdings, quotesData, ytdBaseline);
-
-  // Fetch portfolio value series for sparkline
-  const [valueSeries, setValueSeries] = useState<any>(null);
-  
   useEffect(() => {
     if (!holdingsLoaded || holdings.length === 0) {
       setValueSeries(null);
@@ -76,15 +69,15 @@ export default function PortfolioHero({
           holdings.map(h => ({ ticker: h.ticker, shares: Number(h.shares) }))
         ));
         const apiUrl = `${config.apiBaseUrl}/api/portfolio/value-series?range=1d&interval=5m&holdings=${holdingsParam}`;
-        
+
         const response = await fetch(apiUrl, {
           signal: AbortSignal.timeout(10000),
         });
-        
+
         if (!response.ok) {
           throw new Error(`Value series API error: ${response.status}`);
         }
-        
+
         const result = await response.json();
         setValueSeries(result);
       } catch (error) {
@@ -102,19 +95,19 @@ export default function PortfolioHero({
   // Calculate top movers tickers for market explanation
   const topMoversTickers = useMemo(() => {
     const movers: Array<{ ticker: string; dailyChangeAmount: number }> = [];
-    
+
     holdings.forEach((holding) => {
       const tickerUpper = holding.ticker.toUpperCase();
       const quote = quotesData[tickerUpper];
       const shares = Number(holding.shares);
-      
+
       if (quote && quote.status === 'ok' && quote.price > 0 && !isNaN(shares) && shares > 0) {
         const price = Number(quote.price);
         const prevClose = quote.prevClose !== undefined ? Number(quote.prevClose) : undefined;
-        
+
         if (!isNaN(price) && price > 0) {
           let dailyChangeAmount = 0;
-          
+
           if (prevClose !== undefined && !isNaN(prevClose) && prevClose > 0) {
             const priceChange = price - prevClose;
             dailyChangeAmount = shares * priceChange;
@@ -124,7 +117,7 @@ export default function PortfolioHero({
               dailyChangeAmount = shares * change;
             }
           }
-          
+
           if (dailyChangeAmount !== 0) {
             movers.push({
               ticker: tickerUpper,
@@ -134,7 +127,7 @@ export default function PortfolioHero({
         }
       }
     });
-    
+
     movers.sort((a, b) => Math.abs(b.dailyChangeAmount) - Math.abs(a.dailyChangeAmount));
     return movers.slice(0, 3).map(m => m.ticker);
   }, [holdings, quotesData]);
@@ -153,25 +146,25 @@ export default function PortfolioHero({
   const { topPositive, topNegative } = useMemo(() => {
     const positive: Array<{ ticker: string; dailyChangePercent: number }> = [];
     const negative: Array<{ ticker: string; dailyChangePercent: number }> = [];
-    
+
     holdings.forEach((holding) => {
       const tickerUpper = holding.ticker.toUpperCase();
       const quote = quotesData[tickerUpper];
       const shares = Number(holding.shares);
-      
+
       if (quote && quote.status === 'ok' && quote.price > 0 && !isNaN(shares) && shares > 0) {
         const price = Number(quote.price);
         const prevClose = quote.prevClose !== undefined ? Number(quote.prevClose) : undefined;
-        
+
         if (!isNaN(price) && price > 0) {
           let dailyChangePercent = 0;
-          
+
           if (prevClose !== undefined && !isNaN(prevClose) && prevClose > 0) {
             dailyChangePercent = ((price - prevClose) / prevClose) * 100;
           } else if (quote.changePercent !== undefined) {
             dailyChangePercent = Number(quote.changePercent);
           }
-          
+
           if (dailyChangePercent > 0) {
             positive.push({
               ticker: tickerUpper,
@@ -186,16 +179,27 @@ export default function PortfolioHero({
         }
       }
     });
-    
+
     // Sort by absolute change percent, descending
     positive.sort((a, b) => b.dailyChangePercent - a.dailyChangePercent);
     negative.sort((a, b) => a.dailyChangePercent - b.dailyChangePercent);
-    
+
     return {
       topPositive: positive.slice(0, 3),
       topNegative: negative.slice(0, 3),
     };
   }, [holdings, quotesData]);
+
+  // Handler function (not a hook)
+  const handleYtdSave = () => {
+    const parsed = parseFloat(ytdInputValue);
+    if (!isNaN(parsed) && parsed > 0) {
+      onYtdBaselineChange(parsed);
+      setYtdDialogOpen(false);
+    } else {
+      setYtdInputError("请输入有效数字（大于 0）");
+    }
+  };
 
   const renderMoverColumn = (
     title: string,
@@ -235,6 +239,13 @@ export default function PortfolioHero({
       </div>
     </div>
   );
+
+  // NOW WE CAN DO EARLY RETURNS (after all hooks are called)
+
+  // Show login prompt if not authenticated
+  if (!authLoading && !isAuthenticated) {
+    return <LoginPromptCard />;
+  }
 
   if (!holdingsLoaded) {
     return (

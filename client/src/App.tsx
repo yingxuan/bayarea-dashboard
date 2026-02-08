@@ -14,9 +14,11 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import Home from "./pages/Home";
 import Piaozi from "./pages/Piaozi";
 import Chihe from "./pages/Chihe";
+import LoginPage from "./pages/LoginPage";
 
 function Router() {
   return (
@@ -24,6 +26,7 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path={"/piaozi"} component={Piaozi} />
       <Route path={"/chihe"} component={Chihe} />
+      <Route path={"/login"} component={LoginPage} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
@@ -35,10 +38,12 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

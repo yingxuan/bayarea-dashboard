@@ -7,7 +7,11 @@
       "Bash(dir clientsrccomponentspiaozi clientsrccomponentschihe)",
       "Bash(pnpm check:*)",
       "Bash(pnpm lint:*)",
-      "Bash(pnpm eslint:*)"
+      "Bash(pnpm eslint:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm approve-builds:*)",
+      "Bash(npx tsc:*)",
+      "Bash(timeout 20 pnpm dev:server:*)"
     ]
   }
 }
