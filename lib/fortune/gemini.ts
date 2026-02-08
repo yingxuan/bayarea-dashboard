@@ -27,6 +27,20 @@ function getModel() {
 
 const REPAIR_MAX_LENGTH = 4000;
 
+const FLAT_SCHEMA_DESCRIPTION = `{
+  "headline": string,
+  "verdict": string,
+  "do": string,
+  "dont": string,
+  "timeHint": string,
+  "importance": "high"|"medium"|"low",
+  "behaviorRadar": {
+    "investment": { "status": "none"|"actionable"|"risk", "summary": string },
+    "travel": { "status": "none"|"safe"|"risk", "summary": string },
+    "publicRole": { "status": "none"|"caution"|"risk", "summary": string }
+  }
+}`;
+
 function snippet(raw: string): string {
   return raw.replace(/\s+/g, " ").trim().slice(0, 200);
 }
@@ -39,7 +53,7 @@ function isNoJsonError(error: unknown): boolean {
 async function defaultRepairToJson(rawText: string): Promise<string> {
   const truncated =
     rawText.length <= REPAIR_MAX_LENGTH ? rawText : rawText.slice(0, REPAIR_MAX_LENGTH);
-  const prompt = `Convert the text below into EXACTLY ONE JSON object that matches this schema:\n{ "headline": string, "verdict": string, "do": string, "dont": string, "timeHint": string, "importance": "high"|"medium"|"low" }\nRules:\n- Output ONLY minified JSON. No markdown. No code fences. No extra text.\n- Do NOT recompute or change meaning. Only reformat.\n- If a field is missing, infer a concise value consistent with the text.\nText:\n<<<RAW_TEXT>>>\n`.replace("<<<RAW_TEXT>>>", truncated);
+  const prompt = `Convert the text below into EXACTLY ONE JSON object that matches this schema:\n${FLAT_SCHEMA_DESCRIPTION}\nRules:\n- Output ONLY minified JSON. No markdown. No code fences. No extra text.\n- Do NOT recompute or change meaning. Only reformat.\n- If a field is missing, infer a concise value consistent with the text, including behaviorRadar.\nText:\n<<<RAW_TEXT>>>\n`.replace("<<<RAW_TEXT>>>", truncated);
 
   const model = genai.getGenerativeModel({
     model: MODEL_NAME,
@@ -154,31 +168,33 @@ export async function generateFortune(
 }
 
 async function runRepairTests() {
-  const cases = [
-    {
-      name: "pure",
-      text: '{"headline":"A","verdict":"B","do":"C","dont":"D","timeHint":"E","importance":"high"}',
-      expectRepair: false,
-    },
-    {
-      name: "fenced",
-      text: "```json\n{\"headline\":\"A\",\"verdict\":\"B\",\"do\":\"C\",\"dont\":\"D\",\"timeHint\":\"E\",\"importance\":\"high\"}\n```",
-      expectRepair: false,
-    },
-    {
-      name: "repair",
-      text:
-        "- **今日一句断语**\n今天是...",
-      expectRepair: true,
-    },
-  ];
+    const cases = [
+      {
+        name: "pure",
+        text:
+          '{"headline":"A","verdict":"B","do":"C","dont":"D","timeHint":"E","importance":"high","behaviorRadar":{"investment":{"status":"none","summary":"等"},"travel":{"status":"safe","summary":"平稳"},"publicRole":{"status":"caution","summary":"留意"}}}',
+        expectRepair: false,
+      },
+      {
+        name: "fenced",
+        text:
+          "```json\n{\"headline\":\"A\",\"verdict\":\"B\",\"do\":\"C\",\"dont\":\"D\",\"timeHint\":\"E\",\"importance\":\"high\",\"behaviorRadar\":{\"investment\":{\"status\":\"none\",\"summary\":\"等\"},\"travel\":{\"status\":\"safe\",\"summary\":\"平稳\"},\"publicRole\":{\"status\":\"caution\",\"summary\":\"留意\"}}}\n```",
+        expectRepair: false,
+      },
+      {
+        name: "repair",
+        text:
+          "- **今日一句断语**\n今天是...",
+        expectRepair: true,
+      },
+    ];
 
   for (const { name, text, expectRepair } of cases) {
     let repairUsed = 0;
     if (expectRepair) {
       overrideRepairModel(async () => {
         repairUsed += 1;
-        return '{"headline":"X","verdict":"Y","do":"Z","dont":"W","timeHint":"T","importance":"medium"}';
+        return '{"headline":"X","verdict":"Y","do":"Z","dont":"W","timeHint":"T","importance":"medium","behaviorRadar":{"investment":{"status":"none","summary":"默认"},"travel":{"status":"none","summary":"默认"},"publicRole":{"status":"none","summary":"默认"}}}';
       });
     } else {
       clearRepairOverride();

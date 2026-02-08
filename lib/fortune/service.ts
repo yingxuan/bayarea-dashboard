@@ -2,6 +2,7 @@ import { DateTime } from "luxon";
 import { generateFortune, FortunePromptArgs } from "./gemini.js";
 import { normalizeYMD } from "./date.js";
 import { getLosAngelesDateInfo } from "./cache.js";
+import { normalizeFortunePayload } from "./normalize.js";
 import { fortuneResponseSchema } from "./schema.js";
 import { acquireLock, deleteJSON, getJSON, isRedisAvailable, releaseLock, setJSON } from "./kv.js";
 
@@ -58,6 +59,20 @@ async function parseCachedResponse(
     } else {
       return null;
     }
+    const normalizedCache = normalizeFortunePayload({
+      headline: cached.headline,
+      verdict: cached.verdict,
+      do: cached.do,
+      dont: cached.dont,
+      timeHint: cached.timeHint,
+      importance: cached.importance,
+      behaviorRadar: cached.behaviorRadar,
+    });
+    cached = {
+      ...cached,
+      ...normalizedCache.payload,
+    };
+    await setJSON(cacheKey, JSON.stringify(cached), CACHE_TTL_SECONDS);
     return {
       ...cached,
       cache_status: "cache",
@@ -90,6 +105,7 @@ export async function getFortuneService(birthdateRaw: string) {
 
   const laNow = DateTime.now().setZone("America/Los_Angeles");
   const laDate = laNow.toISODate();
+  if (!laDate) throw new Error("Failed to get LA date");
   const laInfo = getLosAngelesDateInfo(laNow.toJSDate());
   const cacheKey = getCacheKey(birthdate, laDate);
   const lockKey = getLockKey(birthdate, laDate);
@@ -132,9 +148,10 @@ export async function getFortuneService(birthdateRaw: string) {
     const started = Date.now();
     console.log(`[fortune] gemini_call start cacheKey=${cacheKey}`);
     const todayDateStr = laInfo.dateKey;
-    const yesterdayDate = DateTime.fromISO(todayDateStr).minus({ days: 1 }).toISODate();
+    const yesterdayDate = DateTime.fromISO(todayDateStr).minus({ days: 1 }).toISODate() ?? todayDateStr;
     const next3Days = [1, 2, 3]
-      .map((offset) => DateTime.fromISO(todayDateStr).plus({ days: offset }).toISODate())
+      .map((offset) => DateTime.fromISO(todayDateStr).plus({ days: offset }).toISODate() ?? "")
+      .filter(Boolean)
       .join("、");
     const lunarFormatter = new Intl.DateTimeFormat("zh-CN-u-ca-chinese", {
       year: "numeric",

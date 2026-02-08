@@ -1,4 +1,4 @@
-import { fortuneFlatSchema, fortuneLegacySchema } from "./schema.js";
+import { behaviorRadarSchema, fortuneFlatSchema, fortuneLegacySchema } from "./schema.js";
 import { z } from "zod";
 
 export interface FlatFortunePayload {
@@ -8,6 +8,7 @@ export interface FlatFortunePayload {
   dont: string;
   timeHint: string;
   importance: "high" | "medium" | "low";
+  behaviorRadar: z.infer<typeof behaviorRadarSchema>;
 }
 
 interface NormalizeMeta {
@@ -16,20 +17,63 @@ interface NormalizeMeta {
   missingPaths: string[];
 }
 
-function normalizeLegacy(raw: z.infer<typeof fortuneLegacySchema>): FlatFortunePayload {
+function createDefaultRadar(): FlatFortunePayload["behaviorRadar"] {
+  return {
+    investment: {
+      status: "none",
+      summary: "今日不构成独立交易信号，建议观望。",
+    },
+    travel: {
+      status: "none",
+      summary: "今日出行层面未见显著风险信号。",
+    },
+    publicRole: {
+      status: "none",
+      summary: "今日无需特别注意公开角色与站位。",
+    },
+  };
+}
+
+function ensureRadar(raw: any): { radar: FlatFortunePayload["behaviorRadar"]; usedDefault: boolean } {
+  if (raw && typeof raw === "object") {
+    const parsed = behaviorRadarSchema.safeParse(raw);
+    if (parsed.success) {
+      return { radar: parsed.data, usedDefault: false };
+    }
+  }
+  return { radar: createDefaultRadar(), usedDefault: true };
+}
+
+function normalizeLegacy(
+  raw: z.infer<typeof fortuneLegacySchema>
+): { payload: FlatFortunePayload; usedDefault: boolean } {
   const day = raw.day || {};
   const headline = raw.summary_line || day.summary || raw.key_tip || "今日无重点";
   const verdict = day.logic || day.summary || raw.key_tip || "先判断，再行动";
-  const doAction = Array.isArray(day?.do) && day.do.length > 0 ? day.do[0] : "先整理待办";
-  const dontAction = Array.isArray(day?.avoid) && day.avoid.length > 0 ? day.avoid[0] : "避免冲动操作";
+  // Legacy schema uses category.actions arrays; extract first action from career or finance
+  const careerActions = day.career?.actions;
+  const financeActions = day.finance?.actions;
+  const doAction =
+    (Array.isArray(careerActions) && careerActions.length > 0 ? careerActions[0] : null) ||
+    (Array.isArray(financeActions) && financeActions.length > 0 ? financeActions[0] : null) ||
+    "先整理待办";
+  const lifeActions = day.life?.actions;
+  const dontAction =
+    (Array.isArray(lifeActions) && lifeActions.length > 1 ? lifeActions[1] : null) ||
+    "避免冲动操作";
   const timeHint = day.note || "今日无关键窗口";
+  const { radar, usedDefault } = ensureRadar(raw.behaviorRadar);
   return {
-    headline,
-    verdict,
-    do: doAction,
-    dont: dontAction,
-    timeHint,
-    importance: "medium",
+    payload: {
+      headline,
+      verdict,
+      do: doAction,
+      dont: dontAction,
+      timeHint,
+      importance: "medium",
+      behaviorRadar: radar,
+    },
+    usedDefault,
   };
 }
 
@@ -44,14 +88,25 @@ export function normalizeFortunePayload(raw: any): NormalizeResult {
     usedDefaults: false,
     missingPaths: [],
   };
-  const flatParse = fortuneFlatSchema.safeParse(raw);
+  const { radar, usedDefault } = ensureRadar(raw?.behaviorRadar);
+  const flattened = { ...raw, behaviorRadar: radar };
+  if (usedDefault) {
+    meta.usedDefaults = true;
+    meta.missingPaths.push("behaviorRadar");
+  }
+  const flatParse = fortuneFlatSchema.safeParse(flattened);
   if (flatParse.success) {
     return { payload: flatParse.data, meta };
   }
   const legacyParse = fortuneLegacySchema.safeParse(raw);
   if (legacyParse.success) {
     meta.schemaVariant = "legacy";
-    return { payload: normalizeLegacy(legacyParse.data), meta };
+    const { payload, usedDefault: legacyUsedDefault } = normalizeLegacy(legacyParse.data);
+    if (legacyUsedDefault && !meta.usedDefaults) {
+      meta.usedDefaults = true;
+      meta.missingPaths.push("behaviorRadar");
+    }
+    return { payload, meta };
   }
   throw new Error("输入不符合任何支持的 fortune schema");
 }

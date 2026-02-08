@@ -7,6 +7,17 @@ import { config } from "@/config";
 const STORAGE_KEY = "uf_fortune_birthdate";
 const DEFAULT_DISCLAIMER = "本功能仅供娱乐参考，不构成医疗或投资建议。";
 
+interface BehaviorRadarEntry {
+  status: "none" | "actionable" | "risk" | "safe" | "caution";
+  summary: string;
+}
+
+interface BehaviorRadar {
+  investment: BehaviorRadarEntry;
+  travel: BehaviorRadarEntry;
+  publicRole: BehaviorRadarEntry;
+}
+
 interface FortuneData {
   birthdate: string;
   today: string;
@@ -18,6 +29,7 @@ interface FortuneData {
   timeHint: string;
   importance: "high" | "medium" | "low";
   disclaimer: string;
+  behaviorRadar: BehaviorRadar;
 }
 
 export default function FortuneWidget() {
@@ -102,7 +114,8 @@ export default function FortuneWidget() {
     !!data?.do &&
     !!data?.dont &&
     !!data?.timeHint &&
-    !!data?.importance;
+    !!data?.importance &&
+    !!data?.behaviorRadar;
 
   const statusMessage = error
     ? "读取今日运势失败"
@@ -171,6 +184,42 @@ export default function FortuneWidget() {
             </div>
             {isLowImportance && (
               <div className="text-[11px] text-muted-foreground">今日非关键决策日</div>
+            )}
+            {data?.behaviorRadar && (
+              <div className="mt-4 space-y-2 rounded-2xl border border-border/60 bg-card/70 p-3 text-sm text-foreground">
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">行为雷达</div>
+                {[
+                  { key: "investment", icon: "📈", label: "投资" },
+                  { key: "travel", icon: "🚗", label: "出行" },
+                  { key: "publicRole", icon: "🧩", label: "公开角色" },
+                ].map((entry) => {
+                  const radarEntry = data.behaviorRadar[entry.key as keyof BehaviorRadar];
+                  if (!radarEntry) {
+                    return null;
+                  }
+                  return (
+                    <div key={entry.key} className="space-y-1 rounded-xl border border-border/50 bg-muted/20 p-2">
+                      <div className="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
+                        <span className="font-semibold">
+                          {entry.icon} {entry.label}
+                        </span>
+                        <span>
+                          {
+                            {
+                              none: "暂无",
+                              actionable: "可行动",
+                              risk: "风险",
+                              safe: "安全",
+                              caution: "需谨慎",
+                            }[radarEntry.status] || radarEntry.status
+                          }
+                        </span>
+                      </div>
+                      <div className="text-[13px] text-foreground">{radarEntry.summary}</div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         ) : (

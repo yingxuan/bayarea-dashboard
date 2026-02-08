@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(setx:*)",
+      "Bash(dir clientsrccomponentspiaozi clientsrccomponentschihe)",
+      "Bash(pnpm check:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm eslint:*)"
+    ]
+  }
+}

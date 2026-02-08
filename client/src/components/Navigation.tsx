@@ -9,13 +9,8 @@ import { Link, useLocation } from "wouter";
 
 const navItems = [
   { label: "主页", path: "/" },
-  { label: "房子", path: "/house" },
-  { label: "票子", path: "/money" },
-  { label: "包裹", path: "/package" },
-  { label: "吃喝", path: "/food" },
-  { label: "税", path: "/tax" },
-  { label: "羊毛", path: "/deals" },
-  { label: "吃瓜", path: "/gossip" },
+  { label: "票子", path: "/piaozi" },
+  { label: "吃喝", path: "/chihe" },
 ];
 
 export default function Navigation() {

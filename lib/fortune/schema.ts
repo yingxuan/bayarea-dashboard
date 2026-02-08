@@ -86,6 +86,18 @@ export const dayCompactSchema = z.object({
   bullets: z.array(z.string().min(1)).length(4),
 });
 
+const behaviorDomain = (statuses: readonly string[]) =>
+  z.object({
+    status: z.enum(statuses),
+    summary: z.string().min(1).transform((value) => value.trim()),
+  });
+
+export const behaviorRadarSchema = z.object({
+  investment: behaviorDomain(["none", "actionable", "risk"] as const),
+  travel: behaviorDomain(["none", "safe", "risk"] as const),
+  publicRole: behaviorDomain(["none", "caution", "risk"] as const),
+});
+
 export const fortuneFlatSchema = z
   .object({
     headline: z.string().min(1).transform((value) => value.trim()),
@@ -94,6 +106,7 @@ export const fortuneFlatSchema = z
     dont: z.string().min(1).transform((value) => value.trim()),
     timeHint: z.string().min(1).transform((value) => value.trim()),
     importance: z.enum(["high", "medium", "low"]),
+    behaviorRadar: behaviorRadarSchema,
   })
   .strict();
 

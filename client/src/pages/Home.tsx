@@ -28,6 +28,8 @@ import ShowsCarousel from "@/components/ShowsCarousel";
 import SectionHeader from "@/components/SectionHeader";
 import TimeAgo from "@/components/TimeAgo";
 import ReturnHintToast, { ReturnToDashboardToast } from "@/components/ReturnHintToast";
+import PiaoziEntryCard from "@/components/PiaoziEntryCard";
+import ChiheEntryCard from "@/components/ChiheEntryCard";
 import { useHoldings } from "@/hooks/useHoldings";
 import { QuoteData } from "@/hooks/usePortfolioSummary";
 import { useExternalLink } from "@/hooks/useExternalLink";
@@ -349,6 +351,11 @@ export default function Home() {
             <div className="w-full min-w-0">
               <FanwanCarousel videos={fanwanVideos} />
             </div>
+
+            {/* 5) 票子入口卡片 - 查看完整财务详情 */}
+            <div className="w-full min-w-0 mt-2">
+              <PiaoziEntryCard />
+            </div>
           </section>
 
           {/* SECTION 2: 民以食为天 */}
@@ -362,6 +369,11 @@ export default function Home() {
             {/* Fixed 2×2 grid: 奶茶/中餐, 夜宵/甜品 */}
             <div className="w-full min-w-0">
               <TodaySpendCarousels />
+            </div>
+
+            {/* 吃喝入口卡片 - 查看更多推荐 */}
+            <div className="w-full min-w-0 mt-2">
+              <ChiheEntryCard />
             </div>
           </section>
 
