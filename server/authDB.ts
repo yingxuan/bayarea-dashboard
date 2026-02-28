@@ -12,7 +12,8 @@ import { nanoid } from "nanoid";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbPath = path.join(__dirname, "..", "cache.db");
+const isVercel = process.env.VERCEL === '1';
+const dbPath = isVercel ? '/tmp/cache.db' : path.join(__dirname, "..", "cache.db");
 const db = new Database(dbPath);
 
 // Initialize auth tables
