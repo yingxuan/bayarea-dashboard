@@ -96,6 +96,8 @@ async function startServer() {
   app.post('/api/auth/login', authRoute);
   app.post('/api/auth/logout', authRoute);
   app.get('/api/auth/me', authRoute);
+  app.post('/api/auth/forgot-password', authRoute);
+  app.post('/api/auth/reset-password', authRoute);
   app.options('/api/auth/*', (_req, res) => res.sendStatus(200));
 
   // Portfolio routes (protected)

@@ -24,9 +24,10 @@ export default async function handler(
     return;
   }
 
-  // Extract route from slug
-  const slug = req.query.slug as string[] | undefined;
-  const route = slug?.[0] || "";
+  // Extract route from slug (Vercel may pass single segment as string)
+  const rawSlug = req.query.slug;
+  const slug = Array.isArray(rawSlug) ? rawSlug : rawSlug ? [rawSlug] : [];
+  const route = slug[0] || "";
 
   try {
     switch (route) {
