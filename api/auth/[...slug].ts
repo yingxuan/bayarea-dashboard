@@ -24,10 +24,9 @@ export default async function handler(
     return;
   }
 
-  // Extract route from slug (Vercel may pass single segment as string)
-  const rawSlug = req.query.slug;
-  const slug = Array.isArray(rawSlug) ? rawSlug : rawSlug ? [rawSlug] : [];
-  const route = slug[0] || "";
+  // Extract route from path (reliable on Vercel and local: /api/auth/register -> "register")
+  const pathname = (typeof req.url === "string" ? req.url : "").split("?")[0] || "";
+  const route = pathname.replace(/^\/api\/auth\/?/, "").trim() || (Array.isArray(req.query.slug) ? req.query.slug[0] : req.query.slug) || "";
 
   try {
     switch (route) {
