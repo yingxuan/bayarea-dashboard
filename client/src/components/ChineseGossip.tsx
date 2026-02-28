@@ -154,7 +154,7 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {/* All items merged, showing as "today's gossip" - 帖子列表（5条） */}
         {allItems.length > 0 ? (
         allItems.map((item, index) => (

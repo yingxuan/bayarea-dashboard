@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 import FortuneConfigModal from "@/components/FortuneConfigModal";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -136,96 +138,120 @@ export default function FortuneWidget() {
     "数据异常"
   );
 
+  const [expanded, setExpanded] = useState(false);
+
   return (
     <>
-      <div className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-lg">
+      <div className="rounded-sm border border-border/40 bg-card p-4 shadow-md">
+        {/* Collapsed header row — always visible */}
         <div className="flex items-center gap-3">
-          <div className="flex-1">
-            <div className="text-lg font-semibold uppercase text-muted-foreground">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="flex flex-1 items-center gap-3 text-left"
+          >
+            <div className="text-sm font-semibold uppercase text-muted-foreground whitespace-nowrap">
               今日运势
             </div>
             <div
-              className={`text-base font-semibold leading-snug ${
+              className={`flex-1 truncate text-sm font-medium leading-snug ${
                 isLowImportance ? "text-muted-foreground" : "text-foreground"
               }`}
             >
               {headlineContent}
             </div>
-            <div className="text-xs text-muted-foreground/70">今日吉凶提示（基于生辰八字）</div>
-            <div className="mt-1 text-sm font-medium text-muted-foreground">{statusMessage}</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground">今日已生成</span>
-            <button
-              type="button"
-              onClick={() => setModalOpen(true)}
-              className="rounded-full border border-border/50 bg-card px-2 py-1 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
-            >
-              ⚙️ 配置生日
-            </button>
-          </div>
+            {expanded ? (
+              <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="rounded-full border border-border/50 bg-card px-2 py-1 text-xs font-medium text-muted-foreground transition hover:border-primary hover:text-primary flex-shrink-0"
+          >
+            ⚙️
+          </button>
         </div>
-        {fortuneValid ? (
-          <div className="mt-4 space-y-3 text-sm text-foreground">
-            <p className="text-base">{data!.verdict}</p>
-            <div className="flex flex-col gap-2">
-              <div className="flex items-start gap-2">
-                <span className="text-emerald-400">✅</span>
-                <span className="leading-tight">{data!.do}</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-destructive">⛔</span>
-                <span className="leading-tight">{data!.dont}</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-              <span>⏰</span>
-              <span>{data!.timeHint}</span>
-            </div>
-            {isLowImportance && (
-              <div className="text-[11px] text-muted-foreground">今日非关键决策日</div>
-            )}
-            {data?.behaviorRadar && (
-              <div className="mt-4 space-y-2 rounded-2xl border border-border/60 bg-card/70 p-3 text-sm text-foreground">
-                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">行为雷达</div>
-                {[
-                  { key: "investment", icon: "📈", label: "投资" },
-                  { key: "travel", icon: "🚗", label: "出行" },
-                  { key: "publicRole", icon: "🧩", label: "公开角色" },
-                ].map((entry) => {
-                  const radarEntry = data.behaviorRadar[entry.key as keyof BehaviorRadar];
-                  if (!radarEntry) {
-                    return null;
-                  }
-                  return (
-                    <div key={entry.key} className="space-y-1 rounded-xl border border-border/50 bg-muted/20 p-2">
-                      <div className="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
-                        <span className="font-semibold">
-                          {entry.icon} {entry.label}
-                        </span>
-                        <span>
-                          {
-                            {
-                              none: "暂无",
-                              actionable: "可行动",
-                              risk: "风险",
-                              safe: "安全",
-                              caution: "需谨慎",
-                            }[radarEntry.status] || radarEntry.status
-                          }
-                        </span>
+
+        {/* Expanded content */}
+        <AnimatePresence initial={false}>
+          {expanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+              className="overflow-hidden"
+            >
+              <div className="pt-3">
+                <div className="text-xs text-muted-foreground/70 mb-2">今日吉凶提示（基于生辰八字） · {statusMessage}</div>
+                {fortuneValid ? (
+                  <div className="space-y-3 text-sm text-foreground">
+                    <p className="text-base">{data!.verdict}</p>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-start gap-2">
+                        <span className="text-emerald-400">✅</span>
+                        <span className="leading-tight">{data!.do}</span>
                       </div>
-                      <div className="text-[13px] text-foreground">{radarEntry.summary}</div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-destructive">⛔</span>
+                        <span className="leading-tight">{data!.dont}</span>
+                      </div>
                     </div>
-                  );
-                })}
+                    <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+                      <span>⏰</span>
+                      <span>{data!.timeHint}</span>
+                    </div>
+                    {isLowImportance && (
+                      <div className="text-[11px] text-muted-foreground">今日非关键决策日</div>
+                    )}
+                    {data?.behaviorRadar && (
+                      <div className="mt-4 space-y-2 rounded-sm border border-border/60 bg-card/70 p-3 text-sm text-foreground">
+                        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">行为雷达</div>
+                        {[
+                          { key: "investment", icon: "📈", label: "投资" },
+                          { key: "travel", icon: "🚗", label: "出行" },
+                          { key: "publicRole", icon: "🧩", label: "公开角色" },
+                        ].map((entry) => {
+                          const radarEntry = data.behaviorRadar[entry.key as keyof BehaviorRadar];
+                          if (!radarEntry) {
+                            return null;
+                          }
+                          return (
+                            <div key={entry.key} className="space-y-1 rounded-sm border border-border/50 bg-muted/20 p-2">
+                              <div className="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
+                                <span className="font-semibold">
+                                  {entry.icon} {entry.label}
+                                </span>
+                                <span>
+                                  {
+                                    {
+                                      none: "暂无",
+                                      actionable: "可行动",
+                                      risk: "风险",
+                                      safe: "安全",
+                                      caution: "需谨慎",
+                                    }[radarEntry.status] || radarEntry.status
+                                  }
+                                </span>
+                              </div>
+                              <div className="text-[13px] text-foreground">{radarEntry.summary}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-sm text-destructive">数据格式异常或缺失，请稍后再试</div>
+                )}
+                <div className="mt-3 text-[11px] text-muted-foreground">{disclaimerText}</div>
               </div>
-            )}
-          </div>
-        ) : (
-          <div className="mt-4 text-sm text-destructive">数据格式异常或缺失，请稍后再试</div>
-        )}
-        <div className="mt-4 text-[11px] text-muted-foreground">{disclaimerText}</div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       <FortuneConfigModal
         open={modalOpen}

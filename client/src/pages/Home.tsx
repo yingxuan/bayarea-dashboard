@@ -15,6 +15,8 @@
  */
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { fadeInUp, staggerContainer } from "@/lib/motion";
 import FortuneWidget from "@/components/FortuneWidget";
 import Navigation from "@/components/Navigation";
 import TodaySpendCarousels from "@/components/TodaySpendCarousels";
@@ -292,15 +294,26 @@ export default function Home() {
       />
 
       <main className="w-full min-w-0">
-        <div className="mx-auto w-full max-w-6xl px-4 md:px-6 py-3 space-y-4">
-          <div className="w-full min-w-0 mb-4">
+        <motion.div
+          className="mx-auto w-full max-w-6xl px-4 md:px-6 py-3"
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div className="w-full min-w-0 mb-4" variants={fadeInUp}>
             <FortuneWidget />
-          </div>
+          </motion.div>
+
+          <div className="section-divider" />
 
           {/* SECTION 1: 打工耽误赚钱 */}
-          <section className="flex flex-col gap-4 min-w-0">
-            <div className="mb-2 mt-2">
-              <h1 className="text-[15px] font-medium font-mono leading-tight">
+          <motion.section
+            className="flex flex-col gap-4 min-w-0 bg-secondary/30 border-l-2 border-l-primary/30 p-4 md:p-5 rounded-sm"
+            variants={fadeInUp}
+          >
+            <div className="mb-3 mt-1 flex items-center gap-2">
+              <div className="w-[2px] h-4 bg-primary rounded-full" />
+              <h1 className="text-[15px] font-semibold font-mono leading-tight tracking-wide">
                 <span className="neon-text-blue">打工耽误赚钱</span>
               </h1>
             </div>
@@ -357,12 +370,18 @@ export default function Home() {
             <div className="w-full min-w-0 mt-2">
               <PiaoziEntryCard />
             </div>
-          </section>
+          </motion.section>
+
+          <div className="section-divider" />
 
           {/* SECTION 2: 民以食为天 */}
-          <section className="flex flex-col gap-4 min-w-0 mt-8">
-            <div className="mb-2 mt-2">
-              <h1 className="text-[15px] font-medium font-mono leading-tight">
+          <motion.section
+            className="flex flex-col gap-4 min-w-0 bg-secondary/30 border-l-2 border-l-amber-500/30 p-4 md:p-5 rounded-sm"
+            variants={fadeInUp}
+          >
+            <div className="mb-3 mt-1 flex items-center gap-2">
+              <div className="w-[2px] h-4 bg-amber-500 rounded-full" />
+              <h1 className="text-[15px] font-semibold font-mono leading-tight tracking-wide">
                 <span className="neon-text-blue">民以食为天</span>
               </h1>
             </div>
@@ -376,12 +395,18 @@ export default function Home() {
             <div className="w-full min-w-0 mt-2">
               <ChiheEntryCard />
             </div>
-          </section>
+          </motion.section>
+
+          <div className="section-divider" />
 
           {/* SECTION 3: 追剧吃瓜薅羊毛 */}
-          <section className="flex flex-col gap-4 min-w-0 mt-8">
-            <div className="mb-2 mt-2">
-              <h1 className="text-[15px] font-medium font-mono leading-tight">
+          <motion.section
+            className="flex flex-col gap-4 min-w-0 bg-secondary/30 border-l-2 border-l-violet-500/30 p-4 md:p-5 rounded-sm"
+            variants={fadeInUp}
+          >
+            <div className="mb-3 mt-1 flex items-center gap-2">
+              <div className="w-[2px] h-4 bg-violet-500 rounded-full" />
+              <h1 className="text-[15px] font-semibold font-mono leading-tight tracking-wide">
                 <span className="neon-text-blue">追剧吃瓜薅羊毛</span>
               </h1>
             </div>
@@ -408,7 +433,7 @@ export default function Home() {
             {/* 2) Horizontal row: 吃瓜 and 薅羊毛 */}
             <div className="w-full min-w-0 flex flex-col md:flex-row gap-4 md:items-stretch">
               {/* 吃瓜 - Left side */}
-              <div className="w-full md:w-1/2 min-w-0 flex flex-col">
+              <div className="w-full md:w-3/5 min-w-0 flex flex-col">
                 <SectionHeader title="吃瓜" />
                 <div className="flex-1">
                   <ChineseGossip maxItemsPerSource={5} />
@@ -417,7 +442,7 @@ export default function Home() {
 
               {/* 薅羊毛 - Right side - Vertical cards */}
               {deals.length >= 3 && (
-                <div className="w-full md:w-1/2 min-w-0 flex flex-col">
+                <div className="w-full md:w-2/5 min-w-0 flex flex-col">
                   <div className="mb-2">
                     <div className="flex items-baseline justify-between mb-2">
                       <h3 className="text-[13px] font-mono font-medium text-foreground/80">薅羊毛</h3>
@@ -430,7 +455,7 @@ export default function Home() {
                     </div>
                     <div className="border-b border-border/30"></div>
                   </div>
-                  <div className="flex-1 space-y-2">
+                  <div className="flex-1 space-y-3">
                     {deals.slice(0, 4).map((deal) => (
                       <a
                         key={deal.id}
@@ -481,8 +506,8 @@ export default function Home() {
                 </div>
               )}
             </div>
-          </section>
-        </div>
+          </motion.section>
+        </motion.div>
       </main>
 
       {/* Footer */}

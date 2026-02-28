@@ -13,13 +13,13 @@ import { ArrowRight, TrendingUp } from "lucide-react";
 export default function PiaoziEntryCard() {
   return (
     <Link href="/piaozi">
-      <div className="group relative overflow-hidden rounded-lg border border-border/40 bg-gradient-to-r from-card via-card to-card/80 p-4 cursor-pointer transition-all duration-300 hover:border-primary/50 hover:shadow-[0_0_20px_rgba(0,255,136,0.1)]">
+      <div className="group relative overflow-hidden rounded-sm border border-border/40 bg-gradient-to-r from-card via-card to-card/80 p-4 cursor-pointer transition-all duration-300 hover:border-primary/50 hover:shadow-[0_0_20px_rgba(0,255,136,0.1)]">
         {/* Subtle glow effect on hover */}
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 border border-primary/20">
+            <div className="flex items-center justify-center w-10 h-10 rounded-sm bg-primary/10 border border-primary/20">
               <TrendingUp className="w-5 h-5 text-primary" />
             </div>
             <div>

@@ -1,6 +1,6 @@
 /**
  * Holdings Editor Component
- * Dialog/Drawer for editing user stock holdings
+ * Google Finance–style: list-first, inline edit, simple add flow
  */
 
 import { useState, useEffect } from "react";
@@ -25,8 +25,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Download, Upload, Copy, X } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus, Pencil, Trash2, Download, Upload, Copy, MoreHorizontal, Check, X } from "lucide-react";
 import { toast } from "sonner";
+import { parseAndMergeXueqiuCsvFiles } from "@/utils/xueqiuCsv";
 
 interface HoldingsEditorProps {
   trigger?: React.ReactNode;
@@ -47,6 +54,7 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
   } = useAuthAwareHoldings();
 
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState<Partial<Holding>>({
     ticker: "",
     shares: 0,
@@ -83,6 +91,7 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
     if (!open) {
       setFormData({ ticker: "", shares: 0, avgCost: undefined });
       setEditingId(null);
+      setShowAddForm(false);
       setErrors({});
     }
   }, [open]);
@@ -143,6 +152,7 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
 
       setFormData({ ticker: "", shares: 0, avgCost: undefined });
       setEditingId(null);
+      setShowAddForm(false);
       setErrors({});
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save holding");
@@ -159,10 +169,18 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
     setErrors({});
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this holding?")) {
-      deleteHolding(id);
-      toast.success("Holding deleted");
+  const handleDelete = async (id: string) => {
+    if (!confirm("确定要删除这条仓位吗？")) return;
+    try {
+      await deleteHolding(id);
+      if (editingId === id) {
+        setEditingId(null);
+        setFormData({ ticker: "", shares: 0, avgCost: undefined });
+        setErrors({});
+      }
+      toast.success("已删除");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "删除失败，请重试");
     }
   };
 
@@ -479,6 +497,65 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
     }
   };
 
+  const handleXueqiuImport = () => {
+    if (typeof window === "undefined") {
+      toast.error("文件导入仅在客户端可用");
+      return;
+    }
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".csv,text/csv";
+    input.multiple = true;
+    input.onchange = async () => {
+      const files = input.files ? Array.from(input.files) : [];
+      if (files.length === 0) return;
+      try {
+        const texts = await Promise.all(
+          files.map((f) =>
+            typeof f.text === "function" ? f.text() : readFileAsText(f)
+          )
+        );
+        const merged = parseAndMergeXueqiuCsvFiles(texts);
+        if (merged.length === 0) {
+          toast.error("未解析到有效持仓，请确认是雪球导出的 CSV");
+          return;
+        }
+        const data: Holding[] = merged.map((h, i) => ({
+          id: `xueqiu_${Date.now()}_${i}`,
+          ticker: h.ticker,
+          shares: h.shares,
+          avgCost: h.avgCost,
+        }));
+        const mergeWithExisting = window.confirm(
+          `已解析 ${merged.length} 条持仓（${files.length} 个文件）。合并到现有持仓？(取消以替换)`
+        );
+        importHoldings(data, mergeWithExisting);
+        setLastImportError(null);
+        toast.success(
+          `雪球持仓${mergeWithExisting ? "已合并" : "已导入"}（${merged.length} 条）`
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "解析失败";
+        toast.error(`从雪球导入失败：${msg}`);
+      }
+      input.value = "";
+    };
+    input.click();
+  };
+
+  function readFileAsText(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const r = e.target?.result;
+        if (typeof r === "string") resolve(r);
+        else reject(new Error("无法读取文件"));
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(file);
+    });
+  }
+
   if (!isLoaded) {
     return null;
   }
@@ -496,72 +573,254 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
         <DrawerHeader>
           <DrawerTitle>编辑仓位</DrawerTitle>
           <DrawerDescription>
-            管理您的股票持仓。输入股票代码、股数和平均成本。
+            添加或编辑持仓：代码、股数、平均成本（可选）。
           </DrawerDescription>
         </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto px-4 pb-4">
-          {/* Debug Banner (dev-only or behind ?debug=1) */}
-          {typeof window !== 'undefined' && (() => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const debugMode = urlParams.get('debug') === '1' || import.meta.env.DEV;
-            if (!debugMode) return null;
-            
-            const userAgent = navigator.userAgent;
-            const isIOS = /iPad|iPhone|iPod/.test(userAgent);
-            const isAndroid = /Android/.test(userAgent);
-            const fileInputSupported = typeof HTMLInputElement !== 'undefined' && 'files' in document.createElement('input');
-            const fileTextSupported = typeof File !== 'undefined' && 'text' in File.prototype;
-            
-            return (
-              <div className="mb-4 p-3 bg-muted rounded-lg text-xs font-mono space-y-1">
-                <div><strong>Debug Info:</strong></div>
-                <div>UserAgent: {userAgent.substring(0, 50)}...</div>
-                <div>isIOS: {String(isIOS)}, isAndroid: {String(isAndroid)}</div>
-                <div>fileInputSupported: {String(fileInputSupported)}, fileTextSupported: {String(fileTextSupported)}</div>
-                {lastImportError && (
-                  <div className="text-destructive">
-                    Last Error: {lastImportError}
-                  </div>
-                )}
+          {/* Debug (only with ?debug=1) */}
+          {typeof window !== "undefined" &&
+            new URLSearchParams(window.location.search).get("debug") === "1" &&
+            lastImportError && (
+              <div className="mb-2 p-2 bg-muted rounded text-xs text-destructive">
+                Last import error: {lastImportError}
               </div>
-            );
-          })()}
+            )}
 
-          {/* Empty State */}
-          {holdings.length === 0 && !editingId && (
-            <div className="text-center py-8 text-muted-foreground">
-              <p className="mb-4">暂无持仓</p>
-              <div className="flex gap-2 justify-center">
-                <Button variant="outline" size="sm" onClick={addExampleHoldings}>
-                  添加示例
+          {/* Header: Add + More */}
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <Button
+              size="sm"
+              onClick={() => {
+                setShowAddForm(true);
+                setEditingId(null);
+                setFormData({ ticker: "", shares: 0, avgCost: undefined });
+                setErrors({});
+              }}
+              className="gap-1"
+            >
+              <Plus className="h-4 w-4" />
+              添加持仓
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1">
+                  <MoreHorizontal className="h-4 w-4" />
+                  更多
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setFormData({ ticker: "", shares: 0, avgCost: undefined })}>
-                  新增一行
-                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExport}>
+                  <Download className="h-4 w-4 mr-2" />
+                  导出 JSON
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCopy}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  复制到剪贴板
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleImport}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  导入文件
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handlePaste}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  从剪贴板导入
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleXueqiuImport}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  导入雪球CSV文件
+                </DropdownMenuItem>
+                {holdings.length === 0 && (
+                  <DropdownMenuItem onClick={addExampleHoldings}>
+                    添加示例持仓
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Add form: show when adding (clicked "添加持仓") or when no holdings yet */}
+          {(showAddForm || holdings.length === 0) && (
+            <div className="border rounded-lg p-3 mb-3 bg-muted/30">
+              <div className="grid grid-cols-[1fr_80px_90px_auto] gap-2 items-end">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-0.5 block">代码</label>
+                  <Input
+                    className="h-8 font-mono"
+                    value={formData.ticker || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, ticker: e.target.value.toUpperCase() })
+                    }
+                    placeholder="AAPL"
+                    aria-invalid={!!errors.ticker}
+                  />
+                  {errors.ticker && (
+                    <p className="text-xs text-destructive mt-0.5">{errors.ticker}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-0.5 block">股数</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="h-8"
+                    value={formData.shares || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        shares: e.target.value ? parseFloat(e.target.value) : 0,
+                      })
+                    }
+                    placeholder="10"
+                    aria-invalid={!!errors.shares}
+                  />
+                  {errors.shares && (
+                    <p className="text-xs text-destructive mt-0.5">{errors.shares}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-0.5 block">成本 (可选)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="h-8"
+                    value={formData.avgCost ?? ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        avgCost: e.target.value ? parseFloat(e.target.value) : undefined,
+                      })
+                    }
+                    placeholder="—"
+                    aria-invalid={!!errors.avgCost}
+                  />
+                  {errors.avgCost && (
+                    <p className="text-xs text-destructive mt-0.5">{errors.avgCost}</p>
+                  )}
+                </div>
+                <div className="flex gap-1">
+                  <Button onClick={handleSave} size="sm" className="h-8 gap-1">
+                    <Check className="h-3.5 w-3" />
+                    添加
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => {
+                      setShowAddForm(false);
+                      setFormData({ ticker: "", shares: 0, avgCost: undefined });
+                      setErrors({});
+                    }}
+                  >
+                    <X className="h-3.5 w-3" />
+                  </Button>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Holdings Table */}
+          {/* Holdings table: view or inline edit per row */}
           {holdings.length > 0 && (
-            <div className="mb-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>股票代码</TableHead>
-                    <TableHead>股数</TableHead>
-                    <TableHead>平均成本</TableHead>
-                    <TableHead className="w-[100px]">操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {holdings.map((holding) => (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>股票代码</TableHead>
+                  <TableHead>股数</TableHead>
+                  <TableHead>平均成本</TableHead>
+                  <TableHead className="w-[90px]">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {holdings.map((holding) =>
+                  editingId === holding.id ? (
+                    <TableRow key={holding.id} className="bg-muted/30">
+                      <TableCell className="p-1">
+                        <Input
+                          className="h-8 font-mono"
+                          value={formData.ticker || ""}
+                          onChange={(e) =>
+                            setFormData({ ...formData, ticker: e.target.value.toUpperCase() })
+                          }
+                          placeholder="AAPL"
+                          aria-invalid={!!errors.ticker}
+                        />
+                        {errors.ticker && (
+                          <p className="text-xs text-destructive">{errors.ticker}</p>
+                        )}
+                      </TableCell>
+                      <TableCell className="p-1">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className="h-8"
+                          value={formData.shares ?? ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              shares: e.target.value ? parseFloat(e.target.value) : 0,
+                            })
+                          }
+                          aria-invalid={!!errors.shares}
+                        />
+                        {errors.shares && (
+                          <p className="text-xs text-destructive">{errors.shares}</p>
+                        )}
+                      </TableCell>
+                      <TableCell className="p-1">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className="h-8"
+                          value={formData.avgCost ?? ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              avgCost: e.target.value ? parseFloat(e.target.value) : undefined,
+                            })
+                          }
+                          placeholder="—"
+                          aria-invalid={!!errors.avgCost}
+                        />
+                        {errors.avgCost && (
+                          <p className="text-xs text-destructive">{errors.avgCost}</p>
+                        )}
+                      </TableCell>
+                      <TableCell className="p-1">
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            className="h-8 gap-0.5"
+                            onClick={handleSave}
+                          >
+                            <Check className="h-3.5 w-3" />
+                            保存
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8"
+                            onClick={() => {
+                              setEditingId(null);
+                              setFormData({ ticker: "", shares: 0, avgCost: undefined });
+                              setErrors({});
+                            }}
+                          >
+                            <X className="h-3.5 w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
                     <TableRow key={holding.id}>
                       <TableCell className="font-mono">{holding.ticker}</TableCell>
                       <TableCell>{holding.shares}</TableCell>
                       <TableCell>
-                        {holding.avgCost ? `$${holding.avgCost.toFixed(2)}` : "—"}
+                        {holding.avgCost != null ? `$${holding.avgCost.toFixed(2)}` : "—"}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
@@ -570,124 +829,27 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
                             size="icon"
                             className="h-8 w-8"
                             onClick={() => handleEdit(holding)}
+                            title="编辑"
                           >
-                            <span className="text-xs">编辑</span>
+                            <Pencil className="h-3.5 w-3" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-destructive"
                             onClick={() => handleDelete(holding.id)}
+                            title="删除"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3" />
                           </Button>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  )
+                )}
+              </TableBody>
+            </Table>
           )}
-
-          {/* Add/Edit Form */}
-          <div className="border rounded-lg p-4 space-y-4">
-            <h3 className="font-medium">{editingId ? "编辑持仓" : "新增持仓"}</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="text-sm text-muted-foreground mb-1 block">股票代码 *</label>
-                <Input
-                  value={formData.ticker || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, ticker: e.target.value.toUpperCase() })
-                  }
-                  placeholder="AAPL, MSFT, NVDA..."
-                  aria-invalid={!!errors.ticker}
-                />
-                {errors.ticker && (
-                  <p className="text-xs text-destructive mt-1">{errors.ticker}</p>
-                )}
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground mb-1 block">股数 *</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.shares || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      shares: e.target.value ? parseFloat(e.target.value) : 0,
-                    })
-                  }
-                  placeholder="10"
-                  aria-invalid={!!errors.shares}
-                />
-                {errors.shares && (
-                  <p className="text-xs text-destructive mt-1">{errors.shares}</p>
-                )}
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground mb-1 block">平均成本 (可选)</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.avgCost || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      avgCost: e.target.value ? parseFloat(e.target.value) : undefined,
-                    })
-                  }
-                  placeholder="150.00"
-                  aria-invalid={!!errors.avgCost}
-                />
-                {errors.avgCost && (
-                  <p className="text-xs text-destructive mt-1">{errors.avgCost}</p>
-                )}
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={handleSave} size="sm">
-                {editingId ? "更新" : "添加"}
-              </Button>
-              {editingId && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setFormData({ ticker: "", shares: 0, avgCost: undefined });
-                    setEditingId(null);
-                    setErrors({});
-                  }}
-                >
-                  取消
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Import/Export */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={handleExport}>
-              <Download className="h-4 w-4 mr-2" />
-              导出 JSON
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleCopy}>
-              <Copy className="h-4 w-4 mr-2" />
-              复制到剪贴板
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleImport}>
-              <Upload className="h-4 w-4 mr-2" />
-              导入文件
-            </Button>
-            <Button variant="outline" size="sm" onClick={handlePaste}>
-              <Upload className="h-4 w-4 mr-2" />
-              从剪贴板导入
-            </Button>
-          </div>
         </div>
 
         <DrawerFooter>

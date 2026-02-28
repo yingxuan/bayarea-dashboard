@@ -75,7 +75,10 @@ export async function handleUpdateHoldings(
       res.status(400).json({ error: `${h.ticker}: shares 必须是非负数` });
       return;
     }
-    if (h.avgCost !== undefined && (typeof h.avgCost !== "number" || h.avgCost < 0)) {
+    if (
+      h.avgCost != null &&
+      (typeof h.avgCost !== "number" || h.avgCost < 0)
+    ) {
       res.status(400).json({ error: `${h.ticker}: avgCost 必须是非负数` });
       return;
     }

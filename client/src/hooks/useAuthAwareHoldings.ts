@@ -124,11 +124,12 @@ export function useAuthAwareHoldings() {
     loadHoldings();
   }, [loadHoldings]);
 
-  // Save holdings
+  // Save holdings. Returns Promise so callers can await and handle errors.
   const saveHoldings = useCallback(
-    async (newHoldings: Holding[]) => {
+    async (newHoldings: Holding[]): Promise<void> => {
       if (isAuthenticated) {
-        // Save to server
+        const previousHoldings = holdings;
+        setHoldings(newHoldings); // Optimistic update
         setIsSyncing(true);
         try {
           const response = await fetch(`${config.apiBaseUrl}/api/portfolio/holdings`, {
@@ -136,11 +137,16 @@ export function useAuthAwareHoldings() {
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify({
-              holdings: newHoldings.map((h) => ({
-                ticker: h.ticker,
-                shares: h.shares,
-                avgCost: h.avgCost,
-              })),
+              holdings: newHoldings.map((h) => {
+                const payload: { ticker: string; shares: number; avgCost?: number } = {
+                  ticker: h.ticker,
+                  shares: h.shares,
+                };
+                if (typeof h.avgCost === "number" && h.avgCost >= 0) {
+                  payload.avgCost = h.avgCost;
+                }
+                return payload;
+              }),
             }),
           });
 
@@ -157,9 +163,19 @@ export function useAuthAwareHoldings() {
               );
             }
           } else {
-            throw new Error("Failed to save to server");
+            setHoldings(previousHoldings); // Revert on failure
+            let message = "保存失败，请重试";
+            try {
+              const data = await response.json();
+              if (data && typeof data.message === "string") message = data.message;
+              else if (data && typeof data.error === "string") message = data.error;
+            } catch {
+              // ignore JSON parse error
+            }
+            throw new Error(message);
           }
         } catch (error) {
+          setHoldings(previousHoldings); // Revert on failure
           console.error("[useAuthAwareHoldings] Failed to save to server:", error);
           throw error;
         } finally {
@@ -174,9 +190,10 @@ export function useAuthAwareHoldings() {
         } catch (error) {
           console.error("[useAuthAwareHoldings] Failed to save to localStorage:", error);
         }
+        return Promise.resolve();
       }
     },
-    [isAuthenticated]
+    [isAuthenticated, holdings]
   );
 
   // Individual holding operations
@@ -219,9 +236,9 @@ export function useAuthAwareHoldings() {
   );
 
   const deleteHolding = useCallback(
-    (id: string) => {
+    (id: string): Promise<void> => {
       const newHoldings = holdings.filter((h) => h.id !== id);
-      saveHoldings(newHoldings);
+      return saveHoldings(newHoldings);
     },
     [holdings, saveHoldings]
   );

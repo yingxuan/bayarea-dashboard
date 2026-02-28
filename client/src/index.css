@@ -273,4 +273,11 @@
   .flash-red {
     animation: flash-red 0.3s ease-in-out;
   }
+
+  /* Section divider gradient line */
+  .section-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, oklch(0.65 0.25 230 / 0.2) 30%, oklch(0.65 0.25 230 / 0.3) 50%, oklch(0.65 0.25 230 / 0.2) 70%, transparent);
+    margin: 1.5rem 0;
+  }
 }

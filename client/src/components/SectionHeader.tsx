@@ -14,7 +14,7 @@ export default function SectionHeader({ title, href, linkText = "查看更多" }
   return (
     <div className="mb-1.5">
       <div className="flex items-baseline justify-between mb-1.5">
-        <h3 className="text-[13px] font-mono font-medium text-foreground/80">{title}</h3>
+        <h3 className="text-[13px] font-mono font-medium text-foreground/70">{title}</h3>
         {href && (
           <a
             href={href}

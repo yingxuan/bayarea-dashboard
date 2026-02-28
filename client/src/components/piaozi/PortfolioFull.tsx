@@ -9,7 +9,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { TrendingUp, TrendingDown, PencilIcon } from "lucide-react";
-import { useHoldings, Holding } from "@/hooks/useHoldings";
+import { useAuthAwareHoldings, Holding } from "@/hooks/useAuthAwareHoldings";
 import { usePortfolioSummary, QuoteData } from "@/hooks/usePortfolioSummary";
 import { Button } from "@/components/ui/button";
 import HoldingsEditor from "@/components/HoldingsEditor";
@@ -32,7 +32,7 @@ interface HoldingWithQuote extends Holding {
 }
 
 export default function PortfolioFull() {
-  const { holdings, isLoaded, ytdBaseline } = useHoldings();
+  const { holdings, isLoaded, ytdBaseline } = useAuthAwareHoldings();
   const [quotesData, setQuotesData] = useState<Record<string, QuoteData>>({});
   const [valueSeries, setValueSeries] = useState<any>(null);
   const [loading, setLoading] = useState(true);
