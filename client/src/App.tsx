@@ -19,6 +19,8 @@ import Home from "./pages/Home";
 import Piaozi from "./pages/Piaozi";
 import Chihe from "./pages/Chihe";
 import LoginPage from "./pages/LoginPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 function Router() {
   return (
@@ -27,6 +29,8 @@ function Router() {
       <Route path={"/piaozi"} component={Piaozi} />
       <Route path={"/chihe"} component={Chihe} />
       <Route path={"/login"} component={LoginPage} />
+      <Route path={"/forgot-password"} component={ForgotPasswordPage} />
+      <Route path={"/reset-password"} component={ResetPasswordPage} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

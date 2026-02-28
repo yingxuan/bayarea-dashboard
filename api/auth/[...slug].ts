@@ -1,6 +1,7 @@
 /**
  * Auth API Entry Point (Vercel Serverless Function)
- * Routes: /api/auth/register, /api/auth/login, /api/auth/logout, /api/auth/me
+ * Routes: /api/auth/register, /api/auth/login, /api/auth/logout, /api/auth/me,
+ *         /api/auth/forgot-password, /api/auth/reset-password
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
@@ -8,6 +9,8 @@ import { handleRegister } from "../../api-handlers/auth/register.js";
 import { handleLogin } from "../../api-handlers/auth/login.js";
 import { handleLogout } from "../../api-handlers/auth/logout.js";
 import { handleMe } from "../../api-handlers/auth/me.js";
+import { handleForgotPassword } from "../../api-handlers/auth/forgot-password.js";
+import { handleResetPassword } from "../../api-handlers/auth/reset-password.js";
 import { setCorsHeaders, handleOptions } from "../../lib/api-utils.js";
 
 export default async function handler(
@@ -38,6 +41,12 @@ export default async function handler(
         break;
       case "me":
         await handleMe(req, res);
+        break;
+      case "forgot-password":
+        await handleForgotPassword(req, res);
+        break;
+      case "reset-password":
+        await handleResetPassword(req, res);
         break;
       default:
         res.status(404).json({ error: "Not found" });

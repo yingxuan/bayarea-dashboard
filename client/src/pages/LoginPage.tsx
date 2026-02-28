@@ -153,6 +153,15 @@ export default function LoginPage() {
                     "登录"
                   )}
                 </Button>
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/forgot-password")}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    忘记密码？
+                  </button>
+                </div>
               </form>
             </TabsContent>
 

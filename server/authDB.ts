@@ -44,6 +44,19 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_user_holdings_user_id ON user_holdings(user_id);
 
+  -- Password reset tokens table
+  CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL,
+    expires_at INTEGER NOT NULL,
+    used_at INTEGER,
+    created_at INTEGER DEFAULT (strftime('%s','now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_hash ON password_reset_tokens(token_hash);
+  CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
+
   -- User settings table
   CREATE TABLE IF NOT EXISTS user_settings (
     user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
@@ -307,6 +320,102 @@ export function updateUserSettings(
   }
 
   return getUserSettings(userId)!;
+}
+
+// Password reset operations
+const RESET_TOKEN_EXPIRY_MINUTES = 30;
+
+/**
+ * Create a password reset token for a user (identified by email).
+ * Invalidates any existing unused tokens for the same user.
+ * Returns the raw token (to be sent via email) or null if email not found.
+ */
+export async function createPasswordResetToken(email: string): Promise<string | null> {
+  const normalizedEmail = email.toLowerCase().trim();
+  const user = db.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail) as { id: string } | undefined;
+  if (!user) return null;
+
+  const rawToken = nanoid(32);
+  const tokenHash = await bcrypt.hash(rawToken, 10);
+  const id = nanoid();
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = now + RESET_TOKEN_EXPIRY_MINUTES * 60;
+
+  const transaction = db.transaction(() => {
+    // Invalidate existing unused tokens for this user
+    db.prepare(
+      "UPDATE password_reset_tokens SET used_at = ? WHERE user_id = ? AND used_at IS NULL"
+    ).run(now, user.id);
+
+    db.prepare(
+      "INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)"
+    ).run(id, user.id, tokenHash, expiresAt, now);
+  });
+
+  transaction();
+  return rawToken;
+}
+
+/**
+ * Verify a password reset token is valid (exists, not expired, not used).
+ * Returns the user_id if valid, null otherwise.
+ */
+export async function verifyPasswordResetToken(rawToken: string): Promise<string | null> {
+  const now = Math.floor(Date.now() / 1000);
+
+  const tokens = db.prepare(
+    "SELECT id, user_id, token_hash, expires_at FROM password_reset_tokens WHERE used_at IS NULL AND expires_at > ? ORDER BY created_at DESC"
+  ).all(now) as Array<{ id: string; user_id: string; token_hash: string; expires_at: number }>;
+
+  for (const t of tokens) {
+    const match = await bcrypt.compare(rawToken, t.token_hash);
+    if (match) return t.user_id;
+  }
+
+  return null;
+}
+
+/**
+ * Reset a user's password using a valid reset token.
+ * Marks the token as used.
+ */
+export async function resetPasswordWithToken(
+  rawToken: string,
+  newPassword: string
+): Promise<{ success: boolean; error?: string }> {
+  const passwordValidation = validatePassword(newPassword);
+  if (!passwordValidation.valid) {
+    return { success: false, error: passwordValidation.error };
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+
+  const tokens = db.prepare(
+    "SELECT id, user_id, token_hash FROM password_reset_tokens WHERE used_at IS NULL AND expires_at > ? ORDER BY created_at DESC"
+  ).all(now) as Array<{ id: string; user_id: string; token_hash: string }>;
+
+  let matchedToken: { id: string; user_id: string } | null = null;
+  for (const t of tokens) {
+    const match = await bcrypt.compare(rawToken, t.token_hash);
+    if (match) {
+      matchedToken = { id: t.id, user_id: t.user_id };
+      break;
+    }
+  }
+
+  if (!matchedToken) {
+    return { success: false, error: "重置链接无效或已过期" };
+  }
+
+  const newHash = await bcrypt.hash(newPassword, BCRYPT_COST);
+
+  const transaction = db.transaction(() => {
+    db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(newHash, matchedToken!.user_id);
+    db.prepare("UPDATE password_reset_tokens SET used_at = ? WHERE id = ?").run(now, matchedToken!.id);
+  });
+
+  transaction();
+  return { success: true };
 }
 
 // Export database for direct access if needed

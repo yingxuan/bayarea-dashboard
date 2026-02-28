@@ -27,6 +27,8 @@ interface AuthContextType {
   register: (email: string, password: string, displayName?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  forgotPassword: (email: string) => Promise<{ success: boolean; error?: string; message?: string }>;
+  resetPassword: (token: string, password: string) => Promise<{ success: boolean; error?: string; message?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -145,6 +147,54 @@ export function AuthProvider({ children }: AuthProviderProps) {
     await checkAuth();
   }, [checkAuth]);
 
+  const forgotPassword = useCallback(
+    async (email: string): Promise<{ success: boolean; error?: string; message?: string }> => {
+      try {
+        const response = await fetch(`${config.apiBaseUrl}/api/auth/forgot-password`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          return { success: true, message: data.message };
+        }
+        return { success: false, error: data.error || "操作失败" };
+      } catch (error) {
+        console.error("[AuthContext] Forgot password error:", error);
+        return { success: false, error: "网络错误，请稍后重试" };
+      }
+    },
+    []
+  );
+
+  const resetPassword = useCallback(
+    async (token: string, password: string): Promise<{ success: boolean; error?: string; message?: string }> => {
+      try {
+        const response = await fetch(`${config.apiBaseUrl}/api/auth/reset-password`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ token, password }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          return { success: true, message: data.message };
+        }
+        return { success: false, error: data.error || "密码重置失败" };
+      } catch (error) {
+        console.error("[AuthContext] Reset password error:", error);
+        return { success: false, error: "网络错误，请稍后重试" };
+      }
+    },
+    []
+  );
+
   const value = useMemo(
     () => ({
       user,
@@ -154,8 +204,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       register,
       logout,
       refreshUser,
+      forgotPassword,
+      resetPassword,
     }),
-    [user, isLoading, login, register, logout, refreshUser]
+    [user, isLoading, login, register, logout, refreshUser, forgotPassword, resetPassword]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
