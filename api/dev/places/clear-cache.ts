@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { cache } from "../../api/utils.ts";
-import { clearDedupMap } from "../../lib/spend/placesClient.ts";
+import { cache } from "../../../lib/api-utils.js";
+import { clearDedupMap } from "../../../lib/spend/placesClient.js";
 
 export const runtime = "nodejs";
 

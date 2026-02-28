@@ -26,7 +26,7 @@ import {
   setCache,
   getStaleCache,
   cache,
-} from '../../api/utils.js';
+} from '../../lib/api-utils.js';
 import { retryWithBackoff } from '../../server/utils.js';
 
 const ONEPOINT3ACRES_CACHE_TTL = 10 * 60 * 1000; // 10 minutes

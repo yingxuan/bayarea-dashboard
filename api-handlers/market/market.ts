@@ -18,7 +18,7 @@ import {
   setCache,
   getStaleCache,
   formatUpdatedAt,
-} from '../../api/utils.js';
+} from '../../lib/api-utils.js';
 
 const MARKET_CACHE_TTL = CACHE_TTL.MARKET;
 

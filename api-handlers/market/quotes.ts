@@ -14,7 +14,7 @@ import {
   setCache,
   getStaleCache,
   formatUpdatedAt,
-} from '../../api/utils.js';
+} from '../../lib/api-utils.js';
 import { ttlMsToSeconds } from '../../shared/config.js';
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || '';

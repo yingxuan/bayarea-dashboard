@@ -37,7 +37,7 @@ import {
   normalizeCachedResponse,
   normalizeStaleResponse,
   formatUpdatedAt,
-} from '../../api/utils.js';
+} from '../api-utils.js';
 import { fetchAllPlacesOptimized } from './placesOptimized.js';
 import { getPhotoRecord } from './photo-cache.js';
 

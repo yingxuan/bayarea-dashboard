@@ -26,7 +26,7 @@ import {
   setCache,
   getStaleCache,
   cache,
-} from '../../api/utils.js';
+} from '../../lib/api-utils.js';
 
 const GOSSIP_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 const BLIND_TRENDING_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours for Blind trending page cache

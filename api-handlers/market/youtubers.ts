@@ -19,7 +19,7 @@ import {
   normalizeCachedResponse,
   normalizeStaleResponse,
   formatUpdatedAt,
-} from '../../api/utils.js';
+} from '../../lib/api-utils.js';
 
 const YOUTUBERS_CACHE_TTL = CACHE_TTL.YOUTUBERS;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;

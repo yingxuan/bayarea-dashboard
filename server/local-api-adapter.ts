@@ -11,13 +11,11 @@ import marketHandler from '../api/market-all.js';
 import dealsHandler from '../api/deals.js';
 import { handleToday as spendTodayHandler } from '../lib/spend/today.js';
 import communityHandler from '../api/community/[...slug].js';
-import portfolioValueSeriesHandler from '../api/portfolio/value-series.js';
+import portfolioHandler from '../api/portfolio/[...slug].js';
 import fanwanHandler from '../api/youtube/fanwan.js';
 import musthaveHandler from '../api/spend/musthave.js';
 import authHandler from '../api/auth/[...slug].js';
-import portfolioHoldingsHandler from '../api/portfolio/holdings.js';
-import portfolioSettingsHandler from '../api/portfolio/settings.js';
-import { cache } from '../api/utils.ts';
+import { cache } from '../lib/api-utils.js';
 import { clearDedupMap } from '../lib/spend/placesClient.ts';
 
 /**
@@ -305,7 +303,8 @@ export async function gossipCommunityRoute(req: Request, res: Response) {
 export async function portfolioValueSeriesRoute(req: Request, res: Response) {
   try {
     const { vercelReq, vercelRes } = expressToVercel(req, res);
-    await portfolioValueSeriesHandler(vercelReq, vercelRes);
+    vercelReq.query = { ...vercelReq.query, slug: ['value-series'] };
+    await portfolioHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Portfolio Value Series route error:', error);
     res.status(500).json({
@@ -343,7 +342,8 @@ export async function authRoute(req: Request, res: Response) {
 export async function portfolioHoldingsRoute(req: Request, res: Response) {
   try {
     const { vercelReq, vercelRes } = expressToVercel(req, res);
-    await portfolioHoldingsHandler(vercelReq, vercelRes);
+    vercelReq.query = { ...vercelReq.query, slug: ['holdings'] };
+    await portfolioHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Portfolio Holdings route error:', error);
     res.status(500).json({
@@ -359,7 +359,8 @@ export async function portfolioHoldingsRoute(req: Request, res: Response) {
 export async function portfolioSettingsRoute(req: Request, res: Response) {
   try {
     const { vercelReq, vercelRes } = expressToVercel(req, res);
-    await portfolioSettingsHandler(vercelReq, vercelRes);
+    vercelReq.query = { ...vercelReq.query, slug: ['settings'] };
+    await portfolioHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Portfolio Settings route error:', error);
     res.status(500).json({

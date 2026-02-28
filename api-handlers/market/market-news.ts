@@ -26,7 +26,7 @@ import {
   normalizeCachedResponse,
   normalizeStaleResponse,
   cache,
-} from '../../api/utils.js';
+} from '../../lib/api-utils.js';
 
 const MARKET_NEWS_CACHE_TTL = 7.5 * 60 * 1000; // 7.5 minutes (5-10 min range) - for non-empty results only
 const LAST_NON_EMPTY_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours - for last_non_empty cache

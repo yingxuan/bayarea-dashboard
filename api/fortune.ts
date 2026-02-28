@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { setCorsHeaders, handleOptions } from "./utils.js";
+import { setCorsHeaders, handleOptions } from "../lib/api-utils.js";
 import { normalizeYMD } from "../lib/fortune/date.js";
 import { getFortuneService, LockContentionError } from "../lib/fortune/service.js";
 

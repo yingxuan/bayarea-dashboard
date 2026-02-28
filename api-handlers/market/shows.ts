@@ -16,7 +16,7 @@ import {
   normalizeCachedResponse,
   normalizeStaleResponse,
   formatUpdatedAt,
-} from '../../api/utils.js';
+} from '../../lib/api-utils.js';
 
 const SHOWS_CACHE_TTL = CACHE_TTL.SHOWS;
 const CHANNEL_ID_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours cache for channel ID extraction

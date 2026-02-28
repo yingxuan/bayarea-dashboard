@@ -4,7 +4,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getCurrentUser } from "../../api/utils-auth.js";
+import { getCurrentUser } from "../../lib/api-utils-auth.js";
 
 export async function handleMe(
   req: VercelRequest,

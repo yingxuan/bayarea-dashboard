@@ -21,7 +21,7 @@ import {
   getCachedData,
   setCache,
   getStaleCache,
-} from './utils.js';
+} from '../lib/api-utils.js';
 
 const DEALS_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
 const RSS_FETCH_TIMEOUT = 8000; // 8 seconds

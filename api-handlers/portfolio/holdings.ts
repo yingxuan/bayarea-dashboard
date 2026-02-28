@@ -5,7 +5,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { requireAuth } from "../../api/utils-auth.js";
+import { requireAuth } from "../../lib/api-utils-auth.js";
 import {
   getUserHoldings,
   replaceAllHoldings,

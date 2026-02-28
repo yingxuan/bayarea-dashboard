@@ -8,7 +8,7 @@ import { handleRegister } from "../../api-handlers/auth/register.js";
 import { handleLogin } from "../../api-handlers/auth/login.js";
 import { handleLogout } from "../../api-handlers/auth/logout.js";
 import { handleMe } from "../../api-handlers/auth/me.js";
-import { setCorsHeaders, handleOptions } from "../utils.js";
+import { setCorsHeaders, handleOptions } from "../../lib/api-utils.js";
 
 export default async function handler(
   req: VercelRequest,
