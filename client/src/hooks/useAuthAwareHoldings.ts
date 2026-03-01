@@ -248,7 +248,7 @@ export function useAuthAwareHoldings() {
   }, [saveHoldings]);
 
   const importHoldings = useCallback(
-    (data: Holding[], merge: boolean = false) => {
+    (data: Holding[], merge: boolean = false): Promise<void> => {
       const validHoldings: Holding[] = [];
       for (const h of data) {
         const validation = validateHolding(h);
@@ -272,9 +272,9 @@ export function useAuthAwareHoldings() {
             merged.push(newHolding);
           }
         }
-        saveHoldings(merged);
+        return saveHoldings(merged);
       } else {
-        saveHoldings(validHoldings);
+        return saveHoldings(validHoldings);
       }
     },
     [holdings, saveHoldings]

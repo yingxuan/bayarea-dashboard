@@ -300,28 +300,23 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
           
           const merge = window.confirm("合并到现有持仓？(取消以替换)");
           console.log('[HoldingsEditor] Import mode:', merge ? 'merge' : 'replace');
-          
-          // Import holdings - this should trigger state update via useHoldings hook
-          importHoldings(data, merge);
-          
-          console.log('[HoldingsEditor] importHoldings() called with', data.length, 'items, merge=', merge);
+
+          await importHoldings(data, merge);
+
+          console.log('[HoldingsEditor] importHoldings() completed with', data.length, 'items, merge=', merge);
           setLastImportError(null);
-          
-          // Show success message with item count
+
           const itemCount = data.length;
           toast.success(`持仓${merge ? "已合并" : "已导入"} (${itemCount} 项)`, {
             duration: 3000,
           });
-          
-          // Force a re-render check - holdings should update via React state
-          // The useHoldings hook will trigger a re-render when setHoldings is called
-          console.log('[HoldingsEditor] Toast shown, waiting for state update...');
+          console.log('[HoldingsEditor] Toast shown.');
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : "导入持仓失败";
           setLastImportError(errorMessage);
           console.error('[HoldingsEditor] Import error:', error);
           console.error('[HoldingsEditor] Error stack:', error instanceof Error ? error.stack : 'N/A');
-          toast.error(`读取文件失败：${errorMessage}`);
+          toast.error(errorMessage.includes("读取") ? `读取文件失败：${errorMessage}` : `导入持仓失败：${errorMessage}`);
         } finally {
           // Reset input value so selecting same file again works
           input.value = "";
@@ -486,14 +481,14 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
       }
 
       const merge = confirm("合并到现有持仓？(取消以替换)");
-      importHoldings(data, merge);
+      await importHoldings(data, merge);
       setLastImportError(null);
       toast.success(`持仓${merge ? "已合并" : "已导入"}`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "读取剪贴板失败";
       setLastImportError(errorMessage);
       console.error('[HoldingsEditor] Paste error:', error);
-      toast.error(`读取文件失败：${errorMessage}`);
+      toast.error(errorMessage.includes("JSON") || errorMessage.includes("格式") ? `读取失败：${errorMessage}` : `导入持仓失败：${errorMessage}`);
     }
   };
 
@@ -529,7 +524,7 @@ export default function HoldingsEditor({ trigger }: HoldingsEditorProps) {
         const mergeWithExisting = window.confirm(
           `已解析 ${merged.length} 条持仓（${files.length} 个文件）。合并到现有持仓？(取消以替换)`
         );
-        importHoldings(data, mergeWithExisting);
+        await importHoldings(data, mergeWithExisting);
         setLastImportError(null);
         toast.success(
           `雪球持仓${mergeWithExisting ? "已合并" : "已导入"}（${merged.length} 条）`
