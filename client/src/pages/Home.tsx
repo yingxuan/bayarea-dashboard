@@ -340,7 +340,7 @@ export default function Home() {
             {/* 2) 市场看点 (Market Highlights: 新闻/一亩三分地) */}
             <div className="w-full min-w-0">
               <SectionHeader title="市场看点" />
-              <div className="text-xs text-muted-foreground/70 mt-0.5">
+              <div className="text-xs text-muted-foreground/70 mt-0.5 mb-2">
                 Market context · 用于校准风险感知
               </div>
               <MarketHighlights marketNews={marketNews} />

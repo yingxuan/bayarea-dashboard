@@ -26,9 +26,9 @@ export default function FanwanCarousel({ videos }: Props) {
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between mb-1.5">
+      <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-border/30">
         <div className="flex items-baseline gap-2">
-          <h3 className="text-[13px] font-mono font-medium text-foreground/80">关于饭碗</h3>
+          <h3 className="text-[13px] font-mono font-medium text-amber-500/80">关于饭碗</h3>
           {display.length > 0 && (
             <span className="text-xs opacity-60 font-mono font-normal text-foreground/60">
               最近 14 天
@@ -59,7 +59,7 @@ export default function FanwanCarousel({ videos }: Props) {
                     href={item.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block w-full rounded-lg overflow-hidden bg-card/50 border border-border/50 hover:border-primary/50 transition-all group"
+                    className="block w-full rounded-lg overflow-hidden bg-card/50 border border-border/50 hover:border-amber-500/50 transition-all group"
                   >
                     <div className="relative w-full aspect-video bg-muted overflow-hidden">
                       <img

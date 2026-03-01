@@ -24,11 +24,18 @@ interface USStockYouTubersProps {
 export default function USStockYouTubers({ stockYoutubers, offset = 0, onRefresh }: USStockYouTubersProps) {
   // Filter and prepare videos
   const availableVideos = stockYoutubers.filter(item => item.status === 'ok');
-  
-  // Use all available videos for carousel (no padding needed)
-  const displayVideos = availableVideos.length > 0 ? availableVideos : [];
-  
-  const hasMore = availableVideos.length > 0;
+
+  const BATCH_SIZE = 4;
+
+  // Rotate by offset and slice to one batch
+  const displayVideos = availableVideos.length > 0
+    ? (() => {
+        const start = offset % availableVideos.length;
+        return [...availableVideos.slice(start), ...availableVideos.slice(0, start)].slice(0, BATCH_SIZE);
+      })()
+    : [];
+
+  const hasMore = availableVideos.length > BATCH_SIZE;
 
   // Calculate latest video time for status hint
   const latestVideoTime = useMemo(() => {
@@ -61,7 +68,7 @@ export default function USStockYouTubers({ stockYoutubers, offset = 0, onRefresh
   return (
     <div className="w-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-1.5">
+      <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-border/30">
         <div className="flex items-baseline gap-2">
           <h3 className="text-[13px] font-mono font-medium text-foreground/80">美股博主</h3>
           {statusHint && (

@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { config } from "@/config";
 import { useExternalLink } from "@/hooks/useExternalLink";
+import TimeAgo from "@/components/TimeAgo";
 
 interface CommunityItem {
   source: '1point3acres';
@@ -101,9 +102,17 @@ export default function MarketHighlights({ marketNews }: MarketHighlightsProps) 
             className="block rounded-sm p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
           >
             <div className="flex items-start gap-2">
-              <span className="text-[11px] text-muted-foreground/70 font-mono font-normal flex-shrink-0">
-                {item.source}
-              </span>
+              <div className="flex items-baseline gap-1 flex-shrink-0">
+                <span className="text-[11px] text-muted-foreground/70 font-mono font-normal">
+                  {item.source}
+                </span>
+                {item.publishedAt && (
+                  <>
+                    <span className="text-[11px] text-muted-foreground/40">·</span>
+                    <TimeAgo isoString={item.publishedAt} />
+                  </>
+                )}
+              </div>
               <span className="text-[13px] font-normal font-mono text-foreground/90 group-hover:text-primary transition-colors line-clamp-2 flex-1 leading-tight">
                 {item.title}
               </span>

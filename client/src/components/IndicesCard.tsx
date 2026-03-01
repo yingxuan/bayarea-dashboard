@@ -144,7 +144,7 @@ export default function IndicesCard() {
                 } ${idx < indices.length - 1 ? 'border-b border-border/30' : ''}`}
               >
                 {/* Ticker (左对齐，固定宽) */}
-                <div className="text-[14px] font-medium font-mono text-foreground w-20">
+                <div className="text-[14px] font-medium font-mono text-foreground w-24">
                   {index.code}
                 </div>
                 {/* Price (右对齐，tabular-nums) */}

@@ -3,7 +3,7 @@
  * Displays: 市值, 今日涨跌($ + %), 一句话市场状态, 编辑仓位 button
  */
 
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, TrendingDown, SlidersHorizontal } from "lucide-react";
 import { Holding } from "@/hooks/useHoldings";
 import { usePortfolioSummary, QuoteData } from "@/hooks/usePortfolioSummary";
 import { Button } from "@/components/ui/button";
@@ -320,25 +320,9 @@ export default function PortfolioHero({
                       {portfolioMetrics.ytdPercent >= 0 ? "+" : ""}
                       {portfolioMetrics.ytdPercent.toFixed(2)}%)
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => setYtdDialogOpen(true)}
-                      className="text-xs text-muted-foreground hover:text-foreground ml-1"
-                    >
-                      配置YTD
-                    </button>
                   </>
                 ) : (
-                  <span className="text-xs opacity-60 font-mono">
-                    未配置
-                    <button
-                      type="button"
-                      onClick={() => setYtdDialogOpen(true)}
-                      className="ml-1 text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      设置
-                    </button>
-                  </span>
+                  <span className="text-xs opacity-60 font-mono">未配置</span>
                 )}
               </div>
             </div>
@@ -363,7 +347,15 @@ export default function PortfolioHero({
             <div className="mt-2 pt-1.5 border-t border-border/20">
               <div className="text-xs opacity-60 font-mono font-normal">{updateInfo}</div>
             </div>
-            <div className="flex justify-end mt-auto">
+            <div className="flex justify-end items-center gap-2 mt-auto">
+              <button
+                type="button"
+                onClick={() => setYtdDialogOpen(true)}
+                className="text-xs h-7 px-2 font-mono font-normal flex items-center gap-1 rounded border border-border/40 text-muted-foreground hover:text-foreground hover:border-border/70 transition-colors"
+                title="设置年初基准"
+              >
+                <SlidersHorizontal className="w-3 h-3" /> YTD基准
+              </button>
               <HoldingsEditor
                 trigger={
                   <Button variant="outline" size="sm" className="text-xs h-7 px-2 font-mono font-normal">
