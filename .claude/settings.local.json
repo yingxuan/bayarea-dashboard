@@ -20,7 +20,18 @@
       "Bash(taskkill:*)",
       "Bash(lsof:*)",
       "Bash(xargs:*)",
-      "Bash(fuser:*)"
+      "Bash(fuser:*)",
+      "Bash(vercel:*)",
+      "Bash(pnpm vercel:*)",
+      "Bash(python3:*)",
+      "Bash(sed:*)",
+      "Bash(npx neonctl@latest:*)",
+      "mcp__Neon__get_doc_resource",
+      "mcp__Neon__list_projects",
+      "mcp__Neon__get_connection_string",
+      "mcp__Neon__list_organizations",
+      "mcp__Neon__get_database_tables",
+      "mcp__Neon__run_sql"
     ]
   }
 }
