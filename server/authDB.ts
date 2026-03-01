@@ -15,8 +15,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const isVercel = process.env.VERCEL === "1";
-const dbPath = path.join(__dirname, "..", "cache.db");
-const db: Database.Database | null = isVercel ? null : new Database(dbPath);
+const hasPostgres = !!(
+  process.env.POSTGRES_URL ||
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL_UNPOOLED
+);
+// Use Postgres on Vercel when configured; fall back to SQLite otherwise
+const usePostgres = isVercel && hasPostgres;
+const dbPath = isVercel
+  ? "/tmp/auth.db"  // ephemeral fallback when no Postgres URL is set
+  : path.join(__dirname, "..", "cache.db");
+const db: Database.Database | null = usePostgres ? null : new Database(dbPath);
 
 if (db) {
   db.exec(`
@@ -129,7 +138,7 @@ export async function createUser(
   password: string,
   displayName?: string
 ): Promise<UserPublic> {
-  if (isVercel) return (await getPg()).createUser(email, password, displayName);
+  if (usePostgres) return (await getPg()).createUser(email, password, displayName);
   const passwordValidation = validatePassword(password);
   if (!passwordValidation.valid) {
     throw new Error(passwordValidation.error);
@@ -169,7 +178,7 @@ export async function verifyUser(
   email: string,
   password: string
 ): Promise<UserPublic | null> {
-  if (isVercel) return (await getPg()).verifyUser(email, password);
+  if (usePostgres) return (await getPg()).verifyUser(email, password);
   const normalizedEmail = email.toLowerCase().trim();
 
   const user = db!.prepare(`
@@ -199,7 +208,7 @@ export async function verifyUser(
 }
 
 export async function getUserById(id: string): Promise<UserPublic | null> {
-  if (isVercel) return (await getPg()).getUserById(id);
+  if (usePostgres) return (await getPg()).getUserById(id);
   const user = db!.prepare(`
     SELECT id, email, display_name, created_at
     FROM users WHERE id = ?
@@ -209,7 +218,7 @@ export async function getUserById(id: string): Promise<UserPublic | null> {
 }
 
 export async function getUserByEmail(email: string): Promise<UserPublic | null> {
-  if (isVercel) return (await getPg()).getUserByEmail(email);
+  if (usePostgres) return (await getPg()).getUserByEmail(email);
   const normalizedEmail = email.toLowerCase().trim();
   const user = db!.prepare(`
     SELECT id, email, display_name, created_at
@@ -221,7 +230,7 @@ export async function getUserByEmail(email: string): Promise<UserPublic | null> 
 
 // Holdings operations
 export async function getUserHoldings(userId: string): Promise<UserHolding[]> {
-  if (isVercel) return (await getPg()).getUserHoldings(userId);
+  if (usePostgres) return (await getPg()).getUserHoldings(userId);
   const holdings = db!.prepare(`
     SELECT id, user_id, ticker, shares, avg_cost, created_at, updated_at
     FROM user_holdings WHERE user_id = ?
@@ -237,7 +246,7 @@ export async function upsertHolding(
   shares: number,
   avgCost?: number
 ): Promise<UserHolding> {
-  if (isVercel) return (await getPg()).upsertHolding(userId, ticker, shares, avgCost);
+  if (usePostgres) return (await getPg()).upsertHolding(userId, ticker, shares, avgCost);
   const normalizedTicker = ticker.toUpperCase().trim();
   const now = Math.floor(Date.now() / 1000);
   const id = nanoid();
@@ -263,7 +272,7 @@ export async function upsertHolding(
 }
 
 export async function deleteHolding(userId: string, ticker: string): Promise<boolean> {
-  if (isVercel) return (await getPg()).deleteHolding(userId, ticker);
+  if (usePostgres) return (await getPg()).deleteHolding(userId, ticker);
   const normalizedTicker = ticker.toUpperCase().trim();
   const result = db!.prepare(`
     DELETE FROM user_holdings WHERE user_id = ? AND ticker = ?
@@ -276,7 +285,7 @@ export async function replaceAllHoldings(
   userId: string,
   holdings: Array<{ ticker: string; shares: number; avgCost?: number }>
 ): Promise<UserHolding[]> {
-  if (isVercel) return (await getPg()).replaceAllHoldings(userId, holdings);
+  if (usePostgres) return (await getPg()).replaceAllHoldings(userId, holdings);
   const now = Math.floor(Date.now() / 1000);
 
   // Use transaction for atomicity
@@ -312,7 +321,7 @@ export async function replaceAllHoldings(
 
 // Settings operations
 export async function getUserSettings(userId: string): Promise<UserSettings | null> {
-  if (isVercel) return (await getPg()).getUserSettings(userId);
+  if (usePostgres) return (await getPg()).getUserSettings(userId);
   const settings = db!.prepare(`
     SELECT user_id, ytd_baseline, updated_at
     FROM user_settings WHERE user_id = ?
@@ -325,7 +334,7 @@ export async function updateUserSettings(
   userId: string,
   updates: { ytdBaseline?: number | null }
 ): Promise<UserSettings> {
-  if (isVercel) return (await getPg()).updateUserSettings(userId, updates);
+  if (usePostgres) return (await getPg()).updateUserSettings(userId, updates);
   const now = Math.floor(Date.now() / 1000);
 
   // Ensure settings row exists
@@ -351,7 +360,7 @@ const RESET_TOKEN_EXPIRY_MINUTES = 30;
  * Returns the raw token (to be sent via email) or null if email not found.
  */
 export async function createPasswordResetToken(email: string): Promise<string | null> {
-  if (isVercel) return (await getPg()).createPasswordResetToken(email);
+  if (usePostgres) return (await getPg()).createPasswordResetToken(email);
   const normalizedEmail = email.toLowerCase().trim();
   const user = db!.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail) as { id: string } | undefined;
   if (!user) return null;
@@ -382,7 +391,7 @@ export async function createPasswordResetToken(email: string): Promise<string | 
  * Returns the user_id if valid, null otherwise.
  */
 export async function verifyPasswordResetToken(rawToken: string): Promise<string | null> {
-  if (isVercel) return (await getPg()).verifyPasswordResetToken(rawToken);
+  if (usePostgres) return (await getPg()).verifyPasswordResetToken(rawToken);
   const now = Math.floor(Date.now() / 1000);
 
   const tokens = db!.prepare(
@@ -405,7 +414,7 @@ export async function resetPasswordWithToken(
   rawToken: string,
   newPassword: string
 ): Promise<{ success: boolean; error?: string }> {
-  if (isVercel) return (await getPg()).resetPasswordWithToken(rawToken, newPassword);
+  if (usePostgres) return (await getPg()).resetPasswordWithToken(rawToken, newPassword);
   const passwordValidation = validatePassword(newPassword);
   if (!passwordValidation.valid) {
     return { success: false, error: passwordValidation.error };
