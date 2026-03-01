@@ -8,8 +8,6 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselPrevious,
-  CarouselNext,
 } from "@/components/ui/carousel";
 import ShowsCard from "@/components/ShowsCard";
 
@@ -80,19 +78,19 @@ export default function ShowsCarousel({ shows, offset = 0, onRefresh }: ShowsCar
 
   return (
     <div className="w-full">
-      {/* "换一批" button (header is now in SectionHeader) */}
-      {onRefresh && hasMore && (
-        <div className="mb-2 flex justify-end">
+      {/* Header with 换一批 button */}
+      <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-border/30">
+        <h3 className="text-[13px] font-mono font-medium text-foreground/70">追剧</h3>
+        {onRefresh && hasMore && (
           <button
             onClick={onRefresh}
             className="text-xs opacity-60 hover:opacity-100 transition-opacity font-mono font-normal px-2 py-0.5 rounded hover:bg-primary/10 border border-primary/20 hover:border-primary/40"
-            title="换一批"
           >
             换一批
           </button>
-        </div>
-      )}
-      
+        )}
+      </div>
+
       <div className="relative">
         <Carousel
           opts={{
@@ -102,11 +100,9 @@ export default function ShowsCarousel({ shows, offset = 0, onRefresh }: ShowsCar
           }}
           className="w-full"
         >
-          <CarouselPrevious className="hidden md:flex -left-12" />
-          <CarouselNext className="hidden md:flex -right-12" />
           <CarouselContent className="-ml-2 md:-ml-4 min-w-0">
             {displayShows.map((show) => (
-              <CarouselItem key={show.id} className="pl-2 md:pl-4 snap-start shrink-0 w-[70%] md:w-[25%] max-w-[280px] md:max-w-none min-w-0">
+              <CarouselItem key={show.id} className="pl-2 md:pl-4 snap-start shrink-0 w-[70%] md:w-[25%] min-w-0">
               <a
                 href={show.url}
                 target="_blank"

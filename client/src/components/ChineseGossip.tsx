@@ -10,9 +10,9 @@
  */
 
 import { useEffect, useState } from "react";
-import { ExternalLink as ExternalLinkIcon } from "lucide-react";
 import { useExternalLink } from "@/hooks/useExternalLink";
 import { config } from "@/config";
+import TimeAgo from "@/components/TimeAgo";
 
 interface GossipItem {
   title: string;
@@ -119,15 +119,10 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
 
   if (loading && !source1P3A) {
     return (
-      <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md">
-          <div className="animate-pulse">
-            <div className="h-6 bg-muted rounded w-1/3 mb-4"></div>
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-12 bg-muted rounded"></div>
-              ))}
-            </div>
-          </div>
+      <div className="space-y-2 py-1">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="h-7 animate-pulse bg-muted/40 rounded-sm" />
+        ))}
       </div>
     );
   }
@@ -143,20 +138,13 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
 
   if (!hasAnyData) {
     return (
-      <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md">
-        <div className="text-center">
-          <p className="text-xs opacity-60 text-muted-foreground font-mono font-normal">
-            暂时抓不到，点这里去看原帖
-          </p>
-        </div>
-      </div>
+      <div className="py-3 text-xs opacity-50 font-mono text-center">暂时抓不到</div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {/* All items merged, showing as "today's gossip" - 帖子列表（5条） */}
-        {allItems.length > 0 ? (
+    <div className="divide-y divide-border/20">
+      {allItems.length > 0 ? (
         allItems.map((item, index) => (
           <a
             key={`${item.url}-${index}`}
@@ -164,26 +152,20 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleExternalLinkClick}
-            className="block rounded-sm p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
+            className="flex items-baseline gap-3 py-2 px-1.5 hover:bg-muted/30 rounded-sm transition-colors group"
           >
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <h4 className="text-[13px] font-normal group-hover:text-primary transition-colors line-clamp-2 leading-tight">
-                  {item.title}
-                </h4>
-              </div>
-              <ExternalLinkIcon className="w-4 h-4 opacity-60 text-muted-foreground flex-shrink-0 group-hover:text-primary group-hover:opacity-100 transition-colors mt-0.5" />
-            </div>
+            {item.meta?.publishedAt && (
+              <span className="shrink-0">
+                <TimeAgo isoString={item.meta.publishedAt} />
+              </span>
+            )}
+            <span className="text-[12px] font-mono text-foreground/85 group-hover:text-primary transition-colors line-clamp-1 leading-tight min-w-0">
+              {item.title}
+            </span>
           </a>
         ))
       ) : (
-        <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md">
-          <div className="text-center">
-            <p className="text-xs opacity-60 text-muted-foreground font-mono font-normal">
-              暂时抓不到，点这里去看原帖
-            </p>
-          </div>
-        </div>
+        <div className="py-3 text-xs opacity-50 font-mono text-center">暂时抓不到</div>
       )}
     </div>
   );

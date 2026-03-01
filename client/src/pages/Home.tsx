@@ -312,7 +312,7 @@ export default function Home() {
             variants={fadeInUp}
           >
             <div className="mb-3 mt-1 flex items-center gap-2">
-              <div className="w-[2px] h-4 bg-primary rounded-full" />
+              <div className="w-[2px] h-4 bg-primary" />
               <h1 className="text-[15px] font-semibold font-mono leading-tight tracking-wide">
                 <span className="neon-text-blue">打工耽误赚钱</span>
               </h1>
@@ -377,9 +377,9 @@ export default function Home() {
             variants={fadeInUp}
           >
             <div className="mb-3 mt-1 flex items-center gap-2">
-              <div className="w-[2px] h-4 bg-amber-500 rounded-full" />
+              <div className="w-[2px] h-4 bg-amber-500" />
               <h1 className="text-[15px] font-semibold font-mono leading-tight tracking-wide">
-                <span className="neon-text-blue">民以食为天</span>
+                <span className="text-amber-400">民以食为天</span>
               </h1>
             </div>
 
@@ -402,17 +402,16 @@ export default function Home() {
             variants={fadeInUp}
           >
             <div className="mb-3 mt-1 flex items-center gap-2">
-              <div className="w-[2px] h-4 bg-violet-500 rounded-full" />
+              <div className="w-[2px] h-4 bg-violet-500" />
               <h1 className="text-[15px] font-semibold font-mono leading-tight tracking-wide">
-                <span className="neon-text-blue">追剧吃瓜薅羊毛</span>
+                <span className="text-violet-400">追剧吃瓜薅羊毛</span>
               </h1>
             </div>
 
             {/* 1) Horizontal carousel: 追剧 */}
             {shows.length > 0 && (
               <div className="w-full min-w-0 overflow-hidden">
-                <SectionHeader title="追剧" />
-                <ShowsCarousel 
+                <ShowsCarousel
                   shows={shows} 
                   offset={showsOffset}
                   onRefresh={() => {
@@ -452,51 +451,30 @@ export default function Home() {
                     </div>
                     <div className="border-b border-border/30"></div>
                   </div>
-                  <div className="flex-1 space-y-3">
-                    {deals.slice(0, 4).map((deal) => (
+                  <div className="flex-1 divide-y divide-border/20">
+                    {deals.slice(0, 5).map((deal) => (
                       <a
                         key={deal.id}
                         href={deal.external_url || deal.url || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={handleExternalLinkClick}
-                        className="block rounded-sm p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
+                        className="flex items-baseline gap-2 py-2 px-1.5 hover:bg-muted/30 rounded-sm transition-colors group"
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-baseline gap-1.5 mb-1 flex-wrap">
-                              <span className="text-[11px] text-muted-foreground/70 font-mono font-normal">
-                                {deal.sourceLabel || deal.source || deal.store || 'Deal'}
-                              </span>
-                              {deal.publishedAt && (
-                                <>
-                                  <span className="text-[11px] text-muted-foreground/60">•</span>
-                                  <TimeAgo isoString={deal.publishedAt} />
-                                </>
-                              )}
-                              {!deal.publishedAt && deal.time_ago && (
-                                <>
-                                  <span className="text-[11px] text-muted-foreground/60">•</span>
-                                  <span className="text-[11px] text-muted-foreground/70 font-mono font-normal">{deal.time_ago}</span>
-                                </>
-                              )}
-                              {deal.score !== undefined && deal.score > 0 && (
-                                <>
-                                  <span className="text-[11px] text-muted-foreground/60">•</span>
-                                  <span className="text-[11px] text-primary font-mono font-medium tabular-nums">↑{deal.score}</span>
-                                </>
-                              )}
-                            </div>
-                            <h4 className="text-[13px] font-normal group-hover:text-primary transition-colors line-clamp-2 flex-1 leading-tight">
-                              {deal.title}
-                            </h4>
-                            {deal.comments !== undefined && deal.comments > 0 && (
-                              <div className="mt-1.5 text-xs text-muted-foreground font-mono">
-                                💬 {deal.comments} 评论
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                        <span className="text-[11px] text-muted-foreground/55 font-mono shrink-0">
+                          {deal.sourceLabel || deal.source || deal.store || 'Deal'}
+                          {deal.publishedAt
+                            ? <> · <TimeAgo isoString={deal.publishedAt} /></>
+                            : deal.time_ago
+                              ? <> · {deal.time_ago}</>
+                              : null}
+                        </span>
+                        <span className="text-[12px] font-mono text-foreground/85 group-hover:text-primary transition-colors line-clamp-1 leading-tight min-w-0 flex-1">
+                          {deal.title}
+                        </span>
+                        {deal.score !== undefined && deal.score > 0 && (
+                          <span className="text-[11px] text-primary font-mono shrink-0 tabular-nums">↑{deal.score}</span>
+                        )}
                       </a>
                     ))}
                   </div>
@@ -510,16 +488,9 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-border py-6 mt-12">
         <div className="mx-auto w-full max-w-6xl px-4 md:px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground font-mono">
-            <div>
-              <span className="neon-text-blue font-bold">湾区华人每日生存与机会面板</span>
-              <span className="ml-2">| 每个section 10秒可扫完</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <span>数据每日更新</span>
-              <span>•</span>
-              <span>宁缺毋滥</span>
-            </div>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground/50 font-mono">
+            <span className="neon-text-blue font-semibold text-sm">湾区华人每日生存与机会面板</span>
+            <span>数据每日更新 · 宁缺毋滥</span>
           </div>
         </div>
       </footer>
