@@ -340,30 +340,27 @@ export default function Home() {
             {/* 2) 市场看点 (Market Highlights: 新闻/一亩三分地) */}
             <div className="w-full min-w-0">
               <SectionHeader title="市场看点" />
-              <div className="text-xs text-muted-foreground/70 mt-0.5 mb-2">
-                Market context · 用于校准风险感知
-              </div>
               <MarketHighlights marketNews={marketNews} />
             </div>
 
-            {/* 3) 美股博主 (独立整行，桌面4个，移动端carousel) */}
-            <div className="w-full min-w-0">
-              <USStockYouTubers 
-                stockYoutubers={stockYoutubers}
-                offset={stockYoutubersOffset}
-                onRefresh={() => {
-                  const VIDEOS_PER_BATCH = 4;
-                  setStockYoutubersOffset(prev => {
-                    const nextOffset = prev + VIDEOS_PER_BATCH;
-                    // Wrap around if we've reached the end
-                    return nextOffset >= stockYoutubers.length ? 0 : nextOffset;
-                  });
-                }}
-              />
-            </div>
-            {/* 4) 关于饭碗 (新 carousel) */}
-            <div className="w-full min-w-0">
-              <FanwanCarousel videos={fanwanVideos} />
+            {/* 3+4) 美股博主 + 关于饭碗：桌面并排，移动端各自全宽 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full min-w-0">
+              <div className="min-w-0 overflow-hidden">
+                <USStockYouTubers
+                  stockYoutubers={stockYoutubers}
+                  offset={stockYoutubersOffset}
+                  onRefresh={() => {
+                    const VIDEOS_PER_BATCH = 4;
+                    setStockYoutubersOffset(prev => {
+                      const nextOffset = prev + VIDEOS_PER_BATCH;
+                      return nextOffset >= stockYoutubers.length ? 0 : nextOffset;
+                    });
+                  }}
+                />
+              </div>
+              <div className="min-w-0 overflow-hidden">
+                <FanwanCarousel videos={fanwanVideos} />
+              </div>
             </div>
 
             {/* 5) 票子入口卡片 - 查看完整财务详情 */}

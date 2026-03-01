@@ -90,7 +90,7 @@ export default function MarketHighlights({ marketNews }: MarketHighlightsProps) 
   ];
 
   return (
-    <div className="space-y-2">
+    <div className="divide-y divide-border/20">
       {allItems.length > 0 ? (
         allItems.map((item) => (
           <a
@@ -99,31 +99,22 @@ export default function MarketHighlights({ marketNews }: MarketHighlightsProps) 
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleExternalLinkClick}
-            className="block rounded-sm p-4 bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
+            className="flex items-baseline gap-3 py-2 px-1.5 hover:bg-muted/30 rounded-sm transition-colors group"
           >
-            <div className="flex items-start gap-2">
-              <div className="flex items-baseline gap-1 flex-shrink-0">
-                <span className="text-[11px] text-muted-foreground/70 font-mono font-normal">
-                  {item.source}
-                </span>
-                {item.publishedAt && (
-                  <>
-                    <span className="text-[11px] text-muted-foreground/40">·</span>
-                    <TimeAgo isoString={item.publishedAt} />
-                  </>
-                )}
-              </div>
-              <span className="text-[13px] font-normal font-mono text-foreground/90 group-hover:text-primary transition-colors line-clamp-2 flex-1 leading-tight">
-                {item.title}
-              </span>
-            </div>
+            <span className="text-[11px] text-muted-foreground/55 font-mono shrink-0">
+              {item.source}
+              {item.publishedAt && (
+                <> · <TimeAgo isoString={item.publishedAt} /></>
+              )}
+            </span>
+            <span className="text-[12px] font-mono text-foreground/85 group-hover:text-primary transition-colors line-clamp-1 leading-tight min-w-0">
+              {item.title}
+            </span>
           </a>
         ))
       ) : (
-        <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md">
-          <div className="text-xs opacity-60 font-mono font-normal text-center py-2">
-            暂无内容
-          </div>
+        <div className="py-3 text-xs opacity-50 font-mono text-center">
+          暂无内容
         </div>
       )}
     </div>

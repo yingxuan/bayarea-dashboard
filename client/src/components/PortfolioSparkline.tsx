@@ -106,24 +106,16 @@ export default function PortfolioSparkline({
     };
   }, [data, currentValue, dailyChangePercent, width, height]);
 
-  // Mobile width adjustment
-  const mobileWidth = Math.max(140, Math.min(180, width * 0.7));
-
-  // Generate unique IDs for gradients to avoid conflicts (use useMemo to avoid re-renders)
-  const { gradientId, gradientIdMobile } = useMemo(() => {
-    const id = Math.random().toString(36).substring(7);
-    return {
-      gradientId: `sparkline-fill-${width}-${id}`,
-      gradientIdMobile: `sparkline-fill-mobile-${mobileWidth}-${id}`,
-    };
-  }, [width, mobileWidth]);
+  // Generate stable unique ID for gradient
+  const gradientId = useMemo(() => {
+    return `sparkline-fill-${Math.random().toString(36).substring(7)}`;
+  }, []);
 
   return (
     <div className="relative w-full">
       <svg
-        width={width}
+        width="100%"
         height={height}
-        className="hidden md:block"
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="none"
       >
@@ -133,46 +125,9 @@ export default function PortfolioSparkline({
             <stop offset="100%" stopColor={fillColor} stopOpacity="0.05" />
           </linearGradient>
         </defs>
-        {/* Area fill */}
-        <path
-          d={areaPathData}
-          fill={`url(#${gradientId})`}
-          stroke="none"
-        />
-        {/* Line */}
+        <path d={areaPathData} fill={`url(#${gradientId})`} stroke="none" />
         <path
           d={pathData}
-          fill="none"
-          stroke={color}
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-      
-      {/* Mobile version */}
-      <svg
-        width={mobileWidth}
-        height={height}
-        className="md:hidden"
-        viewBox={`0 0 ${mobileWidth} ${height}`}
-        preserveAspectRatio="none"
-      >
-        <defs>
-          <linearGradient id={gradientIdMobile} x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor={fillColor} stopOpacity="0.3" />
-            <stop offset="100%" stopColor={fillColor} stopOpacity="0.05" />
-          </linearGradient>
-        </defs>
-        {/* Area fill */}
-        <path
-          d={areaPathData.replace(new RegExp(`${width}`, 'g'), mobileWidth.toString())}
-          fill={`url(#${gradientIdMobile})`}
-          stroke="none"
-        />
-        {/* Line */}
-        <path
-          d={pathData.replace(new RegExp(`${width}`, 'g'), mobileWidth.toString())}
           fill="none"
           stroke={color}
           strokeWidth="1.5"

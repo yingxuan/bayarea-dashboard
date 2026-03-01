@@ -272,62 +272,60 @@ export default function PortfolioHero({
               </span>
             </div>
             {/* Daily Change（M级，加粗，单独一行） */}
-            <div className="space-y-1 mb-1.5 text-[14px]">
+            <div className="space-y-1 mb-1.5">
+              {/* 今日：% 优先，$ 次要 */}
               <div className="flex items-baseline gap-2">
-                <span className="text-xs font-mono text-muted-foreground">Today:</span>
+                <span className="text-xs font-mono text-muted-foreground">今日</span>
                 <span
-                  className={`font-mono tabular-nums ${
-                    portfolioMetrics.dailyChangeAmount >= 0 ? "text-green-500/70" : "text-red-500/70"
+                  className={`text-[14px] font-medium font-mono tabular-nums ${
+                    portfolioMetrics.dailyChangePercent >= 0 ? "text-green-500" : "text-red-500"
+                  }`}
+                >
+                  {portfolioMetrics.dailyChangePercent >= 0 ? "+" : ""}
+                  {portfolioMetrics.dailyChangePercent.toFixed(2)}%
+                </span>
+                <span
+                  className={`text-xs font-mono tabular-nums opacity-60 ${
+                    portfolioMetrics.dailyChangePercent >= 0 ? "text-green-500" : "text-red-500"
                   }`}
                 >
                   {portfolioMetrics.dailyChangeAmount >= 0 ? "+" : "-"}
                   ${Math.abs(portfolioMetrics.dailyChangeAmount).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
+                    maximumFractionDigits: 0,
                   })}
                 </span>
-                <span
-                  className={`font-mono tabular-nums ${
-                    portfolioMetrics.dailyChangePercent >= 0 ? "text-green-500/70" : "text-red-500/70"
-                  }`}
-                >
-                  (
-                  {portfolioMetrics.dailyChangePercent >= 0 ? "+" : ""}
-                  {portfolioMetrics.dailyChangePercent.toFixed(2)}%)
-                </span>
               </div>
+              {/* 年内：整体降权 */}
               <div className="flex items-baseline gap-2">
-                <span className="text-xs font-mono text-muted-foreground">YTD:</span>
+                <span className="text-xs font-mono text-muted-foreground/50">年内</span>
                 {portfolioMetrics.ytdChangeAmount !== null && portfolioMetrics.ytdPercent !== null ? (
                   <>
                     <span
-                      className={`font-mono tabular-nums ${
-                        portfolioMetrics.ytdChangeAmount >= 0 ? "text-green-500/70" : "text-red-500/70"
+                      className={`text-xs font-mono tabular-nums opacity-70 ${
+                        portfolioMetrics.ytdPercent >= 0 ? "text-green-500" : "text-red-500"
+                      }`}
+                    >
+                      {portfolioMetrics.ytdPercent >= 0 ? "+" : ""}
+                      {portfolioMetrics.ytdPercent.toFixed(2)}%
+                    </span>
+                    <span
+                      className={`text-[11px] font-mono tabular-nums opacity-50 ${
+                        portfolioMetrics.ytdPercent >= 0 ? "text-green-500" : "text-red-500"
                       }`}
                     >
                       {portfolioMetrics.ytdChangeAmount >= 0 ? "+" : "-"}
                       ${Math.abs(portfolioMetrics.ytdChangeAmount).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
+                        maximumFractionDigits: 0,
                       })}
-                    </span>
-                    <span
-                      className={`font-mono tabular-nums ${
-                        portfolioMetrics.ytdPercent >= 0 ? "text-green-500/70" : "text-red-500/70"
-                      }`}
-                    >
-                      (
-                      {portfolioMetrics.ytdPercent >= 0 ? "+" : ""}
-                      {portfolioMetrics.ytdPercent.toFixed(2)}%)
                     </span>
                   </>
                 ) : (
-                  <span className="text-xs opacity-60 font-mono">未配置</span>
+                  <span className="text-xs opacity-40 font-mono">未配置</span>
                 )}
               </div>
             </div>
-            {/* Sparkline - 垂直居中对齐到数字块 */}
-            <div className="w-full -mx-2 md:-mx-3 mt-0.5 flex items-center">
+            {/* Sparkline - 全宽填充 */}
+            <div className="w-full mt-1">
               <PortfolioSparkline
                 data={valueSeries}
                 currentValue={portfolioMetrics.portfolioValue}

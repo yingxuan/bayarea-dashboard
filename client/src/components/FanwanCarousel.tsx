@@ -2,8 +2,6 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
 } from "@/components/ui/carousel";
 import TimeAgo from "@/components/TimeAgo";
 
@@ -47,13 +45,11 @@ export default function FanwanCarousel({ videos }: Props) {
             }}
             className="w-full"
           >
-            <CarouselPrevious className="hidden md:flex -left-12" />
-            <CarouselNext className="hidden md:flex -right-12" />
-            <CarouselContent className="-ml-2 md:-ml-4">
+            <CarouselContent className="-ml-2 md:-ml-3">
               {display.map((item) => (
                 <CarouselItem
                   key={item.videoId}
-                  className="pl-2 md:pl-4 snap-start shrink-0 w-[70%] md:w-[25%] max-w-[280px] md:max-w-none min-w-0"
+                  className="pl-2 md:pl-3 snap-start shrink-0 w-[70%] md:w-[46%] min-w-0"
                 >
                   <a
                     href={item.url}
