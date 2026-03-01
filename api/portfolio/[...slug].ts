@@ -13,8 +13,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   setCorsHeaders(res, req);
   if (handleOptions(req, res)) return;
 
-  const slug = (req.query.slug as string[]) || [];
-  const action = slug[0];
+  const pathname = (typeof req.url === "string" ? req.url : "").split("?")[0] || "";
+  const action = pathname.replace(/^\/api\/portfolio\/?/, "").trim()
+    || (Array.isArray(req.query.slug) ? req.query.slug[0] : req.query.slug)
+    || "";
 
   switch (action) {
     case 'holdings':
