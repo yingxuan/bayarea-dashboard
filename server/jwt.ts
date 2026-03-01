@@ -106,18 +106,24 @@ export const REFRESH_TOKEN_COOKIE = "refresh_token";
 
 /**
  * Get cookie header string for setting tokens
+ * When COOKIE_SAME_SITE_NONE=1 (e.g. frontend on manus.space, API on vercel.app),
+ * use SameSite=None so cookies are sent on cross-origin requests.
  */
 export function getSetCookieHeaders(
   accessToken: string,
   refreshToken: string
 ): string[] {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  const sameSite =
+    process.env.NODE_ENV === "production" && process.env.COOKIE_SAME_SITE_NONE === "1"
+      ? "SameSite=None"
+      : "SameSite=Lax";
 
   // Access token: 15 minutes max-age
-  const accessCookie = `${ACCESS_TOKEN_COOKIE}=${accessToken}; HttpOnly; SameSite=Lax; Path=/${secure}; Max-Age=900`;
+  const accessCookie = `${ACCESS_TOKEN_COOKIE}=${accessToken}; HttpOnly; ${sameSite}; Path=/${secure}; Max-Age=900`;
 
   // Refresh token: 7 days max-age
-  const refreshCookie = `${REFRESH_TOKEN_COOKIE}=${refreshToken}; HttpOnly; SameSite=Lax; Path=/${secure}; Max-Age=604800`;
+  const refreshCookie = `${REFRESH_TOKEN_COOKIE}=${refreshToken}; HttpOnly; ${sameSite}; Path=/${secure}; Max-Age=604800`;
 
   return [accessCookie, refreshCookie];
 }
@@ -127,10 +133,14 @@ export function getSetCookieHeaders(
  */
 export function getClearCookieHeaders(): string[] {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  const sameSite =
+    process.env.NODE_ENV === "production" && process.env.COOKIE_SAME_SITE_NONE === "1"
+      ? "SameSite=None"
+      : "SameSite=Lax";
 
   return [
-    `${ACCESS_TOKEN_COOKIE}=; HttpOnly; SameSite=Lax; Path=/${secure}; Max-Age=0`,
-    `${REFRESH_TOKEN_COOKIE}=; HttpOnly; SameSite=Lax; Path=/${secure}; Max-Age=0`,
+    `${ACCESS_TOKEN_COOKIE}=; HttpOnly; ${sameSite}; Path=/${secure}; Max-Age=0`,
+    `${REFRESH_TOKEN_COOKIE}=; HttpOnly; ${sameSite}; Path=/${secure}; Max-Age=0`,
   ];
 }
 

@@ -1,6 +1,8 @@
 /**
  * Authentication Database Module
- * Manages users, holdings, and settings tables
+ * Manages users, holdings, and settings tables.
+ * On Vercel (VERCEL=1) uses Neon Postgres when POSTGRES_URL or DATABASE_URL is set.
+ * Locally uses SQLite (cache.db).
  */
 
 import Database from "better-sqlite3";
@@ -12,12 +14,12 @@ import { nanoid } from "nanoid";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const isVercel = process.env.VERCEL === '1';
-const dbPath = isVercel ? '/tmp/cache.db' : path.join(__dirname, "..", "cache.db");
-const db = new Database(dbPath);
+const isVercel = process.env.VERCEL === "1";
+const dbPath = path.join(__dirname, "..", "cache.db");
+const db: Database.Database | null = isVercel ? null : new Database(dbPath);
 
-// Initialize auth tables
-db.exec(`
+if (db) {
+  db.exec(`
   -- Users table
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
@@ -64,6 +66,7 @@ db.exec(`
     updated_at INTEGER DEFAULT (strftime('%s','now'))
   );
 `);
+}
 
 // Types
 export interface User {
@@ -113,12 +116,20 @@ export function validatePassword(password: string): { valid: boolean; error?: st
   return { valid: true };
 }
 
+// Lazy-load Postgres implementation on Vercel
+let pgImpl: typeof import("./authDBPostgres.js") | null = null;
+async function getPg() {
+  if (!pgImpl) pgImpl = await import("./authDBPostgres.js");
+  return pgImpl;
+}
+
 // User operations
 export async function createUser(
   email: string,
   password: string,
   displayName?: string
 ): Promise<UserPublic> {
+  if (isVercel) return (await getPg()).createUser(email, password, displayName);
   const passwordValidation = validatePassword(password);
   if (!passwordValidation.valid) {
     throw new Error(passwordValidation.error);
@@ -127,7 +138,7 @@ export async function createUser(
   const normalizedEmail = email.toLowerCase().trim();
 
   // Check if user exists
-  const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail);
+  const existing = db!.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail);
   if (existing) {
     throw new Error("该邮箱已被注册");
   }
@@ -136,7 +147,7 @@ export async function createUser(
   const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
   const now = Math.floor(Date.now() / 1000);
 
-  const stmt = db.prepare(`
+  const stmt = db!.prepare(`
     INSERT INTO users (id, email, password_hash, display_name, created_at)
     VALUES (?, ?, ?, ?, ?)
   `);
@@ -144,7 +155,7 @@ export async function createUser(
   stmt.run(id, normalizedEmail, passwordHash, displayName || null, now);
 
   // Initialize user settings
-  db.prepare("INSERT INTO user_settings (user_id) VALUES (?)").run(id);
+  db!.prepare("INSERT INTO user_settings (user_id) VALUES (?)").run(id);
 
   return {
     id,
@@ -158,9 +169,10 @@ export async function verifyUser(
   email: string,
   password: string
 ): Promise<UserPublic | null> {
+  if (isVercel) return (await getPg()).verifyUser(email, password);
   const normalizedEmail = email.toLowerCase().trim();
 
-  const user = db.prepare(`
+  const user = db!.prepare(`
     SELECT id, email, password_hash, display_name, created_at
     FROM users WHERE email = ?
   `).get(normalizedEmail) as User | undefined;
@@ -176,7 +188,7 @@ export async function verifyUser(
 
   // Update last login
   const now = Math.floor(Date.now() / 1000);
-  db.prepare("UPDATE users SET last_login_at = ? WHERE id = ?").run(now, user.id);
+  db!.prepare("UPDATE users SET last_login_at = ? WHERE id = ?").run(now, user.id);
 
   return {
     id: user.id,
@@ -186,8 +198,9 @@ export async function verifyUser(
   };
 }
 
-export function getUserById(id: string): UserPublic | null {
-  const user = db.prepare(`
+export async function getUserById(id: string): Promise<UserPublic | null> {
+  if (isVercel) return (await getPg()).getUserById(id);
+  const user = db!.prepare(`
     SELECT id, email, display_name, created_at
     FROM users WHERE id = ?
   `).get(id) as UserPublic | undefined;
@@ -195,9 +208,10 @@ export function getUserById(id: string): UserPublic | null {
   return user || null;
 }
 
-export function getUserByEmail(email: string): UserPublic | null {
+export async function getUserByEmail(email: string): Promise<UserPublic | null> {
+  if (isVercel) return (await getPg()).getUserByEmail(email);
   const normalizedEmail = email.toLowerCase().trim();
-  const user = db.prepare(`
+  const user = db!.prepare(`
     SELECT id, email, display_name, created_at
     FROM users WHERE email = ?
   `).get(normalizedEmail) as UserPublic | undefined;
@@ -206,8 +220,9 @@ export function getUserByEmail(email: string): UserPublic | null {
 }
 
 // Holdings operations
-export function getUserHoldings(userId: string): UserHolding[] {
-  const holdings = db.prepare(`
+export async function getUserHoldings(userId: string): Promise<UserHolding[]> {
+  if (isVercel) return (await getPg()).getUserHoldings(userId);
+  const holdings = db!.prepare(`
     SELECT id, user_id, ticker, shares, avg_cost, created_at, updated_at
     FROM user_holdings WHERE user_id = ?
     ORDER BY ticker ASC
@@ -216,17 +231,18 @@ export function getUserHoldings(userId: string): UserHolding[] {
   return holdings;
 }
 
-export function upsertHolding(
+export async function upsertHolding(
   userId: string,
   ticker: string,
   shares: number,
   avgCost?: number
-): UserHolding {
+): Promise<UserHolding> {
+  if (isVercel) return (await getPg()).upsertHolding(userId, ticker, shares, avgCost);
   const normalizedTicker = ticker.toUpperCase().trim();
   const now = Math.floor(Date.now() / 1000);
   const id = nanoid();
 
-  const stmt = db.prepare(`
+  const stmt = db!.prepare(`
     INSERT INTO user_holdings (id, user_id, ticker, shares, avg_cost, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(user_id, ticker) DO UPDATE SET
@@ -238,7 +254,7 @@ export function upsertHolding(
   stmt.run(id, userId, normalizedTicker, shares, avgCost ?? null, now, now);
 
   // Return the holding (either inserted or updated)
-  const holding = db.prepare(`
+  const holding = db!.prepare(`
     SELECT id, user_id, ticker, shares, avg_cost, created_at, updated_at
     FROM user_holdings WHERE user_id = ? AND ticker = ?
   `).get(userId, normalizedTicker) as UserHolding;
@@ -246,28 +262,30 @@ export function upsertHolding(
   return holding;
 }
 
-export function deleteHolding(userId: string, ticker: string): boolean {
+export async function deleteHolding(userId: string, ticker: string): Promise<boolean> {
+  if (isVercel) return (await getPg()).deleteHolding(userId, ticker);
   const normalizedTicker = ticker.toUpperCase().trim();
-  const result = db.prepare(`
+  const result = db!.prepare(`
     DELETE FROM user_holdings WHERE user_id = ? AND ticker = ?
   `).run(userId, normalizedTicker);
 
   return result.changes > 0;
 }
 
-export function replaceAllHoldings(
+export async function replaceAllHoldings(
   userId: string,
   holdings: Array<{ ticker: string; shares: number; avgCost?: number }>
-): UserHolding[] {
+): Promise<UserHolding[]> {
+  if (isVercel) return (await getPg()).replaceAllHoldings(userId, holdings);
   const now = Math.floor(Date.now() / 1000);
 
   // Use transaction for atomicity
-  const transaction = db.transaction(() => {
+  const transaction = db!.transaction(() => {
     // Delete all existing holdings
-    db.prepare("DELETE FROM user_holdings WHERE user_id = ?").run(userId);
+    db!.prepare("DELETE FROM user_holdings WHERE user_id = ?").run(userId);
 
     // Insert new holdings
-    const insertStmt = db.prepare(`
+    const insertStmt = db!.prepare(`
       INSERT INTO user_holdings (id, user_id, ticker, shares, avg_cost, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
@@ -293,8 +311,9 @@ export function replaceAllHoldings(
 }
 
 // Settings operations
-export function getUserSettings(userId: string): UserSettings | null {
-  const settings = db.prepare(`
+export async function getUserSettings(userId: string): Promise<UserSettings | null> {
+  if (isVercel) return (await getPg()).getUserSettings(userId);
+  const settings = db!.prepare(`
     SELECT user_id, ytd_baseline, updated_at
     FROM user_settings WHERE user_id = ?
   `).get(userId) as UserSettings | undefined;
@@ -302,24 +321,25 @@ export function getUserSettings(userId: string): UserSettings | null {
   return settings || null;
 }
 
-export function updateUserSettings(
+export async function updateUserSettings(
   userId: string,
   updates: { ytdBaseline?: number | null }
-): UserSettings {
+): Promise<UserSettings> {
+  if (isVercel) return (await getPg()).updateUserSettings(userId, updates);
   const now = Math.floor(Date.now() / 1000);
 
   // Ensure settings row exists
-  db.prepare(`
+  db!.prepare(`
     INSERT OR IGNORE INTO user_settings (user_id) VALUES (?)
   `).run(userId);
 
   if (updates.ytdBaseline !== undefined) {
-    db.prepare(`
+    db!.prepare(`
       UPDATE user_settings SET ytd_baseline = ?, updated_at = ? WHERE user_id = ?
     `).run(updates.ytdBaseline, now, userId);
   }
 
-  return getUserSettings(userId)!;
+  return (await getUserSettings(userId))!;
 }
 
 // Password reset operations
@@ -331,8 +351,9 @@ const RESET_TOKEN_EXPIRY_MINUTES = 30;
  * Returns the raw token (to be sent via email) or null if email not found.
  */
 export async function createPasswordResetToken(email: string): Promise<string | null> {
+  if (isVercel) return (await getPg()).createPasswordResetToken(email);
   const normalizedEmail = email.toLowerCase().trim();
-  const user = db.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail) as { id: string } | undefined;
+  const user = db!.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail) as { id: string } | undefined;
   if (!user) return null;
 
   const rawToken = nanoid(32);
@@ -341,13 +362,13 @@ export async function createPasswordResetToken(email: string): Promise<string | 
   const now = Math.floor(Date.now() / 1000);
   const expiresAt = now + RESET_TOKEN_EXPIRY_MINUTES * 60;
 
-  const transaction = db.transaction(() => {
+  const transaction = db!.transaction(() => {
     // Invalidate existing unused tokens for this user
-    db.prepare(
+    db!.prepare(
       "UPDATE password_reset_tokens SET used_at = ? WHERE user_id = ? AND used_at IS NULL"
     ).run(now, user.id);
 
-    db.prepare(
+    db!.prepare(
       "INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)"
     ).run(id, user.id, tokenHash, expiresAt, now);
   });
@@ -361,9 +382,10 @@ export async function createPasswordResetToken(email: string): Promise<string | 
  * Returns the user_id if valid, null otherwise.
  */
 export async function verifyPasswordResetToken(rawToken: string): Promise<string | null> {
+  if (isVercel) return (await getPg()).verifyPasswordResetToken(rawToken);
   const now = Math.floor(Date.now() / 1000);
 
-  const tokens = db.prepare(
+  const tokens = db!.prepare(
     "SELECT id, user_id, token_hash, expires_at FROM password_reset_tokens WHERE used_at IS NULL AND expires_at > ? ORDER BY created_at DESC"
   ).all(now) as Array<{ id: string; user_id: string; token_hash: string; expires_at: number }>;
 
@@ -383,6 +405,7 @@ export async function resetPasswordWithToken(
   rawToken: string,
   newPassword: string
 ): Promise<{ success: boolean; error?: string }> {
+  if (isVercel) return (await getPg()).resetPasswordWithToken(rawToken, newPassword);
   const passwordValidation = validatePassword(newPassword);
   if (!passwordValidation.valid) {
     return { success: false, error: passwordValidation.error };
@@ -390,7 +413,7 @@ export async function resetPasswordWithToken(
 
   const now = Math.floor(Date.now() / 1000);
 
-  const tokens = db.prepare(
+  const tokens = db!.prepare(
     "SELECT id, user_id, token_hash FROM password_reset_tokens WHERE used_at IS NULL AND expires_at > ? ORDER BY created_at DESC"
   ).all(now) as Array<{ id: string; user_id: string; token_hash: string }>;
 
@@ -409,14 +432,14 @@ export async function resetPasswordWithToken(
 
   const newHash = await bcrypt.hash(newPassword, BCRYPT_COST);
 
-  const transaction = db.transaction(() => {
-    db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(newHash, matchedToken!.user_id);
-    db.prepare("UPDATE password_reset_tokens SET used_at = ? WHERE id = ?").run(now, matchedToken!.id);
+  const transaction = db!.transaction(() => {
+    db!.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(newHash, matchedToken!.user_id);
+    db!.prepare("UPDATE password_reset_tokens SET used_at = ? WHERE id = ?").run(now, matchedToken!.id);
   });
 
   transaction();
   return { success: true };
 }
 
-// Export database for direct access if needed
-export { db as authDb };
+// Export database for direct access if needed (null on Vercel)
+export const authDb = db;

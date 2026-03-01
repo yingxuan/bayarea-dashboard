@@ -59,7 +59,7 @@ pnpm test:wenxuecity      # Run specific test file
 - **Runtime**: Express server on port 3001 (dev), serves API routes
 - **Vercel Functions**: API routes in `api/` are deployed as serverless functions
 - **Local Dev**: `server/local-api-adapter.ts` wraps Vercel functions for local Express server
-- **Caching**: SQLite file-based cache (`cache.db`), Vercel KV for production
+- **Caching**: SQLite file-based cache (`cache.db`), Vercel KV for production. Auth users: SQLite locally, **Neon Postgres on Vercel** when `POSTGRES_URL` or `DATABASE_URL` is set (add Neon from Vercel Marketplace).
 - **Rewrites**: `vercel.json` consolidates multiple API handlers into `market-all.ts`
 
 ### Data Flow

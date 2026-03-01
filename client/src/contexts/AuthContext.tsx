@@ -26,6 +26,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (email: string, password: string, displayName?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  /** Call when server returns 401 to clear local session (e.g. token expired) */
+  invalidateSession: () => void;
   refreshUser: () => Promise<void>;
   forgotPassword: (email: string) => Promise<{ success: boolean; error?: string; message?: string }>;
   resetPassword: (token: string, password: string) => Promise<{ success: boolean; error?: string; message?: string }>;
@@ -143,6 +145,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
+  /** Clear local session without calling logout API (e.g. after 401) */
+  const invalidateSession = useCallback(() => {
+    setUser(null);
+  }, []);
+
   const refreshUser = useCallback(async () => {
     await checkAuth();
   }, [checkAuth]);
@@ -203,11 +210,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       login,
       register,
       logout,
+      invalidateSession,
       refreshUser,
       forgotPassword,
       resetPassword,
     }),
-    [user, isLoading, login, register, logout, refreshUser, forgotPassword, resetPassword]
+    [user, isLoading, login, register, logout, invalidateSession, refreshUser, forgotPassword, resetPassword]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

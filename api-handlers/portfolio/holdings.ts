@@ -39,7 +39,7 @@ export async function handleGetHoldings(
   if (!user) return;
 
   try {
-    const holdings = getUserHoldings(user.id);
+    const holdings = await getUserHoldings(user.id);
     res.status(200).json({
       success: true,
       holdings: holdings.map(formatHolding),
@@ -85,7 +85,7 @@ export async function handleUpdateHoldings(
   }
 
   try {
-    const holdings = replaceAllHoldings(user.id, body.holdings);
+    const holdings = await replaceAllHoldings(user.id, body.holdings);
     res.status(200).json({
       success: true,
       holdings: holdings.map(formatHolding),

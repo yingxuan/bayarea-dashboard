@@ -39,7 +39,7 @@ function expressToVercel(req: Request, res: Response) {
         res.status(code).end();
       },
     }),
-    setHeader: (name: string, value: string) => {
+    setHeader: (name: string, value: string | string[]) => {
       res.setHeader(name, value);
     },
     json: (data: any) => {

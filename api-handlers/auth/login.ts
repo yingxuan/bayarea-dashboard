@@ -45,11 +45,8 @@ export async function handleLogin(
     // Generate tokens
     const { accessToken, refreshToken } = await generateTokenPair(user.id, user.email);
 
-    // Set cookies
-    const cookieHeaders = getSetCookieHeaders(accessToken, refreshToken);
-    for (const cookie of cookieHeaders) {
-      res.setHeader("Set-Cookie", cookie);
-    }
+    // Set both cookies at once (array form prevents the last-write-wins overwrite bug)
+    res.setHeader("Set-Cookie", getSetCookieHeaders(accessToken, refreshToken));
 
     res.status(200).json({
       success: true,

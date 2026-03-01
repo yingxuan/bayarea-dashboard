@@ -42,7 +42,7 @@ export async function authenticateRequest(req: VercelRequest): Promise<AuthResul
   if (accessToken) {
     const payload = await verifyToken(accessToken);
     if (payload && payload.type === "access") {
-      const user = getUserById(payload.userId);
+      const user = await getUserById(payload.userId);
       if (user) {
         return {
           user: {
@@ -59,7 +59,7 @@ export async function authenticateRequest(req: VercelRequest): Promise<AuthResul
   if (refreshToken) {
     const payload = await verifyToken(refreshToken);
     if (payload && payload.type === "refresh") {
-      const user = getUserById(payload.userId);
+      const user = await getUserById(payload.userId);
       if (user) {
         // Generate new token pair
         const newTokens = await generateTokenPair(user.id, user.email);
@@ -93,15 +93,12 @@ export async function requireAuth(
     return null;
   }
 
-  // Set new tokens if refreshed
+  // Set new tokens if refreshed (array form prevents the last-write-wins overwrite bug)
   if (result.newTokens) {
-    const cookieHeaders = getSetCookieHeaders(
-      result.newTokens.accessToken,
-      result.newTokens.refreshToken
+    res.setHeader(
+      "Set-Cookie",
+      getSetCookieHeaders(result.newTokens.accessToken, result.newTokens.refreshToken)
     );
-    for (const cookie of cookieHeaders) {
-      res.setHeader("Set-Cookie", cookie);
-    }
   }
 
   return result.user;
@@ -117,15 +114,12 @@ export async function getCurrentUser(
 ): Promise<AuthenticatedUser | null> {
   const result = await authenticateRequest(req);
 
-  // Set new tokens if refreshed
+  // Set new tokens if refreshed (array form prevents the last-write-wins overwrite bug)
   if (result.newTokens) {
-    const cookieHeaders = getSetCookieHeaders(
-      result.newTokens.accessToken,
-      result.newTokens.refreshToken
+    res.setHeader(
+      "Set-Cookie",
+      getSetCookieHeaders(result.newTokens.accessToken, result.newTokens.refreshToken)
     );
-    for (const cookie of cookieHeaders) {
-      res.setHeader("Set-Cookie", cookie);
-    }
   }
 
   return result.user;

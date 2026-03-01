@@ -20,7 +20,7 @@ export async function handleGetSettings(
   if (!user) return;
 
   try {
-    const settings = getUserSettings(user.id);
+    const settings = await getUserSettings(user.id);
     res.status(200).json({
       success: true,
       settings: {
@@ -51,7 +51,7 @@ export async function handleUpdateSettings(
   }
 
   try {
-    const settings = updateUserSettings(user.id, {
+    const settings = await updateUserSettings(user.id, {
       ytdBaseline: body.ytdBaseline,
     });
     res.status(200).json({

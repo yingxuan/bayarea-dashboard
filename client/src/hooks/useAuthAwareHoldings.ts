@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./useAuth";
 import { config } from "@/config";
 import { traceHoldingsWrite } from "@/utils/holdingsTracer";
+import { toast } from "sonner";
 
 export interface Holding {
   id: string;
@@ -43,7 +44,7 @@ function validateHolding(holding: Partial<Holding>): { valid: boolean; error?: s
 }
 
 export function useAuthAwareHoldings() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, refreshUser, invalidateSession } = useAuth();
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [ytdBaseline, setYtdBaseline] = useState<number | null>(null);
@@ -132,7 +133,7 @@ export function useAuthAwareHoldings() {
         setHoldings(newHoldings); // Optimistic update
         setIsSyncing(true);
         try {
-          const response = await fetch(`${config.apiBaseUrl}/api/portfolio/holdings`, {
+          let response = await fetch(`${config.apiBaseUrl}/api/portfolio/holdings`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -149,6 +150,45 @@ export function useAuthAwareHoldings() {
               }),
             }),
           });
+
+          // On 401: try refresh then retry once; if still 401, save to local and invalidate session
+          if (response.status === 401) {
+            await refreshUser();
+            response = await fetch(`${config.apiBaseUrl}/api/portfolio/holdings`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                holdings: newHoldings.map((h) => {
+                  const payload: { ticker: string; shares: number; avgCost?: number } = {
+                    ticker: h.ticker,
+                    shares: h.shares,
+                  };
+                  if (typeof h.avgCost === "number" && h.avgCost >= 0) {
+                    payload.avgCost = h.avgCost;
+                  }
+                  return payload;
+                }),
+              }),
+            });
+          }
+
+          if (response.status === 401) {
+            // Session invalid; save to localStorage and clear auth so UI updates
+            invalidateSession();
+            setHoldings(newHoldings);
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(newHoldings));
+              traceHoldingsWrite("save_after_401", newHoldings);
+            } catch {
+              // ignore
+            }
+            setIsSyncing(false);
+            toast.info(
+              "登录已过期，持仓已保存到本地，重新登录后可同步到云端"
+            );
+            return;
+          }
 
           if (response.ok) {
             const data = await response.json();
@@ -193,7 +233,7 @@ export function useAuthAwareHoldings() {
         return Promise.resolve();
       }
     },
-    [isAuthenticated, holdings]
+    [isAuthenticated, holdings, refreshUser, invalidateSession]
   );
 
   // Individual holding operations

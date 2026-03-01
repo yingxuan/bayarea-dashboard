@@ -15,11 +15,8 @@ export async function handleLogout(
     return;
   }
 
-  // Clear cookies
-  const cookieHeaders = getClearCookieHeaders();
-  for (const cookie of cookieHeaders) {
-    res.setHeader("Set-Cookie", cookie);
-  }
+  // Clear both cookies at once (array form prevents the last-write-wins overwrite bug)
+  res.setHeader("Set-Cookie", getClearCookieHeaders());
 
   res.status(200).json({ success: true });
 }

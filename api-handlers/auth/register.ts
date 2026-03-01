@@ -42,17 +42,22 @@ export async function handleRegister(
     return;
   }
 
+  // Validate JWT config before touching the DB — prevents orphaned user records
+  try {
+    await generateTokenPair("__validate__", "__validate__@__validate__");
+  } catch {
+    res.status(500).json({ error: "服务器配置错误：JWT_SECRET 未正确设置，请联系管理员" });
+    return;
+  }
+
   try {
     const user = await createUser(body.email, body.password, body.displayName);
 
     // Generate tokens
     const { accessToken, refreshToken } = await generateTokenPair(user.id, user.email);
 
-    // Set cookies
-    const cookieHeaders = getSetCookieHeaders(accessToken, refreshToken);
-    for (const cookie of cookieHeaders) {
-      res.setHeader("Set-Cookie", cookie);
-    }
+    // Set both cookies at once (array form prevents the last-write-wins overwrite bug)
+    res.setHeader("Set-Cookie", getSetCookieHeaders(accessToken, refreshToken));
 
     res.status(201).json({
       success: true,
