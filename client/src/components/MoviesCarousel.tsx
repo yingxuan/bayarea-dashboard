@@ -45,20 +45,20 @@ export default function MoviesCarousel({ movies }: MoviesCarouselProps) {
         }}
         className="w-full"
       >
-        <CarouselContent className="-ml-2 md:-ml-3">
+        <CarouselContent className="-ml-2">
           {movies.map((movie) => (
             <CarouselItem
               key={movie.id}
-              className="pl-2 md:pl-3 basis-[30%] md:basis-[18%] shrink-0"
+              className="pl-2 basis-[22%] md:basis-[11%] shrink-0"
             >
               <a
                 href={movie.fandango_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block rounded-sm overflow-hidden bg-card border border-border/40 shadow-md hover:bg-card/80 transition-all group"
+                className="block rounded-sm overflow-hidden bg-card border border-border/40 shadow-md hover:opacity-80 transition-opacity group"
               >
-                {/* Portrait poster 2:3 */}
-                <div className="relative w-full aspect-[2/3] bg-muted overflow-hidden">
+                {/* Fixed-height poster */}
+                <div className="relative w-full h-[120px] md:h-[130px] bg-muted overflow-hidden">
                   {movie.poster_url ? (
                     <img
                       src={movie.poster_url}
@@ -70,17 +70,17 @@ export default function MoviesCarousel({ movies }: MoviesCarouselProps) {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-muted-foreground/40">
-                      <Film className="w-6 h-6" />
+                      <Film className="w-5 h-5" />
                     </div>
                   )}
                 </div>
-                {/* Title + rating below poster */}
-                <div className="px-1.5 py-1">
-                  <p className="text-[11px] font-medium text-foreground/90 line-clamp-2 leading-tight mb-0.5">
+                {/* Title + rating */}
+                <div className="px-1 py-0.5">
+                  <p className="text-[10px] font-medium text-foreground/80 line-clamp-1 leading-tight">
                     {movie.original_title}
                   </p>
                   {movie.rating > 0 && (
-                    <p className="text-[10px] font-mono text-foreground/50 tabular-nums">
+                    <p className="text-[9px] font-mono text-foreground/45 tabular-nums">
                       ⭐ {movie.rating.toFixed(1)}
                     </p>
                   )}
