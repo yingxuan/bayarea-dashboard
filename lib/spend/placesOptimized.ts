@@ -170,7 +170,7 @@ async function fetchCafePool(
     const response = await searchNearbyPlaces(
       {
         city,
-        type: 'cafe',
+        type: 'bubble_tea_store',
         radiusMeters: RADIUS_METERS,
         maxResultCount: MAX_RESULT_COUNT,
       },

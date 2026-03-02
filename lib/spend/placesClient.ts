@@ -27,7 +27,7 @@ const REQUEST_TIMEOUT_MS = 10000; // 10 seconds
 
 interface PlacesRequest {
   city: string;
-  type: 'restaurant' | 'cafe';
+  type: string;
   radiusMeters: number;
   maxResultCount: number;
 }

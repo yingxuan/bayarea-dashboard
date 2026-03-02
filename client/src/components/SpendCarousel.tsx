@@ -17,8 +17,6 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselPrevious,
-  CarouselNext,
 } from "@/components/ui/carousel";
 import { refreshNewPlaces, getNewPlacesPool } from "@/hooks/usePlacesCache";
 import { getCacheAgeDays, clearAllPools } from "@/lib/places/localCache";
@@ -48,6 +46,7 @@ interface SpendPlace {
   photo_local_url?: string;
   maps_url: string;
   city: string;
+  badges?: string[];
 }
 
 interface PlacesDebugInfo {
@@ -607,8 +606,6 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
         }}
         className="w-full min-w-0 relative"
       >
-        <CarouselPrevious className="hidden md:flex left-2 z-10 bg-background/80 backdrop-blur-sm hover:bg-background/90" />
-        <CarouselNext className="hidden md:flex right-2 z-10 bg-background/80 backdrop-blur-sm hover:bg-background/90" />
         <CarouselContent className="-ml-2 min-w-0 items-stretch">
           {/* Curated places */}
           {topPlaces.map((place, index) => {
@@ -687,7 +684,21 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
             // Use runtime enriched data if available, otherwise use seed file enriched data (place.rating/user_ratings_total)
             const displayRating = enriched?.rating ?? (place.rating && place.rating > 0 ? place.rating : 0);
             const displayUserRatingCount = enriched?.userRatingCount ?? (place.user_ratings_total && place.user_ratings_total > 0 ? place.user_ratings_total : 0);
-            
+
+            // Derived 推荐理由 badge for regular (non-new-places) cards
+            let derivedBadge: string | null = null;
+            if (!place.badges || place.badges.length === 0) {
+              if (displayRating > 0 && displayUserRatingCount >= 50) {
+                if (displayUserRatingCount >= 1000) {
+                  derivedBadge = "超人气";
+                } else if (displayRating >= 4.6 && displayUserRatingCount >= 200) {
+                  derivedBadge = "高分人气";
+                } else if (displayRating >= 4.3) {
+                  derivedBadge = "好评";
+                }
+              }
+            }
+
             // STEP 1: Hard debug logs per card (MANDATORY)
             const itemKey = place.id || `${place.name}|${place.city}`.toLowerCase().trim().replace(/\s+/g, '_');
             const photoIdentifier = enriched?.photoUrl ? 
@@ -777,16 +788,25 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
                           </>
                         )}
                       </div>
-                      {place.badges && place.badges.length > 0 && (
+                      {((place.badges && place.badges.length > 0) || derivedBadge) && (
                         <div className="mt-1 flex flex-wrap gap-1">
-                          {place.badges.map((badge) => (
+                          {place.badges && place.badges.length > 0 ? (
+                            place.badges.map((badge) => (
+                              <span
+                                key={badge}
+                                className="text-[9px] font-mono uppercase tracking-[0.08em] bg-white/10 border border-white/20 text-white/80 rounded px-1 py-0.5"
+                              >
+                                {badge}
+                              </span>
+                            ))
+                          ) : derivedBadge ? (
                             <span
-                              key={badge}
+                              key={derivedBadge}
                               className="text-[9px] font-mono uppercase tracking-[0.08em] bg-white/10 border border-white/20 text-white/80 rounded px-1 py-0.5"
                             >
-                              {badge}
+                              {derivedBadge}
                             </span>
-                          ))}
+                          ) : null}
                         </div>
                       )}
                     </div>

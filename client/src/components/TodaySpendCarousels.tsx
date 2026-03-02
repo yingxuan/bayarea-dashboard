@@ -58,23 +58,54 @@ export default function TodaySpendCarousels() {
             formattedAddress?: string;
             rating?: number;
             userRatingCount?: number;
+            earliestReviewTime?: string;
             why?: string[];
           }>;
         } = await res.json();
         if (cancelled) return;
-        const mapped: SpendPlace[] = (snapshot.places || []).map((entry) => ({
-          id: entry.placeId,
-          name: entry.displayName,
-          category: "新店打卡",
-          rating: entry.rating ?? 0,
-          user_ratings_total: entry.userRatingCount ?? 0,
-          maps_url: entry.placeId ? `https://www.google.com/maps/place/?q=place_id:${entry.placeId}` : "",
-          city: entry.formattedAddress ? entry.formattedAddress.split(",")[0] : "South Bay",
-          photo_url: undefined,
-          distance_miles: undefined,
-          photo_local_url: undefined,
-          badges: entry.why,
-        }));
+
+        const WHY_LABEL_MAP: Record<string, string> = {
+          "recent review": "近期评价",
+          "first seen within 90d": "新发现",
+          "growing": "好评增长",
+          "high rating": "评分好",
+          "possibly new": "疑似新开",
+        };
+
+        const mapped: SpendPlace[] = (snapshot.places || []).map((entry) => {
+          const badges: string[] = [];
+
+          // "开业 X 月" badge from earliestReviewTime (highest priority)
+          if (entry.earliestReviewTime) {
+            const months = Math.floor(
+              (Date.now() - new Date(entry.earliestReviewTime).getTime()) /
+                (1000 * 60 * 60 * 24 * 30)
+            );
+            if (months <= 1) badges.push("刚开业");
+            else if (months < 12) badges.push(`开业 ${months} 月`);
+          }
+
+          // Translated why[] labels (fill up to 2 total)
+          for (const w of entry.why ?? []) {
+            if (badges.length >= 2) break;
+            const label = WHY_LABEL_MAP[w];
+            if (label) badges.push(label);
+          }
+
+          return {
+            id: entry.placeId,
+            name: entry.displayName,
+            category: "新店打卡",
+            rating: entry.rating ?? 0,
+            user_ratings_total: entry.userRatingCount ?? 0,
+            maps_url: entry.placeId ? `https://www.google.com/maps/place/?q=place_id:${entry.placeId}` : "",
+            city: entry.formattedAddress ? entry.formattedAddress.split(",")[0] : "South Bay",
+            photo_url: undefined,
+            distance_miles: undefined,
+            photo_local_url: undefined,
+            badges: badges.length > 0 ? badges : undefined,
+          };
+        });
         setNewPlacesState({
           status: "success",
           items: mapped,
