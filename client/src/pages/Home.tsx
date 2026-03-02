@@ -423,28 +423,25 @@ export default function Home() {
               </h1>
             </div>
 
-            {/* 1) Horizontal carousel: 追剧 */}
-            {shows.length > 0 && (
-              <div className="w-full min-w-0 overflow-hidden">
-                <ShowsCarousel
-                  shows={shows} 
-                  offset={showsOffset}
-                  onRefresh={() => {
-                    // For "换一批", increment offset to rotate shows within each platform
-                    setShowsOffset(prev => {
-                      const nextOffset = prev + 1;
-                      // Wrap around after reasonable number of rotations
-                      return nextOffset >= 10 ? 0 : nextOffset;
-                    });
-                  }}
-                />
-              </div>
-            )}
-
-            {/* 院线华语电影 */}
-            {movies.length > 0 && (
-              <div className="w-full min-w-0 overflow-hidden">
-                <MoviesCarousel movies={movies} />
+            {/* 1) 追剧 + 院线华语 side by side */}
+            {(shows.length > 0 || movies.length > 0) && (
+              <div className="w-full min-w-0 flex flex-col md:flex-row gap-4 md:items-start">
+                {shows.length > 0 && (
+                  <div className="w-full md:w-1/2 min-w-0 overflow-hidden">
+                    <ShowsCarousel
+                      shows={shows}
+                      offset={showsOffset}
+                      onRefresh={() => {
+                        setShowsOffset(prev => prev + 1 >= 10 ? 0 : prev + 1);
+                      }}
+                    />
+                  </div>
+                )}
+                {movies.length > 0 && (
+                  <div className="w-full md:w-1/2 min-w-0 overflow-hidden">
+                    <MoviesCarousel movies={movies} />
+                  </div>
+                )}
               </div>
             )}
 
