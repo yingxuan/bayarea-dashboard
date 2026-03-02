@@ -35,22 +35,29 @@ async function fetchChineseMovies(): Promise<Movie[]> {
     throw new Error('TMDB_API_KEY not configured');
   }
 
-  const url = `https://api.themoviedb.org/3/movie/now_playing?api_key=${apiKey}&language=zh-CN&region=US&page=1`;
+  // Fetch pages 1 and 2 in parallel
+  const fetchPage = async (page: number) => {
+    const url = `https://api.themoviedb.org/3/movie/now_playing?api_key=${apiKey}&language=zh-CN&region=US&page=${page}`;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'BayAreaDashboard/1.0' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) {
+      throw new Error(`TMDB API error: ${response.status} ${response.statusText}`);
+    }
+    const data = await response.json();
+    return (data.results || []) as any[];
+  };
 
-  const response = await fetch(url, {
-    headers: { 'User-Agent': 'BayAreaDashboard/1.0' },
-    signal: AbortSignal.timeout(8000),
-  });
+  const [page1, page2] = await Promise.all([fetchPage(1), fetchPage(2)]);
+  const results = [...page1, ...page2];
 
-  if (!response.ok) {
-    throw new Error(`TMDB API error: ${response.status} ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  const results: any[] = data.results || [];
+  // Include both Mandarin (zh) and Cantonese (cn)
+  const CHINESE_LANGS = new Set(['zh', 'cn']);
+  const seen = new Set<number>();
 
   return results
-    .filter((item: any) => item.original_language === 'zh')
+    .filter((item: any) => CHINESE_LANGS.has(item.original_language) && !seen.has(item.id) && seen.add(item.id))
     .map((item: any): Movie => ({
       id: item.id,
       title: item.title || item.original_title,
