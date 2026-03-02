@@ -686,8 +686,10 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
             const displayUserRatingCount = enriched?.userRatingCount ?? (place.user_ratings_total && place.user_ratings_total > 0 ? place.user_ratings_total : 0);
 
             // Derived 推荐理由 badge for regular (non-new-places) cards
+            // Always computed for 奶茶/中餐/夜宵 — overrides English musthave tags
+            const isNewCategory = category === '新店打卡';
             let derivedBadge: string | null = null;
-            if (!place.badges || place.badges.length === 0) {
+            if (!isNewCategory) {
               if (displayRating > 0 && displayUserRatingCount >= 50) {
                 if (displayUserRatingCount >= 1000) {
                   derivedBadge = "超人气";
@@ -788,9 +790,9 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
                           </>
                         )}
                       </div>
-                      {((place.badges && place.badges.length > 0) || derivedBadge) && (
+                      {((isNewCategory && place.badges && place.badges.length > 0) || (!isNewCategory && derivedBadge)) && (
                         <div className="mt-1 flex flex-wrap gap-1">
-                          {place.badges && place.badges.length > 0 ? (
+                          {isNewCategory && place.badges && place.badges.length > 0 ? (
                             place.badges.map((badge) => (
                               <span
                                 key={badge}
