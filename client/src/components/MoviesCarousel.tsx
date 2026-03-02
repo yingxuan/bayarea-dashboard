@@ -58,7 +58,7 @@ export default function MoviesCarousel({ movies }: MoviesCarouselProps) {
                 className="block rounded-sm overflow-hidden bg-card border border-border/40 shadow-md hover:opacity-80 transition-opacity group"
               >
                 {/* Fixed-height poster */}
-                <div className="relative w-full h-[120px] md:h-[130px] bg-muted overflow-hidden">
+                <div className="relative w-full h-[120px] md:h-[155px] bg-muted overflow-hidden">
                   {movie.poster_url ? (
                     <img
                       src={movie.poster_url}
