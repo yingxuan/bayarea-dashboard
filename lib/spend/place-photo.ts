@@ -114,57 +114,60 @@ export async function handlePlacePhoto(req: VercelRequest, res: VercelResponse) 
     return res.status(400).json({ error: 'invalid_place_id' });
   }
 
-  const ip = getClientIp(req);
-  const kvRate = await checkRateLimitKV(ip);
-  const rate = kvRate ?? checkRateLimitMemory(ip);
-  writeRateHeaders(res, rate);
-  if (!rate.allowed) {
-    res.setHeader('Retry-After', String(Math.max(1, Math.ceil(rate.resetSec))));
-    return res.status(429).json({ error: 'rate_limited' });
-  }
-
   try {
-    const cached = await getPhotoRecord(placeId);
-    const cacheDebug =
-      cached?.status === 'hit'
-        ? 'kv-hit'
-        : cached?.status === 'miss'
-        ? 'negative-hit'
-        : cached?.status === 'failed'
-        ? 'failed-hit'
-        : 'kv-miss';
+    // Check cache BEFORE rate limiting — cache hits don't call Google Places API
+    // and should not count against the per-IP rate limit.
+    if (!refresh) {
+      const cached = await getPhotoRecord(placeId);
+      const cacheDebug =
+        cached?.status === 'hit'
+          ? 'kv-hit'
+          : cached?.status === 'miss'
+          ? 'negative-hit'
+          : cached?.status === 'failed'
+          ? 'failed-hit'
+          : 'kv-miss';
 
-    if (!refresh && cached?.status === 'hit' && cached.url && cached.meta?.version === PHOTO_VERSION) {
-      await setFetchCountHeader(res, placeId);
-      res.setHeader('X-Photo-Source', cacheDebug);
-      res.setHeader('X-Photo-Fetch', 'skipped');
-      res.setHeader('X-Photo-Lock', 'none');
-      res.setHeader('X-Photo-Cache', 'hit');
-      return res.status(200).json({
-        place_id: placeId,
-        photo_local_url: cached.url,
-        status: cached.status,
-        source: cached.source,
-      });
-    }
+      if (cached?.status === 'hit' && cached.url && cached.meta?.version === PHOTO_VERSION) {
+        await setFetchCountHeader(res, placeId);
+        res.setHeader('X-Photo-Source', cacheDebug);
+        res.setHeader('X-Photo-Fetch', 'skipped');
+        res.setHeader('X-Photo-Lock', 'none');
+        res.setHeader('X-Photo-Cache', 'hit');
+        return res.status(200).json({
+          place_id: placeId,
+          photo_local_url: cached.url,
+          status: cached.status,
+          source: cached.source,
+        });
+      }
 
-    if (!refresh && (cached?.status === 'miss' || cached?.status === 'failed') && !isRetryable(cached)) {
-      await setFetchCountHeader(res, placeId);
-      res.setHeader('X-Photo-Source', cacheDebug);
-      res.setHeader('X-Photo-Fetch', 'skipped');
-      res.setHeader('X-Photo-Lock', 'none');
-      res.setHeader('X-Photo-Cache', 'hit');
-      return res.status(200).json({
-        place_id: placeId,
-        photo_local_url: null,
-        status: cached.status,
-        source: cached.source,
-        reason: cached.meta?.reason,
-      });
-    }
-
-    if (refresh) {
+      if ((cached?.status === 'miss' || cached?.status === 'failed') && !isRetryable(cached)) {
+        await setFetchCountHeader(res, placeId);
+        res.setHeader('X-Photo-Source', cacheDebug);
+        res.setHeader('X-Photo-Fetch', 'skipped');
+        res.setHeader('X-Photo-Lock', 'none');
+        res.setHeader('X-Photo-Cache', 'hit');
+        return res.status(200).json({
+          place_id: placeId,
+          photo_local_url: null,
+          status: cached.status,
+          source: cached.source,
+          reason: cached.meta?.reason,
+        });
+      }
+    } else {
       res.setHeader('X-Photo-Cache', 'bypass');
+    }
+
+    // Cache miss or forced refresh — apply rate limit before hitting Google Places API
+    const ip = getClientIp(req);
+    const kvRate = await checkRateLimitKV(ip);
+    const rate = kvRate ?? checkRateLimitMemory(ip);
+    writeRateHeaders(res, rate);
+    if (!rate.allowed) {
+      res.setHeader('Retry-After', String(Math.max(1, Math.ceil(rate.resetSec))));
+      return res.status(429).json({ error: 'rate_limited' });
     }
 
     const result = await ensurePlacePhoto(placeId, 'ondemand', { refresh });
