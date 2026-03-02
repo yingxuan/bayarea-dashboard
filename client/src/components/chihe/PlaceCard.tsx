@@ -10,7 +10,9 @@
  * - Data Punk styling
  */
 
+import { useState, useEffect, useRef } from "react";
 import { Star, MapPin, ExternalLink } from "lucide-react";
+import { config } from "@/config";
 
 interface SpendPlace {
   id: string;
@@ -57,18 +59,7 @@ const CATEGORY_FALLBACK_IMAGES: Record<string, string[]> = {
   ],
 };
 
-function getImageUrl(place: SpendPlace): string {
-  // Priority 1: Local cached photo
-  if (place.photo_local_url) {
-    return place.photo_local_url;
-  }
-
-  // Priority 2: Photo URL that starts with /
-  if (place.photo_url?.startsWith('/')) {
-    return place.photo_url;
-  }
-
-  // Priority 3: Deterministic fallback based on place identity
+function getFallbackImageUrl(place: SpendPlace): string {
   const itemIdentity = place.id || `${place.name}_${place.city}`;
   let hash = 0;
   for (let i = 0; i < itemIdentity.length; i++) {
@@ -76,13 +67,33 @@ function getImageUrl(place: SpendPlace): string {
     hash = hash & hash;
   }
   const seed = Math.abs(hash);
-
   const images = CATEGORY_FALLBACK_IMAGES[place.category] || CATEGORY_FALLBACK_IMAGES['中餐'];
   return images[seed % images.length];
 }
 
+// Shared in-flight tracker to avoid duplicate requests across card instances
+const inflight = new Set<string>();
+
 export default function PlaceCard({ place, size = 'medium', showCategory = false }: PlaceCardProps) {
-  const imageUrl = getImageUrl(place);
+  const staticPhoto = place.photo_local_url || (place.photo_url?.startsWith('/') ? place.photo_url : undefined);
+  const [fetchedPhoto, setFetchedPhoto] = useState<string | null>(null);
+  const fetchedRef = useRef(false);
+
+  // Fetch real photo on first render if no local photo available
+  useEffect(() => {
+    if (staticPhoto || fetchedRef.current || !place.id || inflight.has(place.id)) return;
+    // Only attempt for valid Google Place IDs (starts with ChIJ or similar non-seed format)
+    if (!/^[A-Za-z0-9_-]{10,}$/.test(place.id) || place.id.startsWith('seed_')) return;
+    fetchedRef.current = true;
+    inflight.add(place.id);
+    fetch(`${config.apiBaseUrl}/api/spend/place-photo?place_id=${encodeURIComponent(place.id)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (data?.photo_local_url) setFetchedPhoto(data.photo_local_url); })
+      .catch(() => {})
+      .finally(() => { setTimeout(() => inflight.delete(place.id), 5000); });
+  }, [place.id, staticPhoto]);
+
+  const imageUrl = staticPhoto || fetchedPhoto || getFallbackImageUrl(place);
 
   // Size-based classes
   const sizeClasses = {
