@@ -4,6 +4,7 @@ import { handleNewPlaces } from '../../lib/spend/new-places-runtime.js';
 import { handleEnrichPlace } from '../../lib/spend/enrich-place.js';
 import { handleEnrichHours } from '../../lib/spend/enrich-hours.js';
 import { handlePlacePhoto } from '../../lib/spend/place-photo.js';
+import { refreshNewPlacesSnapshot } from '../../lib/spend/new-places-job.js';
 
 function normalizePath(req: VercelRequest): string {
   const url = new URL(req.url || '/', 'http://localhost');
@@ -37,7 +38,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return handleEnrichHours(req, res);
     case '/place-photo':
       return handlePlacePhoto(req, res);
+    case '/cron-refresh': {
+      const cronSecret = process.env.CRON_SECRET;
+      if (cronSecret && req.headers.authorization !== `Bearer ${cronSecret}`) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      process.env.JOB_MODE = '1';
+      try {
+        const snapshot = await refreshNewPlacesSnapshot();
+        return res.status(200).json({ ok: true, generatedAt: snapshot.generatedAt, places: snapshot.places.length });
+      } catch (error: any) {
+        if (error.message === 'refresh_in_progress') {
+          return res.status(200).json({ ok: true, skipped: true, reason: 'already running' });
+        }
+        return res.status(500).json({ ok: false, error: error.message });
+      }
+    }
     default:
       res.status(404).json({ error: 'Not found' });
   }
 }
+
+export const config = { maxDuration: 300 };

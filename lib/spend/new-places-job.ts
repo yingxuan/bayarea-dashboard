@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { kv } from '@vercel/kv';
 import { fetchPlaceDetails, searchTextPlaces } from './placesClient.js';
+import type { PlaceDetailsResponse } from './placesClient.js';
 import { SNAPSHOT_KEY, WINDOW_DAYS, WINDOW_MS } from './new-places-config.js';
 import type { NewPlaceEntry, NewPlacesSnapshot } from './new-places-types.js';
 
@@ -61,29 +62,6 @@ interface PlaceHistory {
   earliestReviewTime?: string;
   earliestReviewCheckedAt?: string;
   metrics?: Array<{ date: string; rating?: number; userRatingCount?: number }>;
-}
-
-export interface NewPlaceEntry {
-  placeId: string;
-  displayName: string;
-  city?: string;
-  formattedAddress?: string;
-  kind: 'chinese' | 'milk-tea';
-  rating?: number;
-  userRatingCount?: number;
-  earliestReviewTime?: string;
-  firstSeenAt?: string;
-  score: number;
-  why: string[];
-}
-
-export interface NewPlacesSnapshot {
-  generatedAt: string;
-  windowDays: number;
-  tiles: number;
-  queries: number;
-  candidates: number;
-  places: NewPlaceEntry[];
 }
 
 interface CandidateInfo {
@@ -359,7 +337,7 @@ function buildScore(entry: { history: PlaceHistory; kind: 'chinese' | 'milk-tea'
   return { score, why: scoreReasons };
 }
 
-async function updateHistoryWithDetails(history: PlaceHistory, detail: ReturnType<typeof fetchPlaceDetails>) {
+async function updateHistoryWithDetails(history: PlaceHistory, detail: PlaceDetailsResponse) {
   if (detail.displayName?.text) history.displayName = detail.displayName.text;
   if (detail.formattedAddress) {
     history.formattedAddress = detail.formattedAddress;
@@ -467,7 +445,7 @@ async function buildSnapshot(): Promise<NewPlacesSnapshot> {
     chunks.push(gather.candidates.slice(i, i + DETAIL_CONCURRENCY));
   }
   for (const [index, chunk] of chunks.entries()) {
-    const results = await Promise.all(chunk.map((candidate) => processCandidate(candidate)));
+    const results = await Promise.all(chunk.map((candidate: CandidateInfo) => processCandidate(candidate)));
     entries.push(...results.filter((entry): entry is NewPlaceEntry => Boolean(entry)));
     if (index < chunks.length - 1) {
       await sleep(DETAILS_SLEEP_MS);
