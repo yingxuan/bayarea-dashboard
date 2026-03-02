@@ -4,6 +4,7 @@ import { handleMarketNews } from '../api-handlers/market/market-news.js';
 import { handleQuotes } from '../api-handlers/market/quotes.js';
 import { handleShows } from '../api-handlers/market/shows.js';
 import { handleYoutubers } from '../api-handlers/market/youtubers.js';
+import { handleMovies } from '../api-handlers/market/movies.js';
 
 const handlerMap: Record<string, (req: VercelRequest, res: VercelResponse) => Promise<any>> = {
   market: handleMarket,
@@ -11,6 +12,7 @@ const handlerMap: Record<string, (req: VercelRequest, res: VercelResponse) => Pr
   quotes: handleQuotes,
   shows: handleShows,
   youtubers: handleYoutubers,
+  movies: handleMovies,
 };
 
 function normalizePath(req: VercelRequest): string {
@@ -28,6 +30,7 @@ function detectHandler(req: VercelRequest): string {
   if (path.includes('/quotes')) return 'quotes';
   if (path.includes('/shows')) return 'shows';
   if (path.includes('/youtubers')) return 'youtubers';
+  if (path.includes('/movies')) return 'movies';
   return 'market';
 }
 

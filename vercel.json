@@ -40,6 +40,7 @@
     { "source": "/api/quotes", "destination": "/api/market-all?handler=quotes" },
     { "source": "/api/shows", "destination": "/api/market-all?handler=shows" },
     { "source": "/api/youtubers", "destination": "/api/market-all?handler=youtubers" },
+    { "source": "/api/movies", "destination": "/api/market-all?handler=movies" },
     { "source": "/api/:path*", "destination": "/api/:path*" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]

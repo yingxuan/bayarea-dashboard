@@ -27,6 +27,7 @@ import USStockYouTubers from "@/components/USStockYouTubers";
 import FanwanCarousel from "@/components/FanwanCarousel";
 import IndicesCard from "@/components/IndicesCard";
 import ShowsCarousel from "@/components/ShowsCarousel";
+import MoviesCarousel from "@/components/MoviesCarousel";
 import SectionHeader from "@/components/SectionHeader";
 import TimeAgo from "@/components/TimeAgo";
 import ReturnHintToast, { ReturnToDashboardToast } from "@/components/ReturnHintToast";
@@ -142,6 +143,7 @@ export default function Home() {
   // Section 3: 追剧吃瓜薅羊毛
   const [shows, setShows] = useState<any[]>([]); // 追剧
   const [showsOffset, setShowsOffset] = useState(0); // Offset for "换一批" functionality
+  const [movies, setMovies] = useState<any[]>([]); // 院线华语
   const [deals, setDeals] = useState<any[]>([]); // 薅羊毛
   const [dealsSourceMode, setDealsSourceMode] = useState<'live' | 'cache' | 'seed'>('live'); // Deals source mode
 
@@ -249,6 +251,19 @@ export default function Home() {
       } catch (error) {
         console.error("[Home] ❌ Failed to fetch shows:", error);
         setShows([]);
+      }
+
+      // Section 3: 追剧吃瓜薅羊毛 - 院线华语电影
+      try {
+        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/movies`);
+        if (response.ok) {
+          const result = await response.json();
+          setMovies(result.items || []);
+        } else {
+          setMovies([]);
+        }
+      } catch {
+        setMovies([]);
       }
 
       // Section 3: 追剧吃瓜薅羊毛 - 薅羊毛
@@ -423,6 +438,13 @@ export default function Home() {
                     });
                   }}
                 />
+              </div>
+            )}
+
+            {/* 院线华语电影 */}
+            {movies.length > 0 && (
+              <div className="w-full min-w-0 overflow-hidden">
+                <MoviesCarousel movies={movies} />
               </div>
             )}
 

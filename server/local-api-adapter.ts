@@ -112,6 +112,23 @@ export async function showsRoute(req: Request, res: Response) {
 }
 
 /**
+ * Movies API route (院线华语电影)
+ */
+export async function moviesRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    withHandler(vercelReq, 'movies');
+    await marketHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Movies route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
  * YouTubers API route
  */
 export async function youtubersRoute(req: Request, res: Response) {

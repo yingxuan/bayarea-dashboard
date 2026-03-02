@@ -16,6 +16,7 @@ import {
   dealsRoute,
   showsRoute,
   youtubersRoute,
+  moviesRoute,
   quotesRoute,
   spendTodayRoute,
   leekCommunityRoute,
@@ -66,6 +67,8 @@ async function startServer() {
   app.options('/api/deals', (_req, res) => res.sendStatus(200));
   app.get('/api/shows', showsRoute);
   app.options('/api/shows', (_req, res) => res.sendStatus(200));
+  app.get('/api/movies', moviesRoute);
+  app.options('/api/movies', (_req, res) => res.sendStatus(200));
   app.get('/api/youtubers', youtubersRoute);
   app.options('/api/youtubers', (_req, res) => res.sendStatus(200));
   app.get('/api/quotes', quotesRoute);
