@@ -199,254 +199,67 @@ function isValidBlindPostUrl(url: string): boolean {
 }
 
 /**
- * Try fetching from a single RSSHub instance
+ * Scrape 1point3acres section 391 (人际关系/吃瓜) directly
+ * Parses thread links from the forum index page using cheerio
  */
-async function tryRSSHubInstance(url: string, timeout: number): Promise<{ success: boolean; xmlText?: string; contentType?: string; error?: string }> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-    
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      },
-    });
-    
-    clearTimeout(timeoutId);
-    
-    const contentType = response.headers.get('content-type') || 'unknown';
-    
-    if (!response.ok) {
-      return { success: false, contentType, error: `HTTP ${response.status} ${response.statusText}` };
-    }
-    
-    const xmlText = await response.text();
-    return { success: true, xmlText, contentType };
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    return { success: false, error: errorMsg };
+async function scrape1P3ADirect(fetchedAt: string): Promise<GossipItem[]> {
+  const forumUrl = 'https://www.1point3acres.com/bbs/forum-391-1.html';
+  console.log(`[Gossip 1P3A] 🔍 Direct scraping: ${forumUrl}`);
+
+  const response = await fetch(forumUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml',
+      'Accept-Language': 'zh-CN,zh;q=0.9',
+    },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Direct scrape failed: HTTP ${response.status}`);
   }
+
+  const html = await response.text();
+  const $ = cheerio.load(html);
+  const items: GossipItem[] = [];
+  const seenUrls = new Set<string>();
+
+  // Thread title links use class "xi2" on 1point3acres forum pages
+  $('a.xi2').each((_, el) => {
+    const $el = $(el);
+    const href = $el.attr('href');
+    const title = $el.text().trim();
+
+    if (!href || !title || title.length < 3) return;
+
+    let url = href.trim();
+    // Relative URL: prefix with base
+    if (!url.startsWith('http')) {
+      url = `https://www.1point3acres.com/bbs/${url.replace(/^\/+/, '')}`;
+    }
+    url = normalize1p3aUrl(url);
+
+    if (!isValid1p3aThreadUrl(url)) return;
+    if (seenUrls.has(url)) return;
+    seenUrls.add(url);
+
+    items.push({ title, url, meta: { source: '1point3acres', publishedAt: fetchedAt } });
+  });
+
+  console.log(`[Gossip 1P3A] ✅ Direct scrape found ${items.length} threads`);
+  return items;
 }
 
 /**
- * Fetch 1point3acres gossip posts from RSSHub (section/391)
- * Tries multiple RSSHub instances as fallback
+ * Fetch 1point3acres gossip posts
+ * Primary: direct HTML scrape. Fallback: RSSHub instances.
  */
 async function fetch1P3A(nocache: boolean = false): Promise<ModulePayload<GossipItem>> {
   const cacheKey = CACHE_KEY_1P3A_GOSSIP;
   const fetchedAt = new Date().toISOString();
   const ttlSeconds = ttlMsToSeconds(GOSSIP_CACHE_TTL);
-  
-  // Try live fetch from RSSHub (try all instances)
-  let xmlText: string | undefined;
-  let contentType: string | undefined;
-  let lastError: string | undefined;
-  let usedInstance: string | undefined;
-  
-  for (let i = 0; i < RSSHUB_INSTANCES.length; i++) {
-    const instanceUrl = RSSHUB_INSTANCES[i];
-    console.log(`[Gossip 1P3A] 🔍 Trying RSSHub instance ${i + 1}/${RSSHUB_INSTANCES.length}: ${instanceUrl}`);
-    
-    const result = await tryRSSHubInstance(instanceUrl, RSS_FETCH_TIMEOUT);
-    
-    if (result.success && result.xmlText) {
-      xmlText = result.xmlText;
-      contentType = result.contentType;
-      usedInstance = instanceUrl;
-      console.log(`[Gossip 1P3A] ✅ Successfully fetched from instance ${i + 1}`);
-      break;
-    } else {
-      lastError = result.error;
-      contentType = result.contentType;
-      console.log(`[Gossip 1P3A] ❌ Instance ${i + 1} failed: ${lastError}`);
-    }
-  }
-  
-  // DEBUG: Log HTTP status and content-type
-  if (contentType) {
-    console.log(`[Gossip 1P3A] 🔍 DEBUG - Content-Type: ${contentType}`);
-  }
-  if (lastError) {
-    console.log(`[Gossip 1P3A] 🔍 DEBUG - Last Error: ${lastError}`);
-  }
-  
-  // If we got XML, parse it
-  if (xmlText) {
-    try {
-      // DEBUG: Log first 200 characters of RSS response
-      const rssPreview = xmlText.substring(0, 200);
-      console.log(`[Gossip 1P3A] 🔍 DEBUG - RSS Response Preview (first 200 chars): ${rssPreview}`);
-    
-      // Parse XML using fast-xml-parser
-      const parser = new XMLParser({
-        ignoreAttributes: false,
-        attributeNamePrefix: '@_',
-        textNodeName: '#text',
-      });
-      const feed = parser.parse(xmlText);
-    
-    // Extract items from channel.item[] (RSS 2.0 format)
-    const rssItems = feed?.rss?.channel?.item || feed?.feed?.entry || [];
-    const itemsArray = Array.isArray(rssItems) ? rssItems : [rssItems];
-    
-    // DEBUG: Log raw RSS item count
-    console.log(`[Gossip 1P3A] 🔍 DEBUG - Raw RSS item count: ${itemsArray.length}`);
-    console.log(`[Gossip 1P3A] ✅ RSS XML parsed, ${itemsArray.length} raw items`);
-    
-    // Debug: Log first item structure to understand RSS format
-    if (itemsArray.length > 0) {
-      const firstItem = itemsArray[0];
-      console.log(`[Gossip 1P3A] 🔍 First item structure:`, JSON.stringify({
-        hasLink: !!firstItem.link,
-        linkType: typeof firstItem.link,
-        linkValue: typeof firstItem.link === 'string' ? firstItem.link.substring(0, 100) : JSON.stringify(firstItem.link).substring(0, 100),
-        hasTitle: !!firstItem.title,
-        titleType: typeof firstItem.title,
-        titleValue: typeof firstItem.title === 'string' ? firstItem.title.substring(0, 50) : JSON.stringify(firstItem.title).substring(0, 50),
-      }, null, 2));
-    }
-    
-    // If < 3 items after parsing, log first 300 chars for debugging
-    if (itemsArray.length < 3) {
-      const preview = xmlText.substring(0, 300);
-      console.warn(`[Gossip 1P3A] ⚠️ Parsed ${itemsArray.length} items (< 3), XML preview (first 300 chars): ${preview}`);
-    }
-    
-    const items: GossipItem[] = [];
-    const seenUrls = new Set<string>();
-    
-    // Parse RSS items
-    for (const item of itemsArray) {
-      if (!item) continue;
-      
-      // Extract link and title (handle different RSS formats)
-      // RSS 2.0: link can be string directly, or object with #text
-      let link = '';
-      if (typeof item.link === 'string') {
-        link = item.link;
-      } else if (item.link?.['#text']) {
-        link = item.link['#text'];
-      } else if (item.link?.['@_href']) {
-        link = item.link['@_href'];
-      } else if (item.link) {
-        link = String(item.link);
-      }
-      
-      let title = '';
-      if (typeof item.title === 'string') {
-        title = item.title;
-      } else if (item.title?.['#text']) {
-        title = item.title['#text'];
-      } else if (item.title) {
-        title = String(item.title);
-      }
-      
-      if (!link || !title) {
-        console.warn(`[Gossip 1P3A] ⚠️ Skipping item: missing link or title (link: ${link ? 'yes' : 'no'}, title: ${title ? 'yes' : 'no'})`);
-        continue;
-      }
-      
-      // Normalize URL
-      let url = link.trim();
-      
-      // Log original link for debugging
-      console.log(`[Gossip 1P3A] 🔍 Processing item - original link: ${link.substring(0, 100)}`);
-      
-      // Handle relative URLs
-      if (!url.startsWith('http')) {
-        // If it's a relative path, prepend base URL
-        if (url.startsWith('/')) {
-          url = `https://www.1point3acres.com${url}`;
-        } else {
-          url = `https://www.1point3acres.com/bbs/${url}`;
-        }
-      }
-      
-      // Convert instant.1point3acres.com URLs to standard format
-      url = normalize1p3aUrl(url);
-      
-      console.log(`[Gossip 1P3A] 🔍 Normalized URL: ${url.substring(0, 100)}`);
-      
-      // STRICT VALIDATION: Must be a thread detail page (FORBIDDEN: /forum-, forum.php, /section/)
-      if (!isValid1p3aThreadUrl(url)) {
-        console.warn(`[Gossip 1P3A] ❌ Filtered out non-thread URL: ${url.substring(0, 100)}`);
-        console.warn(`[Gossip 1P3A]    Title was: "${title.substring(0, 50)}"`);
-        continue;
-      }
-      
-      console.log(`[Gossip 1P3A] ✅ Valid thread URL: ${url.substring(0, 100)}`);
-      
-      // Skip duplicates
-      if (seenUrls.has(url)) continue;
-      seenUrls.add(url);
-      
-      // Extract published date
-      const pubDate = item.pubDate?.['#text'] || item.pubDate || item.published?.['#text'] || item.published || '';
-      const publishedAt = pubDate || fetchedAt;
-      
-      items.push({
-        title: title.trim(),
-        url,
-        meta: {
-          source: '1point3acres',
-          publishedAt,
-        },
-      });
-    }
-    
-    // Remove duplicates and validate all URLs are thread URLs
-    const uniqueItems = Array.from(
-      new Map(items.map(item => [item.url, item])).values()
-    ).filter(item => {
-      if (!isValid1p3aThreadUrl(item.url)) {
-        console.warn(`[Gossip 1P3A] Filtered invalid thread URL in final list: ${item.url}`);
-        return false;
-      }
-      return true;
-    });
-    
-    // DEBUG: Log filtered thread count
-    console.log(`[Gossip 1P3A] 🔍 DEBUG - Filtered thread count: ${uniqueItems.length}`);
-    console.log(`[Gossip 1P3A] ✅ Fetched ${uniqueItems.length} valid thread items from RSS`);
-    
-    // Ensure >= 3 items
-    if (uniqueItems.length < 3) {
-      console.warn(`[Gossip 1P3A] ⚠️ Only ${uniqueItems.length} valid items (< 3), will try cache/fallback`);
-    }
-    
-      // If we have >= 3 items, return live data
-      if (uniqueItems.length >= 3) {
-        // Save to warm seed for future fallback
-        saveWarmSeed('1point3acres', uniqueItems);
-        
-        // Cache the result
-        const payload: ModulePayload<GossipItem> = {
-          source: 'live',
-          status: 'ok',
-          fetchedAt,
-          ttlSeconds,
-          items: uniqueItems.slice(0, 10), // Limit to 10 items
-        };
-        
-        setCache(cacheKey, payload);
-        return payload;
-      }
-      
-      // If < 3 items, try cache
-      console.warn(`[Gossip 1P3A] ⚠️ Only ${uniqueItems.length} items (< 3), trying cache...`);
-    } catch (parseError) {
-      const parseErrorMsg = parseError instanceof Error ? parseError.message : String(parseError);
-      console.error(`[Gossip 1P3A] ❌ RSS parsing failed: ${parseErrorMsg}`);
-      lastError = `Parse error: ${parseErrorMsg}`;
-    }
-  } else {
-    // All RSSHub instances failed
-    console.error(`[Gossip 1P3A] ❌ All RSSHub instances failed. Last error: ${lastError}`);
-    console.log(`[Gossip 1P3A] 🔄 Starting fallback: cache → stale cache → warm seed → built-in seed`);
-  }
-  
-  // Try cache (only if not nocache)
+
+  // Check cache first (unless bypassed)
   if (!nocache) {
     const cached = getCachedData(cacheKey, GOSSIP_CACHE_TTL, false);
     if (cached && cached.data && cached.data.items && cached.data.items.length >= 3) {
@@ -455,26 +268,69 @@ async function fetch1P3A(nocache: boolean = false): Promise<ModulePayload<Gossip
         ...cached.data,
         source: 'cache' as const,
         status: (cached.data.status === 'ok' ? 'ok' : 'degraded') as 'ok' | 'degraded',
-        note: 'Using cached data',
-      };
-    }
-    
-    // Try stale cache
-    const stale = getStaleCache(cacheKey);
-    if (stale && stale.data && stale.data.items && stale.data.items.length >= 3) {
-      console.log(`[Gossip 1P3A] ✅ Using stale cache (${stale.data.items.length} items)`);
-      return {
-        ...stale.data,
-        source: 'cache' as const,
-        status: 'degraded' as const,
-        note: 'Using stale cache',
       };
     }
   }
-  
-  // Try warm seed (real posts from previous successful fetches)
+
+  // Try direct scrape first (most reliable)
+  let uniqueItems: GossipItem[] = [];
+  try {
+    uniqueItems = await scrape1P3ADirect(fetchedAt);
+  } catch (scrapeError) {
+    const msg = scrapeError instanceof Error ? scrapeError.message : String(scrapeError);
+    console.warn(`[Gossip 1P3A] ⚠️ Direct scrape failed: ${msg}. Trying RSSHub...`);
+
+    // Fallback: try RSSHub instances
+    for (const instanceUrl of RSSHUB_INSTANCES) {
+      try {
+        const resp = await fetch(instanceUrl, {
+          headers: { 'User-Agent': 'BayAreaDashboard/1.0' },
+          signal: AbortSignal.timeout(RSS_FETCH_TIMEOUT),
+        });
+        if (!resp.ok) continue;
+        const xmlText = await resp.text();
+        const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_', textNodeName: '#text' });
+        const feed = parser.parse(xmlText);
+        const rssItems: any[] = (() => { const r = feed?.rss?.channel?.item || feed?.feed?.entry || []; return Array.isArray(r) ? r : [r]; })();
+        const seen = new Set<string>();
+        for (const item of rssItems) {
+          let link = (typeof item.link === 'string' ? item.link : item.link?.['#text'] || item.link?.['@_href'] || '').trim();
+          const title = (typeof item.title === 'string' ? item.title : item.title?.['#text'] || '').trim();
+          if (!link || !title) continue;
+          if (!link.startsWith('http')) link = `https://www.1point3acres.com/bbs/${link.replace(/^\/+/, '')}`;
+          link = normalize1p3aUrl(link);
+          if (!isValid1p3aThreadUrl(link) || seen.has(link)) continue;
+          seen.add(link);
+          const pubDate = item.pubDate?.['#text'] || item.pubDate || '';
+          uniqueItems.push({ title, url: link, meta: { source: '1point3acres', publishedAt: pubDate || fetchedAt } });
+        }
+        if (uniqueItems.length >= 3) {
+          console.log(`[Gossip 1P3A] ✅ RSSHub fallback succeeded: ${uniqueItems.length} items`);
+          break;
+        }
+      } catch { /* try next instance */ }
+    }
+  }
+
+  // If we have >= 3 items, cache and return live data
+  if (uniqueItems.length >= 3) {
+    saveWarmSeed('1point3acres', uniqueItems);
+    const payload: ModulePayload<GossipItem> = {
+      source: 'live',
+      status: 'ok',
+      fetchedAt,
+      ttlSeconds,
+      items: uniqueItems.slice(0, 10),
+    };
+    setCache(cacheKey, payload);
+    return payload;
+  }
+
+  console.warn(`[Gossip 1P3A] ⚠️ Only ${uniqueItems.length} live items, falling back to warm seed`);
+
+  // Try warm seed
   const warmSeed = getWarmSeed('1point3acres');
-  if (warmSeed.length >= 3) {
+  if (warmSeed.length > 0) {
     console.log(`[Gossip 1P3A] ✅ Using warm seed (${warmSeed.length} items)`);
     return {
       source: 'seed',
@@ -485,22 +341,8 @@ async function fetch1P3A(nocache: boolean = false): Promise<ModulePayload<Gossip
       items: warmSeed.slice(0, 10),
     };
   }
-  
-  // Pad with warm seed if available (even if < 3)
-  if (warmSeed.length > 0) {
-    console.log(`[Gossip 1P3A] ⚠️ Warm seed has ${warmSeed.length} items (< 3), using all available`);
-    return {
-      source: 'seed',
-      status: 'degraded',
-      fetchedAt,
-      ttlSeconds: 0,
-      note: `warm seed (${warmSeed.length} items)`,
-      items: warmSeed,
-    };
-  }
-  
-  // No seed data fallback
-  console.log(`[Gossip 1P3A] ❌ No data available (no seed data fallback)`);
+
+  console.log(`[Gossip 1P3A] ❌ No data available`);
   return {
     source: 'unavailable',
     status: 'failed',
