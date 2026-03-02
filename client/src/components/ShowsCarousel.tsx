@@ -102,7 +102,7 @@ export default function ShowsCarousel({ shows, offset = 0, onRefresh }: ShowsCar
         >
           <CarouselContent className="-ml-2 md:-ml-4 min-w-0">
             {displayShows.map((show) => (
-              <CarouselItem key={show.id} className="pl-2 md:pl-4 snap-start shrink-0 w-[70%] md:w-[50%] min-w-0">
+              <CarouselItem key={show.id} className="pl-2 md:pl-4 snap-start shrink-0 w-[70%] md:w-[25%] min-w-0">
               <a
                 href={show.url}
                 target="_blank"

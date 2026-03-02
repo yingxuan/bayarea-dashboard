@@ -423,25 +423,23 @@ export default function Home() {
               </h1>
             </div>
 
-            {/* 1) 追剧 + 院线华语 side by side */}
-            {(shows.length > 0 || movies.length > 0) && (
-              <div className="w-full min-w-0 flex flex-col md:flex-row md:divide-x md:divide-border/30 md:items-start">
-                {shows.length > 0 && (
-                  <div className="w-full md:w-1/2 min-w-0 overflow-hidden md:pr-4">
-                    <ShowsCarousel
-                      shows={shows}
-                      offset={showsOffset}
-                      onRefresh={() => {
-                        setShowsOffset(prev => prev + 1 >= 10 ? 0 : prev + 1);
-                      }}
-                    />
-                  </div>
-                )}
-                {movies.length > 0 && (
-                  <div className="w-full md:w-1/2 min-w-0 overflow-hidden md:pl-4">
-                    <MoviesCarousel movies={movies} />
-                  </div>
-                )}
+            {/* 1) 追剧 */}
+            {shows.length > 0 && (
+              <div className="w-full min-w-0 overflow-hidden">
+                <ShowsCarousel
+                  shows={shows}
+                  offset={showsOffset}
+                  onRefresh={() => {
+                    setShowsOffset(prev => prev + 1 >= 10 ? 0 : prev + 1);
+                  }}
+                />
+              </div>
+            )}
+
+            {/* 2) 院线华语 */}
+            {movies.length > 0 && (
+              <div className="w-full min-w-0 overflow-hidden">
+                <MoviesCarousel movies={movies} />
               </div>
             )}
 
