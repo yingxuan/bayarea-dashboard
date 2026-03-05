@@ -15,6 +15,7 @@ export const runtime = 'nodejs';
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import * as cheerio from 'cheerio';
+import * as iconv from 'iconv-lite';
 import { XMLParser } from 'fast-xml-parser';
 import { ModulePayload } from '../../shared/types.js';
 import { ttlMsToSeconds } from '../../shared/config.js';
@@ -113,14 +114,18 @@ function getWarmSeed(source: '1point3acres' | 'blind'): GossipItem[] {
 }
 
 /**
- * Convert instant.1point3acres.com/thread/xxxxx to standard format
+ * Convert various 1point3acres URL formats to standard thread format
  */
 function normalize1p3aUrl(url: string): string {
-  // Convert instant.1point3acres.com/thread/xxxxx to www.1point3acres.com/bbs/thread-xxxxx-1-1.html
+  // Convert instant.1point3acres.com/thread/xxxxx to standard format
   const instantMatch = url.match(/instant\.1point3acres\.com\/thread\/(\d+)/i);
   if (instantMatch) {
-    const threadId = instantMatch[1];
-    return `https://www.1point3acres.com/bbs/thread-${threadId}-1-1.html`;
+    return `https://www.1point3acres.com/bbs/thread-${instantMatch[1]}-1-1.html`;
+  }
+  // Convert forum.php?mod=redirect&tid=XXXXX to standard thread format
+  const redirectMatch = url.match(/forum\.php\?mod=redirect&tid=(\d+)/i);
+  if (redirectMatch) {
+    return `https://www.1point3acres.com/bbs/thread-${redirectMatch[1]}-1-1.html`;
   }
   return url;
 }
@@ -203,7 +208,8 @@ function isValidBlindPostUrl(url: string): boolean {
  * Parses thread links from the forum index page using cheerio
  */
 async function scrape1P3ADirect(fetchedAt: string): Promise<GossipItem[]> {
-  const forumUrl = 'https://www.1point3acres.com/bbs/forum-391-1.html';
+  // Use gid=391 directly — the old forum-391-1.html now redirects here
+  const forumUrl = 'https://www.1point3acres.com/bbs/forum.php?gid=391';
   console.log(`[Gossip 1P3A] 🔍 Direct scraping: ${forumUrl}`);
 
   const response = await fetch(forumUrl, {
@@ -219,7 +225,9 @@ async function scrape1P3ADirect(fetchedAt: string): Promise<GossipItem[]> {
     throw new Error(`Direct scrape failed: HTTP ${response.status}`);
   }
 
-  const html = await response.text();
+  // 1point3acres serves GBK-encoded HTML — decode the buffer properly
+  const buf = await response.arrayBuffer();
+  const html = iconv.decode(Buffer.from(buf), 'gbk');
   const $ = cheerio.load(html);
   const items: GossipItem[] = [];
   const seenUrls = new Set<string>();

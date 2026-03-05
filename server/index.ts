@@ -14,6 +14,8 @@ import apiRouter from "./api.js";
 import {
   marketRoute,
   dealsRoute,
+  concertsRoute,
+  bayAreaMoviesRoute,
   showsRoute,
   youtubersRoute,
   moviesRoute,
@@ -65,6 +67,10 @@ async function startServer() {
   app.options('/api/market', (_req, res) => res.sendStatus(200));
   app.get('/api/deals', dealsRoute);
   app.options('/api/deals', (_req, res) => res.sendStatus(200));
+  app.get('/api/concerts', concertsRoute);
+  app.options('/api/concerts', (_req, res) => res.sendStatus(200));
+  app.get('/api/bayarea-movies', bayAreaMoviesRoute);
+  app.options('/api/bayarea-movies', (_req, res) => res.sendStatus(200));
   app.get('/api/shows', showsRoute);
   app.options('/api/shows', (_req, res) => res.sendStatus(200));
   app.get('/api/movies', moviesRoute);

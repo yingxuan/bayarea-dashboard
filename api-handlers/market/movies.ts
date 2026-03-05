@@ -67,7 +67,7 @@ async function fetchChineseMovies(): Promise<Movie[]> {
         : '',
       rating: item.vote_average || 0,
       release_date: item.release_date || '',
-      fandango_url: `https://www.fandango.com/search?q=${encodeURIComponent(item.title || item.original_title)}&entityType=MOVIE`,
+      fandango_url: `https://www.google.com/search?q=${encodeURIComponent((item.title || item.original_title) + ' showtimes bay area')}`,
     }));
 }
 

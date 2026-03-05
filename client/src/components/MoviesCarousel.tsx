@@ -9,6 +9,8 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useT } from "@/lib/translations";
 
 interface Movie {
   id: number;
@@ -25,6 +27,9 @@ interface MoviesCarouselProps {
 }
 
 export default function MoviesCarousel({ movies }: MoviesCarouselProps) {
+  const { lang } = useLanguage();
+  const t = useT(lang);
+
   if (movies.length === 0) {
     return null;
   }
@@ -34,7 +39,9 @@ export default function MoviesCarousel({ movies }: MoviesCarouselProps) {
       {/* Header */}
       <div className="flex items-center gap-2 pb-1.5 mb-1.5 border-b border-border/30">
         <Film className="w-3.5 h-3.5 text-foreground/60" />
-        <h3 className="text-[13px] font-mono font-medium text-foreground/70">院线华语</h3>
+        <h3 className="text-[13px] font-mono font-medium text-foreground/70">
+          {t.home.bayAreaMovies}
+        </h3>
       </div>
 
       <Carousel

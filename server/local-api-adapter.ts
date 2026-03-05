@@ -9,6 +9,8 @@ import type { Request, Response } from 'express';
 import fortuneHandler from '../api/fortune.js';
 import marketHandler from '../api/market-all.js';
 import dealsHandler from '../api/deals.js';
+import concertsHandler from '../api/concerts.js';
+import bayAreaMoviesHandler from '../api/bayarea-movies.js';
 import { handleToday as spendTodayHandler } from '../lib/spend/today.js';
 import communityHandler from '../api/community/[...slug].js';
 import portfolioHandler from '../api/portfolio/[...slug].js';
@@ -74,6 +76,38 @@ export async function marketRoute(req: Request, res: Response) {
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
+    });
+  }
+}
+
+/**
+ * Concerts API route
+ */
+export async function concertsRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await concertsHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Concerts route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Bay Area Chinese Movies (film screenings) API route
+ */
+export async function bayAreaMoviesRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    await bayAreaMoviesHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Bay Area Movies route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }

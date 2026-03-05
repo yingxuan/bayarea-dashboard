@@ -28,6 +28,7 @@ import FanwanCarousel from "@/components/FanwanCarousel";
 import IndicesCard from "@/components/IndicesCard";
 import ShowsCarousel from "@/components/ShowsCarousel";
 import MoviesCarousel from "@/components/MoviesCarousel";
+import ConcertsCarousel from "@/components/ConcertsCarousel";
 import SectionHeader from "@/components/SectionHeader";
 import TimeAgo from "@/components/TimeAgo";
 import ReturnHintToast, { ReturnToDashboardToast } from "@/components/ReturnHintToast";
@@ -37,6 +38,8 @@ import { useAuthAwareHoldings } from "@/hooks/useAuthAwareHoldings";
 import { QuoteData } from "@/hooks/usePortfolioSummary";
 import { useExternalLink } from "@/hooks/useExternalLink";
 import { config } from "@/config";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useT } from "@/lib/translations";
 
 // Helper function for API requests with timeout
 async function fetchWithTimeout(url: string, timeoutMs = 10000): Promise<Response> {
@@ -56,15 +59,18 @@ async function fetchWithTimeout(url: string, timeoutMs = 10000): Promise<Respons
 }
 
 export default function Home() {
+  const { lang } = useLanguage();
+  const t = useT(lang);
+
   // Mobile return hint
-  const { 
-    showHint, 
-    dismissHint, 
+  const {
+    showHint,
+    dismissHint,
     showReturnHint,
     dismissReturnHint,
     handleReturnHintClick,
-    handleExternalLinkClick, 
-    isStandalone 
+    handleExternalLinkClick,
+    isStandalone
   } = useExternalLink();
 
   // Section 1: 打工耽误赚钱
@@ -146,6 +152,7 @@ export default function Home() {
   const [movies, setMovies] = useState<any[]>([]); // 院线华语
   const [deals, setDeals] = useState<any[]>([]); // 薅羊毛
   const [dealsSourceMode, setDealsSourceMode] = useState<'live' | 'cache' | 'seed'>('live'); // Deals source mode
+  const [concerts, setConcerts] = useState<any[]>([]); // 湾区演唱会
 
   useEffect(() => {
     async function loadAllData() {
@@ -290,6 +297,20 @@ export default function Home() {
         setDeals([]);
         setDealsSourceMode('seed');
       }
+
+      // Section 3: 追剧吃瓜薅羊毛 - 湾区演唱会
+      try {
+        const response = await fetchWithTimeout(`${config.apiBaseUrl}/api/concerts`);
+        if (response.ok) {
+          const result = await response.json();
+          setConcerts(result.items || []);
+        } else {
+          setConcerts([]);
+        }
+      } catch {
+        setConcerts([]);
+      }
+
     }
     
     loadAllData();
@@ -329,7 +350,7 @@ export default function Home() {
             <div className="mb-3 mt-1 flex items-center gap-2">
               <div className="w-[2px] h-4 bg-primary" />
               <h1 className="text-[15px] font-semibold font-mono leading-tight tracking-wide">
-                <span className="neon-text-blue">打工耽误赚钱</span>
+                <span className="neon-text-blue">{t.home.sectionMarket}</span>
               </h1>
             </div>
 
@@ -354,7 +375,7 @@ export default function Home() {
 
             {/* 2) 市场看点 (Market Highlights: 新闻/一亩三分地) */}
             <div className="w-full min-w-0">
-              <SectionHeader title="市场看点" />
+              <SectionHeader title={t.home.marketHighlights} />
               <MarketHighlights marketNews={marketNews} />
             </div>
 
@@ -394,7 +415,7 @@ export default function Home() {
             <div className="mb-3 mt-1 flex items-center gap-2">
               <div className="w-[2px] h-4 bg-amber-500" />
               <h1 className="text-[15px] font-semibold font-mono leading-tight tracking-wide">
-                <span className="text-amber-400">民以食为天</span>
+                <span className="text-amber-400">{t.home.sectionFood}</span>
               </h1>
             </div>
 
@@ -419,7 +440,7 @@ export default function Home() {
             <div className="mb-3 mt-1 flex items-center gap-2">
               <div className="w-[2px] h-4 bg-violet-500" />
               <h1 className="text-[15px] font-semibold font-mono leading-tight tracking-wide">
-                <span className="text-violet-400">追剧吃瓜薅羊毛</span>
+                <span className="text-violet-400">{t.home.sectionEnt}</span>
               </h1>
             </div>
 
@@ -443,11 +464,19 @@ export default function Home() {
               </div>
             )}
 
-            {/* 2) Horizontal row: 吃瓜 and 薅羊毛 */}
+            {/* 3) 湾区演唱会 */}
+            {concerts.length > 0 && (
+              <div className="w-full min-w-0 overflow-hidden">
+                <ConcertsCarousel concerts={concerts} />
+              </div>
+            )}
+
+
+            {/* 4) Horizontal row: 吃瓜 and 薅羊毛 */}
             <div className="w-full min-w-0 flex flex-col md:flex-row gap-4 md:items-stretch">
               {/* 吃瓜 - Left side */}
               <div className="w-full md:w-3/5 min-w-0 flex flex-col">
-                <SectionHeader title="吃瓜" />
+                <SectionHeader title={t.home.gossip} />
                 <div className="flex-1">
                   <ChineseGossip maxItemsPerSource={5} />
                 </div>
@@ -458,11 +487,11 @@ export default function Home() {
                 <div className="w-full md:w-2/5 min-w-0 flex flex-col">
                   <div className="mb-2">
                     <div className="flex items-baseline justify-between mb-2">
-                      <h3 className="text-[13px] font-mono font-medium text-foreground/80">薅羊毛</h3>
+                      <h3 className="text-[13px] font-mono font-medium text-foreground/80">{t.home.deals}</h3>
                       {/* Source mode indicator - aligned with header */}
                       {dealsSourceMode && (
                         <span className="text-xs opacity-50 text-muted-foreground font-mono">
-                          {dealsSourceMode === 'live' ? '实时' : dealsSourceMode === 'cache' ? '缓存' : '种子'}
+                          {dealsSourceMode === 'live' ? t.home.live : dealsSourceMode === 'cache' ? t.home.cache : t.home.seed}
                         </span>
                       )}
                     </div>
@@ -506,8 +535,8 @@ export default function Home() {
       <footer className="border-t border-border py-6 mt-12">
         <div className="mx-auto w-full max-w-6xl px-4 md:px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground/50 font-mono">
-            <span className="neon-text-blue font-semibold text-sm">湾区华人每日生存与机会面板</span>
-            <span>数据每日更新 · 宁缺毋滥</span>
+            <span className="neon-text-blue font-semibold text-sm">{t.home.footerTagline}</span>
+            <span>{t.home.footerSub}</span>
           </div>
         </div>
       </footer>
