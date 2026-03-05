@@ -4,6 +4,8 @@
  */
 
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useT } from "@/lib/translations";
 
 interface MarketTemperatureCompactProps {
   spy: {
@@ -27,6 +29,9 @@ interface MarketTemperatureCompactProps {
 }
 
 export default function MarketTemperatureCompact({ spy, gold, btc }: MarketTemperatureCompactProps) {
+  const { lang } = useLanguage();
+  const t = useT(lang);
+
   const indices = [
     { code: "SPY", data: spy },
     { code: "GOLD", data: gold },
@@ -36,13 +41,13 @@ export default function MarketTemperatureCompact({ spy, gold, btc }: MarketTempe
   return (
     <div className="glow-border rounded-sm p-2 bg-card">
       <h3 className="text-sm font-semibold font-mono mb-2 text-foreground/90">
-        市场温度
+        {t.market.temperature}
       </h3>
       <div className="space-y-1">
         {indices.map((index) => {
           const isUnavailable = index.data.status === "unavailable";
           const isOk = index.data.status === "ok";
-          
+
           return (
             <div
               key={index.code}
@@ -56,7 +61,7 @@ export default function MarketTemperatureCompact({ spy, gold, btc }: MarketTempe
                 </div>
                 {isUnavailable ? (
                   <div className="text-xs font-mono text-muted-foreground">
-                    不可用
+                    {t.common.unavailable}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">

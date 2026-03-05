@@ -13,6 +13,8 @@ import { useEffect, useState } from "react";
 import { useExternalLink } from "@/hooks/useExternalLink";
 import { config } from "@/config";
 import TimeAgo from "@/components/TimeAgo";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useT } from "@/lib/translations";
 
 interface GossipItem {
   title: string;
@@ -48,6 +50,8 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
   const [source1P3A, setSource1P3A] = useState<ModulePayload<GossipItem> | null>(null);
   const [loading, setLoading] = useState(true);
   const { handleExternalLinkClick } = useExternalLink();
+  const { lang } = useLanguage();
+  const t = useT(lang);
 
   useEffect(() => {
     async function loadGossip() {
@@ -138,7 +142,7 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
 
   if (!hasAnyData) {
     return (
-      <div className="py-3 text-xs opacity-50 font-mono text-center">暂时抓不到</div>
+      <div className="py-3 text-xs opacity-50 font-mono text-center">{t.home.gossipEmpty}</div>
     );
   }
 
@@ -165,7 +169,7 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
           </a>
         ))
       ) : (
-        <div className="py-3 text-xs opacity-50 font-mono text-center">暂时抓不到</div>
+        <div className="py-3 text-xs opacity-50 font-mono text-center">{t.home.gossipEmpty}</div>
       )}
     </div>
   );

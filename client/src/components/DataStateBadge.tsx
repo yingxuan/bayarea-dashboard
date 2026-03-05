@@ -4,6 +4,8 @@
  */
 
 import { CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useT } from "@/lib/translations";
 
 interface DataStateBadgeProps {
   status: "ok" | "stale" | "unavailable";
@@ -11,14 +13,17 @@ interface DataStateBadgeProps {
 }
 
 export default function DataStateBadge({ status, className = "" }: DataStateBadgeProps) {
+  const { lang } = useLanguage();
+  const t = useT(lang);
+
   if (status === "ok") {
     return (
       <div
         className={`flex items-center gap-1 text-xs text-green-400 ${className}`}
-        title="数据正常"
+        title={t.dataState.okTitle}
       >
         <CheckCircle2 className="w-3 h-3" />
-        <span className="font-mono">正常</span>
+        <span className="font-mono">{t.dataState.ok}</span>
       </div>
     );
   }
@@ -27,10 +32,10 @@ export default function DataStateBadge({ status, className = "" }: DataStateBadg
     return (
       <div
         className={`flex items-center gap-1 text-xs text-yellow-400 ${className}`}
-        title="数据可能已过期"
+        title={t.dataState.staleTitle}
       >
         <Clock className="w-3 h-3" />
-        <span className="font-mono">过期</span>
+        <span className="font-mono">{t.dataState.stale}</span>
       </div>
     );
   }
@@ -39,10 +44,10 @@ export default function DataStateBadge({ status, className = "" }: DataStateBadg
   return (
     <div
       className={`flex items-center gap-1 text-xs text-red-400 ${className}`}
-      title="数据不可用"
+      title={t.dataState.unavailableTitle}
     >
       <AlertCircle className="w-3 h-3" />
-      <span className="font-mono">不可用</span>
+      <span className="font-mono">{t.dataState.unavailable}</span>
     </div>
   );
 }

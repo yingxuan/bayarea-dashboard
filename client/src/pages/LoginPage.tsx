@@ -19,10 +19,14 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useT } from "@/lib/translations";
 
 export default function LoginPage() {
   const [, navigate] = useLocation();
   const { login, register, isAuthenticated } = useAuth();
+  const { lang } = useLanguage();
+  const t = useT(lang);
 
   // Form states
   const [loginEmail, setLoginEmail] = useState("");
@@ -53,7 +57,7 @@ export default function LoginPage() {
       if (result.success) {
         navigate("/", { replace: true });
       } else {
-        setError(result.error || "登录失败");
+        setError(result.error || t.auth.loginError);
       }
     } finally {
       setIsLoading(false);
@@ -64,9 +68,8 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
 
-    // Validate passwords match
     if (registerPassword !== registerConfirmPassword) {
-      setError("两次输入的密码不一致");
+      setError(t.auth.passwordMismatch);
       return;
     }
 
@@ -81,7 +84,7 @@ export default function LoginPage() {
       if (result.success) {
         navigate("/", { replace: true });
       } else {
-        setError(result.error || "注册失败");
+        setError(result.error || t.auth.registerError);
       }
     } finally {
       setIsLoading(false);
@@ -93,9 +96,9 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-mono neon-text-blue">
-            湾区仪表盘
+            {t.auth.brand}
           </CardTitle>
-          <CardDescription>登录后查看您的投资组合</CardDescription>
+          <CardDescription>{t.auth.brandDesc}</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs
@@ -106,8 +109,8 @@ export default function LoginPage() {
             }}
           >
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">登录</TabsTrigger>
-              <TabsTrigger value="register">注册</TabsTrigger>
+              <TabsTrigger value="login">{t.auth.login}</TabsTrigger>
+              <TabsTrigger value="register">{t.auth.register}</TabsTrigger>
             </TabsList>
 
             {error && (
@@ -120,7 +123,7 @@ export default function LoginPage() {
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email">邮箱</Label>
+                  <Label htmlFor="login-email">{t.auth.email}</Label>
                   <Input
                     id="login-email"
                     type="email"
@@ -132,7 +135,7 @@ export default function LoginPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="login-password">密码</Label>
+                  <Label htmlFor="login-password">{t.auth.password}</Label>
                   <Input
                     id="login-password"
                     type="password"
@@ -147,10 +150,10 @@ export default function LoginPage() {
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      登录中...
+                      {t.auth.loginLoading}
                     </>
                   ) : (
-                    "登录"
+                    t.auth.login
                   )}
                 </Button>
                 <div className="text-center">
@@ -159,7 +162,7 @@ export default function LoginPage() {
                     onClick={() => navigate("/forgot-password")}
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    忘记密码？
+                    {t.auth.forgotPassword}
                   </button>
                 </div>
               </form>
@@ -168,7 +171,7 @@ export default function LoginPage() {
             <TabsContent value="register">
               <form onSubmit={handleRegister} className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="register-email">邮箱</Label>
+                  <Label htmlFor="register-email">{t.auth.email}</Label>
                   <Input
                     id="register-email"
                     type="email"
@@ -180,22 +183,22 @@ export default function LoginPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="display-name">昵称（可选）</Label>
+                  <Label htmlFor="display-name">{t.auth.displayName}</Label>
                   <Input
                     id="display-name"
                     type="text"
-                    placeholder="您的昵称"
+                    placeholder={t.auth.displayNamePlaceholder}
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="register-password">密码</Label>
+                  <Label htmlFor="register-password">{t.auth.password}</Label>
                   <Input
                     id="register-password"
                     type="password"
-                    placeholder="至少8位，包含大小写和数字"
+                    placeholder={t.auth.passwordPlaceholder}
                     value={registerPassword}
                     onChange={(e) => setRegisterPassword(e.target.value)}
                     required
@@ -203,11 +206,11 @@ export default function LoginPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="register-confirm-password">确认密码</Label>
+                  <Label htmlFor="register-confirm-password">{t.auth.confirmPassword}</Label>
                   <Input
                     id="register-confirm-password"
                     type="password"
-                    placeholder="再次输入密码"
+                    placeholder={t.auth.confirmPasswordPlaceholder}
                     value={registerConfirmPassword}
                     onChange={(e) => setRegisterConfirmPassword(e.target.value)}
                     required
@@ -218,10 +221,10 @@ export default function LoginPage() {
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      注册中...
+                      {t.auth.registerLoading}
                     </>
                   ) : (
-                    "注册"
+                    t.auth.register
                   )}
                 </Button>
               </form>
@@ -234,7 +237,7 @@ export default function LoginPage() {
               onClick={() => navigate("/")}
               className="hover:text-foreground transition-colors"
             >
-              返回首页
+              {t.auth.backToHome}
             </button>
           </div>
         </CardContent>

@@ -4,13 +4,20 @@
  * Uses standardized typography: text-sm font-semibold for title, text-xs opacity-70 for link
  */
 
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useT } from "@/lib/translations";
+
 interface SectionHeaderProps {
   title: string;
   href?: string;
   linkText?: string;
 }
 
-export default function SectionHeader({ title, href, linkText = "查看更多" }: SectionHeaderProps) {
+export default function SectionHeader({ title, href, linkText }: SectionHeaderProps) {
+  const { lang } = useLanguage();
+  const t = useT(lang);
+  const resolvedLinkText = linkText ?? t.common.viewMore;
+
   return (
     <div className="mb-1.5">
       <div className="flex items-baseline justify-between mb-1.5">
@@ -20,7 +27,7 @@ export default function SectionHeader({ title, href, linkText = "查看更多" }
             href={href}
             className="text-xs opacity-60 font-mono font-normal hover:opacity-100 transition-opacity"
           >
-            {linkText}
+            {resolvedLinkText}
           </a>
         )}
       </div>

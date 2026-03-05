@@ -19,8 +19,13 @@ import {
   StockYouTubersFull,
   FanwanFull,
 } from "@/components/piaozi";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useT } from "@/lib/translations";
 
 export default function Piaozi() {
+  const { lang } = useLanguage();
+  const t = useT(lang);
+
   return (
     <div className="min-h-screen bg-background grid-bg">
       <Navigation />
@@ -32,10 +37,10 @@ export default function Piaozi() {
             <BackToHomeLink />
             <div className="flex items-baseline gap-3">
               <h1 className="text-xl font-mono font-semibold">
-                <span className="neon-text-blue">票子</span>
+                <span className="neon-text-blue">{t.piaozi.title}</span>
               </h1>
               <span className="text-sm text-muted-foreground font-mono">
-                财务详情
+                {t.piaozi.subtitle}
               </span>
             </div>
           </div>
@@ -77,13 +82,11 @@ export default function Piaozi() {
         <div className="mx-auto w-full max-w-6xl px-4 md:px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground font-mono">
             <div>
-              <span className="neon-text-blue font-bold">湾区华人每日生存与机会面板</span>
-              <span className="ml-2">| 票子 - 财务详情</span>
+              <span className="neon-text-blue font-bold">{t.home.footerTagline}</span>
+              <span className="ml-2">| {t.piaozi.title} - {t.piaozi.subtitle}</span>
             </div>
             <div className="flex items-center gap-4">
-              <span>数据每日更新</span>
-              <span>·</span>
-              <span>宁缺毋滥</span>
+              <span>{t.home.footerSub}</span>
             </div>
           </div>
         </div>

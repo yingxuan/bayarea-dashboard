@@ -15,9 +15,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { User, LogOut, Loader2 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useT } from "@/lib/translations";
 
 export default function UserMenu() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
+  const { lang } = useLanguage();
+  const t = useT(lang);
 
   if (isLoading) {
     return (
@@ -31,13 +35,13 @@ export default function UserMenu() {
     return (
       <Link href="/login">
         <Button variant="outline" size="sm" className="text-xs h-8">
-          登录
+          {t.user.signIn}
         </Button>
       </Link>
     );
   }
 
-  const displayText = user?.displayName || user?.email?.split("@")[0] || "用户";
+  const displayText = user?.displayName || user?.email?.split("@")[0] || t.user.fallbackName;
 
   return (
     <DropdownMenu>
@@ -66,7 +70,7 @@ export default function UserMenu() {
           className="text-destructive focus:text-destructive cursor-pointer"
         >
           <LogOut className="mr-2 h-4 w-4" />
-          退出登录
+          {t.user.signOut}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

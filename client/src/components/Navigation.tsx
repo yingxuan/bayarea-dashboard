@@ -10,17 +10,21 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
 import UserMenu from "./UserMenu";
-
-const navItems = [
-  { label: "主页", path: "/" },
-  { label: "票子", path: "/piaozi" },
-  { label: "吃喝", path: "/chihe" },
-];
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useT } from "@/lib/translations";
 
 export default function Navigation() {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { lang, toggleLang } = useLanguage();
+  const t = useT(lang);
+
+  const navItems = [
+    { label: t.nav.home, path: "/" },
+    { label: t.nav.finance, path: "/piaozi" },
+    { label: t.nav.dining, path: "/chihe" },
+  ];
 
   // Close on outside click
   useEffect(() => {
@@ -47,7 +51,7 @@ export default function Navigation() {
           <Link href="/">
             <div className="flex items-center gap-2 cursor-pointer">
               <div className="text-xl font-bold font-mono neon-text-blue">
-                湾区仪表盘
+                {t.nav.brand}
               </div>
             </div>
           </Link>
@@ -75,8 +79,15 @@ export default function Navigation() {
             })}
           </div>
 
-          {/* Desktop User Menu */}
-          <div className="hidden md:flex items-center">
+          {/* Desktop: Lang toggle + User Menu */}
+          <div className="hidden md:flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleLang}
+              className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors px-1.5 py-1"
+            >
+              {lang === "zh" ? "EN" : "中"}
+            </button>
             <UserMenu />
           </div>
 
@@ -86,7 +97,7 @@ export default function Navigation() {
               type="button"
               onClick={() => setMobileOpen((prev) => !prev)}
               className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={mobileOpen ? "关闭菜单" : "打开菜单"}
+              aria-label={mobileOpen ? t.nav.closeMenu : t.nav.openMenu}
             >
               <svg
                 className="w-6 h-6"
@@ -139,8 +150,15 @@ export default function Navigation() {
                         </Link>
                       );
                     })}
-                    <div className="border-t border-border/30 mt-1 pt-2 px-3">
+                    <div className="border-t border-border/30 mt-1 pt-2 px-3 flex items-center justify-between">
                       <UserMenu />
+                      <button
+                        type="button"
+                        onClick={toggleLang}
+                        className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors px-1.5 py-1"
+                      >
+                        {lang === "zh" ? "EN" : "中"}
+                      </button>
                     </div>
                   </div>
                 </motion.div>

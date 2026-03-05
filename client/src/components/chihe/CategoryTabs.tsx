@@ -10,6 +10,8 @@
  */
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useT } from "@/lib/translations";
 
 export type CategoryType = '奶茶' | '中餐' | '夜宵' | '新店打卡';
 
@@ -19,14 +21,17 @@ interface CategoryTabsProps {
   counts?: Record<CategoryType, number>;
 }
 
-const CATEGORIES: { key: CategoryType; label: string; emoji: string }[] = [
-  { key: '奶茶', label: '奶茶', emoji: '' },
-  { key: '中餐', label: '中餐', emoji: '' },
-  { key: '夜宵', label: '夜宵', emoji: '' },
-  { key: '新店打卡', label: '新店打卡', emoji: '' },
-];
-
 export default function CategoryTabs({ activeCategory, onCategoryChange, counts }: CategoryTabsProps) {
+  const { lang } = useLanguage();
+  const t = useT(lang);
+
+  const CATEGORIES: { key: CategoryType; label: string }[] = [
+    { key: '奶茶', label: t.chihe.bubbleTea },
+    { key: '中餐', label: t.chihe.chinese },
+    { key: '夜宵', label: t.chihe.lateNight },
+    { key: '新店打卡', label: t.chihe.newPlaces },
+  ];
+
   return (
     <Tabs
       value={activeCategory}
@@ -41,7 +46,6 @@ export default function CategoryTabs({ activeCategory, onCategoryChange, counts 
             className="flex-1 min-w-[80px] px-4 py-2 text-sm font-mono data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:border-primary/50 data-[state=active]:shadow-none border border-transparent transition-all"
           >
             <span className="flex items-center gap-1.5">
-              {cat.emoji && <span>{cat.emoji}</span>}
               <span>{cat.label}</span>
               {counts && counts[cat.key] !== undefined && (
                 <span className="text-[10px] opacity-60 tabular-nums ml-1">

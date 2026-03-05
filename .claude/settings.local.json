@@ -31,7 +31,25 @@
       "mcp__Neon__get_connection_string",
       "mcp__Neon__list_organizations",
       "mcp__Neon__get_database_tables",
-      "mcp__Neon__run_sql"
+      "mcp__Neon__run_sql",
+      "Bash(curl:*)",
+      "Bash(gh run:*)",
+      "Bash(pnpm build:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:api.themoviedb.org)",
+      "WebFetch(domain:rsshub.app)",
+      "WebFetch(domain:rsshub.rssforever.com)",
+      "WebFetch(domain:rsshub.uneasy.win)",
+      "WebFetch(domain:www.teamblind.com)",
+      "WebSearch",
+      "WebFetch(domain:docs.rsshub.app)",
+      "WebFetch(domain:www.1point3acres.com)",
+      "WebFetch(domain:feeds.bbci.co.uk)",
+      "Bash(npx eslint:*)",
+      "WebFetch(domain:developer.eventbrite.com)",
+      "WebFetch(domain:www.eventbrite.com)",
+      "WebFetch(domain:developer.ticketmaster.com)",
+      "Bash(node:*)"
     ]
   }
 }

@@ -8,6 +8,8 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useT } from "@/lib/translations";
 import { generateMarketJudgment, type MarketJudgment } from "@/lib/judgment";
 import { config } from "@/config";
 import DataStateBadge from "@/components/DataStateBadge";
@@ -48,11 +50,13 @@ interface FinanceOverviewProps {
   showTopMoversOnly?: boolean;
 }
 
-export default function FinanceOverview({ 
-  compactMode = false, 
+export default function FinanceOverview({
+  compactMode = false,
   showMarketTemperatureOnly = false,
-  showTopMoversOnly = false 
+  showTopMoversOnly = false
 }: FinanceOverviewProps = {}) {
+  const { lang } = useLanguage();
+  const t = useT(lang);
   const [marketData, setMarketData] = useState<{
     spy: MarketDataItem;
     gold: MarketDataItem;
@@ -307,7 +311,7 @@ export default function FinanceOverview({
       return (
         <div className="rounded-sm p-2 bg-card border border-border/50">
           <div className="text-xs text-muted-foreground text-center py-2">
-            {loading ? "加载中..." : "暂无数据"}
+            {loading ? t.common.loading : t.common.noData}
           </div>
         </div>
       );
@@ -332,7 +336,7 @@ export default function FinanceOverview({
                 </div>
                 {isUnavailable ? (
                   <div className="text-xs font-mono text-muted-foreground">
-                    不可用
+                    {t.common.unavailable}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -438,7 +442,7 @@ export default function FinanceOverview({
       {/* C) Market Temperature (SPY, GOLD, BTC combined) */}
       <div className="glow-border rounded-sm p-4 bg-card">
         <h3 className="text-base font-semibold font-mono mb-3 text-foreground/90">
-          市场温度
+          {t.market.temperature}
         </h3>
         <div className="space-y-3">
           {indices.map((index) => {
@@ -467,7 +471,7 @@ export default function FinanceOverview({
                 {/* Value display - compact */}
                 {isUnavailable ? (
                   <div className="text-sm font-mono text-muted-foreground">
-                    不可用
+                    {t.common.unavailable}
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">

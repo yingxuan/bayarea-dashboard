@@ -28,6 +28,8 @@ import {
 import type { CategoryType } from "@/components/chihe";
 import { usePlacesCache } from "@/hooks/usePlacesCache";
 import { config } from "@/config";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useT } from "@/lib/translations";
 
 interface SpendPlace {
   id: string;
@@ -44,6 +46,8 @@ interface SpendPlace {
 }
 
 export default function Chihe() {
+  const { lang } = useLanguage();
+  const t = useT(lang);
   const [activeCategory, setActiveCategory] = useState<CategoryType>('奶茶');
 
   // Use the same places cache hook as TodaySpendCarousels
@@ -152,13 +156,13 @@ export default function Chihe() {
 
             <div className="space-y-2">
               <h1 className="text-2xl md:text-3xl font-bold font-mono">
-                <span className="neon-text-blue">吃喝</span>
+                <span className="neon-text-blue">{t.chihe.title}</span>
                 <span className="text-muted-foreground ml-2 text-lg font-normal">
-                  餐饮推荐
+                  {t.chihe.subtitle}
                 </span>
               </h1>
               <p className="text-sm text-muted-foreground font-mono">
-                湾区华人热门餐厅推荐 - 点击卡片直达 Google Maps
+                {t.chihe.desc}
               </p>
             </div>
           </div>
@@ -212,11 +216,11 @@ export default function Chihe() {
         <div className="mx-auto w-full max-w-6xl px-4 md:px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground font-mono">
             <div>
-              <span className="neon-text-blue font-bold">湾区华人每日生存与机会面板</span>
-              <span className="ml-2">| 吃喝推荐</span>
+              <span className="neon-text-blue font-bold">{t.home.footerTagline}</span>
+              <span className="ml-2">| {t.chihe.subtitle}</span>
             </div>
             <div className="flex items-center gap-4">
-              <span>数据每日更新</span>
+              <span>{t.home.footerSub.split('·')[0].trim()}</span>
               <span>|</span>
               <BackToHomeLink />
             </div>

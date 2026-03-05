@@ -18,11 +18,15 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useT } from "@/lib/translations";
 
 export default function ResetPasswordPage() {
   const [, navigate] = useLocation();
   const searchString = useSearch();
   const { resetPassword } = useAuth();
+  const { lang } = useLanguage();
+  const t = useT(lang);
 
   const params = new URLSearchParams(searchString);
   const token = params.get("token");
@@ -39,21 +43,21 @@ export default function ResetPasswordPage() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-mono neon-text-blue">
-              链接无效
+              {t.auth.invalidLink}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                密码重置链接无效或缺少必要参数。请重新请求密码重置。
+                {t.auth.invalidLinkDesc}
               </AlertDescription>
             </Alert>
             <Button
               className="w-full"
               onClick={() => navigate("/forgot-password")}
             >
-              重新请求重置链接
+              {t.auth.requestNewReset}
             </Button>
           </CardContent>
         </Card>
@@ -66,7 +70,7 @@ export default function ResetPasswordPage() {
     setError(null);
 
     if (password !== confirmPassword) {
-      setError("两次输入的密码不一致");
+      setError(t.auth.passwordMismatch);
       return;
     }
 
@@ -77,7 +81,7 @@ export default function ResetPasswordPage() {
       if (result.success) {
         setSuccess(true);
       } else {
-        setError(result.error || "密码重置失败");
+        setError(result.error || t.auth.resetFailed);
       }
     } finally {
       setIsLoading(false);
@@ -89,9 +93,9 @@ export default function ResetPasswordPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-mono neon-text-blue">
-            设置新密码
+            {t.auth.setNewPassword}
           </CardTitle>
-          <CardDescription>请输入您的新密码</CardDescription>
+          <CardDescription>{t.auth.newPasswordDesc}</CardDescription>
         </CardHeader>
         <CardContent>
           {success ? (
@@ -99,11 +103,11 @@ export default function ResetPasswordPage() {
               <Alert>
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertDescription>
-                  密码已成功重置！请使用新密码登录。
+                  {t.auth.resetSuccessMsg}
                 </AlertDescription>
               </Alert>
               <Button className="w-full" onClick={() => navigate("/login")}>
-                前往登录
+                {t.auth.goToLogin}
               </Button>
             </div>
           ) : (
@@ -116,11 +120,11 @@ export default function ResetPasswordPage() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="new-password">新密码</Label>
+                <Label htmlFor="new-password">{t.auth.newPassword}</Label>
                 <Input
                   id="new-password"
                   type="password"
-                  placeholder="至少8位，包含大小写和数字"
+                  placeholder={t.auth.newPasswordPlaceholder}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -130,11 +134,11 @@ export default function ResetPasswordPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirm-new-password">确认新密码</Label>
+                <Label htmlFor="confirm-new-password">{t.auth.confirmNewPassword}</Label>
                 <Input
                   id="confirm-new-password"
                   type="password"
-                  placeholder="再次输入新密码"
+                  placeholder={t.auth.confirmNewPasswordPlaceholder}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
@@ -146,10 +150,10 @@ export default function ResetPasswordPage() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    重置中...
+                    {t.auth.resetting}
                   </>
                 ) : (
-                  "重置密码"
+                  t.auth.resetPasswordAction
                 )}
               </Button>
 
@@ -159,7 +163,7 @@ export default function ResetPasswordPage() {
                   onClick={() => navigate("/login")}
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  返回登录
+                  {t.auth.backToLogin}
                 </button>
               </div>
             </form>

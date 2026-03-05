@@ -18,10 +18,14 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useT } from "@/lib/translations";
 
 export default function ForgotPasswordPage() {
   const [, navigate] = useLocation();
   const { forgotPassword } = useAuth();
+  const { lang } = useLanguage();
+  const t = useT(lang);
 
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -38,7 +42,7 @@ export default function ForgotPasswordPage() {
       if (result.success) {
         setSuccess(true);
       } else {
-        setError(result.error || "操作失败");
+        setError(result.error || t.auth.operationFailed);
       }
     } finally {
       setIsLoading(false);
@@ -50,10 +54,10 @@ export default function ForgotPasswordPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-mono neon-text-blue">
-            重置密码
+            {t.auth.resetTitle}
           </CardTitle>
           <CardDescription>
-            输入您的注册邮箱，我们将发送密码重置链接
+            {t.auth.resetDesc}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -62,7 +66,7 @@ export default function ForgotPasswordPage() {
               <Alert>
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertDescription>
-                  如果该邮箱已注册，您将收到密码重置链接。请检查您的收件箱。
+                  {t.auth.resetSuccess}
                 </AlertDescription>
               </Alert>
               <Button
@@ -71,7 +75,7 @@ export default function ForgotPasswordPage() {
                 onClick={() => navigate("/login")}
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                返回登录
+                {t.auth.backToLogin}
               </Button>
             </div>
           ) : (
@@ -84,7 +88,7 @@ export default function ForgotPasswordPage() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="reset-email">邮箱</Label>
+                <Label htmlFor="reset-email">{t.auth.email}</Label>
                 <Input
                   id="reset-email"
                   type="email"
@@ -101,10 +105,10 @@ export default function ForgotPasswordPage() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    发送中...
+                    {t.auth.sendingReset}
                   </>
                 ) : (
-                  "发送重置链接"
+                  t.auth.sendReset
                 )}
               </Button>
 
@@ -115,7 +119,7 @@ export default function ForgotPasswordPage() {
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <ArrowLeft className="inline mr-1 h-3 w-3" />
-                  返回登录
+                  {t.auth.backToLogin}
                 </button>
               </div>
             </form>

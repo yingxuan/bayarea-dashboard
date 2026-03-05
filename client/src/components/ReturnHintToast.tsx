@@ -6,6 +6,8 @@
 
 import { useEffect } from "react";
 import { X } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useT } from "@/lib/translations";
 
 interface ReturnHintToastProps {
   show: boolean;
@@ -14,20 +16,23 @@ interface ReturnHintToastProps {
 }
 
 export default function ReturnHintToast({ show, onDismiss, isStandalone = false }: ReturnHintToastProps) {
+  const { lang } = useLanguage();
+  const t = useT(lang);
+
   useEffect(() => {
     if (show) {
       const timer = setTimeout(() => {
         onDismiss();
-      }, 2000); // Auto dismiss after 2 seconds
+      }, 2000);
       return () => clearTimeout(timer);
     }
   }, [show, onDismiss]);
 
   if (!show) return null;
 
-  const message = isStandalone 
-    ? "已打开外部链接，点击浏览器返回按钮可返回仪表盘" 
-    : "已在新标签打开，切换回此标签页继续刷";
+  const message = isStandalone
+    ? t.toast.externalStandalone
+    : t.toast.externalNewTab;
 
   return (
     <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[9999] w-full max-w-sm px-4">
@@ -47,12 +52,14 @@ interface ReturnToDashboardToastProps {
 }
 
 export function ReturnToDashboardToast({ show, onDismiss, onClick }: ReturnToDashboardToastProps) {
+  const { lang } = useLanguage();
+  const t = useT(lang);
+
   useEffect(() => {
     if (show) {
-      // Make it more persistent - show for 10 seconds instead of 5
       const timer = setTimeout(() => {
         onDismiss();
-      }, 10000); // Auto dismiss after 10 seconds
+      }, 10000);
       return () => clearTimeout(timer);
     }
   }, [show, onDismiss]);
@@ -67,10 +74,10 @@ export function ReturnToDashboardToast({ show, onDismiss, onClick }: ReturnToDas
       >
         <span className="text-sm font-mono font-semibold text-primary whitespace-nowrap flex items-center gap-2">
           <span className="text-lg">←</span>
-          <span>继续刷湾区仪表盘</span>
+          <span>{t.toast.returnDashboard}</span>
         </span>
-        <X 
-          className="w-4 h-4 text-muted-foreground hover:text-foreground flex-shrink-0" 
+        <X
+          className="w-4 h-4 text-muted-foreground hover:text-foreground flex-shrink-0"
           onClick={(e) => {
             e.stopPropagation();
             onDismiss();

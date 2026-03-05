@@ -3,34 +3,44 @@
  * Displays relative time, shows ISO timestamp on hover
  */
 
+import { useLanguage } from "@/contexts/LanguageContext";
+
 interface TimeAgoProps {
   isoString: string;
   className?: string;
 }
 
 export default function TimeAgo({ isoString, className = "" }: TimeAgoProps) {
+  const { lang } = useLanguage();
+
   const formatTimeAgo = (dateString: string) => {
     if (!dateString || dateString.trim() === '') {
       return null;
     }
-    
+
     const date = new Date(dateString);
-    // Check if date is valid
     if (isNaN(date.getTime())) {
       return null;
     }
-    
+
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
-    
-    // Check if diff is reasonable (not negative or too large)
+
     if (diffMs < 0 || diffMs > 100 * 365 * 24 * 60 * 60 * 1000) {
       return null;
     }
-    
+
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
     const diffHours = Math.floor(diffMinutes / 60);
     const diffDays = Math.floor(diffHours / 24);
+
+    if (lang === "en") {
+      if (diffMinutes < 1) return "just now";
+      if (diffMinutes < 60) return `${diffMinutes}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return `${Math.floor(diffDays / 7)}w ago`;
+    }
 
     if (diffMinutes < 1) return "刚刚";
     if (diffMinutes < 60) return `${diffMinutes}分钟前`;
@@ -40,13 +50,12 @@ export default function TimeAgo({ isoString, className = "" }: TimeAgoProps) {
   };
 
   const relativeTime = formatTimeAgo(isoString);
-  
-  // If invalid date, return null (don't display anything)
+
   if (relativeTime === null) {
     return null;
   }
 
-  const isoTime = new Date(isoString).toLocaleString("zh-CN", {
+  const isoTime = new Date(isoString).toLocaleString(lang === "en" ? "en-US" : "zh-CN", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -55,10 +64,9 @@ export default function TimeAgo({ isoString, className = "" }: TimeAgoProps) {
     second: "2-digit",
   });
 
-  // Use className if provided, otherwise use default styles
   const defaultClasses = "text-xs opacity-60 text-muted-foreground font-mono font-normal";
   const finalClasses = className ? `${defaultClasses} ${className}` : defaultClasses;
-  
+
   return (
     <span
       className={finalClasses}
