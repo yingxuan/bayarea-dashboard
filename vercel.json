@@ -41,6 +41,8 @@
     { "source": "/api/shows", "destination": "/api/market-all?handler=shows" },
     { "source": "/api/youtubers", "destination": "/api/market-all?handler=youtubers" },
     { "source": "/api/movies", "destination": "/api/market-all?handler=movies" },
+    { "source": "/api/concerts", "destination": "/api/market-all?handler=concerts" },
+    { "source": "/api/bayarea-movies", "destination": "/api/market-all?handler=bayarea-movies" },
     { "source": "/api/:path*", "destination": "/api/:path*" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]

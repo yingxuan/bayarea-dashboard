@@ -9,7 +9,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { ttlMsToSeconds } from '../shared/config.js';
+import { ttlMsToSeconds } from '../../shared/config.js';
 import {
   setCorsHeaders,
   handleOptions,
@@ -17,7 +17,7 @@ import {
   getCachedData,
   setCache,
   getStaleCache,
-} from '../lib/api-utils.js';
+} from '../../lib/api-utils.js';
 
 const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
 const FETCH_TIMEOUT = 10000; // 10 seconds
@@ -184,7 +184,7 @@ async function fetchBayAreaMovies(nocache: boolean = false): Promise<{ items: Mo
   return { items: [], sourceMode: 'unavailable' };
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleBayAreaMovies(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
 
   if (handleOptions(req, res)) {
