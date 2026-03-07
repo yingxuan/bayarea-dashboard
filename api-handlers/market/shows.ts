@@ -34,22 +34,25 @@ interface Show {
 
 // Chinese video platform YouTube channels
 // Note: @TencentVideo, @youku-official, @MangoTV-Official, @CCTVDrama were terminated
-// Using WeTV (腾讯旗下), iQIYI, and other active channels
+// channelId hardcoded where known to avoid scraping YouTube pages (often blocked on Vercel)
 const TV_CHANNELS = [
   {
     name: 'WeTV',
     url: 'https://www.youtube.com/@wetv',
     handle: '@wetv',
+    channelId: null as string | null,
   },
   {
     name: 'iQIYI',
     url: 'https://www.youtube.com/@iQIYI',
     handle: '@iQIYI',
+    channelId: null as string | null,
   },
   {
     name: 'iQIYI English',
     url: 'https://www.youtube.com/@iQIYIEnglish',
     handle: '@iQIYIEnglish',
+    channelId: 'UCUhpu5MJQ_bjPkXO00jyxsw', // confirmed working
   },
 ];
 
@@ -242,8 +245,8 @@ async function fetchAllShows(): Promise<Show[]> {
   // Fetch from all channels concurrently
   // Each channel returns multiple videos (up to 5 per channel)
   const fetchPromises = TV_CHANNELS.map(async (channel) => {
-    // Extract channel ID from URL
-    const channelId = await extractChannelIdFromUrl(channel.url);
+    // Use hardcoded channelId if available, otherwise scrape from page
+    const channelId = channel.channelId ?? await extractChannelIdFromUrl(channel.url);
     if (!channelId) {
       console.warn(`[Shows] Could not extract channel ID for ${channel.name}`);
       return { channelName: channel.name, shows: [] };

@@ -56,7 +56,7 @@ export default function MoviesCarousel({ movies }: MoviesCarouselProps) {
           {movies.map((movie) => (
             <CarouselItem
               key={movie.id}
-              className="pl-2 basis-[22%] md:basis-[11%] shrink-0"
+              className="pl-2 basis-[30%] md:basis-[16%] shrink-0"
             >
               <a
                 href={movie.fandango_url}
@@ -65,7 +65,7 @@ export default function MoviesCarousel({ movies }: MoviesCarouselProps) {
                 className="block rounded-sm overflow-hidden bg-card border border-border/40 shadow-md hover:opacity-80 transition-opacity group"
               >
                 {/* Fixed-height poster */}
-                <div className="relative w-full h-[120px] md:h-[155px] bg-muted overflow-hidden">
+                <div className="relative w-full h-[130px] md:h-[160px] bg-muted overflow-hidden">
                   {movie.poster_url ? (
                     <img
                       src={movie.poster_url}
