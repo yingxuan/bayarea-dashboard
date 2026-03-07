@@ -113,6 +113,23 @@ export async function weatherRoute(req: Request, res: Response) {
 }
 
 /**
+ * HN Top Stories API route
+ */
+export async function hnRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    withHandler(vercelReq, 'hn');
+    await marketHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] HN route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
  * Bay Area Chinese Movies (film screenings) API route
  */
 export async function bayAreaMoviesRoute(req: Request, res: Response) {

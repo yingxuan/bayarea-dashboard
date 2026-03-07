@@ -17,6 +17,7 @@ import {
   concertsRoute,
   bayAreaMoviesRoute,
   weatherRoute,
+  hnRoute,
   showsRoute,
   youtubersRoute,
   moviesRoute,
@@ -74,6 +75,8 @@ async function startServer() {
   app.options('/api/bayarea-movies', (_req, res) => res.sendStatus(200));
   app.get('/api/weather', weatherRoute);
   app.options('/api/weather', (_req, res) => res.sendStatus(200));
+  app.get('/api/hn', hnRoute);
+  app.options('/api/hn', (_req, res) => res.sendStatus(200));
   app.get('/api/shows', showsRoute);
   app.options('/api/shows', (_req, res) => res.sendStatus(200));
   app.get('/api/movies', moviesRoute);

@@ -8,6 +8,7 @@ import { handleMovies } from '../api-handlers/market/movies.js';
 import { handleConcerts } from '../api-handlers/market/concerts.js';
 import { handleBayAreaMovies } from '../api-handlers/market/bayarea-movies.js';
 import { handleWeather } from '../api-handlers/market/weather.js';
+import { handleHN } from '../api-handlers/market/hn.js';
 
 const handlerMap: Record<string, (req: VercelRequest, res: VercelResponse) => Promise<any>> = {
   market: handleMarket,
@@ -19,6 +20,7 @@ const handlerMap: Record<string, (req: VercelRequest, res: VercelResponse) => Pr
   concerts: handleConcerts,
   'bayarea-movies': handleBayAreaMovies,
   weather: handleWeather,
+  hn: handleHN,
 };
 
 function normalizePath(req: VercelRequest): string {
@@ -40,6 +42,7 @@ function detectHandler(req: VercelRequest): string {
   if (path.includes('/concerts')) return 'concerts';
   if (path.includes('/bayarea-movies')) return 'bayarea-movies';
   if (path.includes('/weather')) return 'weather';
+  if (path.includes('/hn')) return 'hn';
   return 'market';
 }
 

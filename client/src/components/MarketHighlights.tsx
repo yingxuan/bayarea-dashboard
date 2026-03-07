@@ -1,6 +1,7 @@
 /**
  * Market Highlights Component
  * Each item is a separate card with source label
+ * Shows: 新浪财经 news + 一亩三分地 leeks + HN top stories
  */
 
 import { useEffect, useState } from "react";
@@ -16,6 +17,13 @@ interface CommunityItem {
   publishedAt?: string;
 }
 
+interface HNItem {
+  id: number;
+  title: string;
+  url: string;
+  score: number;
+}
+
 interface MarketHighlightsProps {
   marketNews: any[]; // Top 3 中文美股新闻
 }
@@ -24,54 +32,51 @@ interface UnifiedItem {
   id: string;
   title: string;
   url: string;
-  source: string; // "新浪财经" or "一亩三分地"
+  source: string; // "新浪财经" or "一亩三分地" or "HN"
   publishedAt?: string;
 }
 
 export default function MarketHighlights({ marketNews }: MarketHighlightsProps) {
   const [leekItems, setLeekItems] = useState<CommunityItem[]>([]);
+  const [hnItems, setHnItems] = useState<HNItem[]>([]);
   const { handleExternalLinkClick } = useExternalLink();
 
-  // Fetch 一亩三分地 posts
+  // Fetch 一亩三分地 posts and HN stories in parallel
   useEffect(() => {
-    async function loadLeekPosts() {
-      const apiUrl = `${config.apiBaseUrl}/api/community/leeks`;
+    async function loadData() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
-    
+
       try {
-        const response = await fetch(apiUrl, { signal: controller.signal });
+        const [leeksResp, hnResp] = await Promise.allSettled([
+          fetch(`${config.apiBaseUrl}/api/community/leeks`, { signal: controller.signal }),
+          fetch(`${config.apiBaseUrl}/api/hn`, { signal: controller.signal }),
+        ]);
         clearTimeout(timeoutId);
-    
-        // HTTP 不 ok → 直接 fallback
-        if (!response.ok) {
-          return;
+
+        if (leeksResp.status === 'fulfilled' && leeksResp.value.ok) {
+          const ct = leeksResp.value.headers.get('content-type') || '';
+          if (ct.includes('application/json')) {
+            const result = await leeksResp.value.json();
+            const items = result.items || [];
+            if (items.length > 0) setLeekItems(items.slice(0, 3));
+          }
         }
-    
-        const contentType = response.headers.get("content-type") || "";
-    
-        // ❗核心：非 JSON = 正常失败路径
-        if (!contentType.includes("application/json")) {
-          return;
-        }
-    
-        const result = await response.json();
-        const communityItems = result.items || [];
-    
-        if (communityItems.length > 0) {
-          setLeekItems(communityItems.slice(0, 3));
+
+        if (hnResp.status === 'fulfilled' && hnResp.value.ok) {
+          const result = await hnResp.value.json();
+          if (result.items?.length > 0) setHnItems(result.items.slice(0, 3));
         }
       } catch {
-        // abort / network error → 静默失败
-        return;
+        clearTimeout(timeoutId);
       }
     }
-    loadLeekPosts();
-    const interval = setInterval(loadLeekPosts, 30 * 60 * 1000);
+    loadData();
+    const interval = setInterval(loadData, 15 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // Merge and format items
+  // Merge and format items: 新浪财经 + 一亩三分地 + HN (interleaved)
   const allItems: UnifiedItem[] = [
     ...marketNews.slice(0, 3).map((item: any, index: number) => ({
       id: `news-${index}-${item.url ?? item.id ?? ''}-${item.title ?? index}`,
@@ -84,8 +89,14 @@ export default function MarketHighlights({ marketNews }: MarketHighlightsProps) 
       id: `leek-${index}-${item.url ?? item.title ?? index}`,
       title: item.title,
       url: item.url,
-      source: '一亩三分地',
+      source: item.sourceLabel || '一亩三分地',
       publishedAt: item.publishedAt,
+    })),
+    ...hnItems.slice(0, 3).map((item, index) => ({
+      id: `hn-${index}-${item.id}`,
+      title: item.title,
+      url: item.url,
+      source: 'HN',
     })),
   ];
 

@@ -44,6 +44,7 @@
     { "source": "/api/concerts", "destination": "/api/market-all?handler=concerts" },
     { "source": "/api/bayarea-movies", "destination": "/api/market-all?handler=bayarea-movies" },
     { "source": "/api/weather", "destination": "/api/market-all?handler=weather" },
+    { "source": "/api/hn", "destination": "/api/market-all?handler=hn" },
     { "source": "/api/:path*", "destination": "/api/:path*" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
