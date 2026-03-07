@@ -42,18 +42,18 @@ const RSSHUB_INSTANCES = [
   'https://rsshub.uneasy.win/1point3acres/section/391', // Alternative 2
 ];
 
-// RSSHub URLs for 微博热搜
+// RSSHub URLs for 知乎热榜 (/weibo/search/hot requires Puppeteer and fails on all public instances)
 const RSSHUB_WEIBO_INSTANCES = [
-  'https://rsshub.app/weibo/search/hot',
-  'https://rsshub.rssforever.com/weibo/search/hot',
-  'https://rsshub.uneasy.win/weibo/search/hot',
+  'https://rsshub.rssforever.com/zhihu/hot',
+  'https://rsshub.app/zhihu/hot',
+  'https://rsshub.uneasy.win/zhihu/hot',
 ];
 
 // Cache keys
 const CACHE_KEY_1P3A_GOSSIP = 'gossip-1p3a-rss';
-const CACHE_KEY_WEIBO = 'gossip-weibo-hot';
+const CACHE_KEY_WEIBO = 'gossip-zhihu-hot';
 const WARM_SEED_KEY_1P3A = 'gossip-warm-seed-1p3a';
-const WARM_SEED_KEY_WEIBO = 'gossip-warm-seed-weibo';
+const WARM_SEED_KEY_WEIBO = 'gossip-warm-seed-zhihu';
 
 interface GossipItem {
   title: string;

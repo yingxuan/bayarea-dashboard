@@ -168,9 +168,9 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
             className="flex items-baseline gap-2 py-2 px-1.5 hover:bg-muted/30 rounded-sm transition-colors group"
           >
             {item.meta?.source === 'weibo' ? (
-              <span className="shrink-0 text-[10px] font-mono text-red-400/80 leading-tight">🔥微博</span>
+              <span className="shrink-0 text-[10px] font-mono text-blue-400/80 leading-tight">知乎</span>
             ) : (
-              <span className="shrink-0 text-[10px] font-mono text-cyan-400/70 leading-tight">🌐1P3A</span>
+              <span className="shrink-0 text-[10px] font-mono text-cyan-400/70 leading-tight">1P3A</span>
             )}
             <span className="text-[12px] font-mono text-foreground/85 group-hover:text-primary transition-colors line-clamp-1 leading-tight min-w-0">
               {item.title}
