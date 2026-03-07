@@ -1,7 +1,7 @@
 /**
  * Vercel Serverless Function: /api/community/gossip
- * Fetches gossip posts from 1point3acres (section/391 via RSSHub) and TeamBlind
- * 
+ * Fetches gossip posts from 1point3acres (section/391 via RSSHub) and 微博热搜
+ *
  * Requirements:
  * - Always return >= 3 items per source
  * - Never show fake placeholder items
@@ -25,36 +25,41 @@ import {
   isCacheBypass,
   getCachedData,
   setCache,
-  getStaleCache,
   cache,
 } from '../../lib/api-utils.js';
 
 const GOSSIP_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
-const BLIND_TRENDING_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours for Blind trending page cache
+const WEIBO_CACHE_TTL = 60 * 60 * 1000; // 1 hour for Weibo hot search
 const WARM_SEED_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days for warm seed
 const RSS_FETCH_TIMEOUT = 5000; // 5 seconds for RSS
 const FETCH_TIMEOUT = 10000; // 10 seconds for HTML
 const WARM_SEED_SIZE = 20; // Keep last 20 real posts as warm seed
 
-// RSSHub URLs (try alternatives if primary fails)
+// RSSHub URLs for 1point3acres (try alternatives if primary fails)
 const RSSHUB_INSTANCES = [
   'https://rsshub.app/1point3acres/section/391', // Primary: 人际关系/吃瓜
   'https://rsshub.rssforever.com/1point3acres/section/391', // Alternative 1
   'https://rsshub.uneasy.win/1point3acres/section/391', // Alternative 2
 ];
-const RSSHUB_1P3A_GOSSIP = RSSHUB_INSTANCES[0]; // 人际关系/吃瓜
+
+// RSSHub URLs for 微博热搜
+const RSSHUB_WEIBO_INSTANCES = [
+  'https://rsshub.app/weibo/search/hot',
+  'https://rsshub.rssforever.com/weibo/search/hot',
+  'https://rsshub.uneasy.win/weibo/search/hot',
+];
 
 // Cache keys
 const CACHE_KEY_1P3A_GOSSIP = 'gossip-1p3a-rss';
-const CACHE_KEY_BLIND_TRENDING = 'blind-trending-now';
+const CACHE_KEY_WEIBO = 'gossip-weibo-hot';
 const WARM_SEED_KEY_1P3A = 'gossip-warm-seed-1p3a';
-const WARM_SEED_KEY_BLIND = 'gossip-warm-seed-blind';
+const WARM_SEED_KEY_WEIBO = 'gossip-warm-seed-weibo';
 
 interface GossipItem {
   title: string;
   url: string;
   meta?: {
-    source: '1point3acres' | 'blind';
+    source: '1point3acres' | 'weibo';
     publishedAt?: string;
   };
 }
@@ -64,23 +69,23 @@ interface GossipItem {
 /**
  * Save warm seed (real posts from successful live fetch)
  */
-function saveWarmSeed(source: '1point3acres' | 'blind', items: GossipItem[]): void {
-  const cacheKey = source === '1point3acres' ? WARM_SEED_KEY_1P3A : WARM_SEED_KEY_BLIND;
-  
+function saveWarmSeed(source: '1point3acres' | 'weibo', items: GossipItem[]): void {
+  const cacheKey = source === '1point3acres' ? WARM_SEED_KEY_1P3A : WARM_SEED_KEY_WEIBO;
+
   // Keep only valid thread/post URLs, deduplicate, limit to WARM_SEED_SIZE
   const validItems = items.filter(item => {
     if (source === '1point3acres') {
       return isValid1p3aThreadUrl(item.url);
     } else {
-      return isValidBlindPostUrl(item.url);
+      return item.url.startsWith('http');
     }
   });
-  
+
   // Deduplicate by URL
   const uniqueItems = Array.from(
     new Map(validItems.map(item => [item.url, item])).values()
   ).slice(0, WARM_SEED_SIZE);
-  
+
   if (uniqueItems.length > 0) {
     cache.set(cacheKey, {
       data: uniqueItems,
@@ -93,8 +98,8 @@ function saveWarmSeed(source: '1point3acres' | 'blind', items: GossipItem[]): vo
 /**
  * Get warm seed (real posts from previous successful fetches)
  */
-function getWarmSeed(source: '1point3acres' | 'blind'): GossipItem[] {
-  const cacheKey = source === '1point3acres' ? WARM_SEED_KEY_1P3A : WARM_SEED_KEY_BLIND;
+function getWarmSeed(source: '1point3acres' | 'weibo'): GossipItem[] {
+  const cacheKey = source === '1point3acres' ? WARM_SEED_KEY_1P3A : WARM_SEED_KEY_WEIBO;
   const cached = cache.get(cacheKey);
   
   if (!cached) {
@@ -168,40 +173,6 @@ function isValid1p3aThreadUrl(url: string): boolean {
   return isValid;
 }
 
-/**
- * Validate if URL is a valid Blind discussion/post URL
- */
-function isValidBlindPostUrl(url: string): boolean {
-  const urlLower = url.toLowerCase();
-  
-  // Reject obvious list/aggregation pages
-  if (urlLower.includes('/trending') || 
-      urlLower.includes('/public') ||
-      urlLower.includes('/topics') ||
-      urlLower.includes('/categories') ||
-      urlLower.includes('/trending-now')) {
-    return false;
-  }
-  
-  // Accept if:
-  // 1. Contains topic/post/thread path
-  // 2. Or is a valid teamblind.com URL with path segments (not just domain)
-  if (urlLower.includes('/topic/') || 
-      urlLower.includes('/post/') ||
-      urlLower.includes('/thread/')) {
-    return true;
-  }
-  
-  // Accept other teamblind.com URLs that have path segments (likely discussions)
-  if (urlLower.includes('teamblind.com')) {
-    const urlObj = new URL(url);
-    const pathSegments = urlObj.pathname.split('/').filter(s => s.length > 0);
-    // Must have at least one path segment (not just domain root)
-    return pathSegments.length > 0;
-  }
-  
-  return false;
-}
 
 /**
  * Scrape 1point3acres section 391 (人际关系/吃瓜) directly
@@ -362,255 +333,77 @@ async function fetch1P3A(nocache: boolean = false): Promise<ModulePayload<Gossip
 }
 
 /**
- * Fetch TeamBlind posts from "Trending now on Blind" article page
- * Strategy: Search for latest "Trending now on Blind" page, then parse Most Read list
+ * Fetch 微博热搜 via RSSHub
  */
-async function fetchBlind(nocache: boolean = false): Promise<ModulePayload<GossipItem>> {
-  const cacheKey = CACHE_KEY_BLIND_TRENDING;
+async function fetchWeibo(nocache: boolean = false): Promise<ModulePayload<GossipItem>> {
+  const cacheKey = CACHE_KEY_WEIBO;
   const fetchedAt = new Date().toISOString();
-  const ttlSeconds = ttlMsToSeconds(GOSSIP_CACHE_TTL);
-  
-  // Try live fetch
-  try {
-    // Step 1: Check cache for trending page URL (6 hours TTL)
-    let trendingPageUrl: string | null = null;
-    
-    if (!nocache) {
-      const cachedTrending = getCachedData(cacheKey, BLIND_TRENDING_CACHE_TTL, false);
-      if (cachedTrending?.data?.url) {
-        trendingPageUrl = cachedTrending.data.url;
-        console.log(`[Gossip Blind] ✅ Using cached trending page URL: ${trendingPageUrl}`);
-      }
-    }
-    
-    // Step 2: If no cached URL, search for latest "Trending now on Blind" page
-    if (!trendingPageUrl) {
-      console.log(`[Gossip Blind] 🔍 Searching for "Trending now on Blind" page...`);
-      
-      const searchResults: Array<{ link: string }> = [];
-      
-      if (searchResults.length === 0) {
-        console.warn(`[Gossip Blind] ⚠️ Google CSE search returned no results (may be 403/quota issue). Will use fallback.`);
-        // Don't throw error - let it fall through to use seed data or cached data
-        // This allows the API to still return data from other sources (1P3A) or cache
-      } else {
-        // Use first result (most recent)
-        trendingPageUrl = searchResults[0].link;
-        console.log(`[Gossip Blind] ✅ Found trending page: ${trendingPageUrl}`);
-        
-        // Cache the URL for 6 hours
-        if (!nocache) {
-          setCache(cacheKey, {
-            url: trendingPageUrl,
-            timestamp: Date.now(),
-          });
-        }
-      }
-    }
-    
-    // Step 3: Fetch and parse the trending page (only if we have a URL)
-    if (!trendingPageUrl) {
-      console.warn(`[Gossip Blind] ⚠️ No trending page URL available (Google CSE may have failed). Will use fallback.`);
-      throw new Error('No trending page URL available');
-    }
-    
-    console.log(`[Gossip Blind] 🔍 Fetching trending page: ${trendingPageUrl}`);
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
-    
-    const response = await fetch(trendingPageUrl, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
-      redirect: 'follow',
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
-    }
-    
-    const html = await response.text();
-    
-    // Step 4: Parse HTML to find "Most Read" or "Most discussed" list
-    const $ = cheerio.load(html);
-    const items: GossipItem[] = [];
-    const seenUrls = new Set<string>();
-    
-    // Try multiple selectors for "Most Read" / "Most discussed" sections
-    const selectors = [
-      'h2:contains("Most Read"), h3:contains("Most Read")',
-      'h2:contains("Most Discussed"), h3:contains("Most Discussed")',
-      '[class*="most-read"]',
-      '[class*="most-discussed"]',
-      '[id*="most-read"]',
-      '[id*="most-discussed"]',
-    ];
-    
-    let foundSection = false;
-    
-    for (const selector of selectors) {
-      const $section = $(selector).first();
-      if ($section.length > 0) {
-        foundSection = true;
-        console.log(`[Gossip Blind] ✅ Found section with selector: ${selector}`);
-        
-        // Find links in the section
-        $section.parent().find('a[href*="/topic/"], a[href*="/post/"], a[href*="/thread/"]').each((_, el) => {
-          const $el = $(el);
-          const href = $el.attr('href');
-          const title = $el.text().trim() || $el.attr('title')?.trim() || '';
-          
-          if (!href || !title || title.length < 5) return;
-          
-          // Normalize URL
-          let url = href;
-          if (url.startsWith('/')) {
-            url = `https://www.teamblind.com${url}`;
-          } else if (!url.startsWith('http')) {
-            url = `https://www.teamblind.com/${url}`;
-          } else if (!url.includes('teamblind.com')) {
-            return; // Skip external links
-          }
-          
-          // STRICT VALIDATION: Must be a specific discussion/post, not a list page
-          if (!isValidBlindPostUrl(url)) {
-            console.log(`[Gossip Blind] Filtered out non-post URL: ${url.substring(0, 80)}`);
-            return;
-          }
-          
-          // Skip duplicates
-          if (seenUrls.has(url)) return;
-          seenUrls.add(url);
-          
-          items.push({
-            title,
-            url,
-            meta: {
-              source: 'blind',
-              publishedAt: fetchedAt,
-            },
-          });
-        });
-        
-        break; // Use first found section
-      }
-    }
-    
-    // Fallback: If no "Most Read" section found, try to find any discussion links in the page
-    if (!foundSection || items.length < 3) {
-      console.log(`[Gossip Blind] ⚠️ No "Most Read" section found or < 3 items, trying fallback parsing...`);
-      
-      $('a[href*="/topic/"], a[href*="/post/"], a[href*="/thread/"]').each((_, el) => {
-        const $el = $(el);
-        const href = $el.attr('href');
-        const title = $el.text().trim() || $el.attr('title')?.trim() || '';
-        
-        if (!href || !title || title.length < 5) return;
-        
-        // Normalize URL
-        let url = href;
-        if (url.startsWith('/')) {
-          url = `https://www.teamblind.com${url}`;
-        } else if (!url.startsWith('http')) {
-          url = `https://www.teamblind.com/${url}`;
-        } else if (!url.includes('teamblind.com')) {
-          return;
-        }
-        
-        // STRICT VALIDATION
-        if (!isValidBlindPostUrl(url)) return;
-        
-        // Skip duplicates
-        if (seenUrls.has(url)) return;
-        seenUrls.add(url);
-        
-        items.push({
-          title,
-          url,
-          meta: {
-            source: 'blind',
-            publishedAt: fetchedAt,
-          },
-        });
-      });
-    }
-    
-    // Remove duplicates and validate all URLs are post URLs
-    const uniqueItems = Array.from(
-      new Map(items.map(item => [item.url, item])).values()
-    ).filter(item => {
-      if (!isValidBlindPostUrl(item.url)) {
-        console.warn(`[Gossip Blind] Filtered invalid post URL in final list: ${item.url}`);
-        return false;
-      }
-      return true;
-    });
-    
-    console.log(`[Gossip Blind] ✅ Fetched ${uniqueItems.length} valid post items from trending page`);
-    
-    // If we have >= 3 items, return live data
-    if (uniqueItems.length >= 3) {
-      // Save to warm seed for future fallback
-      saveWarmSeed('blind', uniqueItems);
-      
-      // Cache the result (separate from trending page URL cache)
-      const payloadCacheKey = 'gossip-blind-items';
-      const payload: ModulePayload<GossipItem> = {
-        source: 'live',
-        status: 'ok',
-        fetchedAt,
-        ttlSeconds,
-        items: uniqueItems.slice(0, 10), // Limit to 10 items
-      };
-      
-      setCache(payloadCacheKey, payload);
-      return payload;
-    }
-    
-    // If < 3 items, try cache
-    console.warn(`[Gossip Blind] ⚠️ Only ${uniqueItems.length} items (< 3), trying cache...`);
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error(`[Gossip Blind] ❌ Live fetch failed: ${errorMsg}`);
-    console.log(`[Gossip Blind] 🔄 Starting fallback: cache → stale cache → warm seed → built-in seed`);
-  }
-  
-  // Try cache (only if not nocache)
+  const ttlSeconds = ttlMsToSeconds(WEIBO_CACHE_TTL);
+
+  // Check cache first
   if (!nocache) {
-    const payloadCacheKey = 'gossip-blind-items';
-    const cached = getCachedData(payloadCacheKey, GOSSIP_CACHE_TTL, false);
+    const cached = getCachedData(cacheKey, WEIBO_CACHE_TTL, false);
     if (cached && cached.data && cached.data.items && cached.data.items.length >= 3) {
-      console.log(`[Gossip Blind] ✅ Using cache (${cached.data.items.length} items)`);
+      console.log(`[Gossip Weibo] ✅ Using cache (${cached.data.items.length} items)`);
       return {
         ...cached.data,
         source: 'cache' as const,
         status: (cached.data.status === 'ok' ? 'ok' : 'degraded') as 'ok' | 'degraded',
-        note: 'Using cached data',
-      };
-    }
-    
-    // Try stale cache
-    const stale = getStaleCache(payloadCacheKey);
-    if (stale && stale.data && stale.data.items && stale.data.items.length >= 3) {
-      console.log(`[Gossip Blind] ✅ Using stale cache (${stale.data.items.length} items)`);
-      return {
-        ...stale.data,
-        source: 'cache' as const,
-        status: 'degraded' as const,
-        note: 'Using stale cache',
       };
     }
   }
-  
-  // Try warm seed (real posts from previous successful fetches)
-  const warmSeed = getWarmSeed('blind');
-  if (warmSeed.length >= 3) {
-    console.log(`[Gossip Blind] ✅ Using warm seed (${warmSeed.length} items)`);
+
+  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_', textNodeName: '#text' });
+  let uniqueItems: GossipItem[] = [];
+
+  for (const instanceUrl of RSSHUB_WEIBO_INSTANCES) {
+    try {
+      const resp = await fetch(instanceUrl, {
+        headers: { 'User-Agent': 'BayAreaDashboard/1.0' },
+        signal: AbortSignal.timeout(RSS_FETCH_TIMEOUT),
+      });
+      if (!resp.ok) continue;
+      const xmlText = await resp.text();
+      const feed = parser.parse(xmlText);
+      const rssItems: any[] = (() => {
+        const r = feed?.rss?.channel?.item || feed?.feed?.entry || [];
+        return Array.isArray(r) ? r : [r];
+      })();
+      const seen = new Set<string>();
+      for (const item of rssItems) {
+        let link = (typeof item.link === 'string' ? item.link : item.link?.['#text'] || item.link?.['@_href'] || '').trim();
+        const title = (typeof item.title === 'string' ? item.title : item.title?.['#text'] || '').trim();
+        if (!link || !title) continue;
+        if (!link.startsWith('http')) continue;
+        if (seen.has(link)) continue;
+        seen.add(link);
+        const pubDate = item.pubDate?.['#text'] || item.pubDate || '';
+        uniqueItems.push({ title, url: link, meta: { source: 'weibo', publishedAt: pubDate || fetchedAt } });
+      }
+      if (uniqueItems.length >= 3) {
+        console.log(`[Gossip Weibo] ✅ RSSHub succeeded: ${uniqueItems.length} items from ${instanceUrl}`);
+        break;
+      }
+    } catch { /* try next instance */ }
+  }
+
+  if (uniqueItems.length >= 3) {
+    saveWarmSeed('weibo', uniqueItems);
+    const payload: ModulePayload<GossipItem> = {
+      source: 'live',
+      status: 'ok',
+      fetchedAt,
+      ttlSeconds,
+      items: uniqueItems.slice(0, 10),
+    };
+    setCache(cacheKey, payload);
+    return payload;
+  }
+
+  console.warn(`[Gossip Weibo] ⚠️ Only ${uniqueItems.length} live items, falling back to warm seed`);
+
+  const warmSeed = getWarmSeed('weibo');
+  if (warmSeed.length > 0) {
     return {
       source: 'seed',
       status: 'degraded',
@@ -620,9 +413,8 @@ async function fetchBlind(nocache: boolean = false): Promise<ModulePayload<Gossi
       items: warmSeed.slice(0, 10),
     };
   }
-  
-  // No seed data fallback
-  console.log(`[Gossip Blind] ❌ No data available (no seed data fallback)`);
+
+  console.log(`[Gossip Weibo] ❌ No data available`);
   return {
     source: 'unavailable',
     status: 'failed',
@@ -645,35 +437,26 @@ export async function handleGossip(req: VercelRequest, res: VercelResponse) {
 
   try {
     const nocache = isCacheBypass(req);
-    
+
     // Fetch from both sources in parallel
-    const [result1P3A, resultBlind] = await Promise.all([
+    const [result1P3A, resultWeibo] = await Promise.all([
       fetch1P3A(nocache),
-      fetchBlind(nocache),
+      fetchWeibo(nocache),
     ]);
-    
-    // Ensure each source has >= 3 items (all must be valid thread/post URLs)
+
+    // Ensure each source has >= 3 items
     const ensureMinItems = (
       payload: ModulePayload<GossipItem>,
-      source: '1point3acres' | 'blind'
+      source: '1point3acres' | 'weibo'
     ): ModulePayload<GossipItem> => {
-      // Filter out any invalid URLs from payload items
-      const validItems = payload.items.filter(item => {
-        if (source === '1point3acres') {
-          return isValid1p3aThreadUrl(item.url);
-        } else {
-          return isValidBlindPostUrl(item.url);
-        }
-      });
-      
+      const validItems = payload.items.filter(item =>
+        source === '1point3acres' ? isValid1p3aThreadUrl(item.url) : item.url.startsWith('http')
+      );
+
       if (validItems.length >= 3) {
-        return {
-          ...payload,
-          items: validItems,
-        };
+        return { ...payload, items: validItems };
       }
-      
-      // Try warm seed first
+
       const warmSeed = getWarmSeed(source);
       if (warmSeed.length > 0) {
         const needed = 3 - validItems.length;
@@ -682,55 +465,43 @@ export async function handleGossip(req: VercelRequest, res: VercelResponse) {
           ...payload,
           items: padded,
           status: payload.status === 'ok' ? 'degraded' : payload.status,
-          note: payload.note 
+          note: payload.note
             ? `${payload.note}; padded with ${needed} warm seed items`
             : `Padded with ${needed} warm seed items`,
         };
       }
-      
-      // No seed data padding - return items as-is
+
       return {
         ...payload,
-        items: validItems.slice(0, 10), // Limit to 10 max
+        items: validItems.slice(0, 10),
         status: validItems.length >= 3 ? payload.status : 'degraded' as const,
-        note: validItems.length < 3 
+        note: validItems.length < 3
           ? `Only ${validItems.length} items available (minimum 3 required)`
           : payload.note,
       };
     };
-    
+
     const final1P3A = ensureMinItems(result1P3A, '1point3acres');
-    const finalBlind = ensureMinItems(resultBlind, 'blind');
-    
+    const finalWeibo = ensureMinItems(resultWeibo, 'weibo');
+
     // Combine results
     const response = {
       status: 'ok' as const,
       sources: {
         '1point3acres': final1P3A,
-        'blind': finalBlind,
+        'weibo': finalWeibo,
       },
       fetchedAt: new Date().toISOString(),
     };
-    
+
     res.status(200).json(response);
   } catch (error) {
     console.error('[API /api/community/gossip] Error:', error);
-    
-    // Return warm seed or built-in seed as last resort
+
     const errorAt = new Date().toISOString();
-    
-    // Try warm seed first
     const warmSeed1P3A = getWarmSeed('1point3acres');
-    const warmSeedBlind = getWarmSeed('blind');
-    
-    const fallback1P3A = warmSeed1P3A.length >= 3 
-      ? warmSeed1P3A.slice(0, 10)
-      : [];
-    
-    const fallbackBlind = warmSeedBlind.length >= 3
-      ? warmSeedBlind.slice(0, 10)
-      : [];
-    
+    const warmSeedWeibo = getWarmSeed('weibo');
+
     res.status(200).json({
       status: 'ok' as const,
       sources: {
@@ -739,16 +510,16 @@ export async function handleGossip(req: VercelRequest, res: VercelResponse) {
           status: warmSeed1P3A.length >= 3 ? 'degraded' as const : 'failed' as const,
           fetchedAt: errorAt,
           ttlSeconds: 0,
-          note: warmSeed1P3A.length >= 3 ? 'warm seed' : 'Error occurred, using built-in seed',
-          items: fallback1P3A,
+          note: warmSeed1P3A.length >= 3 ? 'warm seed' : 'Error occurred, no fallback data',
+          items: warmSeed1P3A.length >= 3 ? warmSeed1P3A.slice(0, 10) : [],
         },
-        'blind': {
+        'weibo': {
           source: 'seed' as const,
-          status: warmSeedBlind.length >= 3 ? 'degraded' as const : 'failed' as const,
+          status: warmSeedWeibo.length >= 3 ? 'degraded' as const : 'failed' as const,
           fetchedAt: errorAt,
           ttlSeconds: 0,
-          note: warmSeedBlind.length >= 3 ? 'warm seed' : 'Error occurred, using built-in seed',
-          items: fallbackBlind,
+          note: warmSeedWeibo.length >= 3 ? 'warm seed' : 'Error occurred, no fallback data',
+          items: warmSeedWeibo.length >= 3 ? warmSeedWeibo.slice(0, 10) : [],
         },
       },
       fetchedAt: errorAt,
