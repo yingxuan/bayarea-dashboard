@@ -169,6 +169,14 @@ function calculateScore(item: { title: string; publishedAt?: string }): number {
   dealKeywords.forEach(keyword => {
     if (titleLower.includes(keyword)) score += 3;
   });
+
+  // Credit card / points keywords boost (DoC-style posts)
+  const creditKeywords = ['bonus', 'sign-up', 'sign up', 'points', 'miles', 'cashback', 'cash back', 'welcome offer', 'annual fee'];
+  creditKeywords.forEach(keyword => {
+    if (titleLower.includes(keyword)) score += 8;
+  });
+  // Big point offers like "60,000 points" or "75,000 miles"
+  if (/\d{2,3},\d{3}\s*(points|miles)/i.test(title)) score += 15;
   
   // Popular retailers boost
   const retailers = [
@@ -346,13 +354,17 @@ async function fetchAllDeals(nocache: boolean = false): Promise<{ items: DealIte
   // Fetch from all sources in parallel
   const results = await Promise.all(RSS_SOURCES.map(source => fetchRSSFeed(source)));
   
-  // Collect all items and debug info
-  const allItems: DealItem[] = [];
+  // Collect items per source and debug info
+  // Per-source slot allocation: 3 Slickdeals + 3 DoC + 4 Reddit = 10 total
+  const SLOTS = [3, 3, 4]; // Matches RSS_SOURCES order
+  const slottedItems: DealItem[] = [];
   results.forEach((result, idx) => {
     debug.push({ ...result.debug, sourceIndex: idx });
-    allItems.push(...result.items);
+    const sorted = [...result.items].sort((a, b) => b.score - a.score);
+    slottedItems.push(...sorted.slice(0, SLOTS[idx] ?? 3));
   });
-  
+  const allItems = slottedItems;
+
   // De-duplicate by normalized URL
   const urlMap = new Map<string, DealItem>();
   for (const item of allItems) {

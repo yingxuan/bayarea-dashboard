@@ -9,7 +9,6 @@ import { usePortfolioSummary, QuoteData } from "@/hooks/usePortfolioSummary";
 import { Button } from "@/components/ui/button";
 import { PencilIcon } from "lucide-react";
 import HoldingsEditor from "@/components/HoldingsEditor";
-import { generateMarketExplanation } from "@/lib/judgment";
 import { useMemo, useState, useEffect } from "react";
 import PortfolioSparkline from "@/components/PortfolioSparkline";
 import { config } from "@/config";
@@ -22,8 +21,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useAuth } from "@/hooks/useAuth";
-import LoginPromptCard from "@/components/LoginPromptCard";
 
 interface PortfolioHeroProps {
   quotesData: Record<string, QuoteData>;
@@ -41,7 +38,6 @@ export default function PortfolioHero({
   onYtdBaselineChange,
 }: PortfolioHeroProps) {
   // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [ytdDialogOpen, setYtdDialogOpen] = useState(false);
   const [ytdInputValue, setYtdInputValue] = useState(ytdBaseline?.toString() || "");
   const [ytdInputError, setYtdInputError] = useState<string | null>(null);
@@ -242,17 +238,27 @@ export default function PortfolioHero({
 
   // NOW WE CAN DO EARLY RETURNS (after all hooks are called)
 
-  // Show login prompt if not authenticated
-  if (!authLoading && !isAuthenticated) {
-    return <LoginPromptCard />;
-  }
-
   if (!holdingsLoaded) {
     return (
       <div className="p-3 bg-card rounded-sm">
         <div className="animate-pulse">
           <div className="h-6 bg-muted rounded w-1/2"></div>
         </div>
+      </div>
+    );
+  }
+
+  if (holdings.length === 0) {
+    return (
+      <div className="bg-card rounded-sm shadow-md border border-border/40 h-full flex flex-col items-center justify-center p-6 text-center min-h-[120px]">
+        <div className="text-muted-foreground text-sm mb-3">还没有持仓记录</div>
+        <HoldingsEditor
+          trigger={
+            <Button variant="outline" size="sm" className="text-xs h-7 px-3 font-mono font-normal">
+              <PencilIcon className="w-3 h-3 mr-1" /> 点击添加持仓
+            </Button>
+          }
+        />
       </div>
     );
   }
