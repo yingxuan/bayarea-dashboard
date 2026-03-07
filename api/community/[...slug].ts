@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { handleGossip } from '../../api-handlers/community/gossip.js';
 import { handleLeeks } from '../../api-handlers/community/leeks.js';
+import { handleJobs } from '../../api-handlers/community/jobs.js';
 
 function normalizePath(req: VercelRequest): string {
   const url = new URL(req.url || '/', 'http://localhost');
@@ -24,6 +25,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     case '/leeks':
     case 'leeks':
       return handleLeeks(req, res);
+    case '/jobs':
+    case 'jobs':
+      return handleJobs(req, res);
     case '/':
     case '':
       return handleLeeks(req, res);

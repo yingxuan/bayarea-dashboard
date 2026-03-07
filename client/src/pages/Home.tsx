@@ -32,6 +32,7 @@ import ConcertsCarousel from "@/components/ConcertsCarousel";
 import SectionHeader from "@/components/SectionHeader";
 import TimeAgo from "@/components/TimeAgo";
 import ReturnHintToast, { ReturnToDashboardToast } from "@/components/ReturnHintToast";
+import LayoffsWidget from "@/components/LayoffsWidget";
 import PiaoziEntryCard from "@/components/PiaoziEntryCard";
 import ChiheEntryCard from "@/components/ChiheEntryCard";
 import { useAuthAwareHoldings } from "@/hooks/useAuthAwareHoldings";
@@ -379,7 +380,13 @@ export default function Home() {
               <MarketHighlights marketNews={marketNews} />
             </div>
 
-            {/* 3+4) 美股博主 + 关于饭碗：桌面并排，移动端各自全宽 */}
+            {/* 3) 裁员 & 求职动态 */}
+            <div className="w-full min-w-0">
+              <SectionHeader title="裁员 & 求职" />
+              <LayoffsWidget />
+            </div>
+
+            {/* 4+5) 美股博主 + 关于饭碗：桌面并排，移动端各自全宽 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full min-w-0">
               <div className="min-w-0 overflow-hidden">
                 <USStockYouTubers

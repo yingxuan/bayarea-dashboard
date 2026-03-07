@@ -25,6 +25,7 @@ import {
   spendTodayRoute,
   leekCommunityRoute,
   gossipCommunityRoute,
+  jobsCommunityRoute,
   marketNewsRoute,
   portfolioValueSeriesRoute,
   portfolioHoldingsRoute,
@@ -95,6 +96,8 @@ async function startServer() {
   app.options('/api/community/leeks', (_req, res) => res.sendStatus(200));
   app.get('/api/community/gossip', gossipCommunityRoute);
   app.options('/api/community/gossip', (_req, res) => res.sendStatus(200));
+  app.get('/api/community/jobs', jobsCommunityRoute);
+  app.options('/api/community/jobs', (_req, res) => res.sendStatus(200));
   app.get('/api/market-news', marketNewsRoute);
   app.options('/api/market-news', (_req, res) => res.sendStatus(200));
   app.get('/api/portfolio/value-series', portfolioValueSeriesRoute);

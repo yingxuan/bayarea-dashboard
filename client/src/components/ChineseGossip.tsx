@@ -19,7 +19,7 @@ interface GossipItem {
   title: string;
   url: string;
   meta?: {
-    source: '1point3acres' | 'v2ex';
+    source: '1point3acres' | 'v2ex' | 'reddit';
     publishedAt?: string;
   };
 }
@@ -169,6 +169,8 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
           >
             {item.meta?.source === 'v2ex' ? (
               <span className="shrink-0 text-[10px] font-mono text-green-400/80 leading-tight">V2EX</span>
+            ) : item.meta?.source === 'reddit' ? (
+              <span className="shrink-0 text-[10px] font-mono text-orange-400/80 leading-tight">Reddit</span>
             ) : (
               <span className="shrink-0 text-[10px] font-mono text-cyan-400/70 leading-tight">1P3A</span>
             )}

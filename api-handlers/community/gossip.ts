@@ -54,12 +54,43 @@ interface GossipItem {
   title: string;
   url: string;
   meta?: {
-    source: '1point3acres' | 'v2ex';
+    source: '1point3acres' | 'v2ex' | 'reddit';
     publishedAt?: string;
   };
 }
 
-// Seed data removed - no fallback data
+/**
+ * Fetch Reddit posts as fallback when 1P3A is unavailable from Vercel IPs
+ */
+async function fetchRedditFallback1P3A(fetchedAt: string): Promise<GossipItem[]> {
+  const subs = ['cscareerquestions', 'bayarea', 'techworkers'];
+  const items: GossipItem[] = [];
+  const seenUrls = new Set<string>();
+
+  for (const sub of subs) {
+    try {
+      const resp = await fetch(`https://www.reddit.com/r/${sub}/hot.json?limit=8`, {
+        headers: { 'User-Agent': 'BayAreaDashboard/1.0' },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const posts: any[] = data?.data?.children || [];
+      for (const post of posts) {
+        const { title, permalink } = post.data || {};
+        if (!title || title.length < 10) continue;
+        const url = `https://www.reddit.com${permalink}`;
+        if (seenUrls.has(url)) continue;
+        seenUrls.add(url);
+        items.push({ title, url, meta: { source: 'reddit', publishedAt: fetchedAt } });
+        if (items.length >= 5) break;
+      }
+    } catch { /* try next sub */ }
+    if (items.length >= 5) break;
+  }
+  console.log(`[Gossip 1P3A] Reddit fallback: ${items.length} items`);
+  return items;
+}
 
 /**
  * Save warm seed (real posts from successful live fetch)
@@ -315,6 +346,21 @@ async function fetch1P3A(nocache: boolean = false): Promise<ModulePayload<Gossip
       items: warmSeed.slice(0, 10),
     };
   }
+
+  // Try Reddit fallback (accessible from Vercel IPs)
+  try {
+    const redditItems = await fetchRedditFallback1P3A(fetchedAt);
+    if (redditItems.length >= 3) {
+      return {
+        source: 'seed' as const,
+        status: 'degraded' as const,
+        fetchedAt,
+        ttlSeconds: 0,
+        note: 'Reddit fallback (1P3A unavailable from server)',
+        items: redditItems,
+      };
+    }
+  } catch { /* ignore */ }
 
   console.log(`[Gossip 1P3A] ❌ No data available`);
   return {
