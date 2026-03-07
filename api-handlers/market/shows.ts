@@ -33,23 +33,22 @@ interface Show {
 }
 
 // Chinese video platform YouTube channels
-// Note: @TencentVideo, @youku-official, @MangoTV-Official, @CCTVDrama were terminated
-// channelId hardcoded where known to avoid scraping YouTube pages (often blocked on Vercel)
+// channelId hardcoded where confirmed to avoid scraping YouTube pages (often blocked on Vercel)
 const TV_CHANNELS = [
   {
-    name: 'WeTV',
-    url: 'https://www.youtube.com/@wetv',
-    handle: '@wetv',
-    channelId: null as string | null,
+    name: '优酷',
+    url: 'https://www.youtube.com/@youku-official',
+    handle: '@youku-official',
+    channelId: 'UCYQPTeY3HOk0BprrGuCWCaA', // confirmed working
+  },
+  {
+    name: '腾讯视频',
+    url: 'https://www.youtube.com/@TencentVideo',
+    handle: '@TencentVideo',
+    channelId: 'UC1hwUPyQe5uFYtkmVv-hIig', // 精选微剧 sub-channel, confirmed working
   },
   {
     name: 'iQIYI',
-    url: 'https://www.youtube.com/@iQIYI',
-    handle: '@iQIYI',
-    channelId: null as string | null,
-  },
-  {
-    name: 'iQIYI English',
     url: 'https://www.youtube.com/@iQIYIEnglish',
     handle: '@iQIYIEnglish',
     channelId: 'UCUhpu5MJQ_bjPkXO00jyxsw', // confirmed working

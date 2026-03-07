@@ -44,7 +44,7 @@ export default function ShowsCarousel({ shows, offset = 0, onRefresh }: ShowsCar
   });
 
   // Get platforms in order (prefer: 腾讯视频, 优酷, 芒果TV, then others)
-  const platformOrder = ['腾讯视频', '优酷', '芒果TV'];
+  const platformOrder = ['腾讯视频', '优酷', 'iQIYI'];
   const orderedPlatforms = [
     ...platformOrder.filter(p => showsByPlatform[p]?.length > 0),
     ...Object.keys(showsByPlatform).filter(p => !platformOrder.includes(p))
