@@ -33,8 +33,6 @@ export default function USStockYouTubers({ stockYoutubers, offset = 0, onRefresh
       })()
     : [];
 
-  if (availableVideos.length === 0) return null;
-
   const hasMore = availableVideos.length > BATCH_SIZE;
 
   // Calculate latest video time for status hint
@@ -64,6 +62,8 @@ export default function USStockYouTubers({ stockYoutubers, offset = 0, onRefresh
       return '今日热门';
     }
   }, [latestVideoTime]);
+
+  if (availableVideos.length === 0) return null;
 
   return (
     <div className="w-full">
