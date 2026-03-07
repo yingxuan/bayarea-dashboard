@@ -346,10 +346,37 @@ async function fetchAllShows(): Promise<Show[]> {
   };
 
   const rotatedShows = rotatePrefix(diverseShows, Math.min(8, diverseShows.length));
-  
+
+  // Title-based dedup: remove same-series content across platforms
+  // Normalize: strip EP numbers, episode markers, preview labels, bracketed prefixes
+  const normalizeTitle = (title: string): string => {
+    return title
+      .replace(/\bEP?\s*\d+[^|《【\s]*/gi, '') // EP1, EP 2, etc.
+      .replace(/第\s*\d+\s*[集期]/g, '')           // 第X集, 第X期
+      .replace(/\s*[\d]+\s*(集|期|话|章)/g, '')     // X集, X期
+      .replace(/【[^】]*】/g, '')                   // 【ENGSUB】, 【MULTISUB】
+      .replace(/\[[^\]]*\]/g, '')                   // [Preview], [Teaser]
+      .replace(/\b(preview|teaser|trailer|highlight|clip|cut|reaction)\b/gi, '')
+      .replace(/[|｜·•\-_,，。！!?？]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase()
+      .slice(0, 20); // Compare first 20 normalized chars
+  };
+
+  const seenSeries = new Set<string>();
+  const dedupedShows = rotatedShows.filter(show => {
+    const norm = normalizeTitle(show.title);
+    if (!norm || norm.length < 3) return true; // Keep if can't normalize
+    if (seenSeries.has(norm)) return false;
+    seenSeries.add(norm);
+    return true;
+  });
+
   console.log(`[Shows] ✅ Fetched ${allShows.length} total videos from ${TV_CHANNELS.length} channels`);
+  console.log(`[Shows] After dedup: ${dedupedShows.length} (removed ${rotatedShows.length - dedupedShows.length} duplicate series)`);
   console.log(`[Shows] First 4 videos from sources: ${firstFourShows.map(s => s.platform).join(', ')}`);
-  return rotatedShows;
+  return dedupedShows;
 }
 
 export async function handleShows(req: VercelRequest, res: VercelResponse) {

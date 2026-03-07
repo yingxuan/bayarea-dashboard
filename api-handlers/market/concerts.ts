@@ -82,8 +82,7 @@ async function fetchTMSearch(apiKey: string, keyword: string): Promise<any[]> {
   const params = new URLSearchParams({
     apikey: apiKey,
     keyword,
-    classificationName: 'Music',
-    geoPoint: '37.3382,-121.8863',
+    geoPoint: '37.7749,-122.4194',
     radius: '75',
     unit: 'miles',
     sort: 'date,asc',
@@ -136,18 +135,19 @@ async function fetchConcerts(nocache: boolean = false): Promise<{ items: Concert
     return { items: [], sourceMode: 'unavailable' };
   }
 
-  // Parallel searches: English + Chinese keywords
-  const [results1, results2, results3] = await Promise.all([
-    fetchTMSearch(apiKey, 'chinese concert'),
+  // Parallel searches: Chinese events (no Music-only filter to catch all event types)
+  const [results1, results2, results3, results4] = await Promise.all([
+    fetchTMSearch(apiKey, 'chinese'),
     fetchTMSearch(apiKey, '演唱会'),
-    fetchTMSearch(apiKey, 'mandarin concert'),
+    fetchTMSearch(apiKey, 'asian'),
+    fetchTMSearch(apiKey, 'kpop'),
   ]);
 
   // Merge and deduplicate by event ID
   const seen = new Set<string>();
   const merged: ConcertItem[] = [];
 
-  for (const event of [...results1, ...results2, ...results3]) {
+  for (const event of [...results1, ...results2, ...results3, ...results4]) {
     if (!event?.id) continue;
     const id = String(event.id);
     if (seen.has(id)) continue;

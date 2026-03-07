@@ -1,6 +1,6 @@
 /**
  * Indices Card Component
- * 独立的指数卡片，显示 SPY / QQQ / BTC / GOLD / ARKK
+ * 独立的指数卡片，显示 SPY / QQQ / BTC / GOLD / ARKK + 个股 NVDA/AAPL/META/GOOGL
  * 紧凑表格布局，信息密度优先
  */
 
@@ -25,6 +25,31 @@ interface MarketDataItem {
   error?: string;
 }
 
+interface QuoteItem {
+  ticker: string;
+  status: "ok" | "stale" | "unavailable";
+  price: number;
+  prevClose?: number;
+  change?: number;
+  changePercent?: number;
+}
+
+interface WeatherData {
+  status: "ok" | "unavailable";
+  city?: string;
+  tempF?: number;
+  feelsLikeF?: number;
+  humidity?: number;
+  windMph?: number;
+  label?: string;
+  emoji?: string;
+  rainProbability?: number;
+  highF?: number;
+  lowF?: number;
+}
+
+const TECH_TICKERS = ["NVDA", "AAPL", "META", "GOOGL"];
+
 export default function IndicesCard() {
   const [marketData, setMarketData] = useState<{
     spy: MarketDataItem;
@@ -33,36 +58,39 @@ export default function IndicesCard() {
     qqq?: MarketDataItem;
     arkk?: MarketDataItem;
   } | null>(null);
+  const [techStocks, setTechStocks] = useState<QuoteItem[]>([]);
+  const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch market data
+  // Fetch market data and tech stock quotes in parallel
   useEffect(() => {
     const loadData = async () => {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
-        
-        const apiUrl = `${config.apiBaseUrl}/api/market`;
-        const response = await fetch(apiUrl, {
-          signal: controller.signal,
-        });
-        
+
+        const [marketResp, quotesResp, weatherResp] = await Promise.all([
+          fetch(`${config.apiBaseUrl}/api/market`, { signal: controller.signal }),
+          fetch(`${config.apiBaseUrl}/api/quotes?tickers=${TECH_TICKERS.join(",")}`, { signal: controller.signal }),
+          fetch(`${config.apiBaseUrl}/api/weather`, { signal: controller.signal }),
+        ]);
+
         clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
+
+        if (marketResp.ok) {
+          const result = await marketResp.json();
+          setMarketData(result.data);
         }
-        
-        const result = await response.json();
-        const data: {
-          spy: MarketDataItem;
-          gold: MarketDataItem;
-          btc: MarketDataItem;
-          qqq?: MarketDataItem;
-          arkk?: MarketDataItem;
-        } = result.data;
-        
-        setMarketData(data);
+
+        if (quotesResp.ok) {
+          const result = await quotesResp.json();
+          setTechStocks(result.quotes || []);
+        }
+
+        if (weatherResp.ok) {
+          const result = await weatherResp.json();
+          setWeather(result);
+        }
       } catch (error) {
         console.error("[IndicesCard] Failed to fetch market data:", error);
       } finally {
@@ -119,8 +147,17 @@ export default function IndicesCard() {
       {/* CardBody */}
       <div className="p-4 flex flex-col flex-1">
         {/* Header */}
-        <div className="mb-2">
+        <div className="mb-2 flex items-center justify-between gap-2">
           <h4 className="text-[13px] font-mono font-medium text-foreground/80">指数</h4>
+          {weather?.status === "ok" && weather.tempF !== undefined && (
+            <div className="flex items-center gap-1 text-[11px] font-mono text-foreground/50 shrink-0">
+              <span>{weather.emoji}</span>
+              <span>{weather.tempF}°F</span>
+              {weather.rainProbability !== undefined && weather.rainProbability > 20 && (
+                <span className="text-blue-400/70">💧{weather.rainProbability}%</span>
+              )}
+            </div>
+          )}
         </div>
 
       {/* Indices Table */}
@@ -133,9 +170,9 @@ export default function IndicesCard() {
           {indices.map((index, idx) => {
             const isUnavailable = index.status === "unavailable";
             const isOk = index.status === "ok";
-            const isPositive = (index.changePercent !== undefined && Number(index.changePercent) >= 0) || 
+            const isPositive = (index.changePercent !== undefined && Number(index.changePercent) >= 0) ||
                               (index.change !== undefined && Number(index.change) >= 0);
-            
+
             return (
               <div
                 key={index.code}
@@ -179,6 +216,47 @@ export default function IndicesCard() {
               </div>
             );
           })}
+
+          {/* Tech stocks section */}
+          {techStocks.length > 0 && (
+            <>
+              <div className="border-t border-border/50 pt-1.5 mt-1">
+                <div className="text-[10px] font-mono text-foreground/40 mb-1">个股</div>
+              </div>
+              {techStocks.map((stock, idx) => {
+                const isPositive = (stock.changePercent ?? 0) >= 0;
+                return (
+                  <div
+                    key={stock.ticker}
+                    className={`grid grid-cols-[auto_1fr_auto] items-baseline gap-2 py-0.5 ${
+                      idx < techStocks.length - 1 ? 'border-b border-border/30' : ''
+                    }`}
+                  >
+                    <div className="text-[14px] font-medium font-mono text-foreground w-24">
+                      {stock.ticker}
+                    </div>
+                    <div className="text-[14px] font-medium font-mono text-foreground text-right tabular-nums">
+                      {stock.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </div>
+                    {stock.changePercent !== undefined && (
+                      <div className="flex items-baseline gap-0 justify-end">
+                        {isPositive ? (
+                          <TrendingUp className="w-2.5 h-2.5 mr-0.5 text-green-500/70 flex-shrink-0" />
+                        ) : (
+                          <TrendingDown className="w-2.5 h-2.5 mr-0.5 text-red-500/70 flex-shrink-0" />
+                        )}
+                        <span className={`text-[14px] font-medium font-mono tabular-nums ${
+                          isPositive ? "text-green-500/70" : "text-red-500/70"
+                        }`}>
+                          {stock.changePercent >= 0 ? "+" : ""}{stock.changePercent.toFixed(2)}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
         </div>
       )}
       </div>
