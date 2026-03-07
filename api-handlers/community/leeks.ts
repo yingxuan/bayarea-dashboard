@@ -702,6 +702,48 @@ async function fetch1point3acresPosts(nocache: boolean = false): Promise<{
   };
 }
 
+/**
+ * Fetch Reddit investing/career posts as fallback when 1P3A is unavailable
+ * Uses Reddit public JSON API (no auth required)
+ */
+async function fetchRedditFallback(): Promise<CommunityItem[]> {
+  const subs = ['investing', 'cscareerquestions'];
+  const items: CommunityItem[] = [];
+  const seenUrls = new Set<string>();
+
+  for (const sub of subs) {
+    try {
+      const resp = await fetch(`https://www.reddit.com/r/${sub}/hot.json?limit=6`, {
+        headers: { 'User-Agent': 'BayAreaDashboard/1.0' },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const posts = data?.data?.children || [];
+      for (const post of posts) {
+        const { title, url, permalink, is_self } = post.data || {};
+        if (!title || title.length < 10) continue;
+        const postUrl = is_self
+          ? `https://www.reddit.com${permalink}`
+          : url;
+        if (!postUrl || seenUrls.has(postUrl)) continue;
+        seenUrls.add(postUrl);
+        items.push({
+          source: '1point3acres' as const,
+          sourceLabel: `r/${sub}`,
+          title,
+          url: postUrl,
+          publishedAt: new Date().toISOString(),
+        });
+        if (items.length >= 5) break;
+      }
+    } catch { /* try next sub */ }
+    if (items.length >= 5) break;
+  }
+  console.log(`[Leeks] Reddit fallback: ${items.length} items`);
+  return items;
+}
+
 export async function handleLeeks(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
 
@@ -757,8 +799,15 @@ export async function handleLeeks(req: VercelRequest, res: VercelResponse) {
     const result = await fetch1point3acresPosts(nocache);
     const fetchedAtISO = new Date().toISOString();
 
-    // Use items as-is (no seed data padding)
-    const finalItems = result.items;
+    // If 1P3A returned < 3 items, use Reddit as fallback
+    let finalItems = result.items;
+    if (finalItems.length < 3) {
+      console.log('[Leeks] 1P3A < 3 items, using Reddit fallback');
+      const redditItems = await fetchRedditFallback();
+      if (redditItems.length > 0) {
+        finalItems = [...finalItems, ...redditItems].slice(0, 5);
+      }
+    }
     
     // Prepare response for 1point3acres
     const response1point3acres: any = {
