@@ -1,13 +1,12 @@
 /**
  * Vercel Serverless Function: /api/community/gossip
- * Fetches gossip posts from 1point3acres (section/391 via RSSHub) and 微博热搜
+ * Fetches gossip posts from 1point3acres (section/391) and V2EX hot topics
  *
  * Requirements:
  * - Always return >= 3 items per source
  * - Never show fake placeholder items
  * - Multi-layer fallback: Live → Cache → Seed
  * - Unified ModulePayload<T> structure
- * - All URLs must be valid thread/post detail pages (not list pages)
  */
 
 // Force Node.js runtime on Vercel (not Edge) for compatibility
@@ -29,7 +28,7 @@ import {
 } from '../../lib/api-utils.js';
 
 const GOSSIP_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
-const WEIBO_CACHE_TTL = 60 * 60 * 1000; // 1 hour for Weibo hot search
+const V2EX_CACHE_TTL = 30 * 60 * 1000; // 30 minutes for V2EX
 const WARM_SEED_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days for warm seed
 const RSS_FETCH_TIMEOUT = 5000; // 5 seconds for RSS
 const FETCH_TIMEOUT = 10000; // 10 seconds for HTML
@@ -37,29 +36,25 @@ const WARM_SEED_SIZE = 20; // Keep last 20 real posts as warm seed
 
 // RSSHub URLs for 1point3acres (try alternatives if primary fails)
 const RSSHUB_INSTANCES = [
-  'https://rsshub.app/1point3acres/section/391', // Primary: 人际关系/吃瓜
-  'https://rsshub.rssforever.com/1point3acres/section/391', // Alternative 1
-  'https://rsshub.uneasy.win/1point3acres/section/391', // Alternative 2
+  'https://rsshub.app/1point3acres/section/391',
+  'https://rsshub.rssforever.com/1point3acres/section/391',
+  'https://rsshub.uneasy.win/1point3acres/section/391',
 ];
 
-// RSSHub URLs for 知乎热榜 (/weibo/search/hot requires Puppeteer and fails on all public instances)
-const RSSHUB_WEIBO_INSTANCES = [
-  'https://rsshub.rssforever.com/zhihu/hot',
-  'https://rsshub.app/zhihu/hot',
-  'https://rsshub.uneasy.win/zhihu/hot',
-];
+// V2EX public API — no auth, no RSSHub dependency
+const V2EX_HOT_API = 'https://www.v2ex.com/api/topics/hot.json';
 
 // Cache keys
 const CACHE_KEY_1P3A_GOSSIP = 'gossip-1p3a-rss';
-const CACHE_KEY_WEIBO = 'gossip-zhihu-hot';
+const CACHE_KEY_V2EX = 'gossip-v2ex-hot';
 const WARM_SEED_KEY_1P3A = 'gossip-warm-seed-1p3a';
-const WARM_SEED_KEY_WEIBO = 'gossip-warm-seed-zhihu';
+const WARM_SEED_KEY_V2EX = 'gossip-warm-seed-v2ex';
 
 interface GossipItem {
   title: string;
   url: string;
   meta?: {
-    source: '1point3acres' | 'weibo';
+    source: '1point3acres' | 'v2ex';
     publishedAt?: string;
   };
 }
@@ -69,8 +64,8 @@ interface GossipItem {
 /**
  * Save warm seed (real posts from successful live fetch)
  */
-function saveWarmSeed(source: '1point3acres' | 'weibo', items: GossipItem[]): void {
-  const cacheKey = source === '1point3acres' ? WARM_SEED_KEY_1P3A : WARM_SEED_KEY_WEIBO;
+function saveWarmSeed(source: '1point3acres' | 'v2ex', items: GossipItem[]): void {
+  const cacheKey = source === '1point3acres' ? WARM_SEED_KEY_1P3A : WARM_SEED_KEY_V2EX;
 
   // Keep only valid thread/post URLs, deduplicate, limit to WARM_SEED_SIZE
   const validItems = items.filter(item => {
@@ -98,8 +93,8 @@ function saveWarmSeed(source: '1point3acres' | 'weibo', items: GossipItem[]): vo
 /**
  * Get warm seed (real posts from previous successful fetches)
  */
-function getWarmSeed(source: '1point3acres' | 'weibo'): GossipItem[] {
-  const cacheKey = source === '1point3acres' ? WARM_SEED_KEY_1P3A : WARM_SEED_KEY_WEIBO;
+function getWarmSeed(source: '1point3acres' | 'v2ex'): GossipItem[] {
+  const cacheKey = source === '1point3acres' ? WARM_SEED_KEY_1P3A : WARM_SEED_KEY_V2EX;
   const cached = cache.get(cacheKey);
   
   if (!cached) {
@@ -333,18 +328,17 @@ async function fetch1P3A(nocache: boolean = false): Promise<ModulePayload<Gossip
 }
 
 /**
- * Fetch 微博热搜 via RSSHub
+ * Fetch V2EX hot topics via public JSON API (no auth, no RSSHub dependency)
  */
-async function fetchWeibo(nocache: boolean = false): Promise<ModulePayload<GossipItem>> {
-  const cacheKey = CACHE_KEY_WEIBO;
+async function fetchV2EX(nocache: boolean = false): Promise<ModulePayload<GossipItem>> {
+  const cacheKey = CACHE_KEY_V2EX;
   const fetchedAt = new Date().toISOString();
-  const ttlSeconds = ttlMsToSeconds(WEIBO_CACHE_TTL);
+  const ttlSeconds = ttlMsToSeconds(V2EX_CACHE_TTL);
 
-  // Check cache first
   if (!nocache) {
-    const cached = getCachedData(cacheKey, WEIBO_CACHE_TTL, false);
+    const cached = getCachedData(cacheKey, V2EX_CACHE_TTL, false);
     if (cached && cached.data && cached.data.items && cached.data.items.length >= 3) {
-      console.log(`[Gossip Weibo] ✅ Using cache (${cached.data.items.length} items)`);
+      console.log(`[Gossip V2EX] ✅ Using cache (${cached.data.items.length} items)`);
       return {
         ...cached.data,
         source: 'cache' as const,
@@ -353,56 +347,48 @@ async function fetchWeibo(nocache: boolean = false): Promise<ModulePayload<Gossi
     }
   }
 
-  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_', textNodeName: '#text' });
-  let uniqueItems: GossipItem[] = [];
+  try {
+    const resp = await fetch(V2EX_HOT_API, {
+      headers: {
+        'User-Agent': 'BayAreaDashboard/1.0',
+        'Accept': 'application/json',
+      },
+      signal: AbortSignal.timeout(RSS_FETCH_TIMEOUT),
+    });
 
-  for (const instanceUrl of RSSHUB_WEIBO_INSTANCES) {
-    try {
-      const resp = await fetch(instanceUrl, {
-        headers: { 'User-Agent': 'BayAreaDashboard/1.0' },
-        signal: AbortSignal.timeout(RSS_FETCH_TIMEOUT),
-      });
-      if (!resp.ok) continue;
-      const xmlText = await resp.text();
-      const feed = parser.parse(xmlText);
-      const rssItems: any[] = (() => {
-        const r = feed?.rss?.channel?.item || feed?.feed?.entry || [];
-        return Array.isArray(r) ? r : [r];
-      })();
-      const seen = new Set<string>();
-      for (const item of rssItems) {
-        let link = (typeof item.link === 'string' ? item.link : item.link?.['#text'] || item.link?.['@_href'] || '').trim();
-        const title = (typeof item.title === 'string' ? item.title : item.title?.['#text'] || '').trim();
-        if (!link || !title) continue;
-        if (!link.startsWith('http')) continue;
-        if (seen.has(link)) continue;
-        seen.add(link);
-        const pubDate = item.pubDate?.['#text'] || item.pubDate || '';
-        uniqueItems.push({ title, url: link, meta: { source: 'weibo', publishedAt: pubDate || fetchedAt } });
-      }
-      if (uniqueItems.length >= 3) {
-        console.log(`[Gossip Weibo] ✅ RSSHub succeeded: ${uniqueItems.length} items from ${instanceUrl}`);
-        break;
-      }
-    } catch { /* try next instance */ }
+    if (!resp.ok) throw new Error(`V2EX API returned ${resp.status}`);
+
+    const topics: Array<{ title: string; url: string; created: number }> = await resp.json();
+    const items: GossipItem[] = topics
+      .filter(t => t.title && t.url)
+      .map(t => ({
+        title: t.title,
+        url: t.url,
+        meta: {
+          source: 'v2ex' as const,
+          publishedAt: new Date(t.created * 1000).toISOString(),
+        },
+      }));
+
+    if (items.length >= 3) {
+      console.log(`[Gossip V2EX] ✅ Fetched ${items.length} hot topics`);
+      saveWarmSeed('v2ex', items);
+      const payload: ModulePayload<GossipItem> = {
+        source: 'live',
+        status: 'ok',
+        fetchedAt,
+        ttlSeconds,
+        items: items.slice(0, 10),
+      };
+      setCache(cacheKey, payload);
+      return payload;
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[Gossip V2EX] ⚠️ Fetch failed: ${msg}`);
   }
 
-  if (uniqueItems.length >= 3) {
-    saveWarmSeed('weibo', uniqueItems);
-    const payload: ModulePayload<GossipItem> = {
-      source: 'live',
-      status: 'ok',
-      fetchedAt,
-      ttlSeconds,
-      items: uniqueItems.slice(0, 10),
-    };
-    setCache(cacheKey, payload);
-    return payload;
-  }
-
-  console.warn(`[Gossip Weibo] ⚠️ Only ${uniqueItems.length} live items, falling back to warm seed`);
-
-  const warmSeed = getWarmSeed('weibo');
+  const warmSeed = getWarmSeed('v2ex');
   if (warmSeed.length > 0) {
     return {
       source: 'seed',
@@ -414,13 +400,13 @@ async function fetchWeibo(nocache: boolean = false): Promise<ModulePayload<Gossi
     };
   }
 
-  console.log(`[Gossip Weibo] ❌ No data available`);
+  console.log(`[Gossip V2EX] ❌ No data available`);
   return {
     source: 'unavailable',
     status: 'failed',
     fetchedAt,
     ttlSeconds: 0,
-    note: 'Live fetch failed, no fallback data available',
+    note: 'V2EX API failed, no fallback data available',
     items: [],
   };
 }
@@ -439,15 +425,15 @@ export async function handleGossip(req: VercelRequest, res: VercelResponse) {
     const nocache = isCacheBypass(req);
 
     // Fetch from both sources in parallel
-    const [result1P3A, resultWeibo] = await Promise.all([
+    const [result1P3A, resultV2EX] = await Promise.all([
       fetch1P3A(nocache),
-      fetchWeibo(nocache),
+      fetchV2EX(nocache),
     ]);
 
     // Ensure each source has >= 3 items
     const ensureMinItems = (
       payload: ModulePayload<GossipItem>,
-      source: '1point3acres' | 'weibo'
+      source: '1point3acres' | 'v2ex'
     ): ModulePayload<GossipItem> => {
       const validItems = payload.items.filter(item =>
         source === '1point3acres' ? isValid1p3aThreadUrl(item.url) : item.url.startsWith('http')
@@ -482,14 +468,13 @@ export async function handleGossip(req: VercelRequest, res: VercelResponse) {
     };
 
     const final1P3A = ensureMinItems(result1P3A, '1point3acres');
-    const finalWeibo = ensureMinItems(resultWeibo, 'weibo');
+    const finalV2EX = ensureMinItems(resultV2EX, 'v2ex');
 
-    // Combine results
     const response = {
       status: 'ok' as const,
       sources: {
         '1point3acres': final1P3A,
-        'weibo': finalWeibo,
+        'weibo': finalV2EX, // key kept as 'weibo' for frontend compatibility
       },
       fetchedAt: new Date().toISOString(),
     };
@@ -500,7 +485,7 @@ export async function handleGossip(req: VercelRequest, res: VercelResponse) {
 
     const errorAt = new Date().toISOString();
     const warmSeed1P3A = getWarmSeed('1point3acres');
-    const warmSeedWeibo = getWarmSeed('weibo');
+    const warmSeedV2EX = getWarmSeed('v2ex');
 
     res.status(200).json({
       status: 'ok' as const,
@@ -515,11 +500,11 @@ export async function handleGossip(req: VercelRequest, res: VercelResponse) {
         },
         'weibo': {
           source: 'seed' as const,
-          status: warmSeedWeibo.length >= 3 ? 'degraded' as const : 'failed' as const,
+          status: warmSeedV2EX.length >= 3 ? 'degraded' as const : 'failed' as const,
           fetchedAt: errorAt,
           ttlSeconds: 0,
-          note: warmSeedWeibo.length >= 3 ? 'warm seed' : 'Error occurred, no fallback data',
-          items: warmSeedWeibo.length >= 3 ? warmSeedWeibo.slice(0, 10) : [],
+          note: warmSeedV2EX.length >= 3 ? 'warm seed' : 'Error occurred, no fallback data',
+          items: warmSeedV2EX.length >= 3 ? warmSeedV2EX.slice(0, 10) : [],
         },
       },
       fetchedAt: errorAt,

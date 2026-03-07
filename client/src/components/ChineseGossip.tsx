@@ -19,7 +19,7 @@ interface GossipItem {
   title: string;
   url: string;
   meta?: {
-    source: '1point3acres' | 'weibo';
+    source: '1point3acres' | 'v2ex';
     publishedAt?: string;
   };
 }
@@ -167,8 +167,8 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
             onClick={handleExternalLinkClick}
             className="flex items-baseline gap-2 py-2 px-1.5 hover:bg-muted/30 rounded-sm transition-colors group"
           >
-            {item.meta?.source === 'weibo' ? (
-              <span className="shrink-0 text-[10px] font-mono text-blue-400/80 leading-tight">知乎</span>
+            {item.meta?.source === 'v2ex' ? (
+              <span className="shrink-0 text-[10px] font-mono text-green-400/80 leading-tight">V2EX</span>
             ) : (
               <span className="shrink-0 text-[10px] font-mono text-cyan-400/70 leading-tight">1P3A</span>
             )}
