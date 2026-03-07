@@ -14,7 +14,7 @@ export const runtime = 'nodejs';
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import * as cheerio from 'cheerio';
-import { decode as iconvDecode } from 'iconv-lite';
+import iconv from 'iconv-lite';
 import { XMLParser } from 'fast-xml-parser';
 import { ModulePayload } from '../../shared/types.js';
 import { ttlMsToSeconds } from '../../shared/config.js';
@@ -193,7 +193,7 @@ async function scrape1P3ADirect(fetchedAt: string): Promise<GossipItem[]> {
 
   // 1point3acres serves GBK-encoded HTML — decode the buffer properly
   const buf = await response.arrayBuffer();
-  const html = iconvDecode(Buffer.from(buf), 'gbk');
+  const html = iconv.decode(Buffer.from(buf), 'gbk');
   const $ = cheerio.load(html);
   const items: GossipItem[] = [];
   const seenUrls = new Set<string>();
