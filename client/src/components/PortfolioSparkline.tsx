@@ -40,16 +40,7 @@ export default function PortfolioSparkline({
 }: PortfolioSparklineProps) {
   const { pathData, areaPathData, color, fillColor, statusText } = useMemo(() => {
     if (!data || !data.items || data.items.length === 0) {
-      // No data - return flat line
-      const flatPath = `M 0 ${height * 0.5} L ${width} ${height * 0.5}`;
-      const flatArea = `M 0 ${height} L 0 ${height * 0.5} L ${width} ${height * 0.5} L ${width} ${height} Z`;
-      return {
-        pathData: flatPath,
-        areaPathData: flatArea,
-        color: '#9ca3af', // gray-400
-        fillColor: '#9ca3af',
-        statusText: '暂无数据',
-      };
+      return { pathData: '', areaPathData: '', color: '', fillColor: '', statusText: '' };
     }
 
     const points = data.items;
@@ -110,6 +101,8 @@ export default function PortfolioSparkline({
   const gradientId = useMemo(() => {
     return `sparkline-fill-${Math.random().toString(36).substring(7)}`;
   }, []);
+
+  if (!pathData) return null;
 
   return (
     <div className="relative w-full">

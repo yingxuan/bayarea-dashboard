@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useExternalLink } from "@/hooks/useExternalLink";
 import { config } from "@/config";
 import TimeAgo from "@/components/TimeAgo";
+import SectionHeader from "@/components/SectionHeader";
 
 interface JobItem {
   title: string;
@@ -54,6 +55,8 @@ export default function LayoffsWidget() {
   if (items.length === 0) return null;
 
   return (
+    <div>
+      <SectionHeader title="裁员 & 求职" />
     <div className="divide-y divide-border/20">
       {items.slice(0, 5).map((item, idx) => (
         <a
@@ -77,6 +80,7 @@ export default function LayoffsWidget() {
           )}
         </a>
       ))}
+    </div>
     </div>
   );
 }

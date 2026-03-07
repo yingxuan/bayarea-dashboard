@@ -380,31 +380,36 @@ export default function Home() {
               <MarketHighlights marketNews={marketNews} />
             </div>
 
-            {/* 3) 裁员 & 求职动态 */}
+            {/* 3) 裁员 & 求职动态 — header is inside LayoffsWidget when it has items */}
             <div className="w-full min-w-0">
-              <SectionHeader title="裁员 & 求职" />
               <LayoffsWidget />
             </div>
 
             {/* 4+5) 美股博主 + 关于饭碗：桌面并排，移动端各自全宽 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full min-w-0">
-              <div className="min-w-0 overflow-hidden">
-                <USStockYouTubers
-                  stockYoutubers={stockYoutubers}
-                  offset={stockYoutubersOffset}
-                  onRefresh={() => {
-                    const VIDEOS_PER_BATCH = 4;
-                    setStockYoutubersOffset(prev => {
-                      const nextOffset = prev + VIDEOS_PER_BATCH;
-                      return nextOffset >= stockYoutubers.length ? 0 : nextOffset;
-                    });
-                  }}
-                />
+            {(stockYoutubers.some(v => v.status === 'ok') || fanwanVideos.length > 0) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full min-w-0">
+                {stockYoutubers.some(v => v.status === 'ok') && (
+                  <div className="min-w-0 overflow-hidden">
+                    <USStockYouTubers
+                      stockYoutubers={stockYoutubers}
+                      offset={stockYoutubersOffset}
+                      onRefresh={() => {
+                        const VIDEOS_PER_BATCH = 4;
+                        setStockYoutubersOffset(prev => {
+                          const nextOffset = prev + VIDEOS_PER_BATCH;
+                          return nextOffset >= stockYoutubers.length ? 0 : nextOffset;
+                        });
+                      }}
+                    />
+                  </div>
+                )}
+                {fanwanVideos.length > 0 && (
+                  <div className="min-w-0 overflow-hidden">
+                    <FanwanCarousel videos={fanwanVideos} />
+                  </div>
+                )}
               </div>
-              <div className="min-w-0 overflow-hidden">
-                <FanwanCarousel videos={fanwanVideos} />
-              </div>
-            </div>
+            )}
 
             {/* 5) 票子入口卡片 - 查看完整财务详情 */}
             <div className="w-full min-w-0 mt-2">

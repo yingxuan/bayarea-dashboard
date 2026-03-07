@@ -112,7 +112,7 @@ export default function MarketHighlights({ marketNews }: MarketHighlightsProps) 
             onClick={handleExternalLinkClick}
             className="flex items-baseline gap-3 py-2 px-1.5 hover:bg-muted/30 rounded-sm transition-colors group"
           >
-            <span className="text-[11px] text-muted-foreground/55 font-mono shrink-0">
+            <span className={`text-[11px] font-mono shrink-0 ${item.source === 'HN' ? 'text-orange-400/60' : 'text-muted-foreground/55'}`}>
               {item.source}
               {item.publishedAt && (
                 <> · <TimeAgo isoString={item.publishedAt} /></>

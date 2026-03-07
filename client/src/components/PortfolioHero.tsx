@@ -330,16 +330,18 @@ export default function PortfolioHero({
                 )}
               </div>
             </div>
-            {/* Sparkline - 全宽填充 */}
-            <div className="w-full mt-1">
-              <PortfolioSparkline
-                data={valueSeries}
-                currentValue={portfolioMetrics.portfolioValue}
-                dailyChangePercent={portfolioMetrics.dailyChangePercent}
-                width={220}
-                height={32}
-              />
-            </div>
+            {/* Sparkline - 全宽填充, only when data exists */}
+            {valueSeries && valueSeries.items?.length > 0 && (
+              <div className="w-full mt-2">
+                <PortfolioSparkline
+                  data={valueSeries}
+                  currentValue={portfolioMetrics.portfolioValue}
+                  dailyChangePercent={portfolioMetrics.dailyChangePercent}
+                  width={220}
+                  height={52}
+                />
+              </div>
+            )}
           </div>
 
           {/* 中列: Top Movers */}

@@ -22,6 +22,8 @@ interface Props {
 export default function FanwanCarousel({ videos }: Props) {
   const display = videos.slice(0, 18);
 
+  if (display.length === 0) return null;
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-border/30">
