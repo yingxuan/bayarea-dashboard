@@ -1,148 +1,110 @@
-/**
- * US Stock YouTubers Component
- * 美股博主独立组件
- * Desktop & Mobile: 横向 carousel，带滚动按钮
- * "更多"按钮：轮换视频列表 index
- */
-
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-} from "@/components/ui/carousel";
-import TimeAgo from "@/components/TimeAgo";
 import { useMemo } from "react";
+import { RefreshCcw } from "lucide-react";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+import TimeAgo from "@/components/TimeAgo";
 
 interface USStockYouTubersProps {
   stockYoutubers: any[];
-  offset?: number; // Current display offset (for "换一批" functionality)
-  onRefresh?: () => void; // Callback for "换一批" button
+  offset?: number;
+  onRefresh?: () => void;
 }
 
-export default function USStockYouTubers({ stockYoutubers, offset = 0, onRefresh }: USStockYouTubersProps) {
-  // Filter and prepare videos
-  const availableVideos = stockYoutubers.filter(item => item.status === 'ok');
+export default function USStockYouTubers({
+  stockYoutubers,
+  offset = 0,
+  onRefresh,
+}: USStockYouTubersProps) {
+  const availableVideos = stockYoutubers.filter((item) => item.status === "ok");
+  const batchSize = 4;
 
-  const BATCH_SIZE = 4;
+  const displayVideos = useMemo(() => {
+    if (availableVideos.length === 0) return [];
+    const start = offset % availableVideos.length;
+    return [...availableVideos.slice(start), ...availableVideos.slice(0, start)].slice(0, batchSize);
+  }, [availableVideos, offset]);
 
-  // Rotate by offset and slice to one batch
-  const displayVideos = availableVideos.length > 0
-    ? (() => {
-        const start = offset % availableVideos.length;
-        return [...availableVideos.slice(start), ...availableVideos.slice(0, start)].slice(0, BATCH_SIZE);
-      })()
-    : [];
-
-  const hasMore = availableVideos.length > BATCH_SIZE;
-
-  // Calculate latest video time for status hint
   const latestVideoTime = useMemo(() => {
-    if (displayVideos.length === 0) return null;
     const times = displayVideos
-      .map(v => v.publishedAt)
+      .map((video) => video.publishedAt)
       .filter(Boolean)
-      .map(t => new Date(t).getTime())
-      .filter(t => !isNaN(t));
+      .map((value) => new Date(value).getTime())
+      .filter((value) => !isNaN(value));
     if (times.length === 0) return null;
     return new Date(Math.max(...times));
   }, [displayVideos]);
 
-  // Format status hint
   const statusHint = useMemo(() => {
     if (!latestVideoTime) return null;
-    const now = new Date();
-    const diffMinutes = Math.floor((now.getTime() - latestVideoTime.getTime()) / (1000 * 60));
-    
-    if (diffMinutes < 60) {
-      return `更新于 ${diffMinutes} 分钟前`;
-    } else if (diffMinutes < 1440) {
-      const hours = Math.floor(diffMinutes / 60);
-      return `更新于 ${hours} 小时前`;
-    } else {
-      return '今日热门';
-    }
+    const diffMinutes = Math.floor((Date.now() - latestVideoTime.getTime()) / (1000 * 60));
+    if (diffMinutes < 60) return `更新于 ${diffMinutes} 分钟前`;
+    if (diffMinutes < 1440) return `更新于 ${Math.floor(diffMinutes / 60)} 小时前`;
+    return "最近一轮频道更新";
   }, [latestVideoTime]);
 
   if (availableVideos.length === 0) return null;
 
   return (
-    <div className="w-full">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-border/30">
-        <div className="flex items-baseline gap-2">
-          <h3 className="text-[13px] font-mono font-medium text-foreground/80">美股博主</h3>
-          {statusHint && (
-            <span className="text-xs opacity-60 font-mono font-normal text-foreground/60">
-              {statusHint}
-            </span>
-          )}
+    <div className="rounded-sm border border-border/35 bg-card/45 p-4">
+      <div className="mb-4 flex items-start justify-between gap-3 border-b border-border/25 pb-3">
+        <div>
+          <div className="eyebrow mb-2">Market Voices</div>
+          <h3 className="text-[15px] font-semibold text-foreground/92">美股博主</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {statusHint || "用频道更新速度判断今天哪些声音值得扫一眼。"}
+          </p>
         </div>
-        {onRefresh && (hasMore || availableVideos.length > 0) && (
+        {onRefresh ? (
           <button
             onClick={onRefresh}
-            className="text-xs opacity-60 hover:opacity-100 transition-opacity font-mono font-normal px-2 py-0.5 rounded hover:bg-primary/10 border border-primary/20 hover:border-primary/40"
-            title="更多"
+            className="inline-flex items-center gap-2 rounded-sm border border-border/35 bg-background/55 px-3 py-2 text-xs text-foreground/78 transition-all hover:border-primary/45 hover:text-primary"
           >
-            更多
+            <RefreshCcw className="h-3.5 w-3.5" />
+            换一批
           </button>
-        )}
+        ) : null}
       </div>
 
-      {/* Carousel with scroll buttons */}
-      {displayVideos.length > 0 ? (
-        <div className="relative">
-          <Carousel
-            opts={{
-              align: "start",
-              loop: false,
-              dragFree: true,
-            }}
-            className="w-full"
-          >
-            <CarouselContent className="-ml-2 md:-ml-3">
-              {displayVideos.map((item, index) => (
-                <CarouselItem
-                  key={`${item.channelName}-${offset + index}`}
-                  className="pl-2 md:pl-3 snap-start shrink-0 w-[70%] md:w-[46%] min-w-0"
-                >
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block w-full rounded-lg overflow-hidden bg-card/50 border border-border/50 hover:border-primary/50 transition-all group"
-                  >
-                    <div className="relative w-full aspect-video bg-muted overflow-hidden">
-                      <img
-                        src={item.thumbnail}
-                        alt={item.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                        <h4 className="text-[13px] font-medium text-white mb-0.5 line-clamp-1 leading-tight">{item.title}</h4>
-                        <div className="flex items-baseline gap-1.5 text-[11px] opacity-70 text-white/80 font-mono font-normal">
-                          <span>{item.channelName}</span>
-                          <span>•</span>
-                          <TimeAgo isoString={item.publishedAt} />
-                        </div>
-                      </div>
-                    </div>
-                  </a>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-          </Carousel>
-        </div>
-      ) : (
-        <div className="p-4 bg-card rounded-sm border border-border/40 shadow-md">
-          <div className="text-xs opacity-60 font-mono font-normal text-center py-2">
-            暂无更新
-          </div>
-        </div>
-      )}
+      <Carousel opts={{ align: "start", loop: false, dragFree: true }} className="w-full">
+        <CarouselContent className="-ml-3">
+          {displayVideos.map((item, index) => (
+            <CarouselItem
+              key={`${item.channelName}-${offset + index}`}
+              className="min-w-0 shrink-0 pl-3 md:basis-1/2"
+            >
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group block overflow-hidden rounded-sm border border-border/35 bg-background/55 transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-background/75 hover:shadow-[0_18px_48px_rgba(0,0,0,0.18)]"
+              >
+                <div className="relative aspect-video overflow-hidden bg-muted">
+                  <img
+                    src={item.thumbnail}
+                    alt={item.title}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                  <div className="absolute left-3 top-3 rounded-sm border border-white/15 bg-black/35 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-white/78">
+                    {item.channelName}
+                  </div>
+                </div>
+                <div className="p-3">
+                  <h4 className="line-clamp-2 text-sm font-medium leading-6 text-foreground/92 transition-colors group-hover:text-primary">
+                    {item.title}
+                  </h4>
+                  <div className="mt-3 text-[11px] font-mono text-muted-foreground/72">
+                    <TimeAgo isoString={item.publishedAt} />
+                  </div>
+                </div>
+              </a>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
     </div>
   );
 }

@@ -1,17 +1,5 @@
-/**
- * PlaceCard Component
- * Unified card for displaying restaurant/place information
- * Used across all category views in the Chihe page
- *
- * Features:
- * - Large image with gradient overlay
- * - Rating, review count, distance display
- * - Direct Google Maps link
- * - Data Punk styling
- */
-
-import { useState, useEffect, useRef } from "react";
-import { Star, MapPin, ExternalLink } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ExternalLink, MapPin, Star } from "lucide-react";
 import { config } from "@/config";
 
 interface SpendPlace {
@@ -31,31 +19,30 @@ interface SpendPlace {
 
 interface PlaceCardProps {
   place: SpendPlace;
-  size?: 'small' | 'medium' | 'large';
+  size?: "small" | "medium" | "large";
   showCategory?: boolean;
 }
 
-// Category fallback images
 const CATEGORY_FALLBACK_IMAGES: Record<string, string[]> = {
-  '奶茶': [
-    'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=400&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=400&h=300&fit=crop',
+  奶茶: [
+    "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=800&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=800&h=600&fit=crop",
   ],
-  '中餐': [
-    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1525755662776-9d797cd77072?w=400&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=400&h=300&fit=crop',
+  中餐: [
+    "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1525755662776-9d797cd77072?w=800&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1551218808-94e220e084d2?w=800&h=600&fit=crop",
   ],
-  '夜宵': [
-    'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1529042410759-befb1204b468?w=400&h=300&fit=crop',
+  夜宵: [
+    "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1529042410759-befb1204b468?w=800&h=600&fit=crop",
   ],
-  '新店打卡': [
-    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop',
+  新店打卡: [
+    "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop",
   ],
 };
 
@@ -63,59 +50,49 @@ function getFallbackImageUrl(place: SpendPlace): string {
   const itemIdentity = place.id || `${place.name}_${place.city}`;
   let hash = 0;
   for (let i = 0; i < itemIdentity.length; i++) {
-    hash = ((hash << 5) - hash) + itemIdentity.charCodeAt(i);
-    hash = hash & hash;
+    hash = (hash << 5) - hash + itemIdentity.charCodeAt(i);
+    hash &= hash;
   }
-  const seed = Math.abs(hash);
-  const images = CATEGORY_FALLBACK_IMAGES[place.category] || CATEGORY_FALLBACK_IMAGES['中餐'];
-  return images[seed % images.length];
+  const images = CATEGORY_FALLBACK_IMAGES[place.category] || CATEGORY_FALLBACK_IMAGES["中餐"];
+  return images[Math.abs(hash) % images.length];
 }
 
-// Shared in-flight tracker to avoid duplicate requests across card instances
 const inflight = new Set<string>();
 
-export default function PlaceCard({ place, size = 'medium', showCategory = false }: PlaceCardProps) {
-  const staticPhoto = place.photo_local_url || (place.photo_url?.startsWith('/') ? place.photo_url : undefined);
+export default function PlaceCard({
+  place,
+  size = "medium",
+  showCategory = false,
+}: PlaceCardProps) {
+  const staticPhoto =
+    place.photo_local_url || (place.photo_url?.startsWith("/") ? place.photo_url : undefined);
   const [fetchedPhoto, setFetchedPhoto] = useState<string | null>(null);
   const fetchedRef = useRef(false);
 
-  // Fetch real photo on first render if no local photo available
   useEffect(() => {
     if (staticPhoto || fetchedRef.current || !place.id || inflight.has(place.id)) return;
-    // Only attempt for valid Google Place IDs (starts with ChIJ or similar non-seed format)
-    if (!/^[A-Za-z0-9_-]{10,}$/.test(place.id) || place.id.startsWith('seed_')) return;
+    if (!/^[A-Za-z0-9_-]{10,}$/.test(place.id) || place.id.startsWith("seed_")) return;
+
     fetchedRef.current = true;
     inflight.add(place.id);
     fetch(`${config.apiBaseUrl}/api/spend/place-photo?place_id=${encodeURIComponent(place.id)}`)
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => { if (data?.photo_local_url) setFetchedPhoto(data.photo_local_url); })
+      .then((data) => {
+        if (data?.photo_local_url) setFetchedPhoto(data.photo_local_url);
+      })
       .catch(() => {})
-      .finally(() => { setTimeout(() => inflight.delete(place.id), 5000); });
+      .finally(() => {
+        setTimeout(() => inflight.delete(place.id), 5000);
+      });
   }, [place.id, staticPhoto]);
 
   const imageUrl = staticPhoto || fetchedPhoto || getFallbackImageUrl(place);
 
-  // Size-based classes
   const sizeClasses = {
-    small: {
-      container: 'w-full',
-      image: 'h-32',
-      name: 'text-[13px]',
-      meta: 'text-[10px]',
-    },
-    medium: {
-      container: 'w-full',
-      image: 'h-40',
-      name: 'text-[14px]',
-      meta: 'text-[11px]',
-    },
-    large: {
-      container: 'w-full',
-      image: 'h-48',
-      name: 'text-[15px]',
-      meta: 'text-[12px]',
-    },
-  };
+    small: { image: "h-40", title: "text-[14px]", meta: "text-[11px]" },
+    medium: { image: "h-48", title: "text-[15px]", meta: "text-[11px]" },
+    large: { image: "h-56", title: "text-[16px]", meta: "text-[12px]" },
+  } as const;
 
   const classes = sizeClasses[size];
 
@@ -124,86 +101,69 @@ export default function PlaceCard({ place, size = 'medium', showCategory = false
       href={place.maps_url}
       target="_blank"
       rel="noopener noreferrer"
-      className={`block ${classes.container} rounded-lg overflow-hidden bg-card/50 border border-border/50 hover:border-primary/50 transition-all group`}
+      className="group flex h-full flex-col overflow-hidden rounded-sm border border-border/35 bg-card/50 transition-all hover:-translate-y-1 hover:border-primary/45 hover:bg-card/75 hover:shadow-[0_24px_60px_rgba(0,0,0,0.18)]"
     >
-      {/* Image with overlay */}
-      <div className={`relative w-full ${classes.image} bg-muted overflow-hidden`}>
+      <div className={`relative w-full overflow-hidden bg-muted ${classes.image}`}>
         <img
           src={imageUrl}
           alt={place.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           loading="lazy"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            const fallback = CATEGORY_FALLBACK_IMAGES['中餐'][0];
-            if (target.src !== fallback) {
-              target.src = fallback;
-            }
+            const fallback = CATEGORY_FALLBACK_IMAGES["中餐"][0];
+            if (target.src !== fallback) target.src = fallback;
           }}
         />
-        {/* Dark gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/78 via-black/28 to-transparent" />
 
-        {/* Content overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-3 text-white z-10">
-          {/* Category badge */}
-          {showCategory && (
-            <span className="inline-block text-[9px] font-mono uppercase tracking-wider bg-primary/30 border border-primary/50 text-primary-foreground rounded px-1.5 py-0.5 mb-1.5">
-              {place.category}
-            </span>
-          )}
-
-          {/* Name */}
-          <h4 className={`${classes.name} font-medium mb-1 truncate drop-shadow-lg leading-tight`}>
-            {place.name}
-          </h4>
-
-          {/* Rating and distance */}
-          <div className={`flex items-center gap-2 ${classes.meta} opacity-90 drop-shadow-md font-mono font-normal`}>
-            <div className="flex items-center gap-1">
-              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 flex-shrink-0" />
-              <span className="tabular-nums">
-                {place.rating > 0 ? place.rating.toFixed(1) : '-'}
-              </span>
-              {place.user_ratings_total > 0 && (
-                <span className="text-white/60">({place.user_ratings_total})</span>
-              )}
-            </div>
-
-            {place.distance_miles !== undefined && (
-              <>
-                <span className="text-white/40">|</span>
-                <div className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3 flex-shrink-0" />
-                  <span className="tabular-nums">{place.distance_miles.toFixed(1)} mi</span>
-                </div>
-              </>
-            )}
-
-            <span className="text-white/40">|</span>
-            <span className="truncate">{place.city}</span>
-          </div>
-
-          {/* Badges */}
-          {place.badges && place.badges.length > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {place.badges.slice(0, 3).map((badge) => (
-                <span
-                  key={badge}
-                  className="text-[9px] font-mono uppercase tracking-[0.08em] bg-white/10 border border-white/20 text-white/80 rounded px-1 py-0.5"
-                >
-                  {badge}
-                </span>
-              ))}
-            </div>
-          )}
+        <div className="absolute right-3 top-3 rounded-sm bg-black/55 p-1.5 text-white/92 opacity-0 transition-opacity group-hover:opacity-100">
+          <ExternalLink className="h-3.5 w-3.5" />
         </div>
 
-        {/* Hover: Google Maps icon */}
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="bg-black/60 rounded-full p-1.5">
-            <ExternalLink className="w-3.5 h-3.5 text-white" />
-          </div>
+        <div className="absolute left-3 right-3 top-3 flex flex-wrap gap-2">
+          {showCategory ? (
+            <span className="rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-white/80">
+              {place.category}
+            </span>
+          ) : null}
+          {place.badges?.slice(0, 2).map((badge) => (
+            <span
+              key={badge}
+              className="rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] text-white/84"
+            >
+              {badge}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-1 flex-col p-4">
+        <div className="text-[11px] uppercase tracking-[0.16em] text-amber-300/75">{place.city}</div>
+        <h3 className={`mt-2 line-clamp-2 font-semibold leading-6 text-foreground ${classes.title}`}>
+          {place.name}
+        </h3>
+
+        <div className={`mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-muted-foreground ${classes.meta}`}>
+          <span className="inline-flex items-center gap-1">
+            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+            <span className="tabular-nums">{place.rating > 0 ? place.rating.toFixed(1) : "-"}</span>
+            <span className="text-muted-foreground/70">({place.user_ratings_total})</span>
+          </span>
+
+          {place.distance_miles !== undefined ? (
+            <span className="inline-flex items-center gap-1">
+              <MapPin className="h-3.5 w-3.5" />
+              <span className="tabular-nums">{place.distance_miles.toFixed(1)} mi</span>
+            </span>
+          ) : null}
+        </div>
+
+        <div className="mt-4 pt-3 text-xs text-muted-foreground/82">
+          <span className="decision-link inline-flex items-center gap-2 p-0 text-xs">
+            在地图里打开
+            <ExternalLink className="h-3.5 w-3.5" />
+          </span>
         </div>
       </div>
     </a>

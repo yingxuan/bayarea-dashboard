@@ -462,14 +462,14 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
       isNewPlacesEmpty ? '暂无推荐' :
       '暂无推荐';
     return (
-      <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md flex flex-col min-h-[120px]">
+      <div className="rounded-sm border border-border/45 bg-card/70 p-4 flex flex-col min-h-[150px]">
         <div className="mb-2 flex-shrink-0 flex items-center justify-between">
-          <h3 className="text-[28px] md:text-[32px] font-mono font-semibold text-foreground">
+          <h3 className="text-[24px] md:text-[28px] font-semibold text-foreground">
             {category}
           </h3>
         </div>
         <div className="flex-1 flex items-center justify-center min-h-0">
-          <p className="text-xs opacity-60 font-mono font-normal text-center line-clamp-2">
+          <p className="text-xs font-mono text-muted-foreground/70 text-center line-clamp-2">
             {message}
           </p>
         </div>
@@ -546,12 +546,13 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
   };
 
   return (
-    <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md flex flex-col h-auto min-h-0">
+    <div className="rounded-sm border border-border/45 bg-card/70 p-4 flex flex-col h-auto min-h-0">
       {/* Category Header - Top-left with Refresh Button */}
-      <div className="mb-2 flex-shrink-0 flex items-center justify-between">
-        <h3 className="text-[13px] font-mono font-medium text-foreground/80">
-          {category}
-        </h3>
+      <div className="mb-3 flex-shrink-0 flex items-start justify-between gap-3">
+        <div>
+          <div className="eyebrow mb-2">Dining</div>
+          <h3 className="text-[15px] font-semibold text-foreground/90">{category}</h3>
+        </div>
         <div className="flex items-center gap-2">
           {/* For 新店打卡: show manual refresh button (debug mode only) */}
           {/* {category === '新店打卡' && (() => {
@@ -596,6 +597,7 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
           )}
         </div>
       </div>
+      <div className="mb-3 h-px bg-gradient-to-r from-transparent via-border/80 to-transparent" />
 
       {/* Horizontal Carousel - up to 10 curated places + optional random */}
       <Carousel
@@ -742,7 +744,7 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
                   href={isFallback ? '#' : place.maps_url}
                   target={isFallback ? undefined : "_blank"}
                   rel={isFallback ? undefined : "noopener noreferrer"}
-                  className="block w-44 rounded-lg overflow-hidden bg-card/50 border border-border/50 hover:border-primary/50 transition-all group"
+                  className="block w-44 rounded-sm overflow-hidden bg-card/50 border border-border/50 hover:border-primary/50 hover:-translate-y-0.5 transition-all group hover:shadow-[0_16px_32px_rgba(0,0,0,0.22)]"
                 >
                   {/* Large Image - Compact for grid with dark gradient overlay */}
                   <div className="relative w-full h-32 bg-muted overflow-hidden">
@@ -826,7 +828,7 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
                 href={revealedRandomPlace.maps_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block w-44 rounded-lg overflow-hidden bg-card/50 border border-border/50 hover:border-primary/50 transition-all group"
+                className="block w-44 rounded-sm overflow-hidden bg-card/50 border border-border/50 hover:border-primary/50 hover:-translate-y-0.5 transition-all group hover:shadow-[0_16px_32px_rgba(0,0,0,0.22)]"
               >
                 <div className="relative w-full h-32 bg-muted overflow-hidden">
                   {(() => {
@@ -938,7 +940,7 @@ export default function SpendCarousel({ category, places, fallbackImage, offset 
               <button
                 onClick={handleRandomClick}
                 disabled={isRolling || randomPool.length === 0}
-                className="block w-44 rounded-lg bg-card/50 border border-border/50 hover:border-primary/50 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                className="block w-44 rounded-sm bg-card/50 border border-border/50 hover:border-primary/50 hover:-translate-y-0.5 transition-all group hover:shadow-[0_16px_32px_rgba(0,0,0,0.22)] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="relative w-full h-32 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
                   {isRolling ? (

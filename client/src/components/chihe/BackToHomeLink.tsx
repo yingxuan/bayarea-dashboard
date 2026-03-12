@@ -1,9 +1,3 @@
-/**
- * BackToHomeLink Component
- * Navigation link to return to the home page
- * Data Punk styled with neon accent
- */
-
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -20,9 +14,9 @@ export default function BackToHomeLink({ className = "" }: BackToHomeLinkProps) 
   return (
     <Link href="/">
       <span
-        className={`inline-flex items-center gap-2 text-sm font-mono text-muted-foreground hover:text-primary transition-colors cursor-pointer ${className}`}
+        className={`inline-flex cursor-pointer items-center gap-2 rounded-sm border border-border/45 bg-card/55 px-3 py-2 text-sm font-medium text-foreground/82 transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-card/80 hover:text-primary ${className}`}
       >
-        <ArrowLeft className="w-4 h-4" />
+        <ArrowLeft className="h-4 w-4" />
         <span>{t.common.backHome}</span>
       </span>
     </Link>

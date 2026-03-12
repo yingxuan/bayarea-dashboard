@@ -1,8 +1,3 @@
-/**
- * Layoffs & Career Widget
- * Shows recent layoff/career posts from Reddit r/layoffs and r/cscareerquestions
- */
-
 import { useEffect, useState } from "react";
 import { useExternalLink } from "@/hooks/useExternalLink";
 import { config } from "@/config";
@@ -37,6 +32,7 @@ export default function LayoffsWidget() {
         setLoading(false);
       }
     }
+
     load();
     const interval = setInterval(load, 30 * 60 * 1000);
     return () => clearInterval(interval);
@@ -46,7 +42,7 @@ export default function LayoffsWidget() {
     return (
       <div className="space-y-2 py-1">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-6 animate-pulse bg-muted/40 rounded-sm" />
+          <div key={i} className="h-8 animate-pulse rounded-sm bg-muted/40" />
         ))}
       </div>
     );
@@ -56,31 +52,31 @@ export default function LayoffsWidget() {
 
   return (
     <div>
-      <SectionHeader title="裁员 & 求职" />
-    <div className="divide-y divide-border/20">
-      {items.slice(0, 5).map((item, idx) => (
-        <a
-          key={`${item.url}-${idx}`}
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={handleExternalLinkClick}
-          className="flex items-baseline gap-2 py-2 px-1.5 hover:bg-muted/30 rounded-sm transition-colors group"
-        >
-          <span className="shrink-0 text-[10px] font-mono text-rose-400/80 leading-tight">
-            {item.source}
-          </span>
-          <span className="text-[12px] font-mono text-foreground/85 group-hover:text-primary transition-colors line-clamp-1 leading-tight min-w-0 flex-1">
-            {item.title}
-          </span>
-          {item.publishedAt && (
-            <span className="shrink-0 text-[10px] text-muted-foreground/50 font-mono">
-              <TimeAgo isoString={item.publishedAt} />
+      <SectionHeader title="裁员 & 找工" tone="market" />
+      <div className="content-list divide-y divide-border/20 rounded-sm px-2 py-1">
+        {items.slice(0, 5).map((item, idx) => (
+          <a
+            key={`${item.url}-${idx}`}
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={handleExternalLinkClick}
+            className="group flex items-baseline gap-2 rounded-sm px-2 py-2.5 transition-colors hover:bg-muted/30"
+          >
+            <span className="shrink-0 text-[10px] font-mono leading-tight text-rose-400/85">
+              {item.source}
             </span>
-          )}
-        </a>
-      ))}
-    </div>
+            <span className="min-w-0 flex-1 line-clamp-1 text-[13px] leading-tight text-foreground/88 transition-colors group-hover:text-primary">
+              {item.title}
+            </span>
+            {item.publishedAt ? (
+              <span className="shrink-0 text-[10px] font-mono text-muted-foreground/55">
+                <TimeAgo isoString={item.publishedAt} />
+              </span>
+            ) : null}
+          </a>
+        ))}
+      </div>
     </div>
   );
 }

@@ -1,0 +1,23 @@
+import { Link } from "wouter";
+import { ArrowRight } from "lucide-react";
+
+export default function FangziEntryCard() {
+  return (
+    <Link href="/fangzi">
+      <div className="decision-link group cursor-pointer border-t-emerald-500/25">
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-[0.16em] text-emerald-300/75">
+            Housing signals
+          </div>
+          <div className="mt-1 text-sm font-medium text-foreground">去看完整房子页</div>
+          <div className="mt-1 text-xs text-muted-foreground/65">
+            利率、住房判断、湾区线索和现在更适合租还是买的简报
+          </div>
+        </div>
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-emerald-500/25 bg-emerald-500/10 text-emerald-300 transition-all group-hover:translate-x-1 group-hover:border-emerald-400/45">
+          <ArrowRight className="h-4 w-4" />
+        </div>
+      </div>
+    </Link>
+  );
+}

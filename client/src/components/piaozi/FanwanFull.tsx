@@ -1,12 +1,4 @@
-/**
- * Fanwan Full Component (Complete Career Videos View)
- * Displays all career-related videos from the past 14 days with:
- * - Full video list (no limit)
- * - Grid layout for better viewing
- * - Video duration display
- */
-
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import TimeAgo from "@/components/TimeAgo";
 import { config } from "@/config";
 
@@ -27,8 +19,8 @@ function formatDuration(sec: number): string {
     .padStart(2, "0");
   if (minutes >= 60) {
     const hours = Math.floor(minutes / 60);
-    const restM = (minutes % 60).toString().padStart(2, "0");
-    return `${hours}:${restM}:${seconds}`;
+    const restMinutes = (minutes % 60).toString().padStart(2, "0");
+    return `${hours}:${restMinutes}:${seconds}`;
   }
   return `${minutes}:${seconds}`;
 }
@@ -37,7 +29,6 @@ export default function FanwanFull() {
   const [videos, setVideos] = useState<FanwanVideo[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch fanwan videos
   useEffect(() => {
     const loadVideos = async () => {
       try {
@@ -47,8 +38,7 @@ export default function FanwanFull() {
 
         if (response.ok) {
           const result = await response.json();
-          const videoItems = result.videos || [];
-          setVideos(videoItems); // All videos, no limit
+          setVideos(result.videos || []);
         }
       } catch (error) {
         console.error("[FanwanFull] Failed to fetch videos:", error);
@@ -60,28 +50,28 @@ export default function FanwanFull() {
     loadVideos();
   }, []);
 
-  // Group videos by channel
-  const channelGroups = videos.reduce((acc, video) => {
-    const channel = video.channelTitle || 'Unknown Channel';
-    if (!acc[channel]) {
-      acc[channel] = [];
-    }
-    acc[channel].push(video);
-    return acc;
-  }, {} as Record<string, FanwanVideo[]>);
+  const sortedChannels = useMemo(() => {
+    const channelGroups = videos.reduce(
+      (acc, video) => {
+        const channel = video.channelTitle || "Unknown Channel";
+        if (!acc[channel]) acc[channel] = [];
+        acc[channel].push(video);
+        return acc;
+      },
+      {} as Record<string, FanwanVideo[]>,
+    );
 
-  // Sort channels by number of videos (most first)
-  const sortedChannels = Object.entries(channelGroups)
-    .sort(([, a], [, b]) => b.length - a.length);
+    return Object.entries(channelGroups).sort(([, a], [, b]) => b.length - a.length);
+  }, [videos]);
 
   if (loading) {
     return (
-      <div className="bg-card rounded-sm shadow-md border border-border/40 p-4">
+      <div className="section-shell rounded-sm p-5">
         <div className="animate-pulse space-y-4">
-          <div className="h-6 bg-muted rounded w-1/4"></div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="aspect-video bg-muted rounded"></div>
+          <div className="h-6 w-40 rounded bg-muted" />
+          <div className="grid gap-3 md:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-32 rounded bg-muted" />
             ))}
           </div>
         </div>
@@ -90,77 +80,107 @@ export default function FanwanFull() {
   }
 
   return (
-    <div className="bg-card rounded-sm shadow-md border border-border/40">
-      {/* Header */}
-      <div className="p-4 border-b border-border/30">
-        <h2 className="text-lg font-mono font-medium text-foreground">关于饭碗</h2>
-        <p className="text-xs text-muted-foreground font-mono mt-1">
-          最近 14 天 · {videos.length} 个视频 · {sortedChannels.length} 个频道
-        </p>
+    <section className="section-shell rounded-sm">
+      <div className="border-b border-border/30 p-5">
+        <div className="grid gap-4 md:grid-cols-[1.2fr_0.9fr] md:items-end">
+          <div>
+            <div className="eyebrow mb-2">Career Watch</div>
+            <h2 className="text-xl font-semibold text-foreground">关于饭碗</h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground/72">
+              把职业和跳槽话题按频道聚合，方便快速分辨哪些内容值得花时间看完。
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="hero-pulse-card rounded-sm p-3">
+              <div className="text-[11px] uppercase tracking-[0.16em] text-sky-300/75">
+                Window
+              </div>
+              <div className="mt-2 text-2xl font-semibold text-foreground">14d</div>
+              <div className="mt-1 text-xs text-muted-foreground">最近两周职业内容窗口</div>
+            </div>
+            <div className="hero-pulse-card rounded-sm p-3">
+              <div className="text-[11px] uppercase tracking-[0.16em] text-amber-300/75">
+                Videos
+              </div>
+              <div className="mt-2 text-2xl font-semibold text-foreground">{videos.length}</div>
+              <div className="mt-1 text-xs text-muted-foreground">按频道整理，不做无序瀑布流</div>
+            </div>
+            <div className="hero-pulse-card rounded-sm p-3">
+              <div className="text-[11px] uppercase tracking-[0.16em] text-emerald-300/75">
+                Channels
+              </div>
+              <div className="mt-2 text-2xl font-semibold text-foreground">{sortedChannels.length}</div>
+              <div className="mt-1 text-xs text-muted-foreground">先看谁在密集更新，再决定是否点开</div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Videos */}
-      <div className="p-4">
+      <div className="p-5">
         {videos.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground font-mono">
-            暂无更新
-          </div>
+          <div className="py-10 text-center text-sm text-muted-foreground">暂无更新</div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {sortedChannels.map(([channelName, channelVideos]) => (
-              <div key={channelName} className="space-y-3">
-                {/* Channel Header */}
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-mono font-medium text-foreground/80">
-                    {channelName}
-                  </h3>
-                  <span className="text-xs font-mono text-muted-foreground">
-                    {channelVideos.length} 个视频
+              <section
+                key={channelName}
+                className="rounded-sm border border-border/35 bg-card/45 p-4"
+              >
+                <div className="mb-4 flex flex-col gap-2 border-b border-border/25 pb-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-foreground/92">{channelName}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      频道内共 {channelVideos.length} 条饭碗相关内容，优先看最近更新最密集的来源。
+                    </div>
+                  </div>
+                  <span className="signal-chip w-fit">
+                    <span className="signal-dot bg-amber-300" />
+                    {channelVideos.length} videos
                   </span>
                 </div>
 
-                {/* Videos Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {channelVideos.map((video) => (
                     <a
                       key={video.videoId}
                       href={video.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block rounded-lg overflow-hidden bg-card/50 border border-border/30 hover:border-primary/50 transition-all group"
+                      className="group overflow-hidden rounded-sm border border-border/35 bg-background/55 transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-background/75 hover:shadow-[0_18px_48px_rgba(0,0,0,0.18)]"
                     >
-                      <div className="relative aspect-video bg-muted overflow-hidden">
+                      <div className="relative aspect-video overflow-hidden bg-muted">
                         <img
                           src={video.thumbnail}
                           alt={video.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                           loading="lazy"
                           onError={(e) => {
-                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.style.display = "none";
                           }}
                         />
-                        {video.durationSec && (
-                          <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/80 rounded text-[10px] font-mono text-white">
+                        {video.durationSec ? (
+                          <div className="absolute bottom-2 right-2 rounded-sm bg-black/80 px-2 py-1 text-[10px] font-mono text-white">
                             {formatDuration(video.durationSec)}
                           </div>
-                        )}
+                        ) : null}
                       </div>
-                      <div className="p-2">
-                        <h4 className="text-[12px] font-medium text-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+
+                      <div className="p-3">
+                        <h3 className="line-clamp-2 text-sm font-medium leading-6 text-foreground/92 transition-colors group-hover:text-primary">
                           {video.title}
-                        </h4>
-                        <div className="flex items-center gap-1.5 mt-1 text-[10px] text-muted-foreground font-mono">
+                        </h3>
+                        <div className="mt-3 text-[11px] font-mono text-muted-foreground/72">
                           <TimeAgo isoString={video.publishedAt} />
                         </div>
                       </div>
                     </a>
                   ))}
                 </div>
-              </div>
+              </section>
             ))}
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 }

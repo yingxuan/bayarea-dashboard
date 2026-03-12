@@ -1,8 +1,4 @@
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-} from "@/components/ui/carousel";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import TimeAgo from "@/components/TimeAgo";
 
 type FanwanVideo = {
@@ -19,88 +15,6 @@ interface Props {
   videos: FanwanVideo[];
 }
 
-export default function FanwanCarousel({ videos }: Props) {
-  const display = videos.slice(0, 18);
-
-  if (display.length === 0) return null;
-
-  return (
-    <div className="w-full">
-      <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-border/30">
-        <div className="flex items-baseline gap-2">
-          <h3 className="text-[13px] font-mono font-medium text-amber-500/80">关于饭碗</h3>
-          {display.length > 0 && (
-            <span className="text-xs opacity-60 font-mono font-normal text-foreground/60">
-              最近 14 天
-            </span>
-          )}
-        </div>
-      </div>
-
-      {display.length > 0 ? (
-        <div className="relative">
-          <Carousel
-            opts={{
-              align: "start",
-              loop: false,
-              dragFree: true,
-            }}
-            className="w-full"
-          >
-            <CarouselContent className="-ml-2 md:-ml-3">
-              {display.map((item) => (
-                <CarouselItem
-                  key={item.videoId}
-                  className="pl-2 md:pl-3 snap-start shrink-0 w-[70%] md:w-[46%] min-w-0"
-                >
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block w-full rounded-lg overflow-hidden bg-card/50 border border-border/50 hover:border-amber-500/50 transition-all group"
-                  >
-                    <div className="relative w-full aspect-video bg-muted overflow-hidden">
-                      <img
-                        src={item.thumbnail}
-                        alt={item.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent space-y-0.5">
-                        <h4 className="text-[13px] font-medium text-white line-clamp-1 leading-tight">
-                          {item.title}
-                        </h4>
-                        <div className="flex items-center gap-1.5 text-[11px] opacity-80 text-white/80 font-mono font-normal">
-                          <span>{item.channelTitle}</span>
-                          <span>•</span>
-                          <TimeAgo isoString={item.publishedAt} />
-                          {item.durationSec ? (
-                            <>
-                              <span>•</span>
-                              <span>{formatDuration(item.durationSec)}</span>
-                            </>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  </a>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-          </Carousel>
-        </div>
-      ) : (
-        <div className="p-4 bg-card rounded-sm border border-border/40 shadow-md">
-          <div className="text-xs opacity-60 font-mono font-normal text-center py-2">暂无更新</div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function formatDuration(sec: number) {
   const minutes = Math.floor(sec / 60);
   const seconds = Math.floor(sec % 60)
@@ -108,8 +22,67 @@ function formatDuration(sec: number) {
     .padStart(2, "0");
   if (minutes >= 60) {
     const hours = Math.floor(minutes / 60);
-    const restM = (minutes % 60).toString().padStart(2, "0");
-    return `${hours}:${restM}:${seconds}`;
+    const restMinutes = (minutes % 60).toString().padStart(2, "0");
+    return `${hours}:${restMinutes}:${seconds}`;
   }
   return `${minutes}:${seconds}`;
+}
+
+export default function FanwanCarousel({ videos }: Props) {
+  const display = videos.slice(0, 12);
+  if (display.length === 0) return null;
+
+  return (
+    <div className="rounded-sm border border-border/35 bg-card/45 p-4">
+      <div className="mb-4 border-b border-border/25 pb-3">
+        <div className="eyebrow mb-2">Career Watch</div>
+        <h3 className="text-[15px] font-semibold text-foreground/92">关于饭碗</h3>
+        <p className="mt-1 text-xs text-muted-foreground">最近 14 天的职业频道内容，适合判断讨论温度。</p>
+      </div>
+
+      <Carousel opts={{ align: "start", loop: false, dragFree: true }} className="w-full">
+        <CarouselContent className="-ml-3">
+          {display.map((item) => (
+            <CarouselItem key={item.videoId} className="min-w-0 shrink-0 pl-3 md:basis-1/2">
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group block overflow-hidden rounded-sm border border-border/35 bg-background/55 transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-background/75 hover:shadow-[0_18px_48px_rgba(0,0,0,0.18)]"
+              >
+                <div className="relative aspect-video overflow-hidden bg-muted">
+                  <img
+                    src={item.thumbnail}
+                    alt={item.title}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                  <div className="absolute left-3 top-3 rounded-sm border border-white/15 bg-black/35 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-white/78">
+                    {item.channelTitle}
+                  </div>
+                  {item.durationSec ? (
+                    <div className="absolute bottom-3 right-3 rounded-sm bg-black/70 px-2 py-1 text-[10px] font-mono text-white">
+                      {formatDuration(item.durationSec)}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="p-3">
+                  <h4 className="line-clamp-2 text-sm font-medium leading-6 text-foreground/92 transition-colors group-hover:text-primary">
+                    {item.title}
+                  </h4>
+                  <div className="mt-3 text-[11px] font-mono text-muted-foreground/72">
+                    <TimeAgo isoString={item.publishedAt} />
+                  </div>
+                </div>
+              </a>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
+    </div>
+  );
 }

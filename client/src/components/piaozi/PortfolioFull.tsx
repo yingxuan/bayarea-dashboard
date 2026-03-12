@@ -1,14 +1,5 @@
-/**
- * Portfolio Full Component (Complete Holdings View)
- * Displays complete portfolio with:
- * - Full holdings table with all positions
- * - Larger chart with more data points
- * - YTD performance
- * - Detailed metrics per holding
- */
-
-import { useEffect, useState, useMemo } from "react";
-import { TrendingUp, TrendingDown, PencilIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { PencilIcon, TrendingDown, TrendingUp } from "lucide-react";
 import { useAuthAwareHoldings, Holding } from "@/hooks/useAuthAwareHoldings";
 import { usePortfolioSummary, QuoteData } from "@/hooks/usePortfolioSummary";
 import { Button } from "@/components/ui/button";
@@ -37,7 +28,6 @@ export default function PortfolioFull() {
   const [valueSeries, setValueSeries] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch quotes when holdings change
   useEffect(() => {
     if (!isLoaded || holdings.length === 0) {
       setQuotesData({});
@@ -47,9 +37,8 @@ export default function PortfolioFull() {
 
     const fetchQuotes = async () => {
       try {
-        const tickers = holdings.map(h => h.ticker.toUpperCase()).join(',');
+        const tickers = holdings.map((h) => h.ticker.toUpperCase()).join(",");
         const apiUrl = `${config.apiBaseUrl}/api/quotes?tickers=${encodeURIComponent(tickers)}`;
-
         const response = await fetch(apiUrl, {
           signal: AbortSignal.timeout(10000),
         });
@@ -59,24 +48,18 @@ export default function PortfolioFull() {
         }
 
         const result = await response.json();
-        const quotes: Array<{
-          ticker: string;
-          status: 'ok' | 'stale' | 'unavailable';
-          price: number;
-          prevClose?: number;
-          change?: number;
-          changePercent?: number;
-        }> = result.quotes || [];
-
+        const quotes = result.quotes || [];
         const quotesMap: Record<string, QuoteData> = {};
-        quotes.forEach(quote => {
+
+        quotes.forEach((quote: any) => {
           const price = Number(quote.price);
           if (!isNaN(price) && price > 0) {
             quotesMap[quote.ticker.toUpperCase()] = {
               price,
               prevClose: quote.prevClose !== undefined ? Number(quote.prevClose) : undefined,
               change: quote.change !== undefined ? Number(quote.change) : undefined,
-              changePercent: quote.changePercent !== undefined ? Number(quote.changePercent) : undefined,
+              changePercent:
+                quote.changePercent !== undefined ? Number(quote.changePercent) : undefined,
               status: quote.status,
             };
           }
@@ -84,7 +67,7 @@ export default function PortfolioFull() {
 
         setQuotesData(quotesMap);
       } catch (error) {
-        console.error('[PortfolioFull] Failed to fetch quotes:', error);
+        console.error("[PortfolioFull] Failed to fetch quotes:", error);
         setQuotesData({});
       } finally {
         setLoading(false);
@@ -94,7 +77,6 @@ export default function PortfolioFull() {
     fetchQuotes();
   }, [holdings, isLoaded]);
 
-  // Fetch value series for larger chart
   useEffect(() => {
     if (!isLoaded || holdings.length === 0) {
       setValueSeries(null);
@@ -103,9 +85,9 @@ export default function PortfolioFull() {
 
     const fetchValueSeries = async () => {
       try {
-        const holdingsParam = encodeURIComponent(JSON.stringify(
-          holdings.map(h => ({ ticker: h.ticker, shares: Number(h.shares) }))
-        ));
+        const holdingsParam = encodeURIComponent(
+          JSON.stringify(holdings.map((h) => ({ ticker: h.ticker, shares: Number(h.shares) }))),
+        );
         const apiUrl = `${config.apiBaseUrl}/api/portfolio/value-series?range=1d&interval=5m&holdings=${holdingsParam}`;
 
         const response = await fetch(apiUrl, {
@@ -119,7 +101,7 @@ export default function PortfolioFull() {
         const result = await response.json();
         setValueSeries(result);
       } catch (error) {
-        console.error('[PortfolioFull] Failed to fetch value series:', error);
+        console.error("[PortfolioFull] Failed to fetch value series:", error);
       }
     };
 
@@ -130,59 +112,60 @@ export default function PortfolioFull() {
 
   const portfolioMetrics = usePortfolioSummary(holdings, quotesData, ytdBaseline);
 
-  // Calculate holdings with quotes
   const holdingsWithQuotes: HoldingWithQuote[] = useMemo(() => {
-    return holdings.map(holding => {
-      const tickerUpper = holding.ticker.toUpperCase();
-      const quote = quotesData[tickerUpper];
+    return holdings
+      .map((holding) => {
+        const tickerUpper = holding.ticker.toUpperCase();
+        const quote = quotesData[tickerUpper];
 
-      if (!quote || quote.status !== 'ok' || !quote.price) {
-        return { ...holding, marketValue: 0 };
-      }
-
-      const shares = Number(holding.shares);
-      const price = Number(quote.price);
-      const marketValue = shares * price;
-
-      let dailyChange: number | undefined;
-      let dailyChangePercent: number | undefined;
-
-      if (quote.prevClose !== undefined) {
-        const prevClose = Number(quote.prevClose);
-        if (!isNaN(prevClose) && prevClose > 0) {
-          dailyChange = shares * (price - prevClose);
-          dailyChangePercent = ((price - prevClose) / prevClose) * 100;
+        if (!quote || quote.status !== "ok" || !quote.price) {
+          return { ...holding, marketValue: 0 };
         }
-      } else if (quote.change !== undefined) {
-        dailyChange = shares * Number(quote.change);
-        dailyChangePercent = quote.changePercent !== undefined ? Number(quote.changePercent) : undefined;
-      }
 
-      return {
-        ...holding,
-        quote,
-        marketValue,
-        dailyChange,
-        dailyChangePercent,
-      };
-    }).sort((a, b) => (b.marketValue || 0) - (a.marketValue || 0));
+        const shares = Number(holding.shares);
+        const price = Number(quote.price);
+        const marketValue = shares * price;
+
+        let dailyChange: number | undefined;
+        let dailyChangePercent: number | undefined;
+
+        if (quote.prevClose !== undefined) {
+          const prevClose = Number(quote.prevClose);
+          if (!isNaN(prevClose) && prevClose > 0) {
+            dailyChange = shares * (price - prevClose);
+            dailyChangePercent = ((price - prevClose) / prevClose) * 100;
+          }
+        } else if (quote.change !== undefined) {
+          dailyChange = shares * Number(quote.change);
+          dailyChangePercent =
+            quote.changePercent !== undefined ? Number(quote.changePercent) : undefined;
+        }
+
+        return {
+          ...holding,
+          quote,
+          marketValue,
+          dailyChange,
+          dailyChangePercent,
+        };
+      })
+      .sort((a, b) => (b.marketValue || 0) - (a.marketValue || 0));
   }, [holdings, quotesData]);
 
-  // Update time
   const updateInfo = useMemo(() => {
     const now = new Date();
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const hours = now.getHours().toString().padStart(2, "0");
+    const minutes = now.getMinutes().toString().padStart(2, "0");
     return `更新 ${hours}:${minutes} · live`;
   }, []);
 
   if (!isLoaded || loading) {
     return (
-      <div className="bg-card rounded-sm shadow-md border border-border/40 p-6">
+      <div className="section-shell section-shell-market rounded-sm p-5">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-muted rounded w-1/4"></div>
-          <div className="h-48 bg-muted rounded"></div>
-          <div className="h-32 bg-muted rounded"></div>
+          <div className="h-8 w-1/4 rounded bg-muted" />
+          <div className="h-48 rounded bg-muted" />
+          <div className="h-32 rounded bg-muted" />
         </div>
       </div>
     );
@@ -190,37 +173,48 @@ export default function PortfolioFull() {
 
   if (holdings.length === 0) {
     return (
-      <div className="bg-card rounded-sm shadow-md border border-border/40 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-mono font-medium text-foreground">我的持仓</h2>
+      <div className="section-shell section-shell-market rounded-sm p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <div className="eyebrow mb-2">Portfolio</div>
+            <h2 className="text-xl font-semibold text-cyan-300/90">我的持仓</h2>
+          </div>
           <HoldingsEditor
             trigger={
-              <Button variant="outline" size="sm" className="text-xs h-7 px-2 font-mono font-normal">
-                <PencilIcon className="w-3 h-3 mr-1" /> 编辑仓位
+              <Button variant="outline" size="sm" className="h-8 px-3 text-xs font-mono font-normal">
+                <PencilIcon className="mr-1 h-3 w-3" /> 编辑仓位
               </Button>
             }
           />
         </div>
-        <div className="text-center py-12 text-muted-foreground font-mono">
+        <div className="py-12 text-center text-muted-foreground">
           <p>暂未配置持仓</p>
-          <p className="text-sm mt-2">点击「编辑仓位」添加您的投资组合</p>
+          <p className="mt-2 text-sm">点击“编辑仓位”添加您的投资组合</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-card rounded-sm shadow-md border border-border/40">
-      {/* Header */}
-      <div className="p-4 border-b border-border/30">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-mono font-medium text-foreground">我的持仓</h2>
+    <div className="section-shell section-shell-market rounded-sm">
+      <div className="border-b border-border/30 p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <div className="eyebrow mb-2">Portfolio</div>
+            <h2 className="text-xl font-semibold text-cyan-300/90">我的持仓</h2>
+            <p className="mt-1 text-sm text-muted-foreground/72">
+              把总市值、日内变化和仓位明细放在同一屏里看。
+            </p>
+          </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs opacity-60 font-mono">{updateInfo}</span>
+            <span className="signal-chip">
+              <span className="signal-dot bg-cyan-400 text-cyan-400" />
+              {updateInfo}
+            </span>
             <HoldingsEditor
               trigger={
-                <Button variant="outline" size="sm" className="text-xs h-7 px-2 font-mono font-normal">
-                  <PencilIcon className="w-3 h-3 mr-1" /> 编辑仓位
+                <Button variant="outline" size="sm" className="h-8 px-3 text-xs font-mono font-normal">
+                  <PencilIcon className="mr-1 h-3 w-3" /> 编辑仓位
                 </Button>
               }
             />
@@ -228,124 +222,174 @@ export default function PortfolioFull() {
         </div>
       </div>
 
-      {/* Summary Section */}
-      <div className="p-4 border-b border-border/30">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left: Portfolio Value + Change */}
-          <div className="space-y-3">
-            <div>
-              <span className="text-[32px] md:text-[40px] font-mono font-semibold text-foreground leading-[1.1] tabular-nums">
+      <div className="border-b border-border/30 p-5">
+        <div className="grid gap-5 md:grid-cols-[1.3fr_0.9fr]">
+          <div className="space-y-4">
+            <div className="rounded-sm border border-border/45 bg-card/45 p-4">
+              <div className="eyebrow mb-2">Total Value</div>
+              <div className="text-[34px] font-semibold leading-none text-foreground md:text-[44px]">
                 ${portfolioMetrics.portfolioValue.toLocaleString()}
-              </span>
-            </div>
-            <div className="flex flex-wrap items-baseline gap-4 text-[15px]">
-              <div className="flex items-baseline gap-2">
-                <span className="text-xs font-mono text-muted-foreground">Today:</span>
-                <span
-                  className={`font-mono tabular-nums ${
-                    portfolioMetrics.dailyChangeAmount >= 0 ? "text-green-500" : "text-red-500"
-                  }`}
-                >
-                  {portfolioMetrics.dailyChangeAmount >= 0 ? "+" : "-"}
-                  ${Math.abs(portfolioMetrics.dailyChangeAmount).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                  {" "}
-                  ({portfolioMetrics.dailyChangePercent >= 0 ? "+" : ""}
-                  {portfolioMetrics.dailyChangePercent.toFixed(2)}%)
-                </span>
               </div>
-              {portfolioMetrics.ytdChangeAmount !== null && portfolioMetrics.ytdPercent !== null && (
+              <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-mono text-muted-foreground">YTD:</span>
+                  <span className="text-xs font-mono text-muted-foreground">Today</span>
                   <span
                     className={`font-mono tabular-nums ${
-                      portfolioMetrics.ytdChangeAmount >= 0 ? "text-green-500" : "text-red-500"
+                      portfolioMetrics.dailyChangeAmount >= 0 ? "text-emerald-400" : "text-rose-400"
                     }`}
                   >
-                    {portfolioMetrics.ytdChangeAmount >= 0 ? "+" : "-"}
-                    ${Math.abs(portfolioMetrics.ytdChangeAmount).toLocaleString(undefined, {
+                    {portfolioMetrics.dailyChangeAmount >= 0 ? "+" : "-"}$
+                    {Math.abs(portfolioMetrics.dailyChangeAmount).toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
-                    })}
-                    {" "}
-                    ({portfolioMetrics.ytdPercent >= 0 ? "+" : ""}
-                    {portfolioMetrics.ytdPercent.toFixed(2)}%)
+                    })}{" "}
+                    ({portfolioMetrics.dailyChangePercent >= 0 ? "+" : ""}
+                    {portfolioMetrics.dailyChangePercent.toFixed(2)}%)
                   </span>
                 </div>
-              )}
+                {portfolioMetrics.ytdChangeAmount !== null && portfolioMetrics.ytdPercent !== null && (
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xs font-mono text-muted-foreground">YTD</span>
+                    <span
+                      className={`font-mono tabular-nums ${
+                        portfolioMetrics.ytdChangeAmount >= 0 ? "text-emerald-400" : "text-rose-400"
+                      }`}
+                    >
+                      {portfolioMetrics.ytdChangeAmount >= 0 ? "+" : "-"}$
+                      {Math.abs(portfolioMetrics.ytdChangeAmount).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}{" "}
+                      ({portfolioMetrics.ytdPercent >= 0 ? "+" : ""}
+                      {portfolioMetrics.ytdPercent.toFixed(2)}%)
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-sm border border-border/45 bg-card/45 p-4">
+              <div className="eyebrow mb-2">Intraday Trend</div>
+              <PortfolioSparkline
+                data={valueSeries}
+                currentValue={portfolioMetrics.portfolioValue}
+                dailyChangePercent={portfolioMetrics.dailyChangePercent}
+                width={340}
+                height={88}
+              />
             </div>
           </div>
 
-          {/* Right: Larger Sparkline */}
-          <div className="flex items-center justify-center md:justify-end">
-            <PortfolioSparkline
-              data={valueSeries}
-              currentValue={portfolioMetrics.portfolioValue}
-              dailyChangePercent={portfolioMetrics.dailyChangePercent}
-              width={320}
-              height={80}
-            />
+          <div className="rounded-sm border border-border/45 bg-card/45 p-4">
+            <div className="eyebrow mb-2">Position Summary</div>
+            <div className="grid gap-3">
+              {holdingsWithQuotes.slice(0, 6).map((holding) => {
+                const isPositive = (holding.dailyChangePercent ?? 0) >= 0;
+                return (
+                  <div
+                    key={holding.id}
+                    className="grid grid-cols-[56px_1fr_auto] items-baseline gap-3 border-b border-border/25 pb-2 last:border-b-0"
+                  >
+                    <span className="text-sm font-medium font-mono text-foreground">
+                      {holding.ticker}
+                    </span>
+                    <span className="text-xs font-mono text-muted-foreground/70">
+                      {(holding.marketValue || 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0,
+                      })}
+                    </span>
+                    <span
+                      className={`text-xs font-mono tabular-nums ${
+                        isPositive ? "text-emerald-400" : "text-rose-400"
+                      }`}
+                    >
+                      {holding.dailyChangePercent !== undefined
+                        ? `${isPositive ? "+" : ""}${holding.dailyChangePercent.toFixed(2)}%`
+                        : "—"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Holdings Table */}
-      <div className="p-4">
-        <h3 className="text-sm font-mono font-medium text-foreground/80 mb-3">持仓明细</h3>
-        <div className="overflow-x-auto">
+      <div className="p-5">
+        <div className="mb-3">
+          <div className="eyebrow mb-2">Holdings</div>
+          <h3 className="text-[15px] font-semibold text-foreground/88">持仓明细</h3>
+        </div>
+        <div className="overflow-x-auto rounded-sm border border-border/35 bg-card/35">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="border-border/35">
                 <TableHead className="font-mono text-xs">代码</TableHead>
-                <TableHead className="font-mono text-xs text-right">股数</TableHead>
-                <TableHead className="font-mono text-xs text-right">现价</TableHead>
-                <TableHead className="font-mono text-xs text-right">市值</TableHead>
-                <TableHead className="font-mono text-xs text-right">今日涨跌</TableHead>
-                <TableHead className="font-mono text-xs text-right">涨跌%</TableHead>
+                <TableHead className="text-right font-mono text-xs">股数</TableHead>
+                <TableHead className="text-right font-mono text-xs">现价</TableHead>
+                <TableHead className="text-right font-mono text-xs">市值</TableHead>
+                <TableHead className="text-right font-mono text-xs">今日涨跌</TableHead>
+                <TableHead className="text-right font-mono text-xs">涨跌%</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {holdingsWithQuotes.map((holding) => {
                 const isPositive = (holding.dailyChangePercent ?? 0) >= 0;
                 return (
-                  <TableRow key={holding.id}>
+                  <TableRow key={holding.id} className="border-border/25">
                     <TableCell className="font-mono font-medium">{holding.ticker}</TableCell>
-                    <TableCell className="font-mono text-right tabular-nums">
+                    <TableCell className="text-right font-mono tabular-nums">
                       {holding.shares.toLocaleString()}
                     </TableCell>
-                    <TableCell className="font-mono text-right tabular-nums">
+                    <TableCell className="text-right font-mono tabular-nums">
                       {holding.quote?.price
-                        ? `$${holding.quote.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                        : '-'
-                      }
+                        ? `$${holding.quote.price.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}`
+                        : "-"}
                     </TableCell>
-                    <TableCell className="font-mono text-right tabular-nums">
+                    <TableCell className="text-right font-mono tabular-nums">
                       {holding.marketValue
-                        ? `$${holding.marketValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                        : '-'
-                      }
+                        ? `$${holding.marketValue.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}`
+                        : "-"}
                     </TableCell>
-                    <TableCell className={`font-mono text-right tabular-nums ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                    <TableCell
+                      className={`text-right font-mono tabular-nums ${
+                        isPositive ? "text-emerald-400" : "text-rose-400"
+                      }`}
+                    >
                       {holding.dailyChange !== undefined
-                        ? `${isPositive ? '+' : '-'}$${Math.abs(holding.dailyChange).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                        : '-'
-                      }
+                        ? `${isPositive ? "+" : "-"}$${Math.abs(holding.dailyChange).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}`
+                        : "-"}
                     </TableCell>
                     <TableCell className="text-right">
                       {holding.dailyChangePercent !== undefined ? (
                         <div className="flex items-center justify-end gap-1">
                           {isPositive ? (
-                            <TrendingUp className="w-3 h-3 text-green-500" />
+                            <TrendingUp className="h-3 w-3 text-emerald-400" />
                           ) : (
-                            <TrendingDown className="w-3 h-3 text-red-500" />
+                            <TrendingDown className="h-3 w-3 text-rose-400" />
                           )}
-                          <span className={`font-mono tabular-nums ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-                            {isPositive ? '+' : ''}{holding.dailyChangePercent.toFixed(2)}%
+                          <span
+                            className={`font-mono tabular-nums ${
+                              isPositive ? "text-emerald-400" : "text-rose-400"
+                            }`}
+                          >
+                            {isPositive ? "+" : ""}
+                            {holding.dailyChangePercent.toFixed(2)}%
                           </span>
                         </div>
-                      ) : '-'}
+                      ) : (
+                        "-"
+                      )}
                     </TableCell>
                   </TableRow>
                 );

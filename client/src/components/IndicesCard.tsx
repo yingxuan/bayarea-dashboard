@@ -1,13 +1,7 @@
-/**
- * Indices Card Component
- * 独立的指数卡片，显示 SPY / QQQ / BTC / GOLD / ARKK + 个股 NVDA/AAPL/META/GOOGL
- * 紧凑表格布局，信息密度优先
- */
-
-import { useEffect, useState } from "react";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { TrendingDown, TrendingUp } from "lucide-react";
 import { config } from "@/config";
-import { getStatus, getNumericValue } from "@shared/utils";
+import { getNumericValue, getStatus } from "@shared/utils";
 
 interface MarketDataItem {
   name: string;
@@ -16,13 +10,6 @@ interface MarketDataItem {
   change_percent?: number;
   unit: string;
   status?: "ok" | "stale" | "unavailable";
-  asOf?: string;
-  source?: {
-    name: string;
-    url: string;
-  };
-  ttlSeconds?: number;
-  error?: string;
 }
 
 interface QuoteItem {
@@ -38,14 +25,16 @@ interface WeatherData {
   status: "ok" | "unavailable";
   city?: string;
   tempF?: number;
-  feelsLikeF?: number;
-  humidity?: number;
-  windMph?: number;
-  label?: string;
   emoji?: string;
   rainProbability?: number;
-  highF?: number;
-  lowF?: number;
+}
+
+interface SnapshotRow {
+  label: string;
+  value: number | string;
+  change?: number;
+  changePercent?: number;
+  status: string;
 }
 
 const TECH_TICKERS = ["NVDA", "AAPL", "META", "GOOGL"];
@@ -62,7 +51,6 @@ export default function IndicesCard() {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch market data and tech stock quotes in parallel
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -71,7 +59,9 @@ export default function IndicesCard() {
 
         const [marketResp, quotesResp, weatherResp] = await Promise.all([
           fetch(`${config.apiBaseUrl}/api/market`, { signal: controller.signal }),
-          fetch(`${config.apiBaseUrl}/api/quotes?tickers=${TECH_TICKERS.join(",")}`, { signal: controller.signal }),
+          fetch(`${config.apiBaseUrl}/api/quotes?tickers=${TECH_TICKERS.join(",")}`, {
+            signal: controller.signal,
+          }),
           fetch(`${config.apiBaseUrl}/api/weather`, { signal: controller.signal }),
         ]);
 
@@ -81,12 +71,10 @@ export default function IndicesCard() {
           const result = await marketResp.json();
           setMarketData(result.data);
         }
-
         if (quotesResp.ok) {
           const result = await quotesResp.json();
           setTechStocks(result.quotes || []);
         }
-
         if (weatherResp.ok) {
           const result = await weatherResp.json();
           setWeather(result);
@@ -103,162 +91,142 @@ export default function IndicesCard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Prepare indices data (SPY, QQQ, BTC, GOLD, ARKK)
-  const indices = marketData ? [
-    {
-      code: "大盘 SPY",
-      value: getStatus(marketData.spy) === "ok" ? getNumericValue(marketData.spy) : "Unavailable",
-      change: getStatus(marketData.spy) === "ok" && marketData.spy.change !== undefined && !isNaN(Number(marketData.spy.change)) ? Number(marketData.spy.change) : undefined,
-      changePercent: getStatus(marketData.spy) === "ok" && marketData.spy.change_percent !== undefined && !isNaN(Number(marketData.spy.change_percent)) ? Number(marketData.spy.change_percent) : undefined,
-      status: getStatus(marketData.spy),
-    },
-    ...(marketData.qqq ? [{
-      code: "科技股 QQQ",
-      value: getStatus(marketData.qqq) === "ok" ? getNumericValue(marketData.qqq) : "Unavailable",
-      change: getStatus(marketData.qqq) === "ok" && marketData.qqq.change !== undefined && !isNaN(Number(marketData.qqq.change)) ? Number(marketData.qqq.change) : undefined,
-      changePercent: getStatus(marketData.qqq) === "ok" && marketData.qqq.change_percent !== undefined && !isNaN(Number(marketData.qqq.change_percent)) ? Number(marketData.qqq.change_percent) : undefined,
-      status: getStatus(marketData.qqq),
-    }] : []),
-    {
-      code: "比特币 BTC",
-      value: getStatus(marketData.btc) === "ok" ? getNumericValue(marketData.btc) : "Unavailable",
-      change: getStatus(marketData.btc) === "ok" && marketData.btc.change !== undefined && !isNaN(Number(marketData.btc.change)) ? Number(marketData.btc.change) : undefined,
-      changePercent: getStatus(marketData.btc) === "ok" && marketData.btc.change_percent !== undefined && !isNaN(Number(marketData.btc.change_percent)) ? Number(marketData.btc.change_percent) : undefined,
-      status: getStatus(marketData.btc),
-    },
-    {
-      code: "黄金 GOLD",
-      value: getStatus(marketData.gold) === "ok" ? getNumericValue(marketData.gold) : "Unavailable",
-      change: getStatus(marketData.gold) === "ok" && marketData.gold.change !== undefined && !isNaN(Number(marketData.gold.change)) ? Number(marketData.gold.change) : undefined,
-      changePercent: getStatus(marketData.gold) === "ok" && marketData.gold.change_percent !== undefined && !isNaN(Number(marketData.gold.change_percent)) ? Number(marketData.gold.change_percent) : undefined,
-      status: getStatus(marketData.gold),
-    },
-    ...(marketData.arkk ? [{
-      code: "妖股 ARKK",
-      value: getStatus(marketData.arkk) === "ok" ? getNumericValue(marketData.arkk) : "Unavailable",
-      change: getStatus(marketData.arkk) === "ok" && marketData.arkk.change !== undefined && !isNaN(Number(marketData.arkk.change)) ? Number(marketData.arkk.change) : undefined,
-      changePercent: getStatus(marketData.arkk) === "ok" && marketData.arkk.change_percent !== undefined && !isNaN(Number(marketData.arkk.change_percent)) ? Number(marketData.arkk.change_percent) : undefined,
-      status: getStatus(marketData.arkk),
-    }] : []),
-  ] : [];
+  const indices: SnapshotRow[] = useMemo(() => {
+    if (!marketData) return [];
+
+    const buildRow = (label: string, item?: MarketDataItem): SnapshotRow | null => {
+      if (!item) return null;
+      return {
+        label,
+        value: getStatus(item) === "ok" ? getNumericValue(item) : "Unavailable",
+        change:
+          getStatus(item) === "ok" && item.change !== undefined ? Number(item.change) : undefined,
+        changePercent:
+          getStatus(item) === "ok" && item.change_percent !== undefined
+            ? Number(item.change_percent)
+            : undefined,
+        status: getStatus(item),
+      };
+    };
+
+    return [
+      buildRow("SPY", marketData.spy),
+      buildRow("QQQ", marketData.qqq),
+      buildRow("BTC", marketData.btc),
+      buildRow("GOLD", marketData.gold),
+      buildRow("ARKK", marketData.arkk),
+    ].filter(Boolean) as SnapshotRow[];
+  }, [marketData]);
+
+  const toneText = loading
+    ? "Loading"
+    : weather?.status === "ok" && weather.tempF !== undefined
+      ? `${weather.emoji || ""} ${weather.tempF}°F${weather.rainProbability ? ` · 雨 ${weather.rainProbability}%` : ""}`
+      : "Market + weather snapshot";
 
   return (
-    <div className="bg-card rounded-sm shadow-md border border-border/40 h-full flex flex-col">
-      {/* CardBody */}
-      <div className="p-4 flex flex-col flex-1">
-        {/* Header */}
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h4 className="text-[13px] font-mono font-medium text-foreground/80">指数</h4>
-          {weather?.status === "ok" && weather.tempF !== undefined && (
-            <div className="flex items-center gap-1 text-[11px] font-mono text-foreground/50 shrink-0">
-              <span>{weather.emoji}</span>
-              <span>{weather.tempF}°F</span>
-              {weather.rainProbability !== undefined && weather.rainProbability > 20 && (
-                <span className="text-blue-400/70">💧{weather.rainProbability}%</span>
-              )}
-            </div>
-          )}
+    <div className="flex h-full flex-col rounded-sm border border-border/35 bg-card/50">
+      <div className="border-b border-border/25 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="eyebrow mb-2">Snapshot</div>
+            <h3 className="text-[15px] font-semibold text-foreground/92">指数与天气</h3>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">{toneText}</p>
+          </div>
+          <span className="signal-chip shrink-0">
+            <span className="signal-dot bg-cyan-300" />
+            {indices.length + techStocks.length} lines
+          </span>
         </div>
+      </div>
 
-      {/* Indices Table */}
-      {loading || !marketData || indices.length === 0 ? (
-        <div className="text-xs opacity-60 font-mono font-normal text-center py-2">
-          {loading ? "加载中..." : "暂无数据"}
-        </div>
-      ) : (
-        <div className="space-y-0.5 flex-1" style={{ lineHeight: '1.3' }}>
-          {indices.map((index, idx) => {
-            const isUnavailable = index.status === "unavailable";
-            const isOk = index.status === "ok";
-            const isPositive = (index.changePercent !== undefined && Number(index.changePercent) >= 0) ||
-                              (index.change !== undefined && Number(index.change) >= 0);
+      <div className="flex flex-1 flex-col gap-4 p-4">
+        {loading || indices.length === 0 ? (
+          <div className="grid gap-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-14 animate-pulse rounded-sm bg-muted/45" />
+            ))}
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-2">
+              {indices.map((item) => {
+                const isPositive =
+                  (item.changePercent !== undefined && item.changePercent >= 0) ||
+                  (item.change !== undefined && item.change >= 0);
 
-            return (
-              <div
-                key={index.code}
-                className={`grid grid-cols-[auto_1fr_auto] items-baseline gap-2 py-0.5 ${
-                  isUnavailable ? "opacity-75" : ""
-                } ${idx < indices.length - 1 ? 'border-b border-border/30' : ''}`}
-              >
-                {/* Ticker (左对齐，固定宽) */}
-                <div className="text-[14px] font-medium font-mono text-foreground w-24">
-                  {index.code}
-                </div>
-                {/* Price (右对齐，tabular-nums) */}
-                {isUnavailable ? (
-                  <div className="text-xs opacity-60 font-mono font-normal text-right col-span-2">
-                    不可用
-                  </div>
-                ) : (
-                  <>
-                    <div className="text-[14px] font-medium font-mono text-foreground text-right tabular-nums">
-                      {typeof index.value === "number"
-                        ? index.value.toLocaleString()
-                        : index.value}
-                    </div>
-                    {/* Pct (右对齐，tabular-nums，紧贴数字) */}
-                    {isOk && (index.change !== undefined || index.changePercent !== undefined) && (
-                      <div className="flex items-baseline gap-0 justify-end">
-                        {isPositive ? (
-                          <TrendingUp className="w-2.5 h-2.5 mr-0.5 text-green-500/70 flex-shrink-0" />
-                        ) : (
-                          <TrendingDown className="w-2.5 h-2.5 mr-0.5 text-red-500/70 flex-shrink-0" />
-                        )}
-                        <span className={`text-[14px] font-medium font-mono tabular-nums ${
-                          isPositive ? "text-green-500/70" : "text-red-500/70"
-                        }`}>
-                          {Number(index.changePercent) >= 0 ? "+" : ""}{Number(index.changePercent).toFixed(2)}%
-                        </span>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Tech stocks section */}
-          {techStocks.length > 0 && (
-            <>
-              <div className="border-t border-border/50 pt-1.5 mt-1">
-                <div className="text-[10px] font-mono text-foreground/40 mb-1">个股</div>
-              </div>
-              {techStocks.map((stock, idx) => {
-                const isPositive = (stock.changePercent ?? 0) >= 0;
                 return (
                   <div
-                    key={stock.ticker}
-                    className={`grid grid-cols-[auto_1fr_auto] items-baseline gap-2 py-0.5 ${
-                      idx < techStocks.length - 1 ? 'border-b border-border/30' : ''
-                    }`}
+                    key={item.label}
+                    className="grid grid-cols-[auto_1fr] gap-3 rounded-sm border border-border/25 bg-background/45 px-3 py-2.5"
                   >
-                    <div className="text-[14px] font-medium font-mono text-foreground w-24">
-                      {stock.ticker}
-                    </div>
-                    <div className="text-[14px] font-medium font-mono text-foreground text-right tabular-nums">
-                      {stock.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </div>
-                    {stock.changePercent !== undefined && (
-                      <div className="flex items-baseline gap-0 justify-end">
-                        {isPositive ? (
-                          <TrendingUp className="w-2.5 h-2.5 mr-0.5 text-green-500/70 flex-shrink-0" />
-                        ) : (
-                          <TrendingDown className="w-2.5 h-2.5 mr-0.5 text-red-500/70 flex-shrink-0" />
-                        )}
-                        <span className={`text-[14px] font-medium font-mono tabular-nums ${
-                          isPositive ? "text-green-500/70" : "text-red-500/70"
-                        }`}>
-                          {stock.changePercent >= 0 ? "+" : ""}{stock.changePercent.toFixed(2)}%
-                        </span>
+                    <div>
+                      <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                        {item.label}
                       </div>
-                    )}
+                      <div className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+                        {typeof item.value === "number" ? item.value.toLocaleString() : item.value}
+                      </div>
+                    </div>
+                    <div className="ml-auto flex items-center">
+                      {item.status === "unavailable" ? (
+                        <span className="text-xs text-muted-foreground/72">不可用</span>
+                      ) : item.changePercent !== undefined ? (
+                        <span
+                          className={`inline-flex items-center gap-1 text-sm font-mono tabular-nums ${
+                            isPositive ? "text-emerald-400" : "text-rose-400"
+                          }`}
+                        >
+                          {isPositive ? (
+                            <TrendingUp className="h-3.5 w-3.5" />
+                          ) : (
+                            <TrendingDown className="h-3.5 w-3.5" />
+                          )}
+                          {item.changePercent >= 0 ? "+" : ""}
+                          {item.changePercent.toFixed(2)}%
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                 );
               })}
-            </>
-          )}
-        </div>
-      )}
+            </div>
+
+            {techStocks.length > 0 ? (
+              <div className="border-t border-border/25 pt-4">
+                <div className="mb-3 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                  Tech Watch
+                </div>
+                <div className="grid gap-2">
+                  {techStocks.map((stock) => {
+                    const isPositive = (stock.changePercent ?? 0) >= 0;
+
+                    return (
+                      <div
+                        key={stock.ticker}
+                        className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-sm bg-background/35 px-3 py-2"
+                      >
+                        <span className="text-sm font-semibold text-foreground/90">{stock.ticker}</span>
+                        <span className="text-right text-sm font-mono tabular-nums text-foreground">
+                          {stock.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </span>
+                        <span
+                          className={`text-xs font-mono tabular-nums ${
+                            isPositive ? "text-emerald-400" : "text-rose-400"
+                          }`}
+                        >
+                          {stock.changePercent !== undefined
+                            ? `${stock.changePercent >= 0 ? "+" : ""}${stock.changePercent.toFixed(2)}%`
+                            : "--"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   );

@@ -1,30 +1,13 @@
-/**
- * Leek Community Component
- * Displays latest discussions from 1point3acres
- * 
- * Requirements:
- * - Shows 5 items from 1point3acres
- * - Never shows "暂无内容"
- * - Click to open in new window
- * - "查看更多" link to forum
- */
-
 import { useEffect, useState } from "react";
-import { ExternalLink, ArrowRight } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { config } from "@/config";
 
 interface CommunityItem {
-  source: '1point3acres';
-  sourceLabel: string; // "一亩三分地"
+  source: "1point3acres";
+  sourceLabel: string;
   title: string;
   url: string;
   publishedAt?: string;
-}
-
-interface SourceStatus {
-  status: 'ok' | 'unavailable';
-  items: CommunityItem[];
-  reason?: string;
 }
 
 interface LeekCommunityProps {
@@ -32,105 +15,73 @@ interface LeekCommunityProps {
   hideTitle?: boolean;
 }
 
-const FORUM_URL = 'https://www.1point3acres.com/bbs/forum.php?mod=forumdisplay&fid=291&filter=author&orderby=dateline';
-
 export default function LeekCommunity({ maxItems = 5, hideTitle = false }: LeekCommunityProps) {
   const [items, setItems] = useState<CommunityItem[]>([]);
-  const [sourceStatus, setSourceStatus] = useState<SourceStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadLeekPosts() {
       try {
-        const apiUrl = `${config.apiBaseUrl}/api/community/leeks`;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-        const response = await fetch(apiUrl, {
-          signal: controller.signal,
+        const response = await fetch(`${config.apiBaseUrl}/api/community/leeks`, {
+          signal: AbortSignal.timeout(10000),
         });
-
-        clearTimeout(timeoutId);
-
         if (response.ok) {
           const result = await response.json();
-          const communityItems = result.items || [];
-          setItems(communityItems.slice(0, maxItems));
-          
-          // Store source status for placeholder display
-          if (result.sources && result.sources['1point3acres']) {
-            setSourceStatus(result.sources['1point3acres']);
-          }
-        } else {
-          console.error(`[LeekCommunity] API error: ${response.status} ${response.statusText}`);
-          // Don't set empty array - keep previous data if available
+          setItems((result.items || []).slice(0, maxItems));
         }
       } catch (error) {
         console.error("[LeekCommunity] Failed to fetch leek posts:", error);
-        // Don't set empty array - keep previous data if available
       } finally {
         setLoading(false);
       }
     }
 
     loadLeekPosts();
-    // Refresh every 30 minutes
     const interval = setInterval(loadLeekPosts, 30 * 60 * 1000);
     return () => clearInterval(interval);
   }, [maxItems]);
 
   if (loading && items.length === 0) {
     return (
-      <div className="rounded-sm p-4 bg-card border border-border/40 shadow-md">
-        <div className="animate-pulse">
-          <div className="h-6 bg-muted rounded w-1/3 mb-4"></div>
-          <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-12 bg-muted rounded"></div>
-            ))}
-          </div>
-        </div>
+      <div className="grid gap-2">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="h-14 animate-pulse rounded-sm bg-muted/40" />
+        ))}
       </div>
     );
   }
 
-  // Always render the block, even if no items (show placeholders)
-  // Never hide the whole block due to fetch error
-  // This ensures the block is always visible
+  const shellClass = hideTitle ? "" : "rounded-sm border border-border/35 bg-card/45 p-4";
 
   return (
-    <div className={hideTitle ? "p-1.5 h-auto" : "rounded-sm p-4 bg-card border border-border/40 shadow-md h-auto"}>
-      {/* Posts List - No header, just topics with labels */}
-      <div className="space-y-1">
-        {/* 1point3acres items with label */}
-        {items
-          .slice(0, maxItems)
-          .map((item, index) => (
+    <div className={shellClass}>
+      {!hideTitle ? (
+        <div className="mb-4 border-b border-border/25 pb-3">
+          <div className="eyebrow mb-2">Community Threads</div>
+          <h3 className="text-[15px] font-semibold text-foreground/92">一亩三分地</h3>
+          <p className="mt-1 text-xs text-muted-foreground">更长、更细的讨论串，适合真的准备行动时深看。</p>
+        </div>
+      ) : null}
+
+      <div className="space-y-2">
+        {items.length > 0 ? (
+          items.map((item, index) => (
             <a
-              key={`1point3acres-${index}-${item.url ?? item.title ?? ''}`}
+              key={`${item.url}-${index}`}
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`block ${hideTitle ? 'p-1.5' : 'p-2'} rounded-sm bg-card/50 border border-border/50 hover:bg-card/80 hover:border-primary/50 transition-all group`}
+              className="group flex items-start justify-between gap-3 rounded-sm border border-border/25 bg-background/35 px-3 py-3 transition-all hover:border-primary/35 hover:bg-background/55"
             >
-              <div className="flex items-start justify-between gap-2">
-                <span className={`${hideTitle ? 'text-xs' : 'text-[14px]'} font-mono font-normal text-foreground/80 group-hover:text-primary transition-colors line-clamp-2 flex-1`} style={{ lineHeight: '1.4' }}>
-                  <span className="text-[10px] font-medium text-primary/80 mr-1">【投资理财】</span>
-                  {item.title}
-                </span>
-                <ExternalLink className={`${hideTitle ? 'w-3 h-3' : 'w-4 h-4'} opacity-60 text-muted-foreground flex-shrink-0 group-hover:text-primary group-hover:opacity-100 transition-colors mt-0.5`} />
-              </div>
-            </a>
-          ))}
-        
-        {/* Placeholder if unavailable */}
-        {items.length === 0 && (
-          <div className={`block ${hideTitle ? 'p-1.5' : 'p-2'} rounded-sm bg-card/50 border border-border/50`}>
-            <div className="flex items-start gap-2">
-              <span className={`${hideTitle ? 'text-xs' : 'text-[14px]'} font-mono font-normal opacity-60 text-muted-foreground line-clamp-2 flex-1`} style={{ lineHeight: '1.4' }}>
-                <span className="text-[10px] mr-1">•</span>社区暂时不可用，稍后刷新
+              <span className="min-w-0 flex-1 text-[13px] leading-6 text-foreground/88 transition-colors group-hover:text-primary">
+                {item.title}
               </span>
-            </div>
+              <ExternalLink className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground/65 transition-colors group-hover:text-primary" />
+            </a>
+          ))
+        ) : (
+          <div className="rounded-sm border border-border/25 bg-background/35 px-4 py-6 text-center text-sm text-muted-foreground">
+            社区帖子暂时不可用，稍后再试。
           </div>
         )}
       </div>

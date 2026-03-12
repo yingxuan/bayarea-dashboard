@@ -17,6 +17,8 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import Home from "./pages/Home";
+import Baoguo from "./pages/Baoguo";
+import Fangzi from "./pages/Fangzi";
 import Piaozi from "./pages/Piaozi";
 import Chihe from "./pages/Chihe";
 import LoginPage from "./pages/LoginPage";
@@ -27,6 +29,8 @@ function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/baoguo"} component={Baoguo} />
+      <Route path={"/fangzi"} component={Fangzi} />
       <Route path={"/piaozi"} component={Piaozi} />
       <Route path={"/chihe"} component={Chihe} />
       <Route path={"/login"} component={LoginPage} />

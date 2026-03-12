@@ -4,7 +4,9 @@ const translations = {
   zh: {
     nav: {
       brand: "湾区仪表盘",
-      home: "主页",
+      home: "首页",
+      work: "包裹",
+      housing: "房子",
       finance: "票子",
       dining: "吃喝",
       openMenu: "打开菜单",
@@ -32,8 +34,19 @@ const translations = {
     },
     home: {
       sectionMarket: "打工耽误赚钱",
+      sectionWork: "包裹与找工",
+      sectionHousing: "房子与利率",
       sectionFood: "民以食为天",
       sectionEnt: "追剧吃瓜薅羊毛",
+      briefingTitle: "今日判断",
+      briefingSubtitle: "给湾区华人码农的每日决策面板",
+      briefingDesc: "先看钱，再看工作，再看房子，最后看今天值得做的事。",
+      moneyPulse: "钱的信号",
+      workPulse: "工作信号",
+      actionPulse: "今天去做",
+      freshness: "数据每日更新",
+      quality: "宁缺毋滥",
+      bayArea: "湾区定制",
       marketHighlights: "市场看点",
       gossip: "吃瓜",
       deals: "薅羊毛",
@@ -68,6 +81,14 @@ const translations = {
       title: "票子",
       subtitle: "财务详情",
     },
+    baoguo: {
+      title: "包裹",
+      subtitle: "工作与找工",
+    },
+    fangzi: {
+      title: "房子",
+      subtitle: "住房与利率",
+    },
     auth: {
       login: "登录",
       register: "注册",
@@ -91,8 +112,7 @@ const translations = {
       resetDesc: "输入您的注册邮箱，我们将发送密码重置链接",
       sendReset: "发送重置链接",
       sendingReset: "发送中...",
-      resetSuccess:
-        "如果该邮箱已注册，您将收到密码重置链接。请检查您的收件箱。",
+      resetSuccess: "如果该邮箱已注册，您将收到密码重置链接。请检查您的收件箱。",
       setNewPassword: "设置新密码",
       newPasswordDesc: "请输入您的新密码",
       newPassword: "新密码",
@@ -104,8 +124,7 @@ const translations = {
       resetSuccessMsg: "密码已成功重置！请使用新密码登录。",
       goToLogin: "前往登录",
       invalidLink: "链接无效",
-      invalidLinkDesc:
-        "密码重置链接无效或缺少必要参数。请重新请求密码重置。",
+      invalidLinkDesc: "密码重置链接无效或缺少必要参数。请重新请求密码重置。",
       requestNewReset: "重新请求重置链接",
       resetFailed: "密码重置失败",
       operationFailed: "操作失败",
@@ -116,6 +135,8 @@ const translations = {
     nav: {
       brand: "Bay Area Dashboard",
       home: "Home",
+      work: "Work",
+      housing: "Housing",
       finance: "Finance",
       dining: "Dining",
       openMenu: "Open menu",
@@ -143,8 +164,19 @@ const translations = {
     },
     home: {
       sectionMarket: "Markets & Money",
+      sectionWork: "Work & Hiring",
+      sectionHousing: "Housing & Rates",
       sectionFood: "Food & Dining",
       sectionEnt: "Entertainment & Deals",
+      briefingTitle: "Today's Brief",
+      briefingSubtitle: "A daily decision panel for Bay Area Chinese engineers",
+      briefingDesc: "Check money first, then work, then housing, then what is worth doing today.",
+      moneyPulse: "Money",
+      workPulse: "Work",
+      actionPulse: "Action",
+      freshness: "Fresh daily",
+      quality: "Quality over quantity",
+      bayArea: "Bay Area tuned",
       marketHighlights: "Market Highlights",
       gossip: "Gossip",
       deals: "Deals",
@@ -162,8 +194,7 @@ const translations = {
       temperature: "Market Temp",
     },
     toast: {
-      externalStandalone:
-        "Opened external link. Press browser back to return.",
+      externalStandalone: "Opened external link. Press browser back to return.",
       externalNewTab: "Opened in new tab. Switch back to continue.",
       returnDashboard: "Return to Bay Area Dashboard",
     },
@@ -179,6 +210,14 @@ const translations = {
     piaozi: {
       title: "Finance",
       subtitle: "Financial Details",
+    },
+    baoguo: {
+      title: "Work",
+      subtitle: "Career & Hiring",
+    },
+    fangzi: {
+      title: "Housing",
+      subtitle: "Rates & Shelter",
     },
     auth: {
       login: "Log In",
@@ -203,8 +242,7 @@ const translations = {
       resetDesc: "Enter your email to receive a password reset link",
       sendReset: "Send Reset Link",
       sendingReset: "Sending...",
-      resetSuccess:
-        "If registered, you will receive a reset link. Check your inbox.",
+      resetSuccess: "If registered, you will receive a reset link. Check your inbox.",
       setNewPassword: "Set New Password",
       newPasswordDesc: "Enter your new password",
       newPassword: "New Password",
@@ -213,8 +251,7 @@ const translations = {
       confirmNewPasswordPlaceholder: "Re-enter new password",
       resetting: "Resetting...",
       resetPasswordAction: "Reset Password",
-      resetSuccessMsg:
-        "Password reset successfully! Please log in with your new password.",
+      resetSuccessMsg: "Password reset successfully! Please log in with your new password.",
       goToLogin: "Go to Login",
       invalidLink: "Invalid Link",
       invalidLinkDesc:

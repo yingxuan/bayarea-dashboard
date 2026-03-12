@@ -1,15 +1,4 @@
-/**
- * Chinese Gossip Component
- * Displays gossip posts from 1point3acres and 微博热搜
- *
- * Requirements:
- * - Always shows >= 3 items per source
- * - Never shows "暂无内容"
- * - Shows 2 groups: 一亩三分地 and 微博
- * - Displays source label badges
- */
-
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useExternalLink } from "@/hooks/useExternalLink";
 import { config } from "@/config";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -19,7 +8,7 @@ interface GossipItem {
   title: string;
   url: string;
   meta?: {
-    source: '1point3acres' | 'v2ex' | 'reddit';
+    source: "1point3acres" | "v2ex" | "reddit";
     publishedAt?: string;
   };
 }
@@ -34,10 +23,10 @@ interface ModulePayload<T> {
 }
 
 interface GossipResponse {
-  status: 'ok';
+  status: "ok";
   sources: {
-    '1point3acres': ModulePayload<GossipItem>;
-    'weibo': ModulePayload<GossipItem>;
+    "1point3acres": ModulePayload<GossipItem>;
+    weibo: ModulePayload<GossipItem>;
   };
   fetchedAt: string;
 }
@@ -57,84 +46,35 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
   useEffect(() => {
     async function loadGossip() {
       try {
-        // Build API URL
-        let apiUrl: string;
-        if (config.apiBaseUrl && !config.apiBaseUrl.startsWith('/')) {
-          apiUrl = `${config.apiBaseUrl}/api/community/gossip`;
-        } else {
-          const baseUrl = config.apiBaseUrl || '';
-          apiUrl = `${baseUrl}/api/community/gossip`;
-        }
-        
-        console.log('[ChineseGossip] Fetching from:', apiUrl);
-        
+        const apiUrl = config.apiBaseUrl && !config.apiBaseUrl.startsWith("/")
+          ? `${config.apiBaseUrl}/api/community/gossip`
+          : `${config.apiBaseUrl || ""}/api/community/gossip`;
+
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-          console.warn('[ChineseGossip] Request timeout after 10 seconds, aborting...');
-          controller.abort();
-        }, 10000);
-        
-        let response: Response;
-        try {
-          response = await fetch(apiUrl, {
-            signal: controller.signal,
-          });
-          clearTimeout(timeoutId);
-        } catch (error) {
-          clearTimeout(timeoutId);
-          if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('aborted'))) {
-            console.warn('[ChineseGossip] Request was aborted (likely timeout)');
-            setLoading(false);
-            return;
-          }
-          throw error;
-        }
-        
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const response = await fetch(apiUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
         if (response.ok) {
           const contentType = response.headers.get("content-type") || "";
-          if (!contentType.includes("application/json")) {
-            console.warn('[ChineseGossip] Non-JSON response skipped:', contentType);
-            return;
-          }
+          if (!contentType.includes("application/json")) return;
           const result: GossipResponse = await response.json();
-          console.log('[ChineseGossip] ✅ API Response received:', {
-            status: result.status,
-            sources: Object.keys(result.sources),
-          });
-          
-          setSource1P3A(result.sources['1point3acres']);
-          setSourceWeibo(result.sources['weibo']);
-        } else {
-          const errorText = await response.text();
-          console.error(`[ChineseGossip] ❌ API error: ${response.status} ${response.statusText}`);
-          console.error(`[ChineseGossip] Error response:`, errorText);
+          setSource1P3A(result.sources["1point3acres"]);
+          setSourceWeibo(result.sources.weibo);
         }
       } catch (error) {
-        console.error("[ChineseGossip] ❌ Failed to fetch gossip:", error);
-        console.error("[ChineseGossip] Error details:", error instanceof Error ? error.message : String(error));
+        console.error("[ChineseGossip] Failed to fetch gossip:", error);
       } finally {
         setLoading(false);
       }
     }
-    
+
     loadGossip();
-    // Refresh every 30 minutes
     const interval = setInterval(loadGossip, 30 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
-  if (loading && !source1P3A && !sourceWeibo) {
-    return (
-      <div className="space-y-2 py-1">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="h-7 animate-pulse bg-muted/40 rounded-sm" />
-        ))}
-      </div>
-    );
-  }
-
-  // Interleave items from both sources
-  const getAllItems = () => {
+  const allItems = useMemo(() => {
     const items1P3A = (source1P3A?.items ?? []).slice(0, maxItemsPerSource);
     const itemsWeibo = (sourceWeibo?.items ?? []).slice(0, maxItemsPerSource);
     const merged: GossipItem[] = [];
@@ -144,44 +84,63 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
       if (i < items1P3A.length) merged.push(items1P3A[i]);
     }
     return merged;
+  }, [maxItemsPerSource, source1P3A, sourceWeibo]);
+
+  const sourceLabel = (source?: string) => {
+    if (source === "v2ex") return { label: "V2EX", tone: "text-emerald-400/85" };
+    if (source === "reddit") return { label: "Reddit", tone: "text-orange-400/85" };
+    return { label: "1P3A", tone: "text-cyan-400/85" };
   };
 
-  const allItems = getAllItems();
-  const hasAnyData = allItems.length > 0 || !!source1P3A || !!sourceWeibo;
-
-  if (!hasAnyData) {
+  if (loading && !source1P3A && !sourceWeibo) {
     return (
-      <div className="py-3 text-xs opacity-50 font-mono text-center">{t.home.gossipEmpty}</div>
+      <div className="grid gap-2">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="h-14 animate-pulse rounded-sm bg-muted/40" />
+        ))}
+      </div>
+    );
+  }
+
+  if (allItems.length === 0) {
+    return (
+      <div className="rounded-sm border border-border/25 bg-background/35 px-4 py-6 text-center text-sm text-muted-foreground">
+        {t.home.gossipEmpty}
+      </div>
     );
   }
 
   return (
-    <div className="divide-y divide-border/20">
-      {allItems.length > 0 ? (
-        allItems.map((item, index) => (
-          <a
-            key={`${item.url}-${index}`}
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={handleExternalLinkClick}
-            className="flex items-baseline gap-2 py-2 px-1.5 hover:bg-muted/30 rounded-sm transition-colors group"
-          >
-            {item.meta?.source === 'v2ex' ? (
-              <span className="shrink-0 text-[10px] font-mono text-green-400/80 leading-tight">V2EX</span>
-            ) : item.meta?.source === 'reddit' ? (
-              <span className="shrink-0 text-[10px] font-mono text-orange-400/80 leading-tight">Reddit</span>
-            ) : (
-              <span className="shrink-0 text-[10px] font-mono text-cyan-400/70 leading-tight">1P3A</span>
-            )}
-            <span className="text-[12px] font-mono text-foreground/85 group-hover:text-primary transition-colors line-clamp-1 leading-tight min-w-0">
-              {item.title}
-            </span>
-          </a>
-        ))
-      ) : (
-        <div className="py-3 text-xs opacity-50 font-mono text-center">{t.home.gossipEmpty}</div>
-      )}
+    <div className="rounded-sm border border-border/35 bg-card/45 p-4">
+      <div className="mb-4 border-b border-border/25 pb-3">
+        <div className="eyebrow mb-2">Community Pulse</div>
+        <h3 className="text-[15px] font-semibold text-foreground/92">社区热聊</h3>
+        <p className="mt-1 text-xs text-muted-foreground">把微博和论坛混在一起看，更容易判断话题热度而不是单源偏差。</p>
+      </div>
+
+      <div className="space-y-2">
+        {allItems.map((item, index) => {
+          const source = sourceLabel(item.meta?.source);
+
+          return (
+            <a
+              key={`${item.url}-${index}`}
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleExternalLinkClick}
+              className="group flex items-start gap-3 rounded-sm border border-border/25 bg-background/35 px-3 py-3 transition-all hover:border-primary/35 hover:bg-background/55"
+            >
+              <span className={`shrink-0 text-[10px] uppercase tracking-[0.14em] ${source.tone}`}>
+                {source.label}
+              </span>
+              <span className="min-w-0 flex-1 text-[13px] leading-6 text-foreground/88 transition-colors group-hover:text-primary">
+                {item.title}
+              </span>
+            </a>
+          );
+        })}
+      </div>
     </div>
   );
 }

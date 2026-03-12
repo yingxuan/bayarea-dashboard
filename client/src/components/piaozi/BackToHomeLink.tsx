@@ -1,8 +1,3 @@
-/**
- * Back To Home Link Component
- * Simple navigation link to return to the home page
- */
-
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -14,8 +9,8 @@ export default function BackToHomeLink() {
 
   return (
     <Link href="/">
-      <div className="inline-flex items-center gap-1.5 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-        <ArrowLeft className="w-4 h-4" />
+      <div className="inline-flex cursor-pointer items-center gap-2 rounded-sm border border-border/55 bg-card/45 px-3 py-1.5 text-sm font-mono text-muted-foreground transition-colors hover:border-primary/35 hover:text-foreground">
+        <ArrowLeft className="h-4 w-4" />
         <span>{t.common.backHome}</span>
       </div>
     </Link>

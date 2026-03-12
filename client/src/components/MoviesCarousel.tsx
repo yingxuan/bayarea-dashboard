@@ -1,14 +1,5 @@
-/**
- * MoviesCarousel Component
- * Portrait poster carousel for Chinese-language movies in US theaters (院线华语)
- */
-
 import { Film } from "lucide-react";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-} from "@/components/ui/carousel";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useT } from "@/lib/translations";
 
@@ -29,68 +20,52 @@ interface MoviesCarouselProps {
 export default function MoviesCarousel({ movies }: MoviesCarouselProps) {
   const { lang } = useLanguage();
   const t = useT(lang);
-
-  if (movies.length === 0) {
-    return null;
-  }
+  if (movies.length === 0) return null;
 
   return (
-    <div className="w-full">
-      {/* Header */}
-      <div className="flex items-center gap-2 pb-1.5 mb-1.5 border-b border-border/30">
-        <Film className="w-3.5 h-3.5 text-foreground/60" />
-        <h3 className="text-[13px] font-mono font-medium text-foreground/70">
-          {t.home.bayAreaMovies}
-        </h3>
+    <div className="rounded-sm border border-border/35 bg-card/45 p-4">
+      <div className="mb-4 border-b border-border/25 pb-3">
+        <div className="mb-2 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-violet-300/75">
+          <Film className="h-3.5 w-3.5" />
+          Cinema
+        </div>
+        <h3 className="text-[15px] font-semibold text-foreground/92">{t.home.bayAreaMovies}</h3>
+        <p className="mt-1 text-xs text-muted-foreground">影院里的华语片窗口不多，这里只保留还值得顺手去看的。</p>
       </div>
 
-      <Carousel
-        opts={{
-          align: "start",
-          loop: false,
-          dragFree: true,
-        }}
-        className="w-full"
-      >
-        <CarouselContent className="-ml-2">
+      <Carousel opts={{ align: "start", loop: false, dragFree: true }} className="w-full">
+        <CarouselContent className="-ml-3">
           {movies.map((movie) => (
-            <CarouselItem
-              key={movie.id}
-              className="pl-2 basis-[30%] md:basis-[16%] shrink-0"
-            >
+            <CarouselItem key={movie.id} className="shrink-0 pl-3 basis-[42%] md:basis-[20%]">
               <a
                 href={movie.fandango_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block rounded-sm overflow-hidden bg-card border border-border/40 shadow-md hover:opacity-80 transition-opacity group"
+                className="group block overflow-hidden rounded-sm border border-border/35 bg-background/55 transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-background/75"
               >
-                {/* Fixed-height poster */}
-                <div className="relative w-full h-[130px] md:h-[160px] bg-muted overflow-hidden">
+                <div className="relative h-[180px] overflow-hidden bg-muted md:h-[220px]">
                   {movie.poster_url ? (
                     <img
                       src={movie.poster_url}
                       alt={movie.original_title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                       onError={(e) => {
-                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.style.display = "none";
                       }}
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground/40">
-                      <Film className="w-5 h-5" />
+                    <div className="flex h-full items-center justify-center text-muted-foreground/40">
+                      <Film className="h-6 w-6" />
                     </div>
                   )}
                 </div>
-                {/* Title + rating */}
-                <div className="px-1 py-0.5">
-                  <p className="text-[10px] font-medium text-foreground/80 line-clamp-1 leading-tight">
+                <div className="p-3">
+                  <div className="line-clamp-2 text-sm font-medium leading-6 text-foreground/92 transition-colors group-hover:text-primary">
                     {movie.original_title}
-                  </p>
-                  {movie.rating > 0 && (
-                    <p className="text-[9px] font-mono text-foreground/45 tabular-nums">
-                      ⭐ {movie.rating.toFixed(1)}
-                    </p>
-                  )}
+                  </div>
+                  <div className="mt-2 text-[11px] font-mono text-muted-foreground/72">
+                    {movie.rating > 0 ? `★ ${movie.rating.toFixed(1)}` : "Now showing"}
+                  </div>
                 </div>
               </a>
             </CarouselItem>

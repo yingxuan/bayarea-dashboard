@@ -1,12 +1,4 @@
-/**
- * Market Highlights Full Component (Extended News View)
- * Displays more market news with:
- * - More news items (up to 20)
- * - Source filtering
- * - Pagination support
- */
-
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { config } from "@/config";
 import { useExternalLink } from "@/hooks/useExternalLink";
 import TimeAgo from "@/components/TimeAgo";
@@ -22,7 +14,7 @@ interface NewsItem {
 }
 
 interface CommunityItem {
-  source: '1point3acres';
+  source: "1point3acres";
   sourceLabel: string;
   title: string;
   url: string;
@@ -37,28 +29,25 @@ interface UnifiedItem {
   publishedAt?: string;
 }
 
-type SourceFilter = 'all' | 'sina' | '1point3acres';
+type SourceFilter = "all" | "sina" | "1point3acres";
 
 export default function MarketHighlightsFull() {
   const [marketNews, setMarketNews] = useState<NewsItem[]>([]);
   const [leekItems, setLeekItems] = useState<CommunityItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const { handleExternalLinkClick } = useExternalLink();
 
-  // Fetch market news
   useEffect(() => {
     async function loadMarketNews() {
       try {
-        const apiUrl = `${config.apiBaseUrl}/api/market-news`;
-        const response = await fetch(apiUrl, {
+        const response = await fetch(`${config.apiBaseUrl}/api/market-news`, {
           signal: AbortSignal.timeout(10000),
         });
 
         if (response.ok) {
           const result = await response.json();
-          const newsItems = result.items || [];
-          setMarketNews(newsItems.slice(0, 20)); // Up to 20 items
+          setMarketNews((result.items || []).slice(0, 20));
         }
       } catch (error) {
         console.error("[MarketHighlightsFull] Failed to fetch market news:", error);
@@ -67,8 +56,7 @@ export default function MarketHighlightsFull() {
 
     async function loadLeekPosts() {
       try {
-        const apiUrl = `${config.apiBaseUrl}/api/community/leeks`;
-        const response = await fetch(apiUrl, {
+        const response = await fetch(`${config.apiBaseUrl}/api/community/leeks`, {
           signal: AbortSignal.timeout(10000),
         });
 
@@ -76,8 +64,7 @@ export default function MarketHighlightsFull() {
           const contentType = response.headers.get("content-type") || "";
           if (contentType.includes("application/json")) {
             const result = await response.json();
-            const communityItems = result.items || [];
-            setLeekItems(communityItems.slice(0, 10)); // Up to 10 items
+            setLeekItems((result.items || []).slice(0, 10));
           }
         }
       } catch (error) {
@@ -97,13 +84,12 @@ export default function MarketHighlightsFull() {
     return () => clearInterval(interval);
   }, []);
 
-  // Merge and format items
   const allItems: UnifiedItem[] = useMemo(() => {
     const sinaItems = marketNews.map((item, index) => ({
-      id: `news-${index}-${item.url ?? item.id ?? ''}-${item.title ?? index}`,
-      title: item.title || item.title_zh || item.title_en || 'Market News',
-      url: item.url || '#',
-      source: 'sina' as const,
+      id: `news-${index}-${item.url ?? item.id ?? ""}-${item.title ?? index}`,
+      title: item.title || item.title_zh || item.title_en || "Market News",
+      url: item.url || "#",
+      source: "sina" as const,
       publishedAt: item.publishedAt,
     }));
 
@@ -111,42 +97,45 @@ export default function MarketHighlightsFull() {
       id: `leek-${index}-${item.url ?? item.title ?? index}`,
       title: item.title,
       url: item.url,
-      source: '1point3acres' as const,
+      source: "1point3acres" as const,
       publishedAt: item.publishedAt,
     }));
 
     return [...sinaItems, ...leekMapped];
   }, [marketNews, leekItems]);
 
-  // Filter items by source
   const filteredItems = useMemo(() => {
-    if (sourceFilter === 'all') return allItems;
-    if (sourceFilter === 'sina') return allItems.filter(item => item.source === 'sina');
-    if (sourceFilter === '1point3acres') return allItems.filter(item => item.source === '1point3acres');
+    if (sourceFilter === "all") return allItems;
+    if (sourceFilter === "sina") return allItems.filter((item) => item.source === "sina");
+    if (sourceFilter === "1point3acres") {
+      return allItems.filter((item) => item.source === "1point3acres");
+    }
     return allItems;
   }, [allItems, sourceFilter]);
 
-  // Source counts
-  const sourceCounts = useMemo(() => ({
-    all: allItems.length,
-    sina: allItems.filter(item => item.source === 'sina').length,
-    '1point3acres': allItems.filter(item => item.source === '1point3acres').length,
-  }), [allItems]);
+  const sourceCounts = useMemo(
+    () => ({
+      all: allItems.length,
+      sina: allItems.filter((item) => item.source === "sina").length,
+      "1point3acres": allItems.filter((item) => item.source === "1point3acres").length,
+    }),
+    [allItems],
+  );
 
   const getSourceLabel = (source: string) => {
-    if (source === 'sina') return '新浪财经';
-    if (source === '1point3acres') return '一亩三分地';
+    if (source === "sina") return "新浪财经";
+    if (source === "1point3acres") return "一亩三分地";
     return source;
   };
 
   if (loading) {
     return (
-      <div className="bg-card rounded-sm shadow-md border border-border/40 p-4">
+      <div className="section-shell section-shell-market rounded-sm p-5">
         <div className="animate-pulse space-y-3">
-          <div className="h-6 bg-muted rounded w-1/4"></div>
+          <div className="h-6 w-1/4 rounded bg-muted" />
           <div className="space-y-2">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-16 bg-muted rounded"></div>
+              <div key={i} className="h-16 rounded bg-muted" />
             ))}
           </div>
         </div>
@@ -155,41 +144,39 @@ export default function MarketHighlightsFull() {
   }
 
   return (
-    <div className="bg-card rounded-sm shadow-md border border-border/40">
-      {/* Header with Filter */}
-      <div className="p-4 border-b border-border/30">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <h2 className="text-lg font-mono font-medium text-foreground">市场看点</h2>
+    <div className="section-shell section-shell-market rounded-sm">
+      <div className="border-b border-border/30 p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="eyebrow mb-2">Market Briefing</div>
+            <h2 className="text-xl font-semibold text-cyan-300/90">市场看点</h2>
+            <p className="mt-1 text-sm text-muted-foreground/72">
+              新闻不求多，重点看哪些线索真的会影响今天的判断。
+            </p>
+          </div>
 
-          {/* Source Filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-muted-foreground">来源:</span>
-            <div className="flex gap-1">
-              {(['all', 'sina', '1point3acres'] as SourceFilter[]).map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => setSourceFilter(filter)}
-                  className={`px-2 py-1 text-xs font-mono rounded transition-colors ${
-                    sourceFilter === filter
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
-                >
-                  {filter === 'all' ? '全部' : getSourceLabel(filter)}
-                  <span className="ml-1 opacity-70">({sourceCounts[filter]})</span>
-                </button>
-              ))}
-            </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {(["all", "sina", "1point3acres"] as SourceFilter[]).map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setSourceFilter(filter)}
+                className={`rounded-sm px-3 py-1.5 text-xs font-mono transition-colors ${
+                  sourceFilter === filter
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card/45 text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                {filter === "all" ? "全部" : getSourceLabel(filter)}
+                <span className="ml-1 opacity-70">({sourceCounts[filter]})</span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* News List */}
-      <div className="p-4">
+      <div className="p-5">
         {filteredItems.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground font-mono">
-            暂无内容
-          </div>
+          <div className="py-8 text-center text-muted-foreground">暂无内容</div>
         ) : (
           <div className="space-y-3">
             {filteredItems.map((item) => (
@@ -199,21 +186,18 @@ export default function MarketHighlightsFull() {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={handleExternalLinkClick}
-                className="block rounded-sm p-4 bg-card/50 border border-border/30 hover:bg-card/80 hover:border-border/50 transition-all group"
+                className="group block rounded-sm border border-border/35 bg-card/45 p-4 transition-all hover:border-primary/45 hover:bg-card/70"
               >
                 <div className="flex items-start gap-3">
-                  {/* Source Badge */}
-                  <span className="flex-shrink-0 px-2 py-0.5 text-[10px] font-mono bg-muted/50 rounded text-muted-foreground">
+                  <span className="shrink-0 rounded-sm bg-muted/45 px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
                     {getSourceLabel(item.source)}
                   </span>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-[13px] font-normal font-mono text-foreground/90 group-hover:text-primary transition-colors line-clamp-2 leading-tight">
+                  <div className="min-w-0 flex-1">
+                    <h4 className="line-clamp-2 text-[14px] leading-6 text-foreground/92 transition-colors group-hover:text-primary">
                       {item.title}
                     </h4>
                     {item.publishedAt && (
-                      <div className="mt-1.5">
+                      <div className="mt-2 text-[11px] font-mono text-muted-foreground/65">
                         <TimeAgo isoString={item.publishedAt} />
                       </div>
                     )}

@@ -139,10 +139,10 @@ export default function TodaySpendCarousels() {
     return (
       <div className="flex flex-col md:grid md:grid-cols-2 gap-4 min-w-0">
         {CATEGORIES.map((category) => (
-          <div key={category} className="rounded-sm p-3 md:p-4 bg-card border border-border/40 shadow-md min-h-[120px]">
+          <div key={category} className="rounded-sm border border-border/45 bg-card/70 p-3 md:p-4 min-h-[150px]">
             <div className="animate-pulse">
-              <div className="h-4 bg-muted rounded w-1/3 mb-2"></div>
-              <div className="h-16 bg-muted rounded"></div>
+              <div className="mb-3 h-4 w-1/3 rounded bg-muted"></div>
+              <div className="h-24 rounded bg-muted"></div>
             </div>
           </div>
         ))}
