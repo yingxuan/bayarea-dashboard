@@ -344,6 +344,48 @@ export default function Home() {
           : "现在更适合做 rent vs buy 对比，而不是直接站队。"
       : "利率源不稳定时，默认把它当成保守判断场景。";
 
+  const overviewCards = [
+    {
+      eyebrow: "Money",
+      title: t.home.sectionMarket,
+      tone: "text-cyan-300/88",
+      summary: moneyPulse,
+      support:
+        holdings.length > 0
+          ? "先看仓位和今日波动，再决定今天要不要加减。"
+          : "先用指数和市场线索定方向，再决定要不要打开详情页。",
+      cta: "打开票子",
+      href: "/piaozi",
+    },
+    {
+      eyebrow: "Work",
+      title: t.home.sectionWork,
+      tone: "text-sky-300/88",
+      summary: workPulse,
+      support: "工作市场先看温度，再决定今天是投递、观望还是准备面试。",
+      cta: "打开包裹",
+      href: "/baoguo",
+    },
+    {
+      eyebrow: "Housing",
+      title: t.home.sectionHousing,
+      tone: "text-emerald-300/88",
+      summary: housingPulse,
+      support: housingActionLine,
+      cta: "打开房子",
+      href: "/fangzi",
+    },
+    {
+      eyebrow: "Food",
+      title: t.home.sectionFood,
+      tone: "text-amber-300/88",
+      summary: actionPulse,
+      support: "下班吃什么和去哪里聚，先给你筛到能直接出门的一批答案。",
+      cta: "打开吃喝",
+      href: "/chihe",
+    },
+  ];
+
   return (
     <div className="page-shell min-h-screen bg-background grid-bg">
       <Navigation />
@@ -361,23 +403,26 @@ export default function Home() {
           initial="hidden"
           animate="visible"
         >
-          <motion.div className="hero-panel mb-5 rounded-sm p-4 md:p-6" variants={fadeInUp}>
-            <div className="hero-grid">
+          <motion.div className="hero-panel mb-5 rounded-[1.4rem] p-4 md:p-6" variants={fadeInUp}>
+            <div className="hero-grid items-start">
               <div className="min-w-0">
-                <div className="eyebrow mb-3">Daily Brief</div>
+                <div className="section-kicker mb-3">
+                  <div className="eyebrow">Daily Brief</div>
+                  <span className="briefing-badge">Mobile-first utility</span>
+                </div>
                 <div className="max-w-2xl">
-                  <h1 className="text-2xl font-semibold leading-tight text-foreground md:text-[32px] md:leading-[1.1]">
+                  <h1 className="text-[2rem] font-semibold leading-[1.02] tracking-[-0.02em] text-foreground md:text-[3.1rem]">
                     {t.home.briefingTitle}
                   </h1>
-                  <div className="mt-2 text-sm font-medium text-primary/90 md:text-base">
+                  <div className="mt-3 text-sm font-medium text-primary/90 md:text-base">
                     {t.home.briefingSubtitle}
                   </div>
-                  <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground md:text-[15px]">
+                  <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground md:text-[15px]">
                     {t.home.briefingDesc}
                   </p>
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-5 flex flex-wrap gap-2">
                   <span className="signal-chip">
                     <span className="signal-dot bg-cyan-400 text-cyan-400" />
                     {t.home.freshness}
@@ -393,24 +438,40 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="grid gap-3">
-                <div className="hero-pulse-card rounded-sm p-3">
-                  <div className="text-[11px] uppercase tracking-[0.16em] text-cyan-300/75">
-                    {t.home.moneyPulse}
+              <div className="space-y-3">
+                <div className="page-summary-strip">
+                  <div className="hero-pulse-card rounded-sm p-3">
+                    <div className="text-[11px] uppercase tracking-[0.16em] text-cyan-300/75">
+                      {t.home.moneyPulse}
+                    </div>
+                    <div className="mt-2 text-sm leading-6 text-foreground/88">{moneyPulse}</div>
                   </div>
-                  <div className="mt-2 text-sm leading-6 text-foreground/88">{moneyPulse}</div>
+                  <div className="hero-pulse-card rounded-sm p-3">
+                    <div className="text-[11px] uppercase tracking-[0.16em] text-amber-300/75">
+                      {t.home.workPulse}
+                    </div>
+                    <div className="mt-2 text-sm leading-6 text-foreground/88">{workPulse}</div>
+                  </div>
+                  <div className="hero-pulse-card rounded-sm p-3">
+                    <div className="text-[11px] uppercase tracking-[0.16em] text-violet-300/75">
+                      {t.home.actionPulse}
+                    </div>
+                    <div className="mt-2 text-sm leading-6 text-foreground/88">{actionPulse}</div>
+                  </div>
                 </div>
-                <div className="hero-pulse-card rounded-sm p-3">
-                  <div className="text-[11px] uppercase tracking-[0.16em] text-amber-300/75">
-                    {t.home.workPulse}
+                <div className="hero-pulse-card rounded-sm p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[11px] uppercase tracking-[0.16em] text-emerald-300/75">
+                        Housing pulse
+                      </div>
+                      <div className="mt-2 text-sm leading-6 text-foreground/88">{housingPulse}</div>
+                    </div>
+                    <span className="signal-chip shrink-0">
+                      <span className="signal-dot bg-emerald-400 text-emerald-400" />
+                      {housingModeLabel}
+                    </span>
                   </div>
-                  <div className="mt-2 text-sm leading-6 text-foreground/88">{workPulse}</div>
-                </div>
-                <div className="hero-pulse-card rounded-sm p-3">
-                  <div className="text-[11px] uppercase tracking-[0.16em] text-violet-300/75">
-                    {t.home.actionPulse}
-                  </div>
-                  <div className="mt-2 text-sm leading-6 text-foreground/88">{actionPulse}</div>
                 </div>
               </div>
             </div>
@@ -420,10 +481,38 @@ export default function Home() {
             <FortuneWidget />
           </motion.div>
 
+          <motion.section
+            className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-2"
+            variants={fadeInUp}
+          >
+            {overviewCards.map((card) => (
+              <a
+                key={card.href}
+                href={card.href}
+                className="entry-card group rounded-[1.2rem] p-4 md:p-5"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="eyebrow mb-2">{card.eyebrow}</div>
+                    <h3 className={`text-lg font-semibold ${card.tone}`}>{card.title}</h3>
+                    <p className="mt-3 text-sm leading-6 text-foreground/88">{card.summary}</p>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground/78">{card.support}</p>
+                  </div>
+                  <span className="entry-card-orb shrink-0 transition-transform duration-200 group-hover:translate-x-0.5">
+                    ↗
+                  </span>
+                </div>
+                <div className="mt-4 text-[12px] font-medium tracking-[0.08em] text-primary/88">
+                  {card.cta}
+                </div>
+              </a>
+            ))}
+          </motion.section>
+
           <div className="section-divider" />
 
           <motion.section
-            className="section-shell section-shell-market flex min-w-0 flex-col gap-5 rounded-sm p-4 md:p-5"
+            className="section-shell section-shell-market flex min-w-0 flex-col gap-5 rounded-[1.25rem] p-4 md:p-5"
             variants={fadeInUp}
           >
             <div>
@@ -489,7 +578,7 @@ export default function Home() {
           <div className="section-divider" />
 
           <motion.section
-            className="section-shell section-shell-housing flex min-w-0 flex-col gap-5 rounded-sm p-4 md:p-5"
+            className="section-shell section-shell-work flex min-w-0 flex-col gap-5 rounded-[1.25rem] p-4 md:p-5"
             variants={fadeInUp}
           >
             <div>
@@ -519,7 +608,7 @@ export default function Home() {
           <div className="section-divider" />
 
           <motion.section
-            className="section-shell flex min-w-0 flex-col gap-5 rounded-sm p-4 md:p-5"
+            className="section-shell section-shell-housing flex min-w-0 flex-col gap-5 rounded-[1.25rem] p-4 md:p-5"
             variants={fadeInUp}
           >
             <div>
@@ -574,7 +663,7 @@ export default function Home() {
           <div className="section-divider" />
 
           <motion.section
-            className="section-shell section-shell-food flex min-w-0 flex-col gap-5 rounded-sm p-4 md:p-5"
+            className="section-shell section-shell-food flex min-w-0 flex-col gap-5 rounded-[1.25rem] p-4 md:p-5"
             variants={fadeInUp}
           >
             <div>
@@ -599,7 +688,7 @@ export default function Home() {
           <div className="section-divider" />
 
           <motion.section
-            className="section-shell section-shell-ent flex min-w-0 flex-col gap-5 rounded-sm p-4 md:p-5"
+            className="section-shell section-shell-ent flex min-w-0 flex-col gap-5 rounded-[1.25rem] p-4 md:p-5"
             variants={fadeInUp}
           >
             <div>

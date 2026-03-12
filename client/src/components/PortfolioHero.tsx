@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PencilIcon, SlidersHorizontal, TrendingDown, TrendingUp } from "lucide-react";
 import { Holding } from "@/hooks/useHoldings";
-import { usePortfolioSummary, QuoteData } from "@/hooks/usePortfolioSummary";
+import { QuoteData, usePortfolioSummary } from "@/hooks/usePortfolioSummary";
 import { Button } from "@/components/ui/button";
 import HoldingsEditor from "@/components/HoldingsEditor";
 import PortfolioSparkline from "@/components/PortfolioSparkline";
@@ -96,8 +96,7 @@ export default function PortfolioHero({
 
       if (quote && quote.status === "ok" && quote.price > 0 && !isNaN(shares) && shares > 0) {
         const price = Number(quote.price);
-        const prevClose =
-          quote.prevClose !== undefined ? Number(quote.prevClose) : undefined;
+        const prevClose = quote.prevClose !== undefined ? Number(quote.prevClose) : undefined;
 
         if (!isNaN(price) && price > 0) {
           let dailyChangePercent = 0;
@@ -131,7 +130,7 @@ export default function PortfolioHero({
       onYtdBaselineChange(parsed);
       setYtdDialogOpen(false);
     } else {
-      setYtdInputError("请输入有效数字（大于 0）");
+      setYtdInputError("请输入大于 0 的有效数字");
     }
   };
 
@@ -140,7 +139,7 @@ export default function PortfolioHero({
     movers: Array<{ ticker: string; dailyChangePercent: number }>,
     isPositive: boolean,
   ) => (
-    <div className="min-w-0 rounded-sm border border-border/45 bg-card/45 p-3">
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-3">
       <div className="mb-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground/75">
         {title}
       </div>
@@ -148,10 +147,8 @@ export default function PortfolioHero({
         {movers.length > 0 ? (
           movers.map((mover) => (
             <div key={mover.ticker} className="grid grid-cols-[48px_1fr] items-baseline gap-2">
-              <span className="w-12 text-[13px] font-medium font-mono text-foreground">
-                {mover.ticker}
-              </span>
-              <div className="flex items-baseline justify-end gap-0 text-[13px] font-medium font-mono tabular-nums">
+              <span className="w-12 text-[13px] font-medium text-foreground">{mover.ticker}</span>
+              <div className="flex items-baseline justify-end gap-0 text-[13px] font-medium tabular-nums">
                 {isPositive ? (
                   <TrendingUp className="mr-0.5 h-3 w-3 shrink-0 text-emerald-400/80" />
                 ) : (
@@ -165,7 +162,7 @@ export default function PortfolioHero({
             </div>
           ))
         ) : (
-          <div className="text-xs font-mono text-muted-foreground/55">—</div>
+          <div className="text-xs text-muted-foreground/55">暂无</div>
         )}
       </div>
     </div>
@@ -173,7 +170,7 @@ export default function PortfolioHero({
 
   if (!holdingsLoaded) {
     return (
-      <div className="rounded-sm border border-border/45 bg-card/70 p-4">
+      <div className="rounded-2xl border border-white/10 bg-white/6 p-4">
         <div className="animate-pulse">
           <div className="h-6 w-1/2 rounded bg-muted" />
         </div>
@@ -183,13 +180,13 @@ export default function PortfolioHero({
 
   if (holdings.length === 0) {
     return (
-      <div className="flex h-full min-h-[160px] flex-col items-center justify-center rounded-sm border border-border/45 bg-card/70 p-6 text-center">
+      <div className="flex h-full min-h-[180px] flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/6 p-6 text-center">
         <div className="eyebrow mb-3">Portfolio</div>
         <div className="mb-3 text-sm text-muted-foreground">还没有持仓记录</div>
         <HoldingsEditor
           trigger={
-            <Button variant="outline" size="sm" className="h-8 px-3 text-xs font-mono font-normal">
-              <PencilIcon className="mr-1 h-3 w-3" /> 点击添加持仓
+            <Button variant="outline" size="sm" className="h-9 rounded-full px-4 text-xs font-medium">
+              <PencilIcon className="mr-1 h-3 w-3" /> 添加持仓
             </Button>
           }
         />
@@ -199,18 +196,21 @@ export default function PortfolioHero({
 
   return (
     <>
-      <div className="hero-panel h-full rounded-sm p-4 md:p-5">
+      <div className="hero-panel h-full rounded-[1.2rem] p-4 md:p-5">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.45fr_0.9fr]">
           <div className="min-w-0">
-            <div className="eyebrow mb-2">Portfolio</div>
-            <div className="mb-1 text-[30px] font-semibold leading-none text-foreground md:text-[36px]">
+            <div className="section-kicker mb-3">
+              <div className="eyebrow">Portfolio</div>
+              <span className="briefing-badge">Personal snapshot</span>
+            </div>
+            <div className="mb-1 text-[30px] font-semibold leading-none tracking-[-0.03em] text-foreground md:text-[38px]">
               ${portfolioMetrics.portfolioValue.toLocaleString()}
             </div>
 
             <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="text-xs font-mono text-muted-foreground">今日</span>
+              <span className="text-xs text-muted-foreground">今日</span>
               <span
-                className={`text-[15px] font-medium font-mono tabular-nums ${
+                className={`text-[15px] font-medium tabular-nums ${
                   portfolioMetrics.dailyChangePercent >= 0 ? "text-emerald-400" : "text-rose-400"
                 }`}
               >
@@ -218,7 +218,7 @@ export default function PortfolioHero({
                 {portfolioMetrics.dailyChangePercent.toFixed(2)}%
               </span>
               <span
-                className={`text-xs font-mono tabular-nums opacity-70 ${
+                className={`text-xs tabular-nums opacity-70 ${
                   portfolioMetrics.dailyChangePercent >= 0 ? "text-emerald-400" : "text-rose-400"
                 }`}
               >
@@ -227,10 +227,10 @@ export default function PortfolioHero({
                   maximumFractionDigits: 0,
                 })}
               </span>
-              <span className="text-xs font-mono text-muted-foreground/50">年内</span>
+              <span className="text-xs text-muted-foreground/60">年内</span>
               {portfolioMetrics.ytdChangeAmount !== null && portfolioMetrics.ytdPercent !== null ? (
                 <span
-                  className={`text-xs font-mono tabular-nums ${
+                  className={`text-xs tabular-nums ${
                     portfolioMetrics.ytdPercent >= 0 ? "text-emerald-400/90" : "text-rose-400/90"
                   }`}
                 >
@@ -238,12 +238,16 @@ export default function PortfolioHero({
                   {portfolioMetrics.ytdPercent.toFixed(2)}%
                 </span>
               ) : (
-                <span className="text-xs font-mono text-muted-foreground/45">未配置</span>
+                <span className="text-xs text-muted-foreground/45">未配置</span>
               )}
             </div>
 
+            <p className="mb-4 max-w-lg text-sm leading-6 text-muted-foreground/78">
+              先看总仓位、当天波动和领涨领跌，再决定今天要不要打开更完整的市场页。
+            </p>
+
             {valueSeries && valueSeries.items?.length > 0 && (
-              <div className="rounded-sm border border-border/45 bg-card/45 p-3">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                 <PortfolioSparkline
                   data={valueSeries}
                   currentValue={portfolioMetrics.portfolioValue}
@@ -261,25 +265,28 @@ export default function PortfolioHero({
               {renderMoverColumn("Top Losers", topNegative, false)}
             </div>
 
-            <div className="rounded-sm border border-border/45 bg-card/45 p-3">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
               <div className="mb-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground/75">
                 Feed status
               </div>
-              <div className="text-xs font-mono text-foreground/78">{updateInfo}</div>
+              <div className="text-xs text-foreground/78">{updateInfo}</div>
+              <div className="mt-2 text-xs leading-5 text-muted-foreground/70">
+                首页只保留今天最值得看的变化，深度判断放在票子详情页。
+              </div>
             </div>
 
             <div className="mt-auto flex flex-wrap justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setYtdDialogOpen(true)}
-                className="flex h-8 items-center gap-1 rounded-sm border border-border/45 bg-card/45 px-3 text-xs font-mono text-muted-foreground transition-colors hover:border-border/75 hover:text-foreground"
+                className="flex h-9 items-center gap-1 rounded-full border border-white/12 bg-white/5 px-4 text-xs font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
                 title="设置年初基准"
               >
-                <SlidersHorizontal className="h-3 w-3" /> YTD基准
+                <SlidersHorizontal className="h-3 w-3" /> YTD 基准
               </button>
               <HoldingsEditor
                 trigger={
-                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs font-mono font-normal">
+                  <Button variant="outline" size="sm" className="h-9 rounded-full px-4 text-xs font-medium">
                     <PencilIcon className="mr-1 h-3 w-3" /> 编辑仓位
                   </Button>
                 }
@@ -293,7 +300,7 @@ export default function PortfolioHero({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>设置年初基准</DialogTitle>
-            <DialogDescription>输入您期望的 YTD 起始市值（美元）。</DialogDescription>
+            <DialogDescription>输入你希望用来计算 YTD 的起始市值（美元）。</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <Input

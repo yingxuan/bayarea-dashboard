@@ -111,7 +111,7 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
   }
 
   return (
-    <div className="rounded-sm border border-border/35 bg-card/45 p-4">
+    <div className="editorial-card rounded-[1.15rem] p-4">
       <div className="mb-4 border-b border-border/25 pb-3">
         <div className="eyebrow mb-2">Community Pulse</div>
         <h3 className="text-[15px] font-semibold text-foreground/92">社区热聊</h3>
@@ -129,7 +129,7 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
               target="_blank"
               rel="noopener noreferrer"
               onClick={handleExternalLinkClick}
-              className="group flex items-start gap-3 rounded-sm border border-border/25 bg-background/35 px-3 py-3 transition-all hover:border-primary/35 hover:bg-background/55"
+              className="group flex items-start gap-3 rounded-[0.95rem] border border-border/25 bg-background/35 px-3 py-3 transition-all hover:border-primary/35 hover:bg-background/55"
             >
               <span className={`shrink-0 text-[10px] uppercase tracking-[0.14em] ${source.tone}`}>
                 {source.label}

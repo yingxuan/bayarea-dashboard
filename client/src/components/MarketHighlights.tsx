@@ -94,7 +94,7 @@ export default function MarketHighlights({ marketNews }: MarketHighlightsProps) 
   ];
 
   return (
-    <div className="content-list divide-y divide-border/20 rounded-sm px-2 py-1">
+    <div className="editorial-list divide-y divide-border/20 rounded-[1rem] px-3 py-2">
       {allItems.length > 0 ? (
         allItems.map((item) => (
           <a
@@ -103,10 +103,10 @@ export default function MarketHighlights({ marketNews }: MarketHighlightsProps) 
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleExternalLinkClick}
-            className="group flex items-baseline gap-3 rounded-sm px-2 py-2.5 transition-colors hover:bg-muted/30"
+            className="group flex items-start gap-3 rounded-[0.9rem] px-3 py-3 transition-colors hover:bg-white/6"
           >
             <span
-              className={`shrink-0 text-[11px] font-mono ${
+              className={`mt-0.5 shrink-0 text-[11px] font-mono ${
                 item.source === "HN" ? "text-orange-400/70" : "text-muted-foreground/65"
               }`}
             >
@@ -118,7 +118,7 @@ export default function MarketHighlights({ marketNews }: MarketHighlightsProps) 
                 </>
               )}
             </span>
-            <span className="min-w-0 line-clamp-1 text-[13px] leading-tight text-foreground/88 transition-colors group-hover:text-primary">
+            <span className="min-w-0 flex-1 text-[13px] leading-6 text-foreground/88 transition-colors group-hover:text-primary">
               {item.title}
             </span>
           </a>

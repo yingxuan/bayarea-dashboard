@@ -53,7 +53,7 @@ export default function LayoffsWidget() {
   return (
     <div>
       <SectionHeader title="裁员 & 找工" tone="market" />
-      <div className="content-list divide-y divide-border/20 rounded-sm px-2 py-1">
+      <div className="editorial-list divide-y divide-border/20 rounded-[1rem] px-3 py-2">
         {items.slice(0, 5).map((item, idx) => (
           <a
             key={`${item.url}-${idx}`}
@@ -61,12 +61,12 @@ export default function LayoffsWidget() {
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleExternalLinkClick}
-            className="group flex items-baseline gap-2 rounded-sm px-2 py-2.5 transition-colors hover:bg-muted/30"
+            className="group flex items-start gap-3 rounded-[0.9rem] px-3 py-3 transition-colors hover:bg-white/6"
           >
-            <span className="shrink-0 text-[10px] font-mono leading-tight text-rose-400/85">
+            <span className="mt-0.5 shrink-0 text-[10px] font-mono leading-tight text-rose-400/85">
               {item.source}
             </span>
-            <span className="min-w-0 flex-1 line-clamp-1 text-[13px] leading-tight text-foreground/88 transition-colors group-hover:text-primary">
+            <span className="min-w-0 flex-1 text-[13px] leading-6 text-foreground/88 transition-colors group-hover:text-primary">
               {item.title}
             </span>
             {item.publishedAt ? (

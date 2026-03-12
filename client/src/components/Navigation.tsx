@@ -36,35 +36,35 @@ export default function Navigation() {
   }, [location]);
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-xl">
+    <nav className="app-nav sticky top-0 z-50 backdrop-blur-xl">
       <div className="container">
         <div className="flex h-16 items-center justify-between gap-3">
           <Link href="/">
             <div className="flex items-center gap-3 cursor-pointer">
-              <div className="flex h-9 w-9 items-center justify-center rounded-sm border border-primary/35 bg-primary/10 text-[11px] font-mono font-semibold tracking-[0.18em] text-primary shadow-[0_0_18px_rgba(0,180,255,0.12)]">
+              <div className="brand-mark flex h-10 w-10 items-center justify-center rounded-2xl text-[11px] font-semibold tracking-[0.18em]">
                 BA
               </div>
               <div className="flex flex-col leading-none">
-                <div className="text-[15px] font-semibold font-mono tracking-wide text-foreground">
+                <div className="text-[15px] font-semibold tracking-[0.01em] text-foreground">
                   {t.nav.brand}
                 </div>
-                <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
-                  Daily decision panel
+                <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70">
+                  Daily decision helper
                 </div>
               </div>
             </div>
           </Link>
 
-          <div className="hidden md:flex items-center gap-2 rounded-sm border border-border/60 bg-card/60 p-1 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+          <div className="nav-surface hidden md:flex items-center gap-2 rounded-full p-1.5">
             {navItems.map((item) => {
               const isActive = location === item.path;
               return (
                 <Link key={item.path} href={item.path}>
                   <div
-                    className={`rounded-sm px-4 py-2 text-sm font-medium transition-all duration-150 ${
+                    className={`rounded-full px-4 py-2 text-sm font-medium transition-all duration-150 ${
                       isActive
-                        ? "bg-primary/12 text-primary shadow-[inset_0_0_0_1px_rgba(0,180,255,0.22)]"
-                        : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                        ? "bg-primary/14 text-primary shadow-[inset_0_0_0_1px_rgba(140,206,222,0.24)]"
+                        : "text-muted-foreground hover:bg-white/6 hover:text-foreground"
                     }`}
                   >
                     {item.label}
@@ -78,7 +78,7 @@ export default function Navigation() {
             <button
               type="button"
               onClick={toggleLang}
-              className="rounded-sm border border-border/60 bg-card/50 px-2 py-1 text-xs font-mono text-muted-foreground transition-colors hover:text-foreground"
+              className="nav-surface rounded-full px-2.5 py-1 text-xs font-mono text-muted-foreground transition-colors hover:text-foreground"
             >
               {lang === "zh" ? "EN" : "中"}
             </button>
@@ -89,7 +89,7 @@ export default function Navigation() {
             <button
               type="button"
               onClick={() => setMobileOpen((prev) => !prev)}
-              className="rounded-sm border border-border/60 bg-card/50 p-2 text-muted-foreground transition-colors hover:text-foreground"
+              className="nav-surface rounded-full p-2 text-muted-foreground transition-colors hover:text-foreground"
               aria-label={mobileOpen ? t.nav.closeMenu : t.nav.openMenu}
             >
               <svg
@@ -123,7 +123,7 @@ export default function Navigation() {
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="absolute left-0 right-0 top-16 z-50 overflow-hidden border-b border-border bg-background/95 backdrop-blur-xl"
+                  className="absolute left-0 right-0 top-16 z-50 overflow-hidden border-b border-border/40 bg-background/95 backdrop-blur-xl"
                 >
                   <div className="container flex flex-col gap-2 py-3">
                     {navItems.map((item) => {
@@ -131,10 +131,10 @@ export default function Navigation() {
                       return (
                         <Link key={item.path} href={item.path}>
                           <div
-                            className={`rounded-sm px-3 py-3 text-sm font-medium transition-colors ${
+                            className={`nav-surface rounded-2xl px-3 py-3 text-sm font-medium transition-colors ${
                               isActive
-                                ? "bg-primary/12 text-primary shadow-[inset_0_0_0_1px_rgba(0,180,255,0.22)]"
-                                : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                                ? "bg-primary/14 text-primary shadow-[inset_0_0_0_1px_rgba(140,206,222,0.24)]"
+                                : "text-muted-foreground hover:bg-white/6 hover:text-foreground"
                             }`}
                           >
                             {item.label}
@@ -147,7 +147,7 @@ export default function Navigation() {
                       <button
                         type="button"
                         onClick={toggleLang}
-                        className="rounded-sm border border-border/60 bg-card/50 px-2 py-1 text-xs font-mono text-muted-foreground transition-colors hover:text-foreground"
+                        className="nav-surface rounded-full px-2.5 py-1 text-xs font-mono text-muted-foreground transition-colors hover:text-foreground"
                       >
                         {lang === "zh" ? "EN" : "中"}
                       </button>

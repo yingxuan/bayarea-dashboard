@@ -1,14 +1,3 @@
-/**
- * Today Spend Carousels Component
- * Displays 2×2 grid: 奶茶/中餐, 夜宵/新店打卡
- * 
- * Requirements:
- * - 4 horizontal image carousels
- * - Each category shows 6 places
- * - Never show empty sections
- * - Uses local cache for instant loading
- */
-
 import { useEffect, useState } from "react";
 import SpendCarousel from "./SpendCarousel";
 import { usePlacesCache } from "@/hooks/usePlacesCache";
@@ -28,14 +17,11 @@ interface SpendPlace {
   badges?: string[];
 }
 
-// 2×2 grid: 奶茶/中餐, 夜宵/新店打卡
-const CATEGORIES = ['奶茶', '中餐', '夜宵', '新店打卡'] as const;
+const CATEGORIES = ["奶茶", "中餐", "夜宵", "新店打卡"] as const;
 
 export default function TodaySpendCarousels() {
-  // Use local cache hook - loads from IndexedDB immediately, NEVER calls Places API
-  const { placesByCategory, loading, cacheInfo, categoryOffsets, handleRefresh, debugByCategory } = usePlacesCache(
-    ['奶茶', '中餐', '夜宵', '新店打卡']
-  );
+  const { placesByCategory, loading, categoryOffsets, handleRefresh, debugByCategory } =
+    usePlacesCache(["奶茶", "中餐", "夜宵", "新店打卡"]);
   const [newPlacesState, setNewPlacesState] = useState<{
     status: "idle" | "loading" | "success" | "error";
     items: SpendPlace[];
@@ -44,6 +30,7 @@ export default function TodaySpendCarousels() {
 
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
       setNewPlacesState({ status: "loading", items: [] });
       try {
@@ -51,6 +38,7 @@ export default function TodaySpendCarousels() {
         if (!res.ok) {
           throw new Error(`status ${res.status}`);
         }
+
         const snapshot: {
           places: Array<{
             placeId: string;
@@ -62,12 +50,13 @@ export default function TodaySpendCarousels() {
             why?: string[];
           }>;
         } = await res.json();
+
         if (cancelled) return;
 
-        const WHY_LABEL_MAP: Record<string, string> = {
+        const whyLabelMap: Record<string, string> = {
           "recent review": "近期评价",
           "first seen within 90d": "新发现",
-          "growing": "好评增长",
+          growing: "好评增长",
           "high rating": "评分好",
           "possibly new": "疑似新开",
         };
@@ -75,20 +64,18 @@ export default function TodaySpendCarousels() {
         const mapped: SpendPlace[] = (snapshot.places || []).map((entry) => {
           const badges: string[] = [];
 
-          // "开业 X 月" badge from earliestReviewTime (highest priority)
           if (entry.earliestReviewTime) {
             const months = Math.floor(
               (Date.now() - new Date(entry.earliestReviewTime).getTime()) /
-                (1000 * 60 * 60 * 24 * 30)
+                (1000 * 60 * 60 * 24 * 30),
             );
             if (months <= 1) badges.push("刚开业");
             else if (months < 12) badges.push(`开业 ${months} 月`);
           }
 
-          // Translated why[] labels (fill up to 2 total)
-          for (const w of entry.why ?? []) {
+          for (const item of entry.why ?? []) {
             if (badges.length >= 2) break;
-            const label = WHY_LABEL_MAP[w];
+            const label = whyLabelMap[item];
             if (label) badges.push(label);
           }
 
@@ -98,7 +85,9 @@ export default function TodaySpendCarousels() {
             category: "新店打卡",
             rating: entry.rating ?? 0,
             user_ratings_total: entry.userRatingCount ?? 0,
-            maps_url: entry.placeId ? `https://www.google.com/maps/place/?q=place_id:${entry.placeId}` : "",
+            maps_url: entry.placeId
+              ? `https://www.google.com/maps/place/?q=place_id:${entry.placeId}`
+              : "",
             city: entry.formattedAddress ? entry.formattedAddress.split(",")[0] : "South Bay",
             photo_url: undefined,
             distance_miles: undefined,
@@ -106,43 +95,43 @@ export default function TodaySpendCarousels() {
             badges: badges.length > 0 ? badges : undefined,
           };
         });
+
         setNewPlacesState({
           status: "success",
           items: mapped,
-          message: mapped.length === 0 ? "暂无新开店铺，稍后再来看看。" : undefined,
+          message: mapped.length === 0 ? "暂时没有新的值得打卡店铺。" : undefined,
         });
-      } catch (error: any) {
+      } catch {
         if (cancelled) return;
         setNewPlacesState({
           status: "error",
           items: [],
-          message: "新店打卡暂时不可用，请稍后刷新。",
+          message: "新店数据暂时不可用，稍后再刷新。",
         });
       }
     })();
+
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Debug info (dev-only)
-  const isDev = import.meta.env.DEV;
-  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-  const debugMode = urlParams?.get('debug') === '1' || isDev;
-
-  // Handler for "换一批" button - cache-only rotation (no API calls)
   const handleRefreshCategory = async (category: string) => {
     await handleRefresh(category);
   };
 
   if (loading) {
     return (
-      <div className="flex flex-col md:grid md:grid-cols-2 gap-4 min-w-0">
+      <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
         {CATEGORIES.map((category) => (
-          <div key={category} className="rounded-sm border border-border/45 bg-card/70 p-3 md:p-4 min-h-[150px]">
+          <div
+            key={category}
+            className="rounded-[1.2rem] border border-white/10 bg-white/5 p-4 min-h-[170px]"
+          >
             <div className="animate-pulse">
-              <div className="mb-3 h-4 w-1/3 rounded bg-muted"></div>
-              <div className="h-24 rounded bg-muted"></div>
+              <div className="mb-3 h-4 w-1/3 rounded bg-muted" />
+              <div className="mb-3 h-4 w-2/3 rounded bg-muted/70" />
+              <div className="h-24 rounded-2xl bg-muted" />
             </div>
           </div>
         ))}
@@ -151,16 +140,14 @@ export default function TodaySpendCarousels() {
   }
 
   return (
-    <div className="flex flex-col md:grid md:grid-cols-2 gap-4 min-w-0">
+    <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
       {CATEGORIES.map((category) => {
-        const isNewCategory = category === '新店打卡';
+        const isNewCategory = category === "新店打卡";
         const places = isNewCategory ? newPlacesState.items : (placesByCategory[category] || []);
         const offset = categoryOffsets[category] || 0;
-        const info = cacheInfo[category];
-        
-        // Always render, even if empty (will show fallback cards)
+
         return (
-          <div key={category} className="min-w-0 relative">
+          <div key={category} className="relative min-w-0">
             <SpendCarousel
               category={category}
               places={places}
@@ -169,16 +156,10 @@ export default function TodaySpendCarousels() {
               debugInfo={debugByCategory?.[category]}
             />
             {isNewCategory && newPlacesState.message && (
-              <div className="mt-2 text-[10px] text-center text-foreground/70 px-2">
+              <div className="mt-2 px-2 text-center text-[11px] leading-5 text-muted-foreground/78">
                 {newPlacesState.message}
               </div>
             )}
-            {/* Debug info (dev-only) - only for non-新店打卡 categories */}
-            {/* {debugMode && info && category !== '新店打卡' && (
-              <div className="absolute top-1 right-1 text-[8px] font-mono bg-card/80 px-1 py-0.5 rounded border border-border/40 z-10">
-                {info.mode} | {info.cacheAgeDays !== undefined ? `${info.cacheAgeDays}d` : 'N/A'} | {info.poolSize || 0}
-              </div>
-            )} */}
           </div>
         );
       })}

@@ -19,13 +19,16 @@ export default function Piaozi() {
       <Navigation />
 
       <main className="w-full min-w-0">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-4 md:px-6 md:py-6">
-          <section className="hero-panel rounded-sm p-4 md:p-6">
+        <div className="route-shell mx-auto w-full max-w-6xl px-4 py-4 md:px-6 md:py-6">
+          <section className="hero-panel rounded-[1.4rem] p-4 md:p-6">
             <div className="flex flex-col gap-4">
               <BackToHomeLink />
-              <div className="grid gap-4 md:grid-cols-[1.25fr_0.8fr] md:items-end">
+              <div className="route-header">
                 <div className="min-w-0">
-                  <div className="eyebrow mb-3">Money Cockpit</div>
+                  <div className="section-kicker mb-3">
+                    <div className="eyebrow">Money Cockpit</div>
+                    <span className="briefing-badge">Portfolio-first</span>
+                  </div>
                   <h1 className="text-2xl font-semibold leading-tight text-foreground md:text-[34px] md:leading-[1.08]">
                     {t.piaozi.title}
                   </h1>
@@ -36,7 +39,7 @@ export default function Piaozi() {
                     从持仓、指数、市场线索到频道内容，把今天跟钱有关的判断集中在一页看完。
                   </p>
                 </div>
-                <div className="grid gap-3">
+                <div className="route-summary">
                   <div className="hero-pulse-card rounded-sm p-3">
                     <div className="text-[11px] uppercase tracking-[0.16em] text-cyan-300/75">
                       Portfolio

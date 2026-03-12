@@ -271,13 +271,16 @@ export default function Baoguo() {
       <Navigation />
 
       <main className="w-full min-w-0">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-4 md:px-6 md:py-6">
-          <section className="hero-panel rounded-sm p-4 md:p-6">
+        <div className="route-shell mx-auto w-full max-w-6xl px-4 py-4 md:px-6 md:py-6">
+          <section className="hero-panel rounded-[1.4rem] p-4 md:p-6">
             <div className="flex flex-col gap-4">
               <BackToHomeLink />
-              <div className="grid gap-4 md:grid-cols-[1.25fr_0.8fr] md:items-end">
+              <div className="route-header">
                 <div className="min-w-0">
-                  <div className="eyebrow mb-3">Work Briefing</div>
+                  <div className="section-kicker mb-3">
+                    <div className="eyebrow">Work Briefing</div>
+                    <span className="briefing-badge">Career radar</span>
+                  </div>
                   <h1 className="text-2xl font-semibold leading-tight text-foreground md:text-[34px] md:leading-[1.08]">
                     {t.baoguo.title}
                   </h1>
@@ -288,7 +291,7 @@ export default function Baoguo() {
                     把裁员帖、找工讨论和社区情绪合成可解释的判断层，减少被单条热帖带偏的概率。
                   </p>
                 </div>
-                <div className="grid gap-3">
+                <div className="route-summary">
                   <div className="hero-pulse-card rounded-sm p-3">
                     <div className={`text-[11px] uppercase tracking-[0.16em] ${temperatureTone}`}>
                       Temperature

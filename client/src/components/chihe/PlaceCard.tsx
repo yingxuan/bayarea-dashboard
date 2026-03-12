@@ -47,11 +47,11 @@ const CATEGORY_FALLBACK_IMAGES: Record<string, string[]> = {
 };
 
 function getFallbackImageUrl(place: SpendPlace): string {
-  const itemIdentity = place.id || `${place.name}_${place.city}`;
+  const seed = `${place.id || ""}-${place.name}-${place.city}`;
   let hash = 0;
-  for (let i = 0; i < itemIdentity.length; i++) {
-    hash = (hash << 5) - hash + itemIdentity.charCodeAt(i);
-    hash &= hash;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash << 5) - hash + seed.charCodeAt(i);
+    hash |= 0;
   }
   const images = CATEGORY_FALLBACK_IMAGES[place.category] || CATEGORY_FALLBACK_IMAGES["中餐"];
   return images[Math.abs(hash) % images.length];
@@ -80,7 +80,7 @@ export default function PlaceCard({
       .then((data) => {
         if (data?.photo_local_url) setFetchedPhoto(data.photo_local_url);
       })
-      .catch(() => {})
+      .catch(() => undefined)
       .finally(() => {
         setTimeout(() => inflight.delete(place.id), 5000);
       });
@@ -89,9 +89,9 @@ export default function PlaceCard({
   const imageUrl = staticPhoto || fetchedPhoto || getFallbackImageUrl(place);
 
   const sizeClasses = {
-    small: { image: "h-40", title: "text-[14px]", meta: "text-[11px]" },
-    medium: { image: "h-48", title: "text-[15px]", meta: "text-[11px]" },
-    large: { image: "h-56", title: "text-[16px]", meta: "text-[12px]" },
+    small: { image: "h-40", title: "text-[14px]" },
+    medium: { image: "h-48", title: "text-[15px]" },
+    large: { image: "h-56", title: "text-[16px]" },
   } as const;
 
   const classes = sizeClasses[size];
@@ -101,7 +101,7 @@ export default function PlaceCard({
       href={place.maps_url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex h-full flex-col overflow-hidden rounded-sm border border-border/35 bg-card/50 transition-all hover:-translate-y-1 hover:border-primary/45 hover:bg-card/75 hover:shadow-[0_24px_60px_rgba(0,0,0,0.18)]"
+      className="group flex h-full flex-col overflow-hidden rounded-[1.15rem] border border-white/10 bg-white/5 transition-all duration-200 hover:-translate-y-1 hover:border-white/22 hover:bg-white/[0.075] hover:shadow-[0_22px_48px_rgba(8,10,20,0.22)]"
     >
       <div className={`relative w-full overflow-hidden bg-muted ${classes.image}`}>
         <img
@@ -109,42 +109,50 @@ export default function PlaceCard({
           alt={place.name}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           loading="lazy"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            const fallback = CATEGORY_FALLBACK_IMAGES["中餐"][0];
+          onError={(event) => {
+            const target = event.target as HTMLImageElement;
+            const fallback = getFallbackImageUrl(place);
             if (target.src !== fallback) target.src = fallback;
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/78 via-black/28 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/74 via-black/18 to-transparent" />
 
-        <div className="absolute right-3 top-3 rounded-sm bg-black/55 p-1.5 text-white/92 opacity-0 transition-opacity group-hover:opacity-100">
-          <ExternalLink className="h-3.5 w-3.5" />
-        </div>
-
-        <div className="absolute left-3 right-3 top-3 flex flex-wrap gap-2">
+        <div className="absolute left-3 right-3 top-3 flex flex-wrap gap-1.5">
           {showCategory ? (
-            <span className="rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-white/80">
+            <span className="rounded-full border border-white/14 bg-black/32 px-2.5 py-1 text-[10px] text-white/82 backdrop-blur-sm">
               {place.category}
             </span>
           ) : null}
           {place.badges?.slice(0, 2).map((badge) => (
             <span
               key={badge}
-              className="rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] text-white/84"
+              className="rounded-full border border-white/14 bg-black/32 px-2.5 py-1 text-[10px] text-white/84 backdrop-blur-sm"
             >
               {badge}
             </span>
           ))}
         </div>
+
+        <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/34 text-white/82 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
+          <ExternalLink className="h-3.5 w-3.5" />
+        </div>
       </div>
 
       <div className="flex flex-1 flex-col p-4">
-        <div className="text-[11px] uppercase tracking-[0.16em] text-amber-300/75">{place.city}</div>
+        <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground/75">
+          {place.city}
+        </div>
         <h3 className={`mt-2 line-clamp-2 font-semibold leading-6 text-foreground ${classes.title}`}>
           {place.name}
         </h3>
 
-        <div className={`mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-muted-foreground ${classes.meta}`}>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground/80">
+          {place.badges?.[0]
+            ? `今天适合因为“${place.badges[0]}”去试试。`
+            : "适合快速做决定，不用再多翻一轮点评。"}
+        </p>
+
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-[12px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
             <span className="tabular-nums">{place.rating > 0 ? place.rating.toFixed(1) : "-"}</span>
@@ -159,9 +167,9 @@ export default function PlaceCard({
           ) : null}
         </div>
 
-        <div className="mt-4 pt-3 text-xs text-muted-foreground/82">
-          <span className="decision-link inline-flex items-center gap-2 p-0 text-xs">
-            在地图里打开
+        <div className="mt-4 pt-3">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-foreground/82 transition-colors group-hover:border-primary/30 group-hover:text-primary">
+            打开地图
             <ExternalLink className="h-3.5 w-3.5" />
           </span>
         </div>
