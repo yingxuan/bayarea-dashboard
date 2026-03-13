@@ -6,7 +6,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { config } from "@/config";
 
 const STORAGE_KEY = "uf_fortune_birthdate";
-const DEFAULT_DISCLAIMER = "本功能仅供娱乐参考，不构成医疗、法律或投资建议。";
 
 const DAILY_QUOTES = [
   "复利是慢节奏生活里最少被高估的力量。",
@@ -54,7 +53,7 @@ const statusLabelMap: Record<BehaviorRadarEntry["status"], string> = {
   actionable: "可行动",
   risk: "风险",
   safe: "安全",
-  caution: "需谨慎",
+  caution: "谨慎",
 };
 
 export default function FortuneWidget() {
@@ -65,8 +64,6 @@ export default function FortuneWidget() {
   const [modalOpen, setModalOpen] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
   const [expanded, setExpanded] = useState(false);
-
-  const disclaimerText = data?.disclaimer || DEFAULT_DISCLAIMER;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -135,14 +132,14 @@ export default function FortuneWidget() {
     !!data?.behaviorRadar;
 
   const statusMessage = error
-    ? "今日运势读取失败"
+    ? "读取失败"
     : !birthdate
       ? "先设置生日"
       : loading
-        ? "生成中..."
+        ? "生成中"
         : fortuneValid
-          ? "今日已生成"
-          : "数据异常，请稍后重试";
+          ? "已生成"
+          : "数据异常";
 
   const isLowImportance = data?.importance === "low";
   const importanceTone =
@@ -172,13 +169,9 @@ export default function FortuneWidget() {
             className="flex min-w-0 flex-1 items-start gap-3 text-left"
           >
             <div className="min-w-0 flex-1">
-              <div className="section-kicker mb-3">
-                <div className="eyebrow">Fortune</div>
-                <span className="briefing-badge">Lightweight ritual</span>
-              </div>
-              <div className="text-[15px] font-semibold text-foreground">今天的情绪和节奏提示</div>
+              <div className="mb-2 text-[15px] font-semibold text-foreground">今日运势</div>
               <div
-                className={`mt-2 text-sm leading-6 ${
+                className={`text-sm leading-6 ${
                   isLowImportance ? "text-muted-foreground" : "text-foreground/90"
                 }`}
               >
@@ -214,10 +207,6 @@ export default function FortuneWidget() {
               className="overflow-hidden"
             >
               <div className="mt-4 border-t border-white/10 pt-4">
-                <div className="mb-3 text-xs text-muted-foreground/72">
-                  这是一个轻量 daily ritual，用来给今天一个节奏感，不是严肃预测工具。
-                </div>
-
                 {fortuneValid && data ? (
                   <div className="space-y-4 text-sm text-foreground">
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[15px] leading-7">
@@ -239,22 +228,10 @@ export default function FortuneWidget() {
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                      <span className="signal-chip">
-                        <span className="signal-dot bg-cyan-400 text-cyan-400" />
-                        {data.timeHint}
-                      </span>
-                      {isLowImportance && (
-                        <span className="signal-chip">
-                          <span className="signal-dot bg-slate-400 text-slate-400" />
-                          适合轻决策日
-                        </span>
-                      )}
-                    </div>
+                    <div className="text-xs text-muted-foreground/72">{data.timeHint}</div>
 
                     {data.behaviorRadar && (
                       <div className="space-y-2 rounded-2xl border border-white/10 bg-white/5 p-3">
-                        <div className="eyebrow mb-2">Behavior Radar</div>
                         {[
                           { key: "investment", label: "投资" },
                           { key: "travel", label: "出行" },
@@ -283,17 +260,11 @@ export default function FortuneWidget() {
                   </div>
                 ) : !birthdate ? (
                   <div className="text-sm leading-6 text-muted-foreground">
-                    点击右上角设置生日，解锁今天的运势提示和行为雷达。
+                    点击右上角设置生日，解锁今天的运势提示。
                   </div>
                 ) : (
-                  <div className="text-sm leading-6 text-destructive">
-                    今日内容还没准备好，稍后再试。
-                  </div>
+                  <div className="text-sm leading-6 text-destructive">今日内容还没准备好，稍后再试。</div>
                 )}
-
-                <div className="mt-4 text-[11px] leading-5 text-muted-foreground/75">
-                  {disclaimerText}
-                </div>
               </div>
             </motion.div>
           )}

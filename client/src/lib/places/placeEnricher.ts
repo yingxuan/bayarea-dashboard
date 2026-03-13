@@ -10,6 +10,7 @@
  */
 
 import { config } from '@/config';
+import { get, set } from 'idb-keyval';
 import { getEnrichmentKey, getEnriched, setEnriched, type EnrichedPlace } from './enrichmentCache';
 
 const MAX_ENRICH_CALLS = 6; // Total calls per session (includes both resolution + details)
@@ -45,7 +46,6 @@ function recordCall(): boolean {
  */
 async function isInCooldown(): Promise<boolean> {
   try {
-    const { get } = await import('idb-keyval');
     const cooldownUntil = await get<number>(COOLDOWN_KEY);
     if (!cooldownUntil) return false;
     return Date.now() < cooldownUntil;
@@ -59,7 +59,6 @@ async function isInCooldown(): Promise<boolean> {
  */
 async function setCooldown(days: number = 7): Promise<void> {
   try {
-    const { set } = await import('idb-keyval');
     const cooldownUntil = Date.now() + days * 24 * 60 * 60 * 1000;
     await set(COOLDOWN_KEY, cooldownUntil);
     console.log(`[PlaceEnricher] Cooldown set until ${new Date(cooldownUntil).toISOString()}`);
@@ -289,7 +288,6 @@ export async function getEnrichmentStats(): Promise<{
   const inCooldown = await isInCooldown();
   let cooldownUntil: number | null = null;
   try {
-    const { get } = await import('idb-keyval');
     cooldownUntil = (await get<number>(COOLDOWN_KEY)) || null;
   } catch (error) {
     // Ignore

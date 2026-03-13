@@ -55,13 +55,6 @@ const CATEGORY_FALLBACK_IMAGES: Record<string, string[]> = {
   ],
 };
 
-const CATEGORY_BLURB: Record<string, string> = {
-  奶茶: "适合顺路买、轻松解馋的一批店。",
-  中餐: "更稳妥的正餐选择，适合填饱和带人去吃。",
-  夜宵: "加班后还能接得住的一口热量。",
-  新店打卡: "最近更值得试的新选择，不用自己翻评论。",
-};
-
 const CATEGORY_CTA: Record<string, string> = {
   奶茶: "换一批奶茶",
   中餐: "换一批中餐",
@@ -123,16 +116,6 @@ function PlaceTile({
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-black/20 to-transparent" />
-        <div className="absolute left-3 right-3 top-3 flex flex-wrap gap-1.5">
-          {place.badges?.slice(0, 2).map((badge) => (
-            <span
-              key={badge}
-              className="rounded-full border border-white/14 bg-black/32 px-2.5 py-1 text-[10px] text-white/85 backdrop-blur-sm"
-            >
-              {badge}
-            </span>
-          ))}
-        </div>
         <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
           <div className="text-[15px] font-semibold leading-tight drop-shadow-md">{place.name}</div>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-white/78">
@@ -156,7 +139,6 @@ function PlaceTile({
           <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground/75">
             {place.city}
           </div>
-          <div className="mt-1 text-xs text-muted-foreground/82">在地图里打开</div>
         </div>
         <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/12 bg-white/6 text-foreground/72 transition-colors group-hover:border-primary/30 group-hover:text-primary">
           <ExternalLink className="h-3.5 w-3.5" />
@@ -196,18 +178,17 @@ function RandomTile({
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="eyebrow mb-2">Lucky Pick</div>
-          <div className="text-base font-semibold text-foreground">不知道吃什么时</div>
+          <div className="text-base font-semibold text-foreground">盲盒</div>
         </div>
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/14 text-primary">
           <Sparkles className={`h-4 w-4 ${picking ? "animate-pulse" : ""}`} />
         </div>
       </div>
       <div className="mt-5 text-sm leading-6 text-muted-foreground/82">
-        {picking ? "正在帮你摇一个更轻松的答案..." : "交给系统帮你随机挑一家，适合犹豫时快速出发。"}
+        {picking ? "随机中..." : "不想选就直接抽一家。"}
       </div>
       <div className="mt-6 inline-flex items-center gap-2 text-xs font-medium text-primary/88">
-        {picking ? "挑选中..." : "试试随机推荐"}
+        {picking ? "挑选中..." : "抽一家"}
       </div>
     </button>
   );
@@ -328,8 +309,8 @@ export default function SpendCarousel({
   if (places.length === 0) {
     return (
       <div className="rounded-[1.2rem] border border-white/10 bg-white/5 p-4">
-        <div className="eyebrow mb-2">{category}</div>
-        <div className="text-sm text-muted-foreground/78">这组推荐暂时还没准备好。</div>
+        <div className="text-sm font-medium text-foreground">{category}</div>
+        <div className="mt-2 text-sm text-muted-foreground/78">暂时没有可用推荐。</div>
       </div>
     );
   }
@@ -338,14 +319,7 @@ export default function SpendCarousel({
     <section className="overflow-hidden rounded-[1.2rem] border border-white/10 bg-white/5 p-4 md:p-5">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="section-kicker mb-2">
-            <div className="eyebrow">Eat</div>
-            <span className="briefing-badge">{category}</span>
-          </div>
           <h3 className="text-lg font-semibold text-foreground">{category}</h3>
-          <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground/78">
-            {CATEGORY_BLURB[category] || "今天这类店里更适合快速挑一家直接出门。"}
-          </p>
         </div>
 
         <div className="flex items-center gap-2">

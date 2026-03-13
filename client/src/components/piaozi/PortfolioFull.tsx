@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { PencilIcon, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowDownUp, PencilIcon, TrendingDown, TrendingUp } from "lucide-react";
 import { useAuthAwareHoldings, Holding } from "@/hooks/useAuthAwareHoldings";
 import { usePortfolioSummary, QuoteData } from "@/hooks/usePortfolioSummary";
 import { Button } from "@/components/ui/button";
@@ -22,11 +22,92 @@ interface HoldingWithQuote extends Holding {
   dailyChangePercent?: number;
 }
 
+interface MarketDataItem {
+  value: number | string;
+  change?: number;
+  change_percent?: number;
+  status?: "ok" | "stale" | "unavailable";
+}
+
+type SortKey =
+  | "ticker"
+  | "shares"
+  | "price"
+  | "marketValue"
+  | "dailyChange"
+  | "dailyChangePercent";
+
+type SortDirection = "asc" | "desc";
+
+function SortHeader({
+  label,
+  sortKey,
+  activeKey,
+  direction,
+  onClick,
+  align = "left",
+}: {
+  label: string;
+  sortKey: SortKey;
+  activeKey: SortKey;
+  direction: SortDirection;
+  onClick: (key: SortKey) => void;
+  align?: "left" | "right";
+}) {
+  const isActive = activeKey === sortKey;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(sortKey)}
+      className={`inline-flex items-center gap-1.5 text-xs transition-colors hover:text-foreground ${
+        align === "right" ? "ml-auto justify-end" : ""
+      } ${isActive ? "text-foreground" : "text-muted-foreground"}`}
+    >
+      <span>{label}</span>
+      <ArrowDownUp className={`h-3 w-3 ${isActive ? "opacity-100" : "opacity-45"}`} />
+      {isActive ? <span className="text-[10px] font-mono">{direction === "asc" ? "↑" : "↓"}</span> : null}
+    </button>
+  );
+}
+
+function getSortValue(holding: HoldingWithQuote, sortKey: SortKey) {
+  switch (sortKey) {
+    case "ticker":
+      return holding.ticker.toUpperCase();
+    case "shares":
+      return Number(holding.shares) || 0;
+    case "price":
+      return holding.quote?.price ?? Number.NEGATIVE_INFINITY;
+    case "marketValue":
+      return holding.marketValue ?? Number.NEGATIVE_INFINITY;
+    case "dailyChange":
+      return holding.dailyChange ?? Number.NEGATIVE_INFINITY;
+    case "dailyChangePercent":
+      return holding.dailyChangePercent ?? Number.NEGATIVE_INFINITY;
+    default:
+      return 0;
+  }
+}
+
+function formatMarketValue(value: number | string) {
+  if (typeof value !== "number") return value;
+  return value >= 1000 ? value.toLocaleString() : value.toFixed(2);
+}
+
 export default function PortfolioFull() {
   const { holdings, isLoaded, ytdBaseline } = useAuthAwareHoldings();
   const [quotesData, setQuotesData] = useState<Record<string, QuoteData>>({});
   const [valueSeries, setValueSeries] = useState<any>(null);
+  const [marketData, setMarketData] = useState<{
+    spy?: MarketDataItem;
+    qqq?: MarketDataItem;
+    btc?: MarketDataItem;
+    gold?: MarketDataItem;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sortKey, setSortKey] = useState<SortKey>("marketValue");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   useEffect(() => {
     if (!isLoaded || holdings.length === 0) {
@@ -110,6 +191,29 @@ export default function PortfolioFull() {
     return () => clearInterval(interval);
   }, [holdings, isLoaded]);
 
+  useEffect(() => {
+    const fetchMarketData = async () => {
+      try {
+        const response = await fetch(`${config.apiBaseUrl}/api/market`, {
+          signal: AbortSignal.timeout(10000),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Market API error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        setMarketData(result.data || null);
+      } catch (error) {
+        console.error("[PortfolioFull] Failed to fetch market data:", error);
+      }
+    };
+
+    fetchMarketData();
+    const interval = setInterval(fetchMarketData, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const portfolioMetrics = usePortfolioSummary(holdings, quotesData, ytdBaseline);
 
   const holdingsWithQuotes: HoldingWithQuote[] = useMemo(() => {
@@ -152,68 +256,102 @@ export default function PortfolioFull() {
       .sort((a, b) => (b.marketValue || 0) - (a.marketValue || 0));
   }, [holdings, quotesData]);
 
+  const sortedHoldings = useMemo(() => {
+    return [...holdingsWithQuotes].sort((a, b) => {
+      const aValue = getSortValue(a, sortKey);
+      const bValue = getSortValue(b, sortKey);
+
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        const result = aValue.localeCompare(bValue);
+        return sortDirection === "asc" ? result : -result;
+      }
+
+      const numericA = Number(aValue);
+      const numericB = Number(bValue);
+
+      if (numericA === numericB) {
+        return a.ticker.localeCompare(b.ticker);
+      }
+
+      return sortDirection === "asc" ? numericA - numericB : numericB - numericA;
+    });
+  }, [holdingsWithQuotes, sortDirection, sortKey]);
+
+  const marketCards = useMemo(() => {
+    if (!marketData) return [];
+
+    return [
+      { code: "SPY", item: marketData.spy },
+      { code: "QQQ", item: marketData.qqq },
+      { code: "BTC", item: marketData.btc },
+      { code: "GOLD", item: marketData.gold },
+    ]
+      .filter((entry) => entry.item)
+      .map(({ code, item }) => ({
+        code,
+        value: item?.value ?? "Unavailable",
+        changePercent: item?.change_percent !== undefined ? Number(item.change_percent) : undefined,
+        status: item?.status ?? "unavailable",
+      }));
+  }, [marketData]);
+
+  const handleSort = (nextKey: SortKey) => {
+    if (sortKey === nextKey) {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setSortKey(nextKey);
+    setSortDirection(nextKey === "ticker" ? "asc" : "desc");
+  };
+
   const updateInfo = useMemo(() => {
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, "0");
     const minutes = now.getMinutes().toString().padStart(2, "0");
-    return `更新 ${hours}:${minutes} · live`;
+    return `更新 ${hours}:${minutes}`;
   }, []);
 
   if (!isLoaded || loading) {
     return (
-      <div className="section-shell section-shell-market rounded-sm p-5">
+      <section className="section-shell section-shell-market rounded-[1.25rem] p-4 md:p-5">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 w-1/4 rounded bg-muted" />
+          <div className="h-8 w-32 rounded bg-muted" />
           <div className="h-48 rounded bg-muted" />
-          <div className="h-32 rounded bg-muted" />
+          <div className="h-40 rounded bg-muted" />
         </div>
-      </div>
+      </section>
     );
   }
 
   if (holdings.length === 0) {
     return (
-      <div className="section-shell section-shell-market rounded-sm p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <div className="eyebrow mb-2">Portfolio</div>
-            <h2 className="text-xl font-semibold text-cyan-300/90">我的持仓</h2>
-          </div>
+      <section className="section-shell section-shell-market rounded-[1.25rem] p-4 md:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold text-cyan-300/90">持仓</h2>
           <HoldingsEditor
             trigger={
-              <Button variant="outline" size="sm" className="h-8 px-3 text-xs font-mono font-normal">
+              <Button variant="outline" size="sm" className="h-8 px-3 text-xs font-medium">
                 <PencilIcon className="mr-1 h-3 w-3" /> 编辑仓位
               </Button>
             }
           />
         </div>
-        <div className="py-12 text-center text-muted-foreground">
-          <p>暂未配置持仓</p>
-          <p className="mt-2 text-sm">点击“编辑仓位”添加您的投资组合</p>
-        </div>
-      </div>
+        <div className="py-12 text-center text-muted-foreground">暂未配置持仓</div>
+      </section>
     );
   }
 
   return (
-    <div className="section-shell section-shell-market rounded-sm">
-      <div className="border-b border-border/30 p-5">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <div className="eyebrow mb-2">Portfolio</div>
-            <h2 className="text-xl font-semibold text-cyan-300/90">我的持仓</h2>
-            <p className="mt-1 text-sm text-muted-foreground/72">
-              把总市值、日内变化和仓位明细放在同一屏里看。
-            </p>
-          </div>
+    <section className="section-shell section-shell-market rounded-[1.25rem]">
+      <div className="border-b border-border/30 p-4 md:p-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <h2 className="text-xl font-semibold text-cyan-300/90">持仓</h2>
           <div className="flex items-center gap-3">
-            <span className="signal-chip">
-              <span className="signal-dot bg-cyan-400 text-cyan-400" />
-              {updateInfo}
-            </span>
+            <span className="text-xs text-muted-foreground/65">{updateInfo}</span>
             <HoldingsEditor
               trigger={
-                <Button variant="outline" size="sm" className="h-8 px-3 text-xs font-mono font-normal">
+                <Button variant="outline" size="sm" className="h-8 px-3 text-xs font-medium">
                   <PencilIcon className="mr-1 h-3 w-3" /> 编辑仓位
                 </Button>
               }
@@ -222,92 +360,87 @@ export default function PortfolioFull() {
         </div>
       </div>
 
-      <div className="border-b border-border/30 p-5">
-        <div className="grid gap-5 md:grid-cols-[1.3fr_0.9fr]">
-          <div className="space-y-4">
-            <div className="rounded-sm border border-border/45 bg-card/45 p-4">
-              <div className="eyebrow mb-2">Total Value</div>
-              <div className="text-[34px] font-semibold leading-none text-foreground md:text-[44px]">
-                ${portfolioMetrics.portfolioValue.toLocaleString()}
-              </div>
-              <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-mono text-muted-foreground">Today</span>
+      <div className="border-b border-border/30 p-4 md:p-5">
+        <div className="grid gap-4 xl:grid-cols-[1.45fr_0.85fr]">
+          <div className="rounded-[1rem] border border-border/35 bg-card/40 p-4">
+            <div className="text-[34px] font-semibold leading-none text-foreground md:text-[44px]">
+              ${portfolioMetrics.portfolioValue.toLocaleString()}
+            </div>
+            <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <span className="text-xs text-muted-foreground">今日</span>
+              <span
+                className={`text-sm font-mono tabular-nums ${
+                  portfolioMetrics.dailyChangeAmount >= 0 ? "text-emerald-400" : "text-rose-400"
+                }`}
+              >
+                {portfolioMetrics.dailyChangeAmount >= 0 ? "+" : "-"}$
+                {Math.abs(portfolioMetrics.dailyChangeAmount).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}{" "}
+                ({portfolioMetrics.dailyChangePercent >= 0 ? "+" : ""}
+                {portfolioMetrics.dailyChangePercent.toFixed(2)}%)
+              </span>
+              {portfolioMetrics.ytdChangeAmount !== null && portfolioMetrics.ytdPercent !== null ? (
+                <>
+                  <span className="text-xs text-muted-foreground">YTD</span>
                   <span
-                    className={`font-mono tabular-nums ${
-                      portfolioMetrics.dailyChangeAmount >= 0 ? "text-emerald-400" : "text-rose-400"
+                    className={`text-sm font-mono tabular-nums ${
+                      portfolioMetrics.ytdChangeAmount >= 0 ? "text-emerald-400" : "text-rose-400"
                     }`}
                   >
-                    {portfolioMetrics.dailyChangeAmount >= 0 ? "+" : "-"}$
-                    {Math.abs(portfolioMetrics.dailyChangeAmount).toLocaleString(undefined, {
+                    {portfolioMetrics.ytdChangeAmount >= 0 ? "+" : "-"}$
+                    {Math.abs(portfolioMetrics.ytdChangeAmount).toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}{" "}
-                    ({portfolioMetrics.dailyChangePercent >= 0 ? "+" : ""}
-                    {portfolioMetrics.dailyChangePercent.toFixed(2)}%)
+                    ({portfolioMetrics.ytdPercent >= 0 ? "+" : ""}
+                    {portfolioMetrics.ytdPercent.toFixed(2)}%)
                   </span>
-                </div>
-                {portfolioMetrics.ytdChangeAmount !== null && portfolioMetrics.ytdPercent !== null && (
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-xs font-mono text-muted-foreground">YTD</span>
-                    <span
-                      className={`font-mono tabular-nums ${
-                        portfolioMetrics.ytdChangeAmount >= 0 ? "text-emerald-400" : "text-rose-400"
-                      }`}
-                    >
-                      {portfolioMetrics.ytdChangeAmount >= 0 ? "+" : "-"}$
-                      {Math.abs(portfolioMetrics.ytdChangeAmount).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}{" "}
-                      ({portfolioMetrics.ytdPercent >= 0 ? "+" : ""}
-                      {portfolioMetrics.ytdPercent.toFixed(2)}%)
-                    </span>
-                  </div>
-                )}
-              </div>
+                </>
+              ) : null}
             </div>
 
-            <div className="rounded-sm border border-border/45 bg-card/45 p-4">
-              <div className="eyebrow mb-2">Intraday Trend</div>
+            <div className="mt-4 rounded-[1rem] border border-white/10 bg-white/5 p-3">
               <PortfolioSparkline
                 data={valueSeries}
                 currentValue={portfolioMetrics.portfolioValue}
                 dailyChangePercent={portfolioMetrics.dailyChangePercent}
-                width={340}
-                height={88}
+                width={420}
+                height={108}
               />
             </div>
           </div>
 
-          <div className="rounded-sm border border-border/45 bg-card/45 p-4">
-            <div className="eyebrow mb-2">Position Summary</div>
-            <div className="grid gap-3">
-              {holdingsWithQuotes.slice(0, 6).map((holding) => {
-                const isPositive = (holding.dailyChangePercent ?? 0) >= 0;
+          <div className="rounded-[1rem] border border-border/35 bg-card/40 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground/92">大盘 & 避险</h3>
+              <span className="text-[11px] font-mono text-muted-foreground/65">live</span>
+            </div>
+            <div className="grid gap-2">
+              {marketCards.map((entry) => {
+                const positive = (entry.changePercent ?? 0) >= 0;
+
                 return (
                   <div
-                    key={holding.id}
-                    className="grid grid-cols-[56px_1fr_auto] items-baseline gap-3 border-b border-border/25 pb-2 last:border-b-0"
+                    key={entry.code}
+                    className="rounded-sm border border-border/20 bg-background/35 px-3 py-3"
                   >
-                    <span className="text-sm font-medium font-mono text-foreground">
-                      {holding.ticker}
-                    </span>
-                    <span className="text-xs font-mono text-muted-foreground/70">
-                      {(holding.marketValue || 0).toLocaleString(undefined, {
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0,
-                      })}
-                    </span>
-                    <span
-                      className={`text-xs font-mono tabular-nums ${
-                        isPositive ? "text-emerald-400" : "text-rose-400"
-                      }`}
-                    >
-                      {holding.dailyChangePercent !== undefined
-                        ? `${isPositive ? "+" : ""}${holding.dailyChangePercent.toFixed(2)}%`
-                        : "—"}
-                    </span>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-foreground">{entry.code}</span>
+                      <span
+                        className={`text-xs font-mono tabular-nums ${
+                          positive ? "text-emerald-400" : "text-rose-400"
+                        }`}
+                      >
+                        {entry.changePercent !== undefined
+                          ? `${positive ? "+" : ""}${entry.changePercent.toFixed(2)}%`
+                          : "--"}
+                      </span>
+                    </div>
+                    <div className="mt-2 text-xl font-semibold font-mono tabular-nums text-foreground">
+                      {formatMarketValue(entry.value)}
+                    </div>
                   </div>
                 );
               })}
@@ -316,29 +449,78 @@ export default function PortfolioFull() {
         </div>
       </div>
 
-      <div className="p-5">
-        <div className="mb-3">
-          <div className="eyebrow mb-2">Holdings</div>
-          <h3 className="text-[15px] font-semibold text-foreground/88">持仓明细</h3>
-        </div>
-        <div className="overflow-x-auto rounded-sm border border-border/35 bg-card/35">
+      <div className="p-4 md:p-5">
+        <div className="overflow-x-auto rounded-[1rem] border border-border/35 bg-card/35">
           <Table>
             <TableHeader>
               <TableRow className="border-border/35">
-                <TableHead className="font-mono text-xs">代码</TableHead>
-                <TableHead className="text-right font-mono text-xs">股数</TableHead>
-                <TableHead className="text-right font-mono text-xs">现价</TableHead>
-                <TableHead className="text-right font-mono text-xs">市值</TableHead>
-                <TableHead className="text-right font-mono text-xs">今日涨跌</TableHead>
-                <TableHead className="text-right font-mono text-xs">涨跌%</TableHead>
+                <TableHead className="text-xs">
+                  <SortHeader
+                    label="代码"
+                    sortKey="ticker"
+                    activeKey={sortKey}
+                    direction={sortDirection}
+                    onClick={handleSort}
+                  />
+                </TableHead>
+                <TableHead className="text-right text-xs">
+                  <SortHeader
+                    label="股数"
+                    sortKey="shares"
+                    activeKey={sortKey}
+                    direction={sortDirection}
+                    onClick={handleSort}
+                    align="right"
+                  />
+                </TableHead>
+                <TableHead className="text-right text-xs">
+                  <SortHeader
+                    label="现价"
+                    sortKey="price"
+                    activeKey={sortKey}
+                    direction={sortDirection}
+                    onClick={handleSort}
+                    align="right"
+                  />
+                </TableHead>
+                <TableHead className="text-right text-xs">
+                  <SortHeader
+                    label="市值"
+                    sortKey="marketValue"
+                    activeKey={sortKey}
+                    direction={sortDirection}
+                    onClick={handleSort}
+                    align="right"
+                  />
+                </TableHead>
+                <TableHead className="text-right text-xs">
+                  <SortHeader
+                    label="今日涨跌"
+                    sortKey="dailyChange"
+                    activeKey={sortKey}
+                    direction={sortDirection}
+                    onClick={handleSort}
+                    align="right"
+                  />
+                </TableHead>
+                <TableHead className="text-right text-xs">
+                  <SortHeader
+                    label="涨跌%"
+                    sortKey="dailyChangePercent"
+                    activeKey={sortKey}
+                    direction={sortDirection}
+                    onClick={handleSort}
+                    align="right"
+                  />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {holdingsWithQuotes.map((holding) => {
+              {sortedHoldings.map((holding) => {
                 const isPositive = (holding.dailyChangePercent ?? 0) >= 0;
                 return (
                   <TableRow key={holding.id} className="border-border/25">
-                    <TableCell className="font-mono font-medium">{holding.ticker}</TableCell>
+                    <TableCell className="font-medium">{holding.ticker}</TableCell>
                     <TableCell className="text-right font-mono tabular-nums">
                       {holding.shares.toLocaleString()}
                     </TableCell>
@@ -398,6 +580,6 @@ export default function PortfolioFull() {
           </Table>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

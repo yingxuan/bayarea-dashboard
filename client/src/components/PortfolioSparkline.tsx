@@ -1,17 +1,8 @@
-/**
- * Portfolio Sparkline Component
- * Google Finance-style mini sparkline for portfolio value trend
- * - SVG line chart with gradient fill
- * - No axes, ticks, or legend
- * - Green for gains, red for losses
- * - Shows source/status in corner
- */
-
 import { useMemo } from "react";
 
 interface ValueDataPoint {
-  t: string; // ISO 8601 timestamp
-  v: number; // Portfolio value
+  t: string;
+  v: number;
 }
 
 interface ModulePayload<T> {
@@ -27,8 +18,19 @@ interface PortfolioSparklineProps {
   data: ModulePayload<ValueDataPoint> | null;
   currentValue: number;
   dailyChangePercent: number;
-  width?: number; // Desktop width
+  width?: number;
   height?: number;
+}
+
+function formatClockLabel(iso?: string) {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 }
 
 export default function PortfolioSparkline({
@@ -38,71 +40,110 @@ export default function PortfolioSparkline({
   width = 200,
   height = 40,
 }: PortfolioSparklineProps) {
-  const { pathData, areaPathData, color, fillColor, statusText } = useMemo(() => {
-    if (!data || !data.items || data.items.length === 0) {
-      return { pathData: '', areaPathData: '', color: '', fillColor: '', statusText: '' };
+  const sparkline = useMemo(() => {
+    const rawItems = data?.items;
+    const points = Array.isArray(rawItems)
+      ? rawItems.filter(
+          (point) =>
+            point &&
+            typeof point.v === "number" &&
+            Number.isFinite(point.v) &&
+            typeof point.t === "string" &&
+            point.t.length > 0,
+        )
+      : [];
+
+    let statusText = "";
+    if (!data || points.length === 0) {
+      statusText = "暂无日内数据";
+    } else if (points.length < 2) {
+      statusText = "日内数据不足";
+    } else if (data.status === "failed") {
+      statusText = "日内曲线拉取失败";
+    } else if (data.source === "seed") {
+      statusText = data.note || "使用缓存数据";
+    } else if (data.status === "degraded") {
+      statusText = "数据延迟";
     }
 
-    const points = data.items;
-    const isPositive = dailyChangePercent >= 0;
-    const lineColor = isPositive ? '#4ade80' : '#f87171'; // green-400 : red-400
-    const fillColorValue = isPositive ? '#4ade80' : '#f87171';
+    if (points.length < 2) {
+      return {
+        hasChart: false,
+        pathData: "",
+        areaPathData: "",
+        baselineY: height / 2,
+        color: dailyChangePercent >= 0 ? "#4ade80" : "#f87171",
+        fillColor: dailyChangePercent >= 0 ? "#4ade80" : "#f87171",
+        statusText,
+        startLabel: "",
+        endLabel: "",
+        rangeLabel: "",
+      };
+    }
 
-    // Calculate min/max for scaling
-    const values = points.map(p => p.v);
+    const isPositive = dailyChangePercent >= 0;
+    const lineColor = isPositive ? "#4ade80" : "#f87171";
+    const fillColor = isPositive ? "#4ade80" : "#f87171";
+    const values = points.map((p) => p.v);
     const minValue = Math.min(...values);
     const maxValue = Math.max(...values);
-    const valueRange = maxValue - minValue || 1; // Avoid division by zero
+    const openingValue = points[0]?.v ?? currentValue;
+    const paddedMin = Math.min(minValue, openingValue);
+    const paddedMax = Math.max(maxValue, openingValue);
+    const valueRange = paddedMax - paddedMin || Math.max(Math.abs(openingValue) * 0.0025, 1);
+    const topPadding = height * 0.12;
+    const usableHeight = height * 0.76;
 
-    // Generate path data
+    const normalizeY = (value: number) =>
+      height - ((value - paddedMin) / valueRange) * usableHeight - topPadding;
+
     const pathPoints: string[] = [];
     const areaPoints: string[] = [];
-    
+
     points.forEach((point, index) => {
-      const x = (index / (points.length - 1)) * width;
-      const normalizedValue = (point.v - minValue) / valueRange;
-      const y = height - (normalizedValue * height * 0.8) - (height * 0.1); // Leave 10% padding top/bottom
-      
+      const x = (index / Math.max(points.length - 1, 1)) * width;
+      const y = normalizeY(point.v);
+
       if (index === 0) {
         pathPoints.push(`M ${x} ${y}`);
-        areaPoints.push(`M ${x} ${height}`);
-        areaPoints.push(`L ${x} ${y}`);
+        areaPoints.push(`M ${x} ${height}`, `L ${x} ${y}`);
       } else {
         pathPoints.push(`L ${x} ${y}`);
         areaPoints.push(`L ${x} ${y}`);
       }
     });
 
-    // Close area path
-    const lastX = width;
-    areaPoints.push(`L ${lastX} ${height} Z`);
-
-    const pathData = pathPoints.join(' ');
-    const areaPathData = areaPoints.join(' ');
-
-    // Status text
-    let statusText = '';
-    if (data.source === 'seed') {
-      statusText = data.note || '备用';
-    } else if (data.status === 'failed') {
-      statusText = '暂时无日内曲线';
-    }
+    areaPoints.push(`L ${width} ${height} Z`);
 
     return {
-      pathData,
-      areaPathData,
+      hasChart: true,
+      pathData: pathPoints.join(" "),
+      areaPathData: areaPoints.join(" "),
+      baselineY: normalizeY(openingValue),
       color: lineColor,
-      fillColor: fillColorValue,
+      fillColor,
       statusText,
+      startLabel: formatClockLabel(points[0]?.t),
+      endLabel: formatClockLabel(points[points.length - 1]?.t),
+      rangeLabel: `${minValue.toLocaleString(undefined, {
+        maximumFractionDigits: 0,
+      })} - ${maxValue.toLocaleString(undefined, {
+        maximumFractionDigits: 0,
+      })}`,
     };
-  }, [data, currentValue, dailyChangePercent, width, height]);
+  }, [currentValue, dailyChangePercent, data, height, width]);
 
-  // Generate stable unique ID for gradient
-  const gradientId = useMemo(() => {
-    return `sparkline-fill-${Math.random().toString(36).substring(7)}`;
-  }, []);
+  const gradientId = useMemo(() => `sparkline-fill-${Math.random().toString(36).slice(2, 9)}`, []);
 
-  if (!pathData) return null;
+  if (!sparkline.hasChart) {
+    return (
+      <div className="flex h-full min-h-[108px] flex-col justify-between rounded-[0.9rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-3">
+        <div className="text-[11px] font-mono text-muted-foreground/70">日内走势</div>
+        <div className="text-sm text-muted-foreground/78">{sparkline.statusText}</div>
+        <div className="text-[11px] font-mono text-muted-foreground/55">等待盘中报价或组合序列返回</div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full">
@@ -114,27 +155,43 @@ export default function PortfolioSparkline({
       >
         <defs>
           <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor={fillColor} stopOpacity="0.3" />
-            <stop offset="100%" stopColor={fillColor} stopOpacity="0.05" />
+            <stop offset="0%" stopColor={sparkline.fillColor} stopOpacity="0.26" />
+            <stop offset="100%" stopColor={sparkline.fillColor} stopOpacity="0.04" />
           </linearGradient>
         </defs>
-        <path d={areaPathData} fill={`url(#${gradientId})`} stroke="none" />
+
+        <line
+          x1="0"
+          y1={sparkline.baselineY}
+          x2={width}
+          y2={sparkline.baselineY}
+          stroke="rgba(255,255,255,0.18)"
+          strokeDasharray="3 4"
+          strokeWidth="1"
+        />
+
+        <path d={sparkline.areaPathData} fill={`url(#${gradientId})`} stroke="none" />
         <path
-          d={pathData}
+          d={sparkline.pathData}
           fill="none"
-          stroke={color}
-          strokeWidth="1.5"
+          stroke={sparkline.color}
+          strokeWidth="1.8"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
       </svg>
 
-      {/* Status text (corner) */}
-      {statusText && (
-        <div className="absolute bottom-0 right-0 text-[8px] opacity-50 font-mono text-foreground/60">
-          {statusText}
+      <div className="mt-2 flex items-center justify-between gap-3 text-[11px] font-mono text-muted-foreground/65">
+        <span>{sparkline.startLabel || "开盘"}</span>
+        <span>{sparkline.rangeLabel}</span>
+        <span>{sparkline.endLabel || "现在"}</span>
+      </div>
+
+      {sparkline.statusText ? (
+        <div className="absolute right-0 top-0 text-[10px] font-mono text-foreground/55">
+          {sparkline.statusText}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

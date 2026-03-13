@@ -7,6 +7,7 @@ export { default as PlaceCard } from './PlaceCard';
 export { default as CategoryTabs } from './CategoryTabs';
 export type { CategoryType } from './CategoryTabs';
 export { default as BackToHomeLink } from './BackToHomeLink';
+export { default as BlindBoxFull } from './BlindBoxFull';
 export { default as BubbleTeaFull } from './BubbleTeaFull';
 export { default as ChineseFoodFull } from './ChineseFoodFull';
 export { default as LateNightFull } from './LateNightFull';

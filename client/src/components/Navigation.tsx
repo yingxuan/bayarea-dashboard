@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { AnimatePresence, motion } from "framer-motion";
 import UserMenu from "./UserMenu";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -14,10 +13,10 @@ export default function Navigation() {
 
   const navItems = [
     { label: t.nav.home, path: "/" },
-    { label: t.nav.work, path: "/baoguo" },
-    { label: t.nav.housing, path: "/fangzi" },
     { label: t.nav.finance, path: "/piaozi" },
     { label: t.nav.dining, path: "/chihe" },
+    { label: t.nav.work, path: "/baoguo" },
+    { label: t.nav.housing, path: "/fangzi" },
   ];
 
   useEffect(() => {
@@ -80,7 +79,7 @@ export default function Navigation() {
               onClick={toggleLang}
               className="nav-surface rounded-full px-2.5 py-1 text-xs font-mono text-muted-foreground transition-colors hover:text-foreground"
             >
-              {lang === "zh" ? "EN" : "中"}
+              {lang === "zh" ? "EN" : "?"}
             </button>
             <UserMenu />
           </div>
@@ -116,46 +115,43 @@ export default function Navigation() {
               </svg>
             </button>
 
-            <AnimatePresence>
-              {mobileOpen && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="absolute left-0 right-0 top-16 z-50 overflow-hidden border-b border-border/40 bg-background/95 backdrop-blur-xl"
-                >
-                  <div className="container flex flex-col gap-2 py-3">
-                    {navItems.map((item) => {
-                      const isActive = location === item.path;
-                      return (
-                        <Link key={item.path} href={item.path}>
-                          <div
-                            className={`nav-surface rounded-2xl px-3 py-3 text-sm font-medium transition-colors ${
-                              isActive
-                                ? "bg-primary/14 text-primary shadow-[inset_0_0_0_1px_rgba(140,206,222,0.24)]"
-                                : "text-muted-foreground hover:bg-white/6 hover:text-foreground"
-                            }`}
-                          >
-                            {item.label}
-                          </div>
-                        </Link>
-                      );
-                    })}
-                    <div className="mt-1 flex items-center justify-between border-t border-border/30 px-1 pt-3">
-                      <UserMenu />
-                      <button
-                        type="button"
-                        onClick={toggleLang}
-                        className="nav-surface rounded-full px-2.5 py-1 text-xs font-mono text-muted-foreground transition-colors hover:text-foreground"
+            <div
+              className={`absolute left-0 right-0 top-16 z-50 overflow-hidden border-b border-border/40 bg-background/95 backdrop-blur-xl transition-all duration-200 ease-out ${
+                mobileOpen
+                  ? "max-h-[520px] opacity-100 pointer-events-auto"
+                  : "max-h-0 opacity-0 pointer-events-none"
+              }`}
+              aria-hidden={!mobileOpen}
+            >
+              <div className="container flex flex-col gap-2 py-3">
+                {navItems.map((item) => {
+                  const isActive = location === item.path;
+                  return (
+                    <Link key={item.path} href={item.path}>
+                      <div
+                        className={`nav-surface rounded-2xl px-3 py-3 text-sm font-medium transition-colors ${
+                          isActive
+                            ? "bg-primary/14 text-primary shadow-[inset_0_0_0_1px_rgba(140,206,222,0.24)]"
+                            : "text-muted-foreground hover:bg-white/6 hover:text-foreground"
+                        }`}
                       >
-                        {lang === "zh" ? "EN" : "中"}
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                        {item.label}
+                      </div>
+                    </Link>
+                  );
+                })}
+                <div className="mt-1 flex items-center justify-between border-t border-border/30 px-1 pt-3">
+                  <UserMenu />
+                  <button
+                    type="button"
+                    onClick={toggleLang}
+                    className="nav-surface rounded-full px-2.5 py-1 text-xs font-mono text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {lang === "zh" ? "EN" : "?"}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

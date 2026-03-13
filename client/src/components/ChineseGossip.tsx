@@ -46,9 +46,10 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
   useEffect(() => {
     async function loadGossip() {
       try {
-        const apiUrl = config.apiBaseUrl && !config.apiBaseUrl.startsWith("/")
-          ? `${config.apiBaseUrl}/api/community/gossip`
-          : `${config.apiBaseUrl || ""}/api/community/gossip`;
+        const apiUrl =
+          config.apiBaseUrl && !config.apiBaseUrl.startsWith("/")
+            ? `${config.apiBaseUrl}/api/community/gossip`
+            : `${config.apiBaseUrl || ""}/api/community/gossip`;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -96,7 +97,7 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
     return (
       <div className="grid gap-2">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="h-14 animate-pulse rounded-sm bg-muted/40" />
+          <div key={i} className="h-12 animate-pulse rounded-sm bg-muted/40" />
         ))}
       </div>
     );
@@ -104,18 +105,17 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
 
   if (allItems.length === 0) {
     return (
-      <div className="rounded-sm border border-border/25 bg-background/35 px-4 py-6 text-center text-sm text-muted-foreground">
+      <div className="rounded-sm border border-border/25 bg-background/35 px-4 py-4 text-center text-sm text-muted-foreground">
         {t.home.gossipEmpty}
       </div>
     );
   }
 
   return (
-    <div className="editorial-card rounded-[1.15rem] p-4">
-      <div className="mb-4 border-b border-border/25 pb-3">
-        <div className="eyebrow mb-2">Community Pulse</div>
-        <h3 className="text-[15px] font-semibold text-foreground/92">社区热聊</h3>
-        <p className="mt-1 text-xs text-muted-foreground">把微博和论坛混在一起看，更容易判断话题热度而不是单源偏差。</p>
+    <div className="editorial-card rounded-[1.15rem] p-3">
+      <div className="mb-2 border-b border-border/25 pb-2">
+        <div className="eyebrow mb-1">Community</div>
+        <h3 className="text-[14px] font-semibold text-foreground/92">热点讨论</h3>
       </div>
 
       <div className="space-y-2">
@@ -129,12 +129,12 @@ export default function ChineseGossip({ maxItemsPerSource = 3 }: ChineseGossipPr
               target="_blank"
               rel="noopener noreferrer"
               onClick={handleExternalLinkClick}
-              className="group flex items-start gap-3 rounded-[0.95rem] border border-border/25 bg-background/35 px-3 py-3 transition-all hover:border-primary/35 hover:bg-background/55"
+              className="group flex items-start gap-3 rounded-[0.85rem] border border-border/25 bg-background/35 px-3 py-2.5 transition-all hover:border-primary/35 hover:bg-background/55"
             >
               <span className={`shrink-0 text-[10px] uppercase tracking-[0.14em] ${source.tone}`}>
                 {source.label}
               </span>
-              <span className="min-w-0 flex-1 text-[13px] leading-6 text-foreground/88 transition-colors group-hover:text-primary">
+              <span className="min-w-0 flex-1 text-[13px] leading-5 text-foreground/88 transition-colors group-hover:text-primary">
                 {item.title}
               </span>
             </a>

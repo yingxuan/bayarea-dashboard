@@ -24,22 +24,22 @@ interface PlaceCardProps {
 }
 
 const CATEGORY_FALLBACK_IMAGES: Record<string, string[]> = {
-  奶茶: [
+  ["\u5976\u8336"]: [
     "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=800&h=600&fit=crop",
     "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&h=600&fit=crop",
     "https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=800&h=600&fit=crop",
   ],
-  中餐: [
+  ["\u4e2d\u9910"]: [
     "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=600&fit=crop",
     "https://images.unsplash.com/photo-1525755662776-9d797cd77072?w=800&h=600&fit=crop",
     "https://images.unsplash.com/photo-1551218808-94e220e084d2?w=800&h=600&fit=crop",
   ],
-  夜宵: [
+  ["\u591c\u5bb5"]: [
     "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&h=600&fit=crop",
     "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&h=600&fit=crop",
     "https://images.unsplash.com/photo-1529042410759-befb1204b468?w=800&h=600&fit=crop",
   ],
-  新店打卡: [
+  ["\u65b0\u5e97\u6253\u5361"]: [
     "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=600&fit=crop",
     "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&h=600&fit=crop",
     "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop",
@@ -53,7 +53,8 @@ function getFallbackImageUrl(place: SpendPlace): string {
     hash = (hash << 5) - hash + seed.charCodeAt(i);
     hash |= 0;
   }
-  const images = CATEGORY_FALLBACK_IMAGES[place.category] || CATEGORY_FALLBACK_IMAGES["中餐"];
+  const images =
+    CATEGORY_FALLBACK_IMAGES[place.category] || CATEGORY_FALLBACK_IMAGES["\u4e2d\u9910"];
   return images[Math.abs(hash) % images.length];
 }
 
@@ -91,7 +92,7 @@ export default function PlaceCard({
   const sizeClasses = {
     small: { image: "h-40", title: "text-[14px]" },
     medium: { image: "h-48", title: "text-[15px]" },
-    large: { image: "h-56", title: "text-[16px]" },
+    large: { image: "h-64", title: "text-[18px]" },
   } as const;
 
   const classes = sizeClasses[size];
@@ -116,26 +117,14 @@ export default function PlaceCard({
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/74 via-black/18 to-transparent" />
-
-        <div className="absolute left-3 right-3 top-3 flex flex-wrap gap-1.5">
-          {showCategory ? (
-            <span className="rounded-full border border-white/14 bg-black/32 px-2.5 py-1 text-[10px] text-white/82 backdrop-blur-sm">
-              {place.category}
-            </span>
-          ) : null}
-          {place.badges?.slice(0, 2).map((badge) => (
-            <span
-              key={badge}
-              className="rounded-full border border-white/14 bg-black/32 px-2.5 py-1 text-[10px] text-white/84 backdrop-blur-sm"
-            >
-              {badge}
-            </span>
-          ))}
-        </div>
-
         <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/34 text-white/82 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
           <ExternalLink className="h-3.5 w-3.5" />
         </div>
+        {showCategory ? (
+          <div className="absolute left-3 top-3 rounded-full border border-white/12 bg-black/38 px-2.5 py-1 text-[11px] text-white/84 backdrop-blur-sm">
+            {place.category}
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col p-4">
@@ -145,12 +134,6 @@ export default function PlaceCard({
         <h3 className={`mt-2 line-clamp-2 font-semibold leading-6 text-foreground ${classes.title}`}>
           {place.name}
         </h3>
-
-        <p className="mt-2 text-sm leading-6 text-muted-foreground/80">
-          {place.badges?.[0]
-            ? `今天适合因为“${place.badges[0]}”去试试。`
-            : "适合快速做决定，不用再多翻一轮点评。"}
-        </p>
 
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-[12px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
@@ -167,9 +150,9 @@ export default function PlaceCard({
           ) : null}
         </div>
 
-        <div className="mt-4 pt-3">
+        <div className="mt-4 pt-1">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-foreground/82 transition-colors group-hover:border-primary/30 group-hover:text-primary">
-            打开地图
+            {"\u6253\u5f00\u5730\u56fe"}
             <ExternalLink className="h-3.5 w-3.5" />
           </span>
         </div>

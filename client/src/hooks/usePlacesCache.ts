@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { get } from 'idb-keyval';
 import {
   getPool,
   setPool,
@@ -1243,7 +1244,6 @@ export async function getCacheStatus(): Promise<{
   // Get cooldown until time
   let cooldownUntil: number | null = null;
   try {
-    const { get } = await import('idb-keyval');
     cooldownUntil = (await get<number>('places_quota_cooldown_until')) || null;
   } catch (error) {
     // Ignore

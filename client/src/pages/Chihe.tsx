@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Navigation from "@/components/Navigation";
 import {
   BackToHomeLink,
+  BlindBoxFull,
   BubbleTeaFull,
   CategoryTabs,
   ChineseFoodFull,
@@ -28,12 +29,18 @@ interface SpendPlace {
   badges?: string[];
 }
 
+const BLIND_BOX = "\u76f2\u76d2";
+const BUBBLE_TEA = "\u5976\u8336";
+const CHINESE_FOOD = "\u4e2d\u9910";
+const LATE_NIGHT = "\u591c\u5bb5";
+const NEW_PLACES = "\u65b0\u5e97\u6253\u5361";
+
 export default function Chihe() {
   const { lang } = useLanguage();
   const t = useT(lang);
-  const [activeCategory, setActiveCategory] = useState<CategoryType>("奶茶");
+  const [activeCategory, setActiveCategory] = useState<CategoryType>(BLIND_BOX as CategoryType);
 
-  const { placesByCategory, loading } = usePlacesCache(["奶茶", "中餐", "夜宵", "新店打卡"]);
+  const { placesByCategory, loading } = usePlacesCache([BUBBLE_TEA, CHINESE_FOOD, LATE_NIGHT, NEW_PLACES]);
 
   const [newPlacesState, setNewPlacesState] = useState<{
     status: "idle" | "loading" | "success" | "error";
@@ -66,7 +73,7 @@ export default function Chihe() {
         const mapped: SpendPlace[] = (snapshot.places || []).map((entry) => ({
           id: entry.placeId,
           name: entry.displayName,
-          category: "新店打卡",
+          category: NEW_PLACES,
           rating: entry.rating ?? 0,
           user_ratings_total: entry.userRatingCount ?? 0,
           maps_url: entry.placeId
@@ -82,14 +89,14 @@ export default function Chihe() {
         setNewPlacesState({
           status: "success",
           items: mapped,
-          message: mapped.length === 0 ? "暂无新开店铺，稍后再来看。" : undefined,
+          message: mapped.length === 0 ? "\u6682\u65e0\u65b0\u5e97\uff0c\u7a0d\u540e\u518d\u770b\u3002" : undefined,
         });
       } catch (_error: unknown) {
         if (cancelled) return;
         setNewPlacesState({
           status: "error",
           items: [],
-          message: "新店打卡暂时不可用，请稍后刷新。",
+          message: "\u65b0\u5e97\u6570\u636e\u6682\u65f6\u4e0d\u53ef\u7528\u3002",
         });
       }
     })();
@@ -100,102 +107,55 @@ export default function Chihe() {
   }, []);
 
   const getPlacesForCategory = (category: CategoryType): SpendPlace[] => {
-    if (category === "新店打卡") return newPlacesState.items;
+    if (category === (NEW_PLACES as CategoryType)) return newPlacesState.items;
+    if (category === (BLIND_BOX as CategoryType)) {
+      return [
+        ...(placesByCategory[BUBBLE_TEA] || []),
+        ...(placesByCategory[CHINESE_FOOD] || []),
+        ...(placesByCategory[LATE_NIGHT] || []),
+        ...newPlacesState.items,
+      ];
+    }
     return placesByCategory[category] || [];
   };
 
+  const blindBoxPlaces = getPlacesForCategory(BLIND_BOX as CategoryType);
+
   const counts: Record<CategoryType, number> = {
-    奶茶: (placesByCategory["奶茶"] || []).length,
-    中餐: (placesByCategory["中餐"] || []).length,
-    夜宵: (placesByCategory["夜宵"] || []).length,
-    新店打卡: newPlacesState.items.length,
-  };
+    [BLIND_BOX]: blindBoxPlaces.length,
+    [BUBBLE_TEA]: (placesByCategory[BUBBLE_TEA] || []).length,
+    [CHINESE_FOOD]: (placesByCategory[CHINESE_FOOD] || []).length,
+    [LATE_NIGHT]: (placesByCategory[LATE_NIGHT] || []).length,
+    [NEW_PLACES]: newPlacesState.items.length,
+  } as Record<CategoryType, number>;
 
   const isCurrentCategoryLoading =
-    activeCategory === "新店打卡" ? newPlacesState.status === "loading" : loading;
+    activeCategory === (NEW_PLACES as CategoryType)
+      ? newPlacesState.status === "loading"
+      : activeCategory === (BLIND_BOX as CategoryType)
+        ? loading || newPlacesState.status === "loading"
+        : loading;
 
   const currentPlaces = getPlacesForCategory(activeCategory);
-  const avgRating = useMemo(() => {
-    if (currentPlaces.length === 0) return null;
-    const total = currentPlaces.reduce((sum, place) => sum + (place.rating || 0), 0);
-    return (total / currentPlaces.length).toFixed(1);
-  }, [currentPlaces]);
-
-  const currentMessage =
-    activeCategory === "新店打卡" ? newPlacesState.message : undefined;
+  const currentMessage = activeCategory === (NEW_PLACES as CategoryType) ? newPlacesState.message : undefined;
 
   return (
     <div className="page-shell min-h-screen bg-background grid-bg">
       <Navigation />
 
       <main className="w-full min-w-0">
-        <div className="route-shell mx-auto w-full max-w-6xl px-4 py-4 md:px-6 md:py-6">
-          <section className="hero-panel rounded-[1.4rem] p-4 md:p-6">
-            <div className="flex flex-col gap-4">
-              <BackToHomeLink />
-              <div className="route-header">
-                <div className="min-w-0">
-                  <div className="section-kicker mb-3">
-                    <div className="eyebrow">Food Briefing</div>
-                    <span className="briefing-badge">Pick tonight fast</span>
-                  </div>
-                  <h1 className="text-2xl font-semibold leading-tight text-foreground md:text-[34px] md:leading-[1.08]">
-                    {t.chihe.title}
-                  </h1>
-                  <div className="mt-2 text-sm font-medium text-primary/90 md:text-base">
-                    {t.chihe.subtitle}
-                  </div>
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-[15px]">
-                    不只是列餐厅，而是帮你在通勤、聚餐、夜宵和新店尝鲜之间，更快做出今天这顿吃什么的判断。
-                  </p>
-                </div>
-                <div className="route-summary">
-                  <div className="hero-pulse-card rounded-sm p-3">
-                    <div className="text-[11px] uppercase tracking-[0.16em] text-amber-300/75">
-                      Today
-                    </div>
-                    <div className="mt-2 text-sm leading-6 text-foreground/88">
-                      先定场景，再看评分和距离，不把吃饭页面做成无止境瀑布流。
-                    </div>
-                  </div>
-                  <div className="hero-pulse-card rounded-sm p-3">
-                    <div className="text-[11px] uppercase tracking-[0.16em] text-emerald-300/75">
-                      Active Set
-                    </div>
-                    <div className="mt-2 text-sm leading-6 text-foreground/88">
-                      当前类别 {counts[activeCategory]} 家
-                      {avgRating ? `，平均评分 ${avgRating}` : ""}
-                      。
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <div className="route-shell mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 md:px-6 md:py-6">
+          <section className="hero-panel rounded-[1.35rem] p-4 md:p-5">
+            <BackToHomeLink />
+            <h1 className="mt-4 text-2xl font-semibold leading-tight text-foreground md:text-[34px] md:leading-[1.08]">
+              {t.chihe.title}
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground md:text-[15px]">
+              \u5207\u5206\u7c7b\uff0c\u76f4\u63a5\u9009\u5e97\u3002
+            </p>
           </section>
 
           <section className="section-shell section-shell-food rounded-sm p-3 md:p-4">
-            <div className="mb-4 grid gap-3 md:grid-cols-3">
-              <div className="hero-pulse-card rounded-sm p-3">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-sky-300/75">Scope</div>
-                <div className="mt-2 text-2xl font-semibold text-foreground">
-                  {Object.values(counts).reduce((sum, count) => sum + count, 0)}
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">四类候选池总量</div>
-              </div>
-              <div className="hero-pulse-card rounded-sm p-3">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-amber-300/75">Focus</div>
-                <div className="mt-2 text-sm leading-6 text-foreground/88">
-                  当前在看 <span className="font-semibold text-foreground">{activeCategory}</span>
-                </div>
-              </div>
-              <div className="hero-pulse-card rounded-sm p-3">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-emerald-300/75">Mode</div>
-                <div className="mt-2 text-sm leading-6 text-foreground/88">
-                  优先决策效率，其次才是探索感和视觉冲动。
-                </div>
-              </div>
-            </div>
-
             <CategoryTabs
               activeCategory={activeCategory}
               onCategoryChange={setActiveCategory}
@@ -203,42 +163,29 @@ export default function Chihe() {
             />
           </section>
 
-          {activeCategory === "奶茶" ? (
+          {activeCategory === (BLIND_BOX as CategoryType) ? (
+            <BlindBoxFull places={blindBoxPlaces} loading={isCurrentCategoryLoading} />
+          ) : null}
+          {activeCategory === (BUBBLE_TEA as CategoryType) ? (
             <BubbleTeaFull places={currentPlaces} loading={isCurrentCategoryLoading} />
           ) : null}
-          {activeCategory === "中餐" ? (
+          {activeCategory === (CHINESE_FOOD as CategoryType) ? (
             <ChineseFoodFull places={currentPlaces} loading={isCurrentCategoryLoading} />
           ) : null}
-          {activeCategory === "夜宵" ? (
+          {activeCategory === (LATE_NIGHT as CategoryType) ? (
             <LateNightFull places={currentPlaces} loading={isCurrentCategoryLoading} />
           ) : null}
-          {activeCategory === "新店打卡" ? (
+          {activeCategory === (NEW_PLACES as CategoryType) ? (
             <NewPlacesFull places={currentPlaces} loading={isCurrentCategoryLoading} />
           ) : null}
 
-          {activeCategory === "新店打卡" && currentMessage ? (
+          {activeCategory === (NEW_PLACES as CategoryType) && currentMessage ? (
             <div className="rounded-sm border border-border/35 bg-card/45 px-4 py-3 text-sm text-muted-foreground">
               {currentMessage}
             </div>
           ) : null}
-
-          <div className="border-t border-border/30 pt-6">
-            <BackToHomeLink />
-          </div>
         </div>
       </main>
-
-      <footer className="mt-12 border-t border-border py-6">
-        <div className="mx-auto w-full max-w-6xl px-4 md:px-6">
-          <div className="flex flex-col items-center justify-between gap-3 text-center text-xs font-mono text-muted-foreground/55 md:flex-row md:text-left">
-            <div>
-              <span className="text-sm font-semibold text-amber-300/85">{t.home.footerTagline}</span>
-              <span className="ml-2">| {t.chihe.title} - {t.chihe.subtitle}</span>
-            </div>
-            <span>{t.home.footerSub}</span>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

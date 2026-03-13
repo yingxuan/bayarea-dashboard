@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { PencilIcon, SlidersHorizontal, TrendingDown, TrendingUp } from "lucide-react";
+import { PencilIcon, TrendingDown, TrendingUp } from "lucide-react";
 import { Holding } from "@/hooks/useHoldings";
 import { QuoteData, usePortfolioSummary } from "@/hooks/usePortfolioSummary";
 import { Button } from "@/components/ui/button";
@@ -124,6 +124,19 @@ export default function PortfolioHero({
     };
   }, [holdings, quotesData]);
 
+  const hasRenderableSeries = useMemo(() => {
+    const items = valueSeries?.items;
+    if (!Array.isArray(items) || items.length < 2) return false;
+    return items.every(
+      (p: any) =>
+        p &&
+        typeof p.v === "number" &&
+        Number.isFinite(p.v) &&
+        typeof p.t === "string" &&
+        p.t.length > 0,
+    );
+  }, [valueSeries]);
+
   const handleYtdSave = () => {
     const parsed = parseFloat(ytdInputValue);
     if (!isNaN(parsed) && parsed > 0) {
@@ -181,7 +194,6 @@ export default function PortfolioHero({
   if (holdings.length === 0) {
     return (
       <div className="flex h-full min-h-[180px] flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/6 p-6 text-center">
-        <div className="eyebrow mb-3">Portfolio</div>
         <div className="mb-3 text-sm text-muted-foreground">还没有持仓记录</div>
         <HoldingsEditor
           trigger={
@@ -196,13 +208,9 @@ export default function PortfolioHero({
 
   return (
     <>
-      <div className="hero-panel h-full rounded-[1.2rem] p-4 md:p-5">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.45fr_0.9fr]">
+      <div className="hero-panel rounded-[1.2rem] p-3 md:p-4">
+        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[1.45fr_0.9fr]">
           <div className="min-w-0">
-            <div className="section-kicker mb-3">
-              <div className="eyebrow">Portfolio</div>
-              <span className="briefing-badge">Personal snapshot</span>
-            </div>
             <div className="mb-1 text-[30px] font-semibold leading-none tracking-[-0.03em] text-foreground md:text-[38px]">
               ${portfolioMetrics.portfolioValue.toLocaleString()}
             </div>
@@ -241,20 +249,19 @@ export default function PortfolioHero({
                 <span className="text-xs text-muted-foreground/45">未配置</span>
               )}
             </div>
-
-            <p className="mb-4 max-w-lg text-sm leading-6 text-muted-foreground/78">
-              先看总仓位、当天波动和领涨领跌，再决定今天要不要打开更完整的市场页。
-            </p>
-
-            {valueSeries && valueSeries.items?.length > 0 && (
+            {hasRenderableSeries ? (
               <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                 <PortfolioSparkline
                   data={valueSeries}
                   currentValue={portfolioMetrics.portfolioValue}
                   dailyChangePercent={portfolioMetrics.dailyChangePercent}
-                  width={220}
-                  height={56}
+                  width={320}
+                  height={132}
                 />
+              </div>
+            ) : (
+              <div className="flex h-[132px] items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-xs text-muted-foreground/70">
+                暂无可绘制的日内仓位曲线
               </div>
             )}
           </div>
@@ -264,34 +271,7 @@ export default function PortfolioHero({
               {renderMoverColumn("Top Winners", topPositive, true)}
               {renderMoverColumn("Top Losers", topNegative, false)}
             </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-              <div className="mb-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground/75">
-                Feed status
-              </div>
-              <div className="text-xs text-foreground/78">{updateInfo}</div>
-              <div className="mt-2 text-xs leading-5 text-muted-foreground/70">
-                首页只保留今天最值得看的变化，深度判断放在票子详情页。
-              </div>
-            </div>
-
-            <div className="mt-auto flex flex-wrap justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setYtdDialogOpen(true)}
-                className="flex h-9 items-center gap-1 rounded-full border border-white/12 bg-white/5 px-4 text-xs font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
-                title="设置年初基准"
-              >
-                <SlidersHorizontal className="h-3 w-3" /> YTD 基准
-              </button>
-              <HoldingsEditor
-                trigger={
-                  <Button variant="outline" size="sm" className="h-9 rounded-full px-4 text-xs font-medium">
-                    <PencilIcon className="mr-1 h-3 w-3" /> 编辑仓位
-                  </Button>
-                }
-              />
-            </div>
+            <div className="px-1 text-right text-[11px] text-muted-foreground/60">{updateInfo}</div>
           </div>
         </div>
       </div>

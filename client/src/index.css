@@ -119,7 +119,7 @@
   
   /* Ensure font-mono uses monospace font */
   .font-mono {
-    font-family: 'JetBrains Mono', 'Roboto Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-family: 'JetBrains Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
   }
   
   /* Scrollbar styling for cyberpunk feel */
@@ -277,7 +277,7 @@
   .section-divider {
     height: 1px;
     background: linear-gradient(90deg, transparent, oklch(0.65 0.25 230 / 0.2) 30%, oklch(0.65 0.25 230 / 0.3) 50%, oklch(0.65 0.25 230 / 0.2) 70%, transparent);
-    margin: 1.5rem 0;
+    margin: 0.7rem 0;
   }
 
   .page-shell {
