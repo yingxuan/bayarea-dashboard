@@ -17,7 +17,7 @@ interface SpendPlace {
   badges?: string[];
 }
 
-const CATEGORIES = ["奶茶", "中餐", "夜宵", "新店打卡"] as const;
+const CATEGORIES = ["新店打卡", "奶茶", "中餐", "夜宵"] as const;
 
 export default function TodaySpendCarousels() {
   const { placesByCategory, loading, categoryOffsets, handleRefresh, debugByCategory } =
@@ -35,9 +35,7 @@ export default function TodaySpendCarousels() {
       setNewPlacesState({ status: "loading", items: [] });
       try {
         const res = await fetch(`${config.apiBaseUrl}/api/spend/new-places`);
-        if (!res.ok) {
-          throw new Error(`status ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`status ${res.status}`);
 
         const snapshot: {
           places: Array<{
@@ -116,17 +114,13 @@ export default function TodaySpendCarousels() {
     };
   }, []);
 
-  const handleRefreshCategory = async (category: string) => {
-    await handleRefresh(category);
-  };
-
   if (loading) {
     return (
       <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
         {CATEGORIES.map((category) => (
           <div
             key={category}
-            className="rounded-[1.2rem] border border-white/10 bg-white/5 p-4 min-h-[170px]"
+            className="min-h-[170px] rounded-[1.2rem] border border-white/10 bg-white/5 p-4"
           >
             <div className="animate-pulse">
               <div className="mb-3 h-4 w-1/3 rounded bg-muted" />
@@ -152,14 +146,14 @@ export default function TodaySpendCarousels() {
               category={category}
               places={places}
               offset={offset}
-              onRefresh={() => handleRefreshCategory(category)}
+              onRefresh={() => handleRefresh(category)}
               debugInfo={debugByCategory?.[category]}
             />
-            {isNewCategory && newPlacesState.message && (
+            {isNewCategory && newPlacesState.message ? (
               <div className="mt-2 px-2 text-center text-[11px] leading-5 text-muted-foreground/78">
                 {newPlacesState.message}
               </div>
-            )}
+            ) : null}
           </div>
         );
       })}

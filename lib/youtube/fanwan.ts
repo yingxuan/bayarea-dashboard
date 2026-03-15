@@ -124,11 +124,16 @@ export function filterByWindow(videos: FanwanVideo[], days: number): FanwanVideo
   return videos.filter((v) => new Date(v.publishedAt).getTime() >= cutoff);
 }
 
-export async function fetchFanwanViaApi(windowDays: number, limit: number, apiKey: string): Promise<FanwanVideo[]> {
+export async function fetchVideosViaApi(
+  channels: FanwanChannel[],
+  windowDays: number,
+  limit: number,
+  apiKey: string,
+): Promise<FanwanVideo[]> {
   const publishedAfter = isoDaysAgo(windowDays);
   const all: FanwanVideo[] = [];
 
-  for (const ch of FANWAN_CHANNELS) {
+  for (const ch of channels) {
     try {
       const channelId = ch.channelId || (await resolveChannelId(ch.handle, apiKey));
       if (!channelId) continue;
@@ -188,6 +193,10 @@ export async function fetchFanwanViaApi(windowDays: number, limit: number, apiKe
   return interleaveVideos(windowed, limit);
 }
 
+export async function fetchFanwanViaApi(windowDays: number, limit: number, apiKey: string): Promise<FanwanVideo[]> {
+  return fetchVideosViaApi(FANWAN_CHANNELS, windowDays, limit, apiKey);
+}
+
 function extractTag(entry: string, tag: string) {
   const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i");
   const m = regex.exec(entry);
@@ -226,9 +235,13 @@ function parseRssFeed(xml: string): FanwanVideo[] {
   return videos;
 }
 
-export async function fetchFanwanViaRss(windowDays: number, limit: number): Promise<FanwanVideo[]> {
+export async function fetchVideosViaRss(
+  channels: FanwanChannel[],
+  windowDays: number,
+  limit: number,
+): Promise<FanwanVideo[]> {
   const all: FanwanVideo[] = [];
-  for (const ch of FANWAN_CHANNELS) {
+  for (const ch of channels) {
     try {
       const channelId =
         ch.channelId ||
@@ -249,4 +262,8 @@ export async function fetchFanwanViaRss(windowDays: number, limit: number): Prom
   all.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
   const windowed = filterByWindow(all, windowDays);
   return interleaveVideos(windowed, limit);
+}
+
+export async function fetchFanwanViaRss(windowDays: number, limit: number): Promise<FanwanVideo[]> {
+  return fetchVideosViaRss(FANWAN_CHANNELS, windowDays, limit);
 }

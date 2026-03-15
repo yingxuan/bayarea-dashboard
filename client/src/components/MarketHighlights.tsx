@@ -4,6 +4,8 @@ import TimeAgo from "@/components/TimeAgo";
 
 interface MarketHighlightsProps {
   marketNews: any[];
+  maxItems?: number;
+  title?: string;
 }
 
 interface UnifiedItem {
@@ -14,7 +16,11 @@ interface UnifiedItem {
   publishedAt?: string;
 }
 
-export default function MarketHighlights({ marketNews }: MarketHighlightsProps) {
+export default function MarketHighlights({
+  marketNews,
+  maxItems = 8,
+  title = "财经快讯",
+}: MarketHighlightsProps) {
   const { handleExternalLinkClick } = useExternalLink();
 
   const allItems: UnifiedItem[] = useMemo(
@@ -31,9 +37,10 @@ export default function MarketHighlights({ marketNews }: MarketHighlightsProps) 
 
   return (
     <div className="editorial-list rounded-[1rem] px-3 py-3">
+      <div className="mb-3 text-sm font-semibold text-foreground/92">{title}</div>
       {allItems.length > 0 ? (
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          {allItems.map((item) => (
+          {allItems.slice(0, maxItems).map((item) => (
           <a
             key={item.id}
             href={item.url}

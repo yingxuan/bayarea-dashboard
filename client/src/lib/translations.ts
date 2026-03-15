@@ -3,9 +3,9 @@
 const translations = {
   zh: {
     nav: {
-      brand: "\u6e7e\u533a\u4eea\u8868\u76d8",
+      brand: "\u6e7e\u533a\u725b\u9a6c\u751f\u6d3b\u6307\u5357",
       home: "\u9996\u9875",
-      work: "\u5305\u88f9",
+      work: "\u996d\u7897",
       housing: "\u623f\u5b50",
       finance: "\u7968\u5b50",
       dining: "\u5403\u559d",
@@ -83,8 +83,8 @@ const translations = {
       subtitle: "\u8d22\u52a1\u8be6\u60c5",
     },
     baoguo: {
-      title: "\u5305\u88f9",
-      subtitle: "\u5de5\u4f5c\u4e0e\u627e\u5de5",
+      title: "\u996d\u7897",
+      subtitle: "\u5de5\u4f5c\u4e0e\u5c31\u4e1a",
     },
     fangzi: {
       title: "\u623f\u5b50",
@@ -107,7 +107,7 @@ const translations = {
       loginError: "\u767b\u5f55\u5931\u8d25",
       registerError: "\u6ce8\u518c\u5931\u8d25",
       passwordMismatch: "\u4e24\u6b21\u8f93\u5165\u7684\u5bc6\u7801\u4e0d\u4e00\u81f4",
-      brand: "\u6e7e\u533a\u4eea\u8868\u76d8",
+      brand: "\u6e7e\u533a\u725b\u9a6c\u751f\u6d3b\u6307\u5357",
       brandDesc: "\u767b\u5f55\u540e\u67e5\u770b\u60a8\u7684\u6295\u8d44\u7ec4\u5408",
       resetTitle: "\u91cd\u7f6e\u5bc6\u7801",
       resetDesc: "\u8f93\u5165\u60a8\u7684\u6ce8\u518c\u90ae\u7bb1\uff0c\u6211\u4eec\u5c06\u53d1\u9001\u5bc6\u7801\u91cd\u7f6e\u94fe\u63a5",
@@ -134,7 +134,7 @@ const translations = {
   },
   en: {
     nav: {
-      brand: "Bay Area Dashboard",
+      brand: "Bay Area Workhorse Guide",
       home: "Home",
       work: "Work",
       housing: "Housing",
@@ -185,7 +185,7 @@ const translations = {
       live: "Live",
       cache: "Cached",
       seed: "Seed",
-      footerTagline: "Bay Area Dashboard",
+      footerTagline: "Bay Area Workhorse Guide",
       footerSub: "Updated daily · Quality over quantity",
       bayAreaMovies: "Bay Area Chinese Films",
       concerts: "Bay Area Concerts",
@@ -238,7 +238,7 @@ const translations = {
       loginError: "Login failed",
       registerError: "Registration failed",
       passwordMismatch: "Passwords do not match",
-      brand: "Bay Area Dashboard",
+      brand: "Bay Area Workhorse Guide",
       brandDesc: "Sign in to view your portfolio",
       resetTitle: "Reset Password",
       resetDesc: "Enter your email and we will send a reset link",

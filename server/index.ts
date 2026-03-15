@@ -18,6 +18,7 @@ import {
   bayAreaMoviesRoute,
   weatherRoute,
   hnRoute,
+  housingOpenHousesRoute,
   showsRoute,
   youtubersRoute,
   moviesRoute,
@@ -26,6 +27,7 @@ import {
   leekCommunityRoute,
   gossipCommunityRoute,
   jobsCommunityRoute,
+  offersCommunityRoute,
   marketNewsRoute,
   portfolioValueSeriesRoute,
   portfolioHoldingsRoute,
@@ -78,6 +80,8 @@ async function startServer() {
   app.options('/api/weather', (_req, res) => res.sendStatus(200));
   app.get('/api/hn', hnRoute);
   app.options('/api/hn', (_req, res) => res.sendStatus(200));
+  app.get('/api/housing-open-houses', housingOpenHousesRoute);
+  app.options('/api/housing-open-houses', (_req, res) => res.sendStatus(200));
   app.get('/api/shows', showsRoute);
   app.options('/api/shows', (_req, res) => res.sendStatus(200));
   app.get('/api/movies', moviesRoute);
@@ -98,6 +102,8 @@ async function startServer() {
   app.options('/api/community/gossip', (_req, res) => res.sendStatus(200));
   app.get('/api/community/jobs', jobsCommunityRoute);
   app.options('/api/community/jobs', (_req, res) => res.sendStatus(200));
+  app.get('/api/community/offers', offersCommunityRoute);
+  app.options('/api/community/offers', (_req, res) => res.sendStatus(200));
   app.get('/api/market-news', marketNewsRoute);
   app.options('/api/market-news', (_req, res) => res.sendStatus(200));
   app.get('/api/portfolio/value-series', portfolioValueSeriesRoute);

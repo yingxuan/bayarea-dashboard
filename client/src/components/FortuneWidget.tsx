@@ -57,7 +57,10 @@ const statusLabelMap: Record<BehaviorRadarEntry["status"], string> = {
 };
 
 export default function FortuneWidget() {
-  const [birthdate, setBirthdate] = useState<string | null>(null);
+  const [birthdate, setBirthdate] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem(STORAGE_KEY);
+  });
   const [data, setData] = useState<FortuneData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,48 +69,39 @@ export default function FortuneWidget() {
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored) setBirthdate(stored);
-  }, []);
-
-  useEffect(() => {
-    if (!birthdate) {
-      setData(null);
-      setError(null);
-      return;
-    }
+    if (!birthdate) return;
 
     const abortController = new AbortController();
-    setLoading(true);
-    setError(null);
+    async function loadFortune() {
+      setLoading(true);
+      setError(null);
 
-    const url = new URL(`${config.apiBaseUrl}/api/fortune`, window.location.origin);
-    url.searchParams.set("birthdate", birthdate);
+      const url = new URL(`${config.apiBaseUrl}/api/fortune`, window.location.origin);
+      url.searchParams.set("birthdate", birthdate);
 
-    fetch(url.toString(), {
-      signal: abortController.signal,
-      cache: "default",
-    })
-      .then(async (response) => {
+      try {
+        const response = await fetch(url.toString(), {
+          signal: abortController.signal,
+          cache: "default",
+        });
         const contentType = response.headers.get("content-type") || "";
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         if (!contentType.includes("application/json")) {
           throw new Error("服务返回异常，请稍后再试");
         }
-        return response.json();
-      })
-      .then((result: FortuneData) => {
+
+        const result: FortuneData = await response.json();
         setData(result);
-      })
-      .catch((err) => {
-        if (err.name === "AbortError") return;
-        setError(err.message || "加载失败，请重试");
+      } catch (err: any) {
+        if (err?.name === "AbortError") return;
+        setError(err?.message || "加载失败，请重试");
         setData(null);
-      })
-      .finally(() => {
+      } finally {
         setLoading(false);
-      });
+      }
+    }
+
+    loadFortune();
 
     return () => abortController.abort();
   }, [birthdate, retryKey]);
@@ -141,8 +135,7 @@ export default function FortuneWidget() {
           ? "已生成"
           : "数据异常";
 
-  const isLowImportance = data?.importance === "low";
-  const importanceTone =
+  const statusTone =
     data?.importance === "high"
       ? "text-amber-300"
       : data?.importance === "medium"
@@ -150,88 +143,84 @@ export default function FortuneWidget() {
         : "text-muted-foreground";
 
   const headlineContent = loading ? (
-    <Skeleton className="h-4 w-60" />
+    <Skeleton className="h-4 w-52" />
   ) : fortuneValid && data ? (
     data.headline
   ) : !birthdate ? (
     getDailyQuote()
   ) : (
-    "今天先保守一点"
+    "今天先保守一点。"
   );
 
   return (
     <>
-      <div className="hero-panel rounded-[1.2rem] p-4 md:p-5">
-        <div className="flex items-start justify-between gap-3">
+      <div className="rounded-[1rem] border border-white/10 bg-white/[0.045] px-4 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.12)]">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setExpanded((value) => !value)}
-            className="flex min-w-0 flex-1 items-start gap-3 text-left"
+            className="flex min-w-0 flex-1 items-center gap-3 text-left"
           >
+            <div className="shrink-0 rounded-full border border-white/12 bg-white/8 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-200/85">
+              运势
+            </div>
             <div className="min-w-0 flex-1">
-              <div className="mb-2 text-[15px] font-semibold text-foreground">今日运势</div>
-              <div
-                className={`text-sm leading-6 ${
-                  isLowImportance ? "text-muted-foreground" : "text-foreground/90"
-                }`}
-              >
-                {headlineContent}
-              </div>
-              <div className={`mt-2 text-[11px] uppercase tracking-[0.16em] ${importanceTone}`}>
-                {statusMessage}
-              </div>
+              <div className="truncate text-sm text-foreground/88">{headlineContent}</div>
+            </div>
+            <div className={`hidden text-[11px] uppercase tracking-[0.16em] md:block ${statusTone}`}>
+              {statusMessage}
             </div>
             {expanded ? (
-              <ChevronUp className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+              <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
             ) : (
-              <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
             )}
           </button>
 
           <button
             type="button"
             onClick={() => setModalOpen(true)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/5 text-muted-foreground transition hover:border-primary/40 hover:text-primary"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/5 text-muted-foreground transition hover:border-primary/40 hover:text-primary"
           >
             <Settings2 className="h-4 w-4" />
           </button>
         </div>
 
         <AnimatePresence initial={false}>
-          {expanded && (
+          {expanded ? (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.25, ease: "easeInOut" }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
               className="overflow-hidden"
             >
-              <div className="mt-4 border-t border-white/10 pt-4">
+              <div className="mt-3 border-t border-white/10 pt-3">
                 {fortuneValid && data ? (
-                  <div className="space-y-4 text-sm text-foreground">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[15px] leading-7">
-                      {data.verdict}
+                  <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
+                    <div className="rounded-[1rem] border border-white/10 bg-white/5 p-4">
+                      <div className="text-sm leading-6 text-foreground/92">{data.verdict}</div>
+                      <div className="mt-3 grid gap-3 md:grid-cols-2">
+                        <div className="rounded-[0.9rem] border border-emerald-500/18 bg-emerald-500/8 p-3">
+                          <div className="mb-1 text-[11px] uppercase tracking-[0.16em] text-emerald-300/80">
+                            宜做
+                          </div>
+                          <div className="text-sm leading-6 text-foreground/92">{data.do}</div>
+                        </div>
+                        <div className="rounded-[0.9rem] border border-rose-500/18 bg-rose-500/8 p-3">
+                          <div className="mb-1 text-[11px] uppercase tracking-[0.16em] text-rose-300/80">
+                            慎做
+                          </div>
+                          <div className="text-sm leading-6 text-foreground/92">{data.dont}</div>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div className="rounded-2xl border border-emerald-500/18 bg-emerald-500/8 p-4">
-                        <div className="mb-2 text-[11px] uppercase tracking-[0.16em] text-emerald-300/80">
-                          宜做
-                        </div>
-                        <div className="leading-6 text-foreground/92">{data.do}</div>
+                    <div className="space-y-3">
+                      <div className="rounded-[1rem] border border-white/10 bg-white/5 p-3 text-xs text-muted-foreground/78">
+                        {data.timeHint}
                       </div>
-                      <div className="rounded-2xl border border-rose-500/18 bg-rose-500/8 p-4">
-                        <div className="mb-2 text-[11px] uppercase tracking-[0.16em] text-rose-300/80">
-                          慎做
-                        </div>
-                        <div className="leading-6 text-foreground/92">{data.dont}</div>
-                      </div>
-                    </div>
-
-                    <div className="text-xs text-muted-foreground/72">{data.timeHint}</div>
-
-                    {data.behaviorRadar && (
-                      <div className="space-y-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="rounded-[1rem] border border-white/10 bg-white/5 p-3">
                         {[
                           { key: "investment", label: "投资" },
                           { key: "travel", label: "出行" },
@@ -243,31 +232,29 @@ export default function FortuneWidget() {
                           return (
                             <div
                               key={entry.key}
-                              className="rounded-2xl border border-white/8 bg-black/10 p-3"
+                              className="border-b border-white/8 py-2 last:border-b-0 last:pb-0 first:pt-0"
                             >
-                              <div className="mb-1 flex items-center justify-between gap-3 text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                                <span className="font-semibold">{entry.label}</span>
+                              <div className="mb-1 flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                <span>{entry.label}</span>
                                 <span>{statusLabelMap[radarEntry.status] || radarEntry.status}</span>
                               </div>
-                              <div className="text-[13px] leading-6 text-foreground/92">
-                                {radarEntry.summary}
-                              </div>
+                              <div className="text-sm leading-6 text-foreground/92">{radarEntry.summary}</div>
                             </div>
                           );
                         })}
                       </div>
-                    )}
+                    </div>
                   </div>
                 ) : !birthdate ? (
                   <div className="text-sm leading-6 text-muted-foreground">
-                    点击右上角设置生日，解锁今天的运势提示。
+                    点右侧设置生日，解锁今天的运势提示。
                   </div>
                 ) : (
                   <div className="text-sm leading-6 text-destructive">今日内容还没准备好，稍后再试。</div>
                 )}
               </div>
             </motion.div>
-          )}
+          ) : null}
         </AnimatePresence>
       </div>
 

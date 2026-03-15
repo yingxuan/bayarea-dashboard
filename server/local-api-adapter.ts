@@ -383,6 +383,41 @@ export async function jobsCommunityRoute(req: Request, res: Response) {
 }
 
 /**
+ * Housing open houses API route
+ */
+export async function housingOpenHousesRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    withHandler(vercelReq, 'housing-open-houses');
+    await marketHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Housing Open Houses route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+
+/**
+ * Offers / interview Community API route
+ */
+export async function offersCommunityRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    withHandler(vercelReq, 'offers');
+    await communityHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Offers Community route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
  * Gossip Community API route (1point3acres + TeamBlind)
  */
 export async function gossipCommunityRoute(req: Request, res: Response) {

@@ -1,15 +1,12 @@
 export type FanwanChannel = {
   handle: string;
-  channelId?: string; // may be resolved at runtime if missing
+  channelId?: string;
 };
 
-// Known handles; channelId will be resolved via HTML if not provided
 export const FANWAN_CHANNELS: FanwanChannel[] = [
-  { handle: "@bestpartners" },
-  { handle: "@TheValley101" },
-  { handle: "@valley101podcast" },
-  { handle: "@王路飞" },
-  { handle: "@太学TAIXUE" },
-  { handle: "@peterdiamandis" },
-  { handle: "@DwarkeshPatel" },
+  { handle: "@programmer-wang" },
+  { handle: "@马克的技术工作坊" },
+  { handle: "@JeffSu" },
+  { handle: "@TinaHuang1" },
+  { handle: "@Web3101cast" },
 ];

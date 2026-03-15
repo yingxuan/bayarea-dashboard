@@ -24,8 +24,6 @@ export default function IndicesCard() {
     spy: MarketDataItem;
     gold: MarketDataItem;
     btc: MarketDataItem;
-    qqq?: MarketDataItem;
-    arkk?: MarketDataItem;
   } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -70,10 +68,8 @@ export default function IndicesCard() {
 
     return [
       buildRow("SPY", marketData.spy),
-      buildRow("QQQ", marketData.qqq),
-      buildRow("BTC", marketData.btc),
       buildRow("GOLD", marketData.gold),
-      buildRow("ARKK", marketData.arkk),
+      buildRow("BTC", marketData.btc),
     ].filter(Boolean) as SnapshotRow[];
   }, [marketData]);
 
@@ -85,7 +81,7 @@ export default function IndicesCard() {
 
       {loading || indices.length === 0 ? (
         <div className="grid gap-2">
-          {[1, 2, 3, 4, 5].map((i) => (
+          {[1, 2, 3].map((i) => (
             <div key={i} className="h-14 animate-pulse rounded-sm bg-muted/45" />
           ))}
         </div>

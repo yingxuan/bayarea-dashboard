@@ -48,7 +48,7 @@ export default function Navigation() {
                   {t.nav.brand}
                 </div>
                 <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70">
-                  Daily decision helper
+                  {lang === "zh" ? "湾区情报与生存" : "Bay Area survival guide"}
                 </div>
               </div>
             </div>
@@ -79,7 +79,7 @@ export default function Navigation() {
               onClick={toggleLang}
               className="nav-surface rounded-full px-2.5 py-1 text-xs font-mono text-muted-foreground transition-colors hover:text-foreground"
             >
-              {lang === "zh" ? "EN" : "?"}
+              {lang === "zh" ? "EN" : "中"}
             </button>
             <UserMenu />
           </div>
@@ -147,7 +147,7 @@ export default function Navigation() {
                     onClick={toggleLang}
                     className="nav-surface rounded-full px-2.5 py-1 text-xs font-mono text-muted-foreground transition-colors hover:text-foreground"
                   >
-                    {lang === "zh" ? "EN" : "?"}
+                    {lang === "zh" ? "EN" : "中"}
                   </button>
                 </div>
               </div>

@@ -1,10 +1,10 @@
 import Navigation from "@/components/Navigation";
+import StockCommunityWidget from "@/components/StockCommunityWidget";
 import {
   BackToHomeLink,
   PortfolioFull,
   MarketHighlightsFull,
   StockYouTubersFull,
-  FanwanFull,
 } from "@/components/piaozi";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -26,20 +26,18 @@ export default function Piaozi() {
                 <h1 className="mt-4 text-2xl font-semibold leading-tight text-foreground md:text-[34px] md:leading-[1.08]">
                   {t.piaozi.title}
                 </h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground md:text-[15px]">
-                  持仓、财经新闻和研究来源，放在一页看完。
-                </p>
               </div>
             </div>
           </section>
 
           <PortfolioFull />
-          <MarketHighlightsFull />
 
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <StockYouTubersFull />
-            <FanwanFull />
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+            <MarketHighlightsFull />
+            <StockCommunityWidget maxItems={6} />
           </div>
+
+          <StockYouTubersFull />
         </div>
       </main>
     </div>

@@ -8,6 +8,7 @@ interface JobItem {
   url: string;
   source: string;
   publishedAt?: string;
+  category?: "layoff" | "hiring" | "discussion";
 }
 
 export default function LayoffsWidget() {
@@ -23,7 +24,8 @@ export default function LayoffsWidget() {
         });
         if (resp.ok) {
           const data = await resp.json();
-          setItems(data.items || []);
+          const layoffItems = (data.items || []).filter((item: JobItem) => item.category === "layoff");
+          setItems(layoffItems);
         }
       } catch {
         // silent fail
@@ -53,7 +55,7 @@ export default function LayoffsWidget() {
     <div className="editorial-card rounded-[1.15rem] p-4">
       {items.length === 0 ? (
         <div className="rounded-[0.95rem] border border-border/25 bg-background/35 px-3 py-4 text-sm text-muted-foreground">
-          暂无新增裁员/招聘信息，稍后刷新。
+          暂无新增裁员信息，稍后刷新。
         </div>
       ) : (
         <div className="editorial-list divide-y divide-border/20 rounded-[1rem] px-3 py-2">

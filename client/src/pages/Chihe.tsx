@@ -1,15 +1,7 @@
 import { useEffect, useState } from "react";
+import { CupSoda, Dices, MoonStar, Sparkles, UtensilsCrossed } from "lucide-react";
 import Navigation from "@/components/Navigation";
-import {
-  BackToHomeLink,
-  BlindBoxFull,
-  BubbleTeaFull,
-  CategoryTabs,
-  ChineseFoodFull,
-  LateNightFull,
-  NewPlacesFull,
-} from "@/components/chihe";
-import type { CategoryType } from "@/components/chihe";
+import { BackToHomeLink, PlaceCard } from "@/components/chihe";
 import { usePlacesCache } from "@/hooks/usePlacesCache";
 import { config } from "@/config";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -29,19 +21,97 @@ interface SpendPlace {
   badges?: string[];
 }
 
-const BLIND_BOX = "\u76f2\u76d2";
-const BUBBLE_TEA = "\u5976\u8336";
-const CHINESE_FOOD = "\u4e2d\u9910";
-const LATE_NIGHT = "\u591c\u5bb5";
-const NEW_PLACES = "\u65b0\u5e97\u6253\u5361";
+const CATEGORIES = ["新店打卡", "奶茶", "中餐", "夜宵"] as const;
+
+const CATEGORY_ICON = {
+  新店打卡: Sparkles,
+  奶茶: CupSoda,
+  中餐: UtensilsCrossed,
+  夜宵: MoonStar,
+} as const;
+
+function getCategoryLabel(category: (typeof CATEGORIES)[number], lang: "zh" | "en") {
+  if (lang === "en") {
+    switch (category) {
+      case "新店打卡":
+        return "New Spots";
+      case "奶茶":
+        return "Bubble Tea";
+      case "中餐":
+        return "Chinese Food";
+      case "夜宵":
+        return "Late Night";
+    }
+  }
+
+  return category;
+}
+
+function GuessCard({
+  category,
+  places,
+  lang,
+}: {
+  category: string;
+  places: SpendPlace[];
+  lang: "zh" | "en";
+}) {
+  const [current, setCurrent] = useState<SpendPlace | null>(null);
+  const Icon = CATEGORY_ICON[category as keyof typeof CATEGORY_ICON] || Sparkles;
+
+  const pickOne = () => {
+    if (places.length === 0) return;
+    const next = places[Math.floor(Math.random() * places.length)] || null;
+    setCurrent(next);
+  };
+
+  if (current) {
+    return <PlaceCard place={current} size="medium" />;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={pickOne}
+      className="group relative flex h-full min-h-[22rem] flex-col justify-between overflow-hidden rounded-[1.15rem] border border-white/12 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_34%),linear-gradient(145deg,rgba(14,165,233,0.18),rgba(251,191,36,0.12)_52%,rgba(255,255,255,0.05))] p-5 text-left shadow-[0_20px_50px_rgba(15,23,42,0.22)] transition-all duration-200 hover:-translate-y-1 hover:border-primary/40"
+    >
+      <div className="absolute right-4 top-4 h-20 w-20 rounded-full bg-white/10 blur-2xl transition-transform duration-300 group-hover:scale-125" />
+      <div className="absolute -bottom-8 -left-6 h-24 w-24 rounded-full bg-primary/20 blur-3xl transition-transform duration-300 group-hover:scale-110" />
+
+      <div className="relative flex items-start justify-between gap-3">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/15 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-white/72">
+            Surprise Pick
+          </div>
+          <div className="mt-4 text-2xl font-semibold text-foreground">
+            {lang === "en" ? "Pick for Me" : "猜我喜欢"}
+          </div>
+          <div className="mt-2 text-sm text-foreground/72">{getCategoryLabel(category as (typeof CATEGORIES)[number], lang)}</div>
+        </div>
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/15 bg-black/20 text-white/88">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+
+      <div className="relative">
+        <div className="max-w-[18rem] text-sm leading-6 text-foreground/74">
+          {lang === "en"
+            ? "When you do not want to choose, roll once and go with the best candidate."
+            : "懒得选的时候，直接丢给你一个这类里最值得去的选项。"}
+        </div>
+        <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/18 bg-black/20 px-4 py-2 text-sm font-medium text-white/90 transition-colors group-hover:border-white/28">
+          <Dices className="h-4 w-4" />
+          {lang === "en" ? "Roll it" : "掷一下"}
+        </div>
+      </div>
+    </button>
+  );
+}
 
 export default function Chihe() {
   const { lang } = useLanguage();
   const t = useT(lang);
-  const [activeCategory, setActiveCategory] = useState<CategoryType>(BLIND_BOX as CategoryType);
-
-  const { placesByCategory, loading } = usePlacesCache([BUBBLE_TEA, CHINESE_FOOD, LATE_NIGHT, NEW_PLACES]);
-
+  const { placesByCategory, loading } = usePlacesCache(["奶茶", "中餐", "夜宵", "新店打卡"]);
   const [newPlacesState, setNewPlacesState] = useState<{
     status: "idle" | "loading" | "success" | "error";
     items: SpendPlace[];
@@ -73,7 +143,7 @@ export default function Chihe() {
         const mapped: SpendPlace[] = (snapshot.places || []).map((entry) => ({
           id: entry.placeId,
           name: entry.displayName,
-          category: NEW_PLACES,
+          category: "新店打卡",
           rating: entry.rating ?? 0,
           user_ratings_total: entry.userRatingCount ?? 0,
           maps_url: entry.placeId
@@ -89,14 +159,19 @@ export default function Chihe() {
         setNewPlacesState({
           status: "success",
           items: mapped,
-          message: mapped.length === 0 ? "\u6682\u65e0\u65b0\u5e97\uff0c\u7a0d\u540e\u518d\u770b\u3002" : undefined,
+          message:
+            mapped.length === 0
+              ? lang === "en"
+                ? "No new spots right now."
+                : "暂时没有新店，稍后再看。"
+              : undefined,
         });
-      } catch (_error: unknown) {
+      } catch {
         if (cancelled) return;
         setNewPlacesState({
           status: "error",
           items: [],
-          message: "\u65b0\u5e97\u6570\u636e\u6682\u65f6\u4e0d\u53ef\u7528\u3002",
+          message: lang === "en" ? "New spots are temporarily unavailable." : "新店数据暂时不可用。",
         });
       }
     })();
@@ -104,40 +179,7 @@ export default function Chihe() {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  const getPlacesForCategory = (category: CategoryType): SpendPlace[] => {
-    if (category === (NEW_PLACES as CategoryType)) return newPlacesState.items;
-    if (category === (BLIND_BOX as CategoryType)) {
-      return [
-        ...(placesByCategory[BUBBLE_TEA] || []),
-        ...(placesByCategory[CHINESE_FOOD] || []),
-        ...(placesByCategory[LATE_NIGHT] || []),
-        ...newPlacesState.items,
-      ];
-    }
-    return placesByCategory[category] || [];
-  };
-
-  const blindBoxPlaces = getPlacesForCategory(BLIND_BOX as CategoryType);
-
-  const counts: Record<CategoryType, number> = {
-    [BLIND_BOX]: blindBoxPlaces.length,
-    [BUBBLE_TEA]: (placesByCategory[BUBBLE_TEA] || []).length,
-    [CHINESE_FOOD]: (placesByCategory[CHINESE_FOOD] || []).length,
-    [LATE_NIGHT]: (placesByCategory[LATE_NIGHT] || []).length,
-    [NEW_PLACES]: newPlacesState.items.length,
-  } as Record<CategoryType, number>;
-
-  const isCurrentCategoryLoading =
-    activeCategory === (NEW_PLACES as CategoryType)
-      ? newPlacesState.status === "loading"
-      : activeCategory === (BLIND_BOX as CategoryType)
-        ? loading || newPlacesState.status === "loading"
-        : loading;
-
-  const currentPlaces = getPlacesForCategory(activeCategory);
-  const currentMessage = activeCategory === (NEW_PLACES as CategoryType) ? newPlacesState.message : undefined;
+  }, [lang]);
 
   return (
     <div className="page-shell min-h-screen bg-background grid-bg">
@@ -150,40 +192,40 @@ export default function Chihe() {
             <h1 className="mt-4 text-2xl font-semibold leading-tight text-foreground md:text-[34px] md:leading-[1.08]">
               {t.chihe.title}
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground md:text-[15px]">
-              \u5207\u5206\u7c7b\uff0c\u76f4\u63a5\u9009\u5e97\u3002
-            </p>
           </section>
 
-          <section className="section-shell section-shell-food rounded-sm p-3 md:p-4">
-            <CategoryTabs
-              activeCategory={activeCategory}
-              onCategoryChange={setActiveCategory}
-              counts={counts}
-            />
-          </section>
+          {CATEGORIES.map((category) => {
+            const isNewCategory = category === "新店打卡";
+            const places = isNewCategory ? newPlacesState.items : placesByCategory[category] || [];
+            const visible = places.slice(0, 5);
 
-          {activeCategory === (BLIND_BOX as CategoryType) ? (
-            <BlindBoxFull places={blindBoxPlaces} loading={isCurrentCategoryLoading} />
-          ) : null}
-          {activeCategory === (BUBBLE_TEA as CategoryType) ? (
-            <BubbleTeaFull places={currentPlaces} loading={isCurrentCategoryLoading} />
-          ) : null}
-          {activeCategory === (CHINESE_FOOD as CategoryType) ? (
-            <ChineseFoodFull places={currentPlaces} loading={isCurrentCategoryLoading} />
-          ) : null}
-          {activeCategory === (LATE_NIGHT as CategoryType) ? (
-            <LateNightFull places={currentPlaces} loading={isCurrentCategoryLoading} />
-          ) : null}
-          {activeCategory === (NEW_PLACES as CategoryType) ? (
-            <NewPlacesFull places={currentPlaces} loading={isCurrentCategoryLoading} />
-          ) : null}
-
-          {activeCategory === (NEW_PLACES as CategoryType) && currentMessage ? (
-            <div className="rounded-sm border border-border/35 bg-card/45 px-4 py-3 text-sm text-muted-foreground">
-              {currentMessage}
-            </div>
-          ) : null}
+            return (
+              <section key={category} className="section-shell section-shell-food rounded-[1.2rem] p-5">
+                <h2 className="mb-4 text-xl font-semibold text-foreground">
+                  {getCategoryLabel(category, lang)}
+                </h2>
+                {loading ? (
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {Array.from({ length: 6 }).map((_, index) => (
+                      <div key={index} className="h-80 animate-pulse rounded-[1.15rem] bg-muted/40" />
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      {visible.map((place) => (
+                        <PlaceCard key={place.id} place={place} size="medium" />
+                      ))}
+                      <GuessCard category={category} places={places} lang={lang} />
+                    </div>
+                    {isNewCategory && newPlacesState.message ? (
+                      <div className="mt-3 text-sm text-muted-foreground">{newPlacesState.message}</div>
+                    ) : null}
+                  </>
+                )}
+              </section>
+            );
+          })}
         </div>
       </main>
     </div>

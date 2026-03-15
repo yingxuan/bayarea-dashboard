@@ -13,16 +13,23 @@ import {
   setCorsHeaders,
 } from "../../lib/api-utils.js";
 
-const LEEKS_CACHE_TTL = 20 * 60 * 1000;
-const ONEPOINT3ACRES_FORUM_URL = "https://www.1point3acres.com/bbs/forum-291-1.html";
+const OFFERS_CACHE_TTL = 30 * 60 * 1000;
+const ONEPOINT3ACRES_FORUM_URL = "https://www.1point3acres.com/bbs/forum.php?gid=38";
 
-interface CommunityItem {
-  source: "1point3acres";
-  sourceLabel: "一亩三分地";
+interface OfferItem {
   title: string;
   url: string;
+  source: "1point3acres";
+  sourceLabel: "一亩三分地";
   publishedAt?: string;
+  category: "offer" | "interview" | "job";
 }
+
+const TITLE_PATTERNS = [
+  { pattern: /(offer|compensation|salary|tc|包裹|总包|白菜)/i, category: "offer" as const },
+  { pattern: /(面经|interview|onsite|vo\b|phone screen|oa\b)/i, category: "interview" as const },
+  { pattern: /(跳槽|求职|内推|找工|hiring|recruit|recruiting)/i, category: "job" as const },
+];
 
 function normalize1p3aUrl(url: string): string {
   const instantMatch = url.match(/instant\.1point3acres\.com\/thread\/(\d+)/i);
@@ -40,7 +47,7 @@ function normalize1p3aUrl(url: string): string {
 
 function isValidThreadUrl(url: string): boolean {
   const normalized = normalize1p3aUrl(url).toLowerCase();
-  if (normalized.includes("forumdisplay") || /forum-\d+-1(\.html)?$/.test(normalized)) {
+  if (normalized.includes("forumdisplay") || normalized.includes("forum.php?gid=")) {
     return false;
   }
 
@@ -51,7 +58,14 @@ function isValidThreadUrl(url: string): boolean {
   );
 }
 
-async function scrapeForumTopPosts(): Promise<CommunityItem[]> {
+function detectCategory(title: string): OfferItem["category"] {
+  for (const { pattern, category } of TITLE_PATTERNS) {
+    if (pattern.test(title)) return category;
+  }
+  return "job";
+}
+
+async function scrapeOffersFromHtml(): Promise<OfferItem[]> {
   const response = await fetch(ONEPOINT3ACRES_FORUM_URL, {
     headers: {
       "User-Agent":
@@ -71,7 +85,7 @@ async function scrapeForumTopPosts(): Promise<CommunityItem[]> {
   const html = iconv.decode(Buffer.from(buf), "gbk");
   const $ = cheerio.load(html);
   const seenUrls = new Set<string>();
-  const items: CommunityItem[] = [];
+  const items: OfferItem[] = [];
 
   $("a.xi2, a.xst, a[href*='/bbs/thread-'], a[href*='viewthread'], a[href*='instant.1point3acres.com/thread/']").each(
     (_, element) => {
@@ -92,11 +106,12 @@ async function scrapeForumTopPosts(): Promise<CommunityItem[]> {
 
       seenUrls.add(url);
       items.push({
-        source: "1point3acres",
-        sourceLabel: "一亩三分地",
         title,
         url,
+        source: "1point3acres",
+        sourceLabel: "一亩三分地",
         publishedAt: fetchedAt,
+        category: detectCategory(title),
       });
     },
   );
@@ -104,26 +119,26 @@ async function scrapeForumTopPosts(): Promise<CommunityItem[]> {
   return items;
 }
 
-async function fetchLeekData(
+async function fetchOffersData(
   nocache = false,
-): Promise<{ items: CommunityItem[]; sourceMode: "live" | "cache" | "unavailable" }> {
-  const cacheKey = "community-leeks";
+): Promise<{ items: OfferItem[]; sourceMode: "live" | "cache" | "unavailable" }> {
+  const cacheKey = "community-offers";
 
   if (!nocache) {
-    const cached = getCachedData(cacheKey, LEEKS_CACHE_TTL, false);
+    const cached = getCachedData(cacheKey, OFFERS_CACHE_TTL, false);
     if (cached && cached.data?.items?.length >= 3) {
       return { items: cached.data.items, sourceMode: "cache" };
     }
   }
 
   try {
-    const items = await scrapeForumTopPosts();
-    if (items.length >= 3) {
-      setCache(cacheKey, { items, sourceMode: "live" });
-      return { items, sourceMode: "live" };
+    const htmlItems = await scrapeOffersFromHtml();
+    if (htmlItems.length >= 3) {
+      setCache(cacheKey, { items: htmlItems, sourceMode: "live" });
+      return { items: htmlItems, sourceMode: "live" };
     }
   } catch (error) {
-    console.warn("[Leeks] HTML scrape failed:", error instanceof Error ? error.message : error);
+    console.warn("[Offers] HTML scrape failed:", error instanceof Error ? error.message : error);
   }
 
   const stale = getStaleCache(cacheKey);
@@ -134,14 +149,14 @@ async function fetchLeekData(
   return { items: [], sourceMode: "unavailable" };
 }
 
-export async function handleLeeks(req: VercelRequest, res: VercelResponse) {
+export async function handleOffers(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
   if (handleOptions(req, res)) return;
 
   try {
     const nocache = isCacheBypass(req);
     const fetchedAt = new Date().toISOString();
-    const { items, sourceMode } = await fetchLeekData(nocache);
+    const { items, sourceMode } = await fetchOffersData(nocache);
 
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.status(200).json({
@@ -149,12 +164,12 @@ export async function handleLeeks(req: VercelRequest, res: VercelResponse) {
       items,
       count: items.length,
       fetchedAt,
-      ttlSeconds: ttlMsToSeconds(LEEKS_CACHE_TTL),
+      ttlSeconds: ttlMsToSeconds(OFFERS_CACHE_TTL),
       sourceMode,
       source: { name: "1point3acres", url: ONEPOINT3ACRES_FORUM_URL },
     });
   } catch (error) {
-    console.error("[API /api/community/leeks] Error:", error);
+    console.error("[API /api/community/offers] Error:", error);
     res.status(200).json({
       status: "unavailable",
       items: [],
@@ -167,4 +182,4 @@ export async function handleLeeks(req: VercelRequest, res: VercelResponse) {
   }
 }
 
-export default handleLeeks;
+export default handleOffers;

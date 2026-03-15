@@ -1,5 +1,6 @@
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import TimeAgo from "@/components/TimeAgo";
+import VideoThumbnail from "@/components/VideoThumbnail";
 
 type FanwanVideo = {
   videoId: string;
@@ -51,14 +52,12 @@ export default function FanwanCarousel({ videos }: Props) {
                 className="group block overflow-hidden rounded-sm border border-border/35 bg-background/55 transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-background/75 hover:shadow-[0_18px_48px_rgba(0,0,0,0.18)]"
               >
                 <div className="relative aspect-video overflow-hidden bg-muted">
-                  <img
+                  <VideoThumbnail
                     src={item.thumbnail}
+                    videoUrl={item.url}
+                    videoId={item.videoId}
                     alt={item.title}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
                   <div className="absolute left-3 top-3 rounded-sm border border-white/15 bg-black/35 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-white/78">

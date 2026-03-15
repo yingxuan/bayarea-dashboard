@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import TimeAgo from "@/components/TimeAgo";
+import VideoThumbnail from "@/components/VideoThumbnail";
 import { config } from "@/config";
 
 interface FanwanVideo {
@@ -97,14 +98,12 @@ export default function FanwanFull() {
               className="group overflow-hidden rounded-sm border border-border/35 bg-card/40 transition-colors hover:border-primary/45 hover:bg-card/65"
             >
               <div className="aspect-video overflow-hidden bg-muted">
-                <img
+                <VideoThumbnail
                   src={video.thumbnail}
+                  videoUrl={video.url}
+                  videoId={video.videoId}
                   alt={video.title}
                   className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                  loading="lazy"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
                 />
               </div>
               <div className="p-3">

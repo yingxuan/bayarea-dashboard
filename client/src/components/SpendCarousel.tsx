@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ExternalLink, MapPin, RefreshCcw, Sparkles, Star } from "lucide-react";
+import {
+  CupSoda,
+  ExternalLink,
+  MapPin,
+  MoonStar,
+  RefreshCcw,
+  Sparkles,
+  Star,
+  UtensilsCrossed,
+} from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { config } from "@/config";
 import { enrichPlace } from "@/lib/places/placeEnricher";
@@ -30,6 +39,7 @@ interface SpendCarouselProps {
   offset?: number;
   onRefresh?: () => void;
   debugInfo?: PlacesDebugInfo;
+  showRandomTile?: boolean;
 }
 
 const CATEGORY_FALLBACK_IMAGES: Record<string, string[]> = {
@@ -56,10 +66,17 @@ const CATEGORY_FALLBACK_IMAGES: Record<string, string[]> = {
 };
 
 const CATEGORY_CTA: Record<string, string> = {
-  奶茶: "换一批奶茶",
-  中餐: "换一批中餐",
-  夜宵: "换一批夜宵",
-  新店打卡: "换一批新店",
+  奶茶: "换一批",
+  中餐: "换一批",
+  夜宵: "换一批",
+  新店打卡: "换一批",
+};
+
+const CATEGORY_ICON: Record<string, typeof CupSoda> = {
+  奶茶: CupSoda,
+  中餐: UtensilsCrossed,
+  夜宵: MoonStar,
+  新店打卡: Sparkles,
 };
 
 function getFallbackImage(category: string, place: SpendPlace, fallbackImage?: string) {
@@ -161,6 +178,8 @@ function RandomTile({
   currentPlace: SpendPlace | null;
   picking: boolean;
 }) {
+  const Icon = CATEGORY_ICON[category] || Sparkles;
+
   if (currentPlace) {
     return (
       <div className="w-[16.5rem]">
@@ -178,17 +197,17 @@ function RandomTile({
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-base font-semibold text-foreground">盲盒</div>
+          <div className="text-base font-semibold text-foreground">猜我喜欢</div>
         </div>
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/14 text-primary">
-          <Sparkles className={`h-4 w-4 ${picking ? "animate-pulse" : ""}`} />
+          <Icon className={`h-4 w-4 ${picking ? "animate-pulse" : ""}`} />
         </div>
       </div>
       <div className="mt-5 text-sm leading-6 text-muted-foreground/82">
-        {picking ? "随机中..." : "不想选就直接抽一家。"}
+        {picking ? "挑选中..." : "不想选就直接给我一个。"}
       </div>
       <div className="mt-6 inline-flex items-center gap-2 text-xs font-medium text-primary/88">
-        {picking ? "挑选中..." : "抽一家"}
+        {picking ? "正在选..." : "试试手气"}
       </div>
     </button>
   );
@@ -201,6 +220,7 @@ export default function SpendCarousel({
   offset = 0,
   onRefresh,
   debugInfo,
+  showRandomTile = true,
 }: SpendCarouselProps) {
   const [enrichedPlaces, setEnrichedPlaces] = useState<
     Map<string, { rating: number; userRatingCount: number; photoUrl?: string }>
@@ -359,15 +379,17 @@ export default function SpendCarousel({
             );
           })}
 
-          <CarouselItem className="basis-auto pl-3">
-            <RandomTile
-              category={category}
-              pool={places}
-              onPick={handleRandomPick}
-              currentPlace={randomPlace}
-              picking={isPickingRandom}
-            />
-          </CarouselItem>
+          {showRandomTile ? (
+            <CarouselItem className="basis-auto pl-3">
+              <RandomTile
+                category={category}
+                pool={places}
+                onPick={handleRandomPick}
+                currentPlace={randomPlace}
+                picking={isPickingRandom}
+              />
+            </CarouselItem>
+          ) : null}
         </CarouselContent>
       </Carousel>
     </section>

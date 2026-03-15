@@ -40,6 +40,7 @@
     { "source": "/api/quotes", "destination": "/api/market-all?handler=quotes" },
     { "source": "/api/shows", "destination": "/api/market-all?handler=shows" },
     { "source": "/api/youtubers", "destination": "/api/market-all?handler=youtubers" },
+    { "source": "/api/housing-open-houses", "destination": "/api/market-all?handler=housing-open-houses" },
     { "source": "/api/movies", "destination": "/api/market-all?handler=movies" },
     { "source": "/api/concerts", "destination": "/api/market-all?handler=concerts" },
     { "source": "/api/bayarea-movies", "destination": "/api/market-all?handler=bayarea-movies" },

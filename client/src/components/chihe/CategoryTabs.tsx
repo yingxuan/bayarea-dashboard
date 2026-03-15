@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -17,35 +18,30 @@ export type CategoryType =
 
 interface CategoryTabsProps {
   activeCategory: CategoryType;
-  onCategoryChange: (category: CategoryType) => void;
+  onCategoryChange: Dispatch<SetStateAction<CategoryType>>;
   counts?: Record<CategoryType, number>;
 }
 
-const CATEGORY_META: Array<{ key: CategoryType; tone: string; blurb: string }> = [
+const CATEGORY_META: Array<{ key: CategoryType; tone: string }> = [
   {
     key: BLIND_BOX,
     tone: "text-fuchsia-300/80",
-    blurb: "\u4e0d\u60f3\u9009\uff0c\u76f4\u63a5\u62bd\u4e00\u5bb6\u3002",
   },
   {
     key: BUBBLE_TEA,
     tone: "text-sky-300/80",
-    blurb: "\u5feb\u901f\u627e\u4e00\u676f\u7a33\u5982\u8001\u670b\u53cb\u7684\u5976\u8336\u3002",
   },
   {
     key: CHINESE_FOOD,
     tone: "text-amber-300/80",
-    blurb: "\u76f4\u63a5\u770b\u4e2d\u9910\u6e05\u5355\uff0c\u4eca\u665a\u5c11\u7ea0\u7ed3\u3002",
   },
   {
     key: LATE_NIGHT,
     tone: "text-rose-300/80",
-    blurb: "\u7559\u7ed9\u591c\u91cc\u8fd8\u60f3\u5403\u70ed\u7684\u65f6\u5019\u3002",
   },
   {
     key: NEW_PLACES,
     tone: "text-emerald-300/80",
-    blurb: "\u65b0\u5f00\u5e97\u94fa\uff0c\u9002\u5408\u8fd9\u5468\u672b\u53bb\u8bd5\u3002",
   },
 ];
 
@@ -85,9 +81,6 @@ export default function CategoryTabs({
                 <div className="min-w-0">
                   <div className={`text-sm font-semibold text-foreground ${category.tone}`}>
                     {labels[category.key]}
-                  </div>
-                  <div className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground/80">
-                    {category.blurb}
                   </div>
                 </div>
                 <div
