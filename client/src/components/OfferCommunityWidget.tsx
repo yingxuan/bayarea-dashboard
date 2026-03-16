@@ -68,7 +68,7 @@ export default function OfferCommunityWidget({ maxItems = 5 }: OfferCommunityWid
           暂时没有抓到可用的帖子，稍后再刷。
         </div>
       ) : (
-        <div className="editorial-list min-w-0 divide-y divide-border/20 rounded-[1rem] px-2 py-2 sm:px-3">
+        <div className="editorial-list min-w-0 divide-y divide-border/20 rounded-[1rem] px-1 py-1 sm:px-3 sm:py-2">
           {items.map((item, idx) => (
             <a
               key={`${item.url}-${idx}`}
@@ -76,20 +76,20 @@ export default function OfferCommunityWidget({ maxItems = 5 }: OfferCommunityWid
               target="_blank"
               rel="noopener noreferrer"
               onClick={handleExternalLinkClick}
-              className="group flex min-w-0 flex-col gap-2 rounded-[0.9rem] px-2 py-3 transition-colors hover:bg-white/6 sm:flex-row sm:items-start sm:gap-3 sm:px-3"
+              className="group grid min-w-0 grid-cols-[auto,minmax(0,1fr),auto] items-start gap-x-2 gap-y-1 rounded-[0.9rem] px-2 py-2.5 transition-colors hover:bg-white/6 sm:flex sm:items-start sm:gap-3 sm:px-3 sm:py-3"
             >
               <span className="mt-0.5 shrink-0 text-[10px] font-mono leading-tight text-sky-300/85">
                 {categoryLabel[item.category]}
               </span>
-              <span className="min-w-0 flex-1 break-words text-[13px] leading-6 text-foreground/88 transition-colors group-hover:text-primary">
+              <span className="min-w-0 break-words pr-1 text-[13px] leading-5 text-foreground/88 transition-colors group-hover:text-primary sm:flex-1 sm:pr-0 sm:leading-6">
                 {item.title}
               </span>
-              <div className="flex items-center gap-2 sm:mt-1 sm:shrink-0">
+              <div className="flex items-center justify-end gap-2 sm:mt-1 sm:shrink-0">
                 <span className="text-muted-foreground/55">
                   <ExternalLink className="h-3.5 w-3.5" />
                 </span>
                 {item.publishedAt ? (
-                  <span className="text-[10px] font-mono text-muted-foreground/55">
+                  <span className="hidden text-[10px] font-mono text-muted-foreground/55 sm:inline">
                     <TimeAgo isoString={item.publishedAt} />
                   </span>
                 ) : null}

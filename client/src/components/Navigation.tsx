@@ -43,11 +43,11 @@ export default function Navigation() {
               <div className="brand-mark flex h-10 w-10 items-center justify-center rounded-2xl text-[11px] font-semibold tracking-[0.18em]">
                 BA
               </div>
-              <div className="flex flex-col leading-none">
-                <div className="text-[15px] font-semibold tracking-[0.01em] text-foreground">
+              <div className="flex min-w-0 max-w-[11.5rem] flex-col gap-0.5 sm:max-w-none">
+                <div className="text-[15px] font-semibold leading-[1.1] tracking-[0.01em] text-foreground">
                   {t.nav.brand}
                 </div>
-                <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70">
+                <div className="text-[10px] leading-[1.2] tracking-[0.08em] text-muted-foreground/70">
                   {lang === "zh" ? "湾区情报与生存" : "Bay Area survival guide"}
                 </div>
               </div>

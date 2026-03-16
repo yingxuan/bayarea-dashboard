@@ -602,7 +602,7 @@ export default function Fangzi() {
                     {housingVideos.map((video) => (
                       <CarouselItem
                         key={video.videoId || video.url}
-                        className="min-w-0 shrink-0 pl-3 md:basis-1/2"
+                        className="min-w-0 shrink-0 basis-[84%] pl-3 sm:basis-[62%] md:basis-1/2"
                       >
                         <a
                           href={video.url}
@@ -619,16 +619,16 @@ export default function Fangzi() {
                               loading="lazy"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-                            <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/35 px-3 py-1 text-xs text-white/88">
+                            <div className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[11px] text-white/88 sm:left-4 sm:top-4 sm:px-3 sm:text-xs">
                               <PlayCircle className="h-4 w-4" />
                               YouTube
                             </div>
                           </div>
-                          <div className="p-4">
-                            <div className="line-clamp-2 text-lg font-semibold text-foreground">
+                          <div className="p-3 sm:p-4">
+                            <div className="line-clamp-2 text-base font-semibold text-foreground sm:text-lg">
                               {video.title}
                             </div>
-                            <div className="mt-2 text-sm text-muted-foreground">{video.subtitle}</div>
+                            <div className="mt-1.5 text-xs text-muted-foreground sm:mt-2 sm:text-sm">{video.subtitle}</div>
                           </div>
                         </a>
                       </CarouselItem>
