@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { fadeInUp, staggerContainer } from "@/lib/motion";
 import Navigation from "@/components/Navigation";
 import PortfolioHero from "@/components/PortfolioHero";
-import IndicesCard from "@/components/IndicesCard";
 import MarketHighlights from "@/components/MarketHighlights";
 import ReturnHintToast, { ReturnToDashboardToast } from "@/components/ReturnHintToast";
 import LayoffsWidget from "@/components/LayoffsWidget";
@@ -200,22 +199,6 @@ export default function Home() {
       : `码农行业 ${judgment.temperatureLabel}，裁员和 offer/面经都在更新`;
   }, [lang, layoffCount, offerCount]);
 
-  const homeOneLiner = useMemo(() => {
-    const foodLine =
-      lang === "en"
-        ? newPlacesCount > 0
-          ? `${newPlacesCount} new spots are worth a look`
-          : "check Dining for fresh spots"
-        : newPlacesCount > 0
-          ? `新店打卡今天有 ${newPlacesCount} 家可刷`
-          : "吃喝页可以直接看新店打卡";
-
-    const rateLine =
-      lang === "en" ? "30Y mortgage is still around 6.11%" : "30 年固定房贷约 6.11%，还在高位";
-
-    return `${marketLine}；${workLine}；${foodLine}；${rateLine}。`;
-  }, [lang, marketLine, newPlacesCount, workLine]);
-
   return (
     <div className="page-shell min-h-screen bg-background grid-bg">
       <Navigation />
@@ -240,15 +223,6 @@ export default function Home() {
           </motion.div>
 
           <motion.section
-            className="w-full rounded-[1.1rem] border border-border/25 bg-card/45 px-4 py-3"
-            variants={fadeInUp}
-          >
-            <div className="text-sm leading-7 text-foreground/88 md:text-[15px]">{homeOneLiner}</div>
-          </motion.section>
-
-          <div className="section-divider" />
-
-          <motion.section
             className="section-shell section-shell-market rounded-[1.25rem] p-3 md:p-4"
             variants={fadeInUp}
           >
@@ -256,7 +230,7 @@ export default function Home() {
 
             <div className="grid gap-4 xl:grid-cols-[1.45fr_0.85fr]">
               <div className="grid gap-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-[2.2fr_1fr]">
+                <div className="grid grid-cols-1 gap-4">
                   <PortfolioHero
                     quotesData={quotesData}
                     holdings={holdings}
@@ -264,7 +238,6 @@ export default function Home() {
                     ytdBaseline={ytdBaseline}
                     onYtdBaselineChange={updateYtdBaseline}
                   />
-                  <IndicesCard />
                 </div>
                 <MarketHighlights
                   marketNews={marketNews}
@@ -294,20 +267,20 @@ export default function Home() {
 
             <div className="grid gap-4">
               <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
-                <div>
+                <div className="min-w-0">
                   <h3 className="mb-3 text-sm font-semibold text-foreground/88">
                     {lang === "en" ? "Layoff News" : "裁员新闻"}
                   </h3>
                   <LayoffsWidget />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3 className="mb-3 text-sm font-semibold text-foreground/88">
                     {lang === "en" ? "Offers / Interview Notes" : "Offer / 面经"}
                   </h3>
                   <OfferCommunityWidget maxItems={6} />
                 </div>
               </div>
-              <div>
+              <div className="min-w-0">
                 <h3 className="mb-3 text-sm font-semibold text-foreground/88">
                   {lang === "en" ? "Career Videos" : "找工视频"}
                 </h3>
@@ -316,7 +289,7 @@ export default function Home() {
                   maxItems={8}
                   layout="carousel"
                   hideHeader
-                  carouselItemClassName="min-w-0 shrink-0 pl-3 md:basis-1/2 xl:basis-1/3 2xl:basis-1/4"
+                  carouselItemClassName="min-w-0 shrink-0 basis-[82%] pl-3 sm:basis-[60%] md:basis-1/2 xl:basis-1/3 2xl:basis-1/4"
                 />
               </div>
             </div>

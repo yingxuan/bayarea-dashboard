@@ -181,6 +181,8 @@ export default function Chihe() {
     };
   }, [lang]);
 
+  const fallbackNewPlaces = placesByCategory["新店打卡"] || [];
+
   return (
     <div className="page-shell min-h-screen bg-background grid-bg">
       <Navigation />
@@ -196,7 +198,11 @@ export default function Chihe() {
 
           {CATEGORIES.map((category) => {
             const isNewCategory = category === "新店打卡";
-            const places = isNewCategory ? newPlacesState.items : placesByCategory[category] || [];
+            const places = isNewCategory
+              ? newPlacesState.items.length > 0
+                ? newPlacesState.items
+                : fallbackNewPlaces
+              : placesByCategory[category] || [];
             const visible = places.slice(0, 5);
 
             return (
@@ -218,7 +224,7 @@ export default function Chihe() {
                       ))}
                       <GuessCard category={category} places={places} lang={lang} />
                     </div>
-                    {isNewCategory && newPlacesState.message ? (
+                    {isNewCategory && newPlacesState.message && places.length === 0 ? (
                       <div className="mt-3 text-sm text-muted-foreground">{newPlacesState.message}</div>
                     ) : null}
                   </>

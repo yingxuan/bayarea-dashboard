@@ -123,7 +123,7 @@ export default function CompactVideoFeed({
 
   if (loading) {
     return (
-      <div className="editorial-card rounded-[1.15rem] p-4">
+      <div className="editorial-card min-w-0 rounded-[1.15rem] p-4">
         {!hideHeader ? (
           <div className="mb-3 text-sm font-semibold text-foreground/92">{resolvedTitle}</div>
         ) : null}
@@ -137,7 +137,7 @@ export default function CompactVideoFeed({
   }
 
   return (
-    <div className="editorial-card rounded-[1.15rem] p-4">
+    <div className="editorial-card min-w-0 overflow-hidden rounded-[1.15rem] p-4">
       {!hideHeader ? (
         <div className="mb-4 flex items-center justify-between gap-3 border-b border-border/20 pb-3">
           <div className="min-w-0">
@@ -162,7 +162,7 @@ export default function CompactVideoFeed({
           暂无可用视频。
         </div>
       ) : layout === "carousel" ? (
-        <Carousel opts={{ align: "start", loop: false, dragFree: true }} className="w-full">
+        <Carousel opts={{ align: "start", loop: false, dragFree: true }} className="w-full min-w-0">
           <CarouselContent className="-ml-3">
             {visibleItems.map((item) => (
               <CarouselItem key={item.id} className={carouselItemClassName}>
@@ -171,9 +171,9 @@ export default function CompactVideoFeed({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={handleExternalLinkClick}
-                  className="group block overflow-hidden rounded-[0.95rem] border border-border/25 bg-background/35 transition-all hover:border-primary/35 hover:bg-background/55"
+                  className="group block h-full overflow-hidden rounded-[0.95rem] border border-border/25 bg-background/35 transition-all hover:border-primary/35 hover:bg-background/55"
                 >
-                  <div className="aspect-video overflow-hidden bg-muted">
+                  <div className="aspect-video max-h-[11rem] overflow-hidden bg-muted sm:max-h-none">
                     <VideoThumbnail
                       src={item.thumbnail}
                       videoUrl={item.url}
@@ -183,7 +183,7 @@ export default function CompactVideoFeed({
                   </div>
                   <div className="p-3">
                     <div className="text-[11px] font-mono text-muted-foreground/70">{item.channel}</div>
-                    <div className="mt-1 line-clamp-2 text-[13px] leading-6 text-foreground/90 transition-colors group-hover:text-primary">
+                    <div className="mt-1 line-clamp-2 break-words text-[13px] leading-6 text-foreground/90 transition-colors group-hover:text-primary">
                       {item.title}
                     </div>
                     <div className="mt-2 text-[11px] font-mono text-muted-foreground/65">
@@ -196,7 +196,7 @@ export default function CompactVideoFeed({
           </CarouselContent>
         </Carousel>
       ) : (
-        <div className="grid h-full grid-rows-2 gap-3">
+        <div className="grid h-full gap-3 md:grid-rows-2">
           {visibleItems.map((item) => (
             <a
               key={item.id}
@@ -206,7 +206,7 @@ export default function CompactVideoFeed({
               onClick={handleExternalLinkClick}
               className="group flex h-full flex-col overflow-hidden rounded-[0.95rem] border border-border/25 bg-background/35 transition-all hover:border-primary/35 hover:bg-background/55"
             >
-              <div className="h-32 overflow-hidden bg-muted md:h-36">
+              <div className="h-28 overflow-hidden bg-muted sm:h-32 md:h-36">
                 <VideoThumbnail
                   src={item.thumbnail}
                   videoUrl={item.url}
@@ -216,7 +216,7 @@ export default function CompactVideoFeed({
               </div>
               <div className="flex flex-1 flex-col p-3">
                 <div className="text-[11px] font-mono text-muted-foreground/70">{item.channel}</div>
-                <div className="mt-1 line-clamp-2 text-[13px] leading-6 text-foreground/90 transition-colors group-hover:text-primary">
+                <div className="mt-1 line-clamp-2 break-words text-[13px] leading-6 text-foreground/90 transition-colors group-hover:text-primary">
                   {item.title}
                 </div>
                 <div className="mt-auto pt-2 text-[11px] font-mono text-muted-foreground/65">

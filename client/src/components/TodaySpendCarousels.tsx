@@ -114,6 +114,8 @@ export default function TodaySpendCarousels() {
     };
   }, []);
 
+  const fallbackNewPlaces = placesByCategory["新店打卡"] || [];
+
   if (loading) {
     return (
       <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
@@ -137,7 +139,11 @@ export default function TodaySpendCarousels() {
     <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
       {CATEGORIES.map((category) => {
         const isNewCategory = category === "新店打卡";
-        const places = isNewCategory ? newPlacesState.items : (placesByCategory[category] || []);
+        const places = isNewCategory
+          ? newPlacesState.items.length > 0
+            ? newPlacesState.items
+            : fallbackNewPlaces
+          : (placesByCategory[category] || []);
         const offset = categoryOffsets[category] || 0;
 
         return (
@@ -149,7 +155,7 @@ export default function TodaySpendCarousels() {
               onRefresh={() => handleRefresh(category)}
               debugInfo={debugByCategory?.[category]}
             />
-            {isNewCategory && newPlacesState.message ? (
+            {isNewCategory && newPlacesState.message && places.length === 0 ? (
               <div className="mt-2 px-2 text-center text-[11px] leading-5 text-muted-foreground/78">
                 {newPlacesState.message}
               </div>

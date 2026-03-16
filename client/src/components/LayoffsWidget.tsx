@@ -52,13 +52,13 @@ export default function LayoffsWidget() {
   }
 
   return (
-    <div className="editorial-card rounded-[1.15rem] p-4">
+    <div className="editorial-card min-w-0 rounded-[1.15rem] p-4">
       {items.length === 0 ? (
         <div className="rounded-[0.95rem] border border-border/25 bg-background/35 px-3 py-4 text-sm text-muted-foreground">
           暂无新增裁员信息，稍后刷新。
         </div>
       ) : (
-        <div className="editorial-list divide-y divide-border/20 rounded-[1rem] px-3 py-2">
+        <div className="editorial-list min-w-0 divide-y divide-border/20 rounded-[1rem] px-2 py-2 sm:px-3">
           {items.slice(0, 5).map((item, idx) => (
             <a
               key={`${item.url}-${idx}`}
@@ -66,16 +66,16 @@ export default function LayoffsWidget() {
               target="_blank"
               rel="noopener noreferrer"
               onClick={handleExternalLinkClick}
-              className="group flex items-start gap-3 rounded-[0.9rem] px-3 py-3 transition-colors hover:bg-white/6"
+              className="group flex min-w-0 flex-col gap-2 rounded-[0.9rem] px-2 py-3 transition-colors hover:bg-white/6 sm:flex-row sm:items-start sm:gap-3 sm:px-3"
             >
               <span className="mt-0.5 shrink-0 text-[10px] font-mono leading-tight text-rose-400/85">
                 {item.source}
               </span>
-              <span className="min-w-0 flex-1 text-[13px] leading-6 text-foreground/88 transition-colors group-hover:text-primary">
+              <span className="min-w-0 flex-1 break-words text-[13px] leading-6 text-foreground/88 transition-colors group-hover:text-primary">
                 {item.title}
               </span>
               {item.publishedAt ? (
-                <span className="shrink-0 text-[10px] font-mono text-muted-foreground/55">
+                <span className="shrink-0 text-[10px] font-mono text-muted-foreground/55 sm:mt-0.5">
                   <TimeAgo isoString={item.publishedAt} />
                 </span>
               ) : null}

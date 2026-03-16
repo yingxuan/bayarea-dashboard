@@ -25,6 +25,53 @@ type CacheState = {
 
 const cache: { state?: CacheState } = {};
 
+async function fetchHousingSearchViaApi(windowDays: number, limit: number, apiKey: string) {
+  const publishedAfter = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000).toISOString();
+  const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
+  searchUrl.searchParams.set("part", "snippet");
+  searchUrl.searchParams.set("type", "video");
+  searchUrl.searchParams.set("order", "date");
+  searchUrl.searchParams.set("maxResults", String(Math.min(limit * 2, 16)));
+  searchUrl.searchParams.set("publishedAfter", publishedAfter);
+  searchUrl.searchParams.set("q", "湾区最新地产");
+  searchUrl.searchParams.set("regionCode", "US");
+  searchUrl.searchParams.set("relevanceLanguage", "zh-Hans");
+  searchUrl.searchParams.set("key", apiKey);
+
+  const response = await fetch(searchUrl.toString());
+  if (!response.ok) {
+    throw new Error(`youtube search ${response.status}`);
+  }
+
+  const result = await response.json();
+  return (result.items || [])
+    .map((item: any) => {
+      const videoId = item.id?.videoId;
+      const snippet = item.snippet;
+      if (!videoId || !snippet?.publishedAt) return null;
+
+      const title = String(snippet.title || "");
+      if (/shorts/i.test(title)) return null;
+
+      return {
+        videoId,
+        title,
+        channelId: snippet.channelId || "",
+        channelTitle: snippet.channelTitle || "YouTube",
+        publishedAt: snippet.publishedAt,
+        thumbnail:
+          snippet.thumbnails?.high?.url ||
+          snippet.thumbnails?.medium?.url ||
+          snippet.thumbnails?.default?.url ||
+          "",
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+        durationSec: null,
+      };
+    })
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Cache-Control", "s-maxage=1800, stale-while-revalidate=900");
   if (req.method === "OPTIONS") return res.status(200).end();
@@ -51,7 +98,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const videos =
       feed === "housing"
         ? source === "api"
-          ? await fetchVideosViaApi(HOUSING_CHANNELS, windowDays, maxTotal, apiKey!)
+          ? await fetchHousingSearchViaApi(windowDays, maxTotal, apiKey!)
           : await fetchVideosViaRss(HOUSING_CHANNELS, windowDays, maxTotal)
         : source === "api"
           ? await fetchFanwanViaApi(windowDays, maxTotal, apiKey!)

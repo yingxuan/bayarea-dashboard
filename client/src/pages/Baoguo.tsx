@@ -94,7 +94,9 @@ export default function Baoguo() {
                   </div>
                   <div className="hero-pulse-card rounded-sm px-4 py-3">
                     <div className="text-[11px] uppercase tracking-[0.16em] text-sky-300/75">Offer</div>
-                    <div className="mt-2 text-lg font-semibold text-foreground">1P3A</div>
+                    <div className="mt-2 text-lg font-semibold text-foreground">
+                      {lang === "en" ? "1P3A / HN" : "1P3A / HN"}
+                    </div>
                   </div>
                 </div>
               </div>

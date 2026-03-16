@@ -84,25 +84,77 @@ function extractMetaImage(html: string) {
   return match?.[1] || "";
 }
 
+function normalizeScheduleDay(day: string) {
+  const cleaned = day.trim().replace(/\.$/, "");
+  const map: Record<string, string> = {
+    monday: "Mon",
+    mon: "Mon",
+    tuesday: "Tue",
+    tue: "Tue",
+    tues: "Tue",
+    wednesday: "Wed",
+    wed: "Wed",
+    thursday: "Thu",
+    thu: "Thu",
+    thur: "Thu",
+    thurs: "Thu",
+    friday: "Fri",
+    fri: "Fri",
+    saturday: "Sat",
+    sat: "Sat",
+    sunday: "Sun",
+    sun: "Sun",
+  };
+
+  return map[cleaned.toLowerCase()] || cleaned;
+}
+
+function normalizeScheduleTime(time: string) {
+  return time.trim().replace(/\s+/g, "").toUpperCase();
+}
+
 function extractSchedule(text: string) {
-  const match = /Open houses\s+([A-Za-z]+,\s+[A-Za-z]{3}\s+\d{1,2})\s+(\d{1,2}:\d{2}(?:am|pm)\s*-\s*\d{1,2}:\d{2}(?:am|pm))/i.exec(
+  const datedMatch = /Open houses\s+([A-Za-z]+,\s+[A-Za-z]{3}\s+\d{1,2})\s+(\d{1,2}:\d{2}(?:am|pm)\s*-\s*\d{1,2}:\d{2}(?:am|pm))/i.exec(
     text,
   );
-  if (!match) return "Open house schedule on Redfin";
-  return `${match[1]} · ${match[2].toUpperCase()}`;
+  if (datedMatch) {
+    return `${datedMatch[1]} · ${normalizeScheduleTime(datedMatch[2])}`;
+  }
+
+  const compactMatch =
+    /OPEN\s+([A-Za-z]{3,9})[A-Z,\s\d]{0,16}(\d{1,2}(?::\d{2})?\s*(?:AM|PM))\s*(?:-|TO)\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i.exec(
+      text,
+    ) ||
+    /Open\s+([A-Za-z]{3,9})[A-Z,\s\d]{0,16}(\d{1,2}(?::\d{2})?\s*(?:AM|PM))\s*(?:-|to)\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i.exec(
+      text,
+    );
+  if (compactMatch) {
+    return `${normalizeScheduleDay(compactMatch[1])} ${normalizeScheduleTime(compactMatch[2])}-${normalizeScheduleTime(compactMatch[3])}`;
+  }
+
+  return "";
 }
 
 function extractSchool(text: string, kind: "middle" | "high") {
   const pattern =
     kind === "middle"
-      ? /([A-Za-z0-9.'’ -]+Middle School)\s+Public\s+6-8\s+.*?Assigned/i
-      : /([A-Za-z0-9.'’ -]+High School)\s+Public\s+9-12\s+.*?Assigned/i;
+      ? /([A-Za-z0-9.' -]+Middle School)\s+Public\s+6-8\s+.*?Assigned/i
+      : /([A-Za-z0-9.' -]+High School)\s+Public\s+9-12\s+.*?Assigned/i;
 
   return text.match(pattern)?.[1]?.trim() || "Assigned school on Redfin";
 }
 
 function parseListingPage(url: string, html: string): OpenHouseListing | null {
   const text = stripHtml(html);
+  const lowerText = text.toLowerCase();
+
+  if (
+    /\b(sold|off market|pending|contingent)\b/i.test(text) ||
+    lowerText.includes("this home last sold") ||
+    lowerText.includes("recently sold")
+  ) {
+    return null;
+  }
 
   const topMatch =
     /For sale\s+\$([\d,]+)[\s\S]{0,120}?(\d+(?:\.\d+)?)\s*bd[\s\S]{0,30}?(\d+(?:\.\d+)?)\s*ba[\s\S]{0,30}?([\d,]+)\s*sq ft[\s\S]{0,120}?#\s*([^#]+?,\s*[A-Za-z .'-]+,\s*CA\s*\d{5})/i.exec(
@@ -110,6 +162,9 @@ function parseListingPage(url: string, html: string): OpenHouseListing | null {
     );
 
   if (!topMatch) return null;
+
+  const schedule = extractSchedule(text);
+  if (!schedule) return null;
 
   const [, priceRaw, bedsRaw, bathsRaw, sizeRaw, address] = topMatch;
   const streetAddress = address.split(",")[0]?.trim() || address.trim();
@@ -123,7 +178,7 @@ function parseListingPage(url: string, html: string): OpenHouseListing | null {
     size: `${sizeRaw} sq ft`,
     middleSchool: extractSchool(text, "middle"),
     highSchool: extractSchool(text, "high"),
-    schedule: extractSchedule(text),
+    schedule,
     image: extractMetaImage(html),
     url,
   };
@@ -136,7 +191,7 @@ async function fetchZipOpenHouses(zip: string, limit = 2) {
   }
 
   const searchHtml = await fetchHtml(`https://www.redfin.com/zipcode/${zip}/open-houses`);
-  const listingUrls = extractUniqueListingUrls(searchHtml, limit);
+  const listingUrls = extractUniqueListingUrls(searchHtml, limit * 4);
 
   const listings = (
     await Promise.all(
@@ -151,8 +206,9 @@ async function fetchZipOpenHouses(zip: string, limit = 2) {
     )
   ).filter(Boolean) as OpenHouseListing[];
 
-  cache.set(zip, { updatedAt: Date.now(), items: listings });
-  return listings;
+  const trimmed = listings.slice(0, limit);
+  cache.set(zip, { updatedAt: Date.now(), items: trimmed });
+  return trimmed;
 }
 
 export async function handleHousingOpenHouses(req: VercelRequest, res: VercelResponse) {
