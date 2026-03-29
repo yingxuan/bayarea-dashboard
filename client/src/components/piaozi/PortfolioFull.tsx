@@ -24,7 +24,6 @@ interface HoldingWithQuote extends Holding {
 
 interface MarketDataItem {
   value: number | string;
-  change?: number;
   change_percent?: number;
   status?: "ok" | "stale" | "unavailable";
 }
@@ -90,12 +89,29 @@ function getSortValue(holding: HoldingWithQuote, sortKey: SortKey) {
   }
 }
 
+function formatSignedCurrency(value?: number) {
+  if (value === undefined) return "-";
+  return `${value >= 0 ? "+" : "-"}$${Math.abs(value).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatPrice(value?: number) {
+  if (value === undefined) return "-";
+  return `$${value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 function formatMarketValue(value: number | string) {
   if (typeof value !== "number") return value;
   return value >= 1000 ? value.toLocaleString() : value.toFixed(2);
 }
 
 export default function PortfolioFull() {
+  const MOBILE_HOLDING_PREVIEW = 4;
   const { holdings, isLoaded, ytdBaseline } = useAuthAwareHoldings();
   const [quotesData, setQuotesData] = useState<Record<string, QuoteData>>({});
   const [valueSeries, setValueSeries] = useState<any>(null);
@@ -106,6 +122,7 @@ export default function PortfolioFull() {
     gold?: MarketDataItem;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mobileExpanded, setMobileExpanded] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("marketValue");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
@@ -116,35 +133,32 @@ export default function PortfolioFull() {
       return;
     }
 
-    const fetchQuotes = async () => {
+    async function fetchQuotes() {
       try {
         const tickers = holdings.map((h) => h.ticker.toUpperCase()).join(",");
-        const apiUrl = `${config.apiBaseUrl}/api/quotes?tickers=${encodeURIComponent(tickers)}`;
-        const response = await fetch(apiUrl, {
-          signal: AbortSignal.timeout(10000),
-        });
+        const response = await fetch(
+          `${config.apiBaseUrl}/api/quotes?tickers=${encodeURIComponent(tickers)}`,
+          { signal: AbortSignal.timeout(10000) },
+        );
 
         if (!response.ok) {
           throw new Error(`Quotes API error: ${response.status}`);
         }
 
         const result = await response.json();
-        const quotes = result.quotes || [];
         const quotesMap: Record<string, QuoteData> = {};
 
-        quotes.forEach((quote: any) => {
+        for (const quote of result.quotes || []) {
           const price = Number(quote.price);
-          if (!isNaN(price) && price > 0) {
-            quotesMap[quote.ticker.toUpperCase()] = {
-              price,
-              prevClose: quote.prevClose !== undefined ? Number(quote.prevClose) : undefined,
-              change: quote.change !== undefined ? Number(quote.change) : undefined,
-              changePercent:
-                quote.changePercent !== undefined ? Number(quote.changePercent) : undefined,
-              status: quote.status,
-            };
-          }
-        });
+          if (isNaN(price) || price <= 0) continue;
+          quotesMap[quote.ticker.toUpperCase()] = {
+            price,
+            prevClose: quote.prevClose !== undefined ? Number(quote.prevClose) : undefined,
+            change: quote.change !== undefined ? Number(quote.change) : undefined,
+            changePercent: quote.changePercent !== undefined ? Number(quote.changePercent) : undefined,
+            status: quote.status,
+          };
+        }
 
         setQuotesData(quotesMap);
       } catch (error) {
@@ -153,7 +167,7 @@ export default function PortfolioFull() {
       } finally {
         setLoading(false);
       }
-    };
+    }
 
     fetchQuotes();
   }, [holdings, isLoaded]);
@@ -164,16 +178,15 @@ export default function PortfolioFull() {
       return;
     }
 
-    const fetchValueSeries = async () => {
+    async function fetchValueSeries() {
       try {
         const holdingsParam = encodeURIComponent(
           JSON.stringify(holdings.map((h) => ({ ticker: h.ticker, shares: Number(h.shares) }))),
         );
-        const apiUrl = `${config.apiBaseUrl}/api/portfolio/value-series?range=1d&interval=5m&holdings=${holdingsParam}`;
-
-        const response = await fetch(apiUrl, {
-          signal: AbortSignal.timeout(10000),
-        });
+        const response = await fetch(
+          `${config.apiBaseUrl}/api/portfolio/value-series?range=1d&interval=5m&holdings=${holdingsParam}`,
+          { signal: AbortSignal.timeout(10000) },
+        );
 
         if (!response.ok) {
           throw new Error(`Value series API error: ${response.status}`);
@@ -184,7 +197,7 @@ export default function PortfolioFull() {
       } catch (error) {
         console.error("[PortfolioFull] Failed to fetch value series:", error);
       }
-    };
+    }
 
     fetchValueSeries();
     const interval = setInterval(fetchValueSeries, 5 * 60 * 1000);
@@ -192,7 +205,7 @@ export default function PortfolioFull() {
   }, [holdings, isLoaded]);
 
   useEffect(() => {
-    const fetchMarketData = async () => {
+    async function fetchMarketData() {
       try {
         const response = await fetch(`${config.apiBaseUrl}/api/market`, {
           signal: AbortSignal.timeout(10000),
@@ -207,7 +220,7 @@ export default function PortfolioFull() {
       } catch (error) {
         console.error("[PortfolioFull] Failed to fetch market data:", error);
       }
-    };
+    }
 
     fetchMarketData();
     const interval = setInterval(fetchMarketData, 5 * 60 * 1000);
@@ -312,9 +325,13 @@ export default function PortfolioFull() {
     return `更新 ${hours}:${minutes}`;
   }, []);
 
+  const mobileHoldings = mobileExpanded
+    ? sortedHoldings
+    : sortedHoldings.slice(0, MOBILE_HOLDING_PREVIEW);
+
   if (!isLoaded || loading) {
     return (
-      <section className="section-shell section-shell-market rounded-[1.25rem] p-4 md:p-5">
+      <section className="section-shell section-shell-market min-w-0 rounded-[1.25rem] p-4 md:p-5">
         <div className="animate-pulse space-y-4">
           <div className="h-8 w-32 rounded bg-muted" />
           <div className="h-48 rounded bg-muted" />
@@ -326,7 +343,7 @@ export default function PortfolioFull() {
 
   if (holdings.length === 0) {
     return (
-      <section className="section-shell section-shell-market rounded-[1.25rem] p-4 md:p-5">
+      <section className="section-shell section-shell-market min-w-0 rounded-[1.25rem] p-4 md:p-5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-semibold text-cyan-300/90">持仓</h2>
           <HoldingsEditor
@@ -343,7 +360,7 @@ export default function PortfolioFull() {
   }
 
   return (
-    <section className="section-shell section-shell-market rounded-[1.25rem]">
+    <section className="section-shell section-shell-market min-w-0 rounded-[1.25rem]">
       <div className="border-b border-border/30 p-4 md:p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <h2 className="text-xl font-semibold text-cyan-300/90">持仓</h2>
@@ -361,9 +378,9 @@ export default function PortfolioFull() {
       </div>
 
       <div className="border-b border-border/30 p-4 md:p-5">
-        <div className="grid gap-4 xl:grid-cols-[1.45fr_0.85fr]">
-          <div className="rounded-[1rem] border border-border/35 bg-card/40 p-4">
-            <div className="text-[34px] font-semibold leading-none text-foreground md:text-[44px]">
+        <div className="grid gap-3 xl:grid-cols-[1.45fr_0.85fr]">
+          <div className="min-w-0 rounded-[1rem] border border-border/35 bg-card/40 p-4">
+            <div className="text-[32px] font-semibold leading-none text-foreground md:text-[44px]">
               ${portfolioMetrics.portfolioValue.toLocaleString()}
             </div>
             <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
@@ -373,12 +390,8 @@ export default function PortfolioFull() {
                   portfolioMetrics.dailyChangeAmount >= 0 ? "text-emerald-400" : "text-rose-400"
                 }`}
               >
-                {portfolioMetrics.dailyChangeAmount >= 0 ? "+" : "-"}$
-                {Math.abs(portfolioMetrics.dailyChangeAmount).toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}{" "}
-                ({portfolioMetrics.dailyChangePercent >= 0 ? "+" : ""}
+                {formatSignedCurrency(portfolioMetrics.dailyChangeAmount)} (
+                {portfolioMetrics.dailyChangePercent >= 0 ? "+" : ""}
                 {portfolioMetrics.dailyChangePercent.toFixed(2)}%)
               </span>
               {portfolioMetrics.ytdChangeAmount !== null && portfolioMetrics.ytdPercent !== null ? (
@@ -389,12 +402,8 @@ export default function PortfolioFull() {
                       portfolioMetrics.ytdChangeAmount >= 0 ? "text-emerald-400" : "text-rose-400"
                     }`}
                   >
-                    {portfolioMetrics.ytdChangeAmount >= 0 ? "+" : "-"}$
-                    {Math.abs(portfolioMetrics.ytdChangeAmount).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    ({portfolioMetrics.ytdPercent >= 0 ? "+" : ""}
+                    {formatSignedCurrency(portfolioMetrics.ytdChangeAmount)} (
+                    {portfolioMetrics.ytdPercent >= 0 ? "+" : ""}
                     {portfolioMetrics.ytdPercent.toFixed(2)}%)
                   </span>
                 </>
@@ -412,19 +421,19 @@ export default function PortfolioFull() {
             </div>
           </div>
 
-          <div className="rounded-[1rem] border border-border/35 bg-card/40 p-4">
+          <div className="min-w-0 rounded-[1rem] border border-border/35 bg-card/40 p-4">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-foreground/92">大盘 & 避险</h3>
               <span className="text-[11px] font-mono text-muted-foreground/65">live</span>
             </div>
-            <div className="grid gap-2">
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
               {marketCards.map((entry) => {
                 const positive = (entry.changePercent ?? 0) >= 0;
 
                 return (
                   <div
                     key={entry.code}
-                    className="rounded-sm border border-border/20 bg-background/35 px-3 py-3"
+                    className="min-w-[120px] shrink-0 rounded-[0.9rem] border border-border/20 bg-background/35 px-3 py-2.5"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm font-semibold text-foreground">{entry.code}</span>
@@ -438,7 +447,7 @@ export default function PortfolioFull() {
                           : "--"}
                       </span>
                     </div>
-                    <div className="mt-2 text-xl font-semibold font-mono tabular-nums text-foreground">
+                    <div className="mt-1.5 text-lg font-semibold font-mono tabular-nums text-foreground">
                       {formatMarketValue(entry.value)}
                     </div>
                   </div>
@@ -450,7 +459,77 @@ export default function PortfolioFull() {
       </div>
 
       <div className="p-4 md:p-5">
-        <div className="overflow-x-auto rounded-[1rem] border border-border/35 bg-card/35">
+        <div className="space-y-2 md:hidden">
+          {mobileHoldings.map((holding) => {
+            const isPositive = (holding.dailyChangePercent ?? 0) >= 0;
+            return (
+              <div
+                key={holding.id}
+                className="min-w-0 rounded-[0.9rem] border border-border/30 bg-card/35 px-3 py-3"
+              >
+                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-foreground">{holding.ticker}</div>
+                    <div className="mt-1 text-[11px] font-mono text-muted-foreground/70">
+                      {holding.shares.toLocaleString()} shares
+                    </div>
+                  </div>
+                  <div className="min-w-0 text-right">
+                    <div className="text-sm font-semibold text-foreground">
+                      {formatPrice(holding.quote?.price)}
+                    </div>
+                    <div className="mt-1 max-w-[9rem] truncate text-[11px] font-mono text-muted-foreground/70">
+                      市值 {formatPrice(holding.marketValue)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-[0.8rem] bg-background/35 px-3 py-2">
+                  <span className="text-[11px] text-muted-foreground">今日</span>
+                  <div className="flex min-w-0 flex-wrap items-center justify-end gap-1">
+                    {holding.dailyChangePercent !== undefined ? (
+                      isPositive ? (
+                        <TrendingUp className="h-3 w-3 shrink-0 text-emerald-400" />
+                      ) : (
+                        <TrendingDown className="h-3 w-3 shrink-0 text-rose-400" />
+                      )
+                    ) : null}
+                    <span
+                      className={`text-[12px] font-mono tabular-nums ${
+                        isPositive ? "text-emerald-400" : "text-rose-400"
+                      }`}
+                    >
+                      {holding.dailyChange !== undefined ? formatSignedCurrency(holding.dailyChange) : "-"}
+                    </span>
+                    <span
+                      className={`text-[12px] font-mono tabular-nums ${
+                        isPositive ? "text-emerald-400" : "text-rose-400"
+                      }`}
+                    >
+                      {holding.dailyChangePercent !== undefined
+                        ? `${isPositive ? "+" : ""}${holding.dailyChangePercent.toFixed(2)}%`
+                        : "-"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {sortedHoldings.length > MOBILE_HOLDING_PREVIEW ? (
+            <button
+              type="button"
+              onClick={() => setMobileExpanded((current) => !current)}
+              className="w-full rounded-[0.9rem] border border-border/30 bg-background/30 px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-background/45 hover:text-foreground"
+            >
+              {mobileExpanded
+                ? "收起持仓"
+                : `展开其余 ${sortedHoldings.length - MOBILE_HOLDING_PREVIEW} 个持仓`}
+            </button>
+          ) : null}
+        </div>
+
+        <div className="hidden overflow-x-auto rounded-[1rem] border border-border/35 bg-card/35 md:block">
           <Table>
             <TableHeader>
               <TableRow className="border-border/35">
@@ -525,32 +604,17 @@ export default function PortfolioFull() {
                       {holding.shares.toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums">
-                      {holding.quote?.price
-                        ? `$${holding.quote.price.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}`
-                        : "-"}
+                      {formatPrice(holding.quote?.price)}
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums">
-                      {holding.marketValue
-                        ? `$${holding.marketValue.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}`
-                        : "-"}
+                      {formatPrice(holding.marketValue)}
                     </TableCell>
                     <TableCell
                       className={`text-right font-mono tabular-nums ${
                         isPositive ? "text-emerald-400" : "text-rose-400"
                       }`}
                     >
-                      {holding.dailyChange !== undefined
-                        ? `${isPositive ? "+" : "-"}$${Math.abs(holding.dailyChange).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}`
-                        : "-"}
+                      {holding.dailyChange !== undefined ? formatSignedCurrency(holding.dailyChange) : "-"}
                     </TableCell>
                     <TableCell className="text-right">
                       {holding.dailyChangePercent !== undefined ? (

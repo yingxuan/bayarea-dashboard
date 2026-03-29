@@ -6,13 +6,13 @@ export default function ChiheEntryCard() {
     <Link href="/chihe">
       <div className="entry-card group cursor-pointer">
         <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-[0.16em] text-amber-300/75">
+          <div className="entry-card-label text-amber-300/75">
             More places
           </div>
-          <div className="mt-1 text-sm font-medium text-foreground">
+          <div className="entry-card-title mt-1">
             去看完整吃喝推荐页
           </div>
-          <div className="mt-1 text-xs text-muted-foreground/65">
+          <div className="entry-card-description mt-1">
             奶茶、中餐、夜宵、新店打卡一次看完
           </div>
         </div>

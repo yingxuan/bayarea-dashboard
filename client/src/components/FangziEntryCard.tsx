@@ -6,11 +6,11 @@ export default function FangziEntryCard() {
     <Link href="/fangzi">
       <div className="entry-card group cursor-pointer">
         <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-[0.16em] text-emerald-300/75">
+          <div className="entry-card-label text-emerald-300/75">
             Housing signals
           </div>
-          <div className="mt-1 text-sm font-medium text-foreground">去看完整房子页</div>
-          <div className="mt-1 text-xs text-muted-foreground/65">
+          <div className="entry-card-title mt-1">去看完整房子页</div>
+          <div className="entry-card-description mt-1">
             利率、住房判断、湾区线索和现在更适合租还是买的简报
           </div>
         </div>

@@ -10,43 +10,22 @@ interface CommunityItem {
   publishedAt?: string;
 }
 
+interface LeekCommunityResponse {
+  items?: CommunityItem[];
+  sourceMode?: "live" | "fallback" | "cache" | "unavailable";
+  sourceName?: string;
+  fallbackUsed?: boolean;
+}
+
 interface LeekCommunityProps {
   maxItems?: number;
   hideTitle?: boolean;
 }
 
-async function fetchRedditPosts(limit: number): Promise<CommunityItem[]> {
-  const subs = ["stocks", "investing"];
-  const items: CommunityItem[] = [];
-
-  for (const sub of subs) {
-    try {
-      const response = await fetch(`https://www.reddit.com/r/${sub}/hot.json?limit=${limit}`);
-      if (!response.ok) continue;
-      const data = await response.json();
-      for (const child of data?.data?.children || []) {
-        const post = child?.data;
-        if (!post?.title || !post?.permalink) continue;
-        items.push({
-          source: "1point3acres",
-          sourceLabel: `r/${sub}`,
-          title: post.title,
-          url: `https://www.reddit.com${post.permalink}`,
-          publishedAt: new Date(post.created_utc * 1000).toISOString(),
-        });
-        if (items.length >= limit) return items;
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  return items;
-}
-
 export default function LeekCommunity({ maxItems = 5, hideTitle = false }: LeekCommunityProps) {
   const [items, setItems] = useState<CommunityItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [meta, setMeta] = useState<LeekCommunityResponse | null>(null);
 
   useEffect(() => {
     async function loadLeekPosts() {
@@ -54,21 +33,17 @@ export default function LeekCommunity({ maxItems = 5, hideTitle = false }: LeekC
         const response = await fetch(`${config.apiBaseUrl}/api/community/leeks`, {
           signal: AbortSignal.timeout(10000),
         });
-        if (response.ok) {
-          const result = await response.json();
-          const apiItems = (result.items || []).slice(0, maxItems);
-          if (apiItems.length > 0) {
-            setItems(apiItems);
-            return;
-          }
+        if (!response.ok) {
+          throw new Error(`Leeks API returned ${response.status}`);
         }
 
-        const redditItems = await fetchRedditPosts(maxItems);
-        setItems(redditItems);
+        const result: LeekCommunityResponse = await response.json();
+        setMeta(result);
+        setItems((result.items || []).slice(0, maxItems));
       } catch (error) {
         console.error("[LeekCommunity] Failed to fetch leek posts:", error);
-        const redditItems = await fetchRedditPosts(maxItems);
-        setItems(redditItems);
+        setMeta({ sourceMode: "unavailable", sourceName: "unavailable", fallbackUsed: false });
+        setItems([]);
       } finally {
         setLoading(false);
       }
@@ -90,12 +65,27 @@ export default function LeekCommunity({ maxItems = 5, hideTitle = false }: LeekC
   }
 
   const shellClass = hideTitle ? "" : "rounded-sm border border-border/35 bg-card/45 p-4";
+  const sourceLine =
+    meta?.sourceMode === "fallback"
+      ? "备用抓取"
+      : meta?.sourceMode === "cache"
+        ? "缓存"
+        : meta?.sourceMode === "live"
+          ? "实时"
+          : "";
 
   return (
     <div className={shellClass}>
       {!hideTitle ? (
         <div className="mb-4 border-b border-border/25 pb-3">
-          <h3 className="text-[15px] font-semibold text-foreground/92">华人股市讨论</h3>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-[15px] font-semibold text-foreground/92">华人股市讨论</h3>
+            {sourceLine ? (
+              <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground/65">
+                {sourceLine}
+              </span>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -107,11 +97,11 @@ export default function LeekCommunity({ maxItems = 5, hideTitle = false }: LeekC
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex items-start justify-between gap-3 rounded-sm border border-border/25 bg-background/35 px-3 py-3 transition-all hover:border-primary/35 hover:bg-background/55"
+              className="group flex min-w-0 items-start justify-between gap-3 rounded-sm border border-border/25 bg-background/35 px-3 py-3 transition-all hover:border-primary/35 hover:bg-background/55"
             >
               <div className="min-w-0 flex-1">
                 <div className="text-[11px] font-mono text-muted-foreground/65">{item.sourceLabel}</div>
-                <span className="mt-1 block text-[13px] leading-6 text-foreground/88 transition-colors group-hover:text-primary">
+                <span className="mt-1 block break-words text-[13px] leading-6 text-foreground/88 transition-colors group-hover:text-primary">
                   {item.title}
                 </span>
               </div>
@@ -120,7 +110,7 @@ export default function LeekCommunity({ maxItems = 5, hideTitle = false }: LeekC
           ))
         ) : (
           <div className="rounded-sm border border-border/25 bg-background/35 px-4 py-6 text-center text-sm text-muted-foreground">
-            暂时没有拿到社区帖子。
+            暂时没拿到社区帖子，稍后会自动重试。
           </div>
         )}
       </div>

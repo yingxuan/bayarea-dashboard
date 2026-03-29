@@ -36,7 +36,7 @@ export default function MarketHighlightsFull() {
         }
 
         const result = await response.json();
-        const nextItems = ((result.items || []) as NewsItem[]).slice(0, 10).map((item, index) => ({
+        const nextItems = ((result.items || []) as NewsItem[]).slice(0, 8).map((item, index) => ({
           id: `sina-${index}-${item.id ?? item.url}`,
           title: item.title || item.title_zh || item.title_en || "新浪财经",
           url: item.url,
@@ -57,7 +57,7 @@ export default function MarketHighlightsFull() {
 
   if (loading) {
     return (
-      <section className="section-shell section-shell-market rounded-sm p-5">
+      <section className="section-shell section-shell-market rounded-sm p-4 md:p-5">
         <div className="animate-pulse space-y-3">
           <div className="h-5 w-24 rounded bg-muted" />
           <div className="space-y-2">
@@ -71,8 +71,8 @@ export default function MarketHighlightsFull() {
   }
 
   return (
-    <section className="section-shell section-shell-market rounded-sm p-5">
-      <div className="mb-3 flex items-center justify-between">
+    <section className="section-shell section-shell-market min-w-0 rounded-sm p-4 md:p-5">
+      <div className="mb-2 flex items-center justify-between">
         <h2 className="text-base font-semibold text-cyan-300/90">新浪财经</h2>
         <span className="text-[11px] font-mono text-muted-foreground/70">{items.length} 条</span>
       </div>
@@ -82,7 +82,7 @@ export default function MarketHighlightsFull() {
           暂无内容
         </div>
       ) : (
-        <div className="rounded-sm border border-border/35 bg-card/35">
+        <div className="min-w-0 rounded-sm border border-border/35 bg-card/35">
           {items.map((item, index) => (
             <a
               key={item.id}
@@ -90,15 +90,15 @@ export default function MarketHighlightsFull() {
               target="_blank"
               rel="noopener noreferrer"
               onClick={handleExternalLinkClick}
-              className={`group flex items-start justify-between gap-4 px-4 py-3 transition-colors hover:bg-card/60 ${
+              className={`group flex min-w-0 flex-col gap-1.5 px-3 py-3 transition-colors hover:bg-card/60 sm:flex-row sm:items-start sm:justify-between sm:gap-3 sm:px-4 ${
                 index !== items.length - 1 ? "border-b border-border/25" : ""
               }`}
             >
-              <h3 className="min-w-0 flex-1 line-clamp-2 text-sm leading-6 text-foreground/92 transition-colors group-hover:text-primary">
+              <h3 className="min-w-0 flex-1 break-words text-sm leading-6 text-foreground/92 transition-colors group-hover:text-primary sm:line-clamp-2">
                 {item.title}
               </h3>
               {item.publishedAt ? (
-                <div className="shrink-0 pt-0.5 text-[11px] font-mono text-muted-foreground/65">
+                <div className="shrink-0 text-[11px] font-mono text-muted-foreground/65 sm:pt-0.5">
                   <TimeAgo isoString={item.publishedAt} />
                 </div>
               ) : null}

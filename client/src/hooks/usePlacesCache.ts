@@ -38,10 +38,13 @@ interface SpendPlace {
   rating: number;
   user_ratings_total: number;
   distance_miles?: number;
+  lat?: number;
+  lng?: number;
   photo_url?: string;
   photo_local_url?: string;
   maps_url: string;
   city: string;
+  address?: string;
   score?: number;
   badges?: string[];
 }
@@ -69,12 +72,13 @@ function apiPlaceToCached(place: SpendPlace): CachedPlace {
     name: place.name,
     rating: place.rating,
     userRatingCount: place.user_ratings_total,
-    address: '', // Can extract from maps_url if needed
+    address: place.address || place.city || 'South Bay',
     mapsUrl: place.maps_url,
-    lat: undefined, // Can calculate if needed
-    lng: undefined,
+    lat: place.lat,
+    lng: place.lng,
     photoRef: place.photo_url,
     photoLocalUrl: place.photo_local_url,
+    city: place.city,
   };
 }
 
@@ -96,10 +100,13 @@ function cachedPlaceToSpend(cached: CachedPlace, category: string, city: string)
     rating: cached.rating,
     user_ratings_total: cached.userRatingCount,
     distance_miles: undefined,
+    lat: cached.lat,
+    lng: cached.lng,
     photo_url,
     photo_local_url,
     maps_url: cached.mapsUrl,
     city: finalCity, // Preserve city from seed data
+    address: cached.address,
   };
   
   return result;

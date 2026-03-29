@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { BriefcaseBusiness, ChartColumnBig, Home, House, Soup } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import UserMenu from "./UserMenu";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -6,155 +6,89 @@ import { useT } from "@/lib/translations";
 
 export default function Navigation() {
   const [location] = useLocation();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const { lang, toggleLang } = useLanguage();
+  const { lang } = useLanguage();
   const t = useT(lang);
 
   const navItems = [
-    { label: t.nav.home, path: "/" },
-    { label: t.nav.finance, path: "/piaozi" },
-    { label: t.nav.dining, path: "/chihe" },
-    { label: t.nav.work, path: "/baoguo" },
-    { label: t.nav.housing, path: "/fangzi" },
+    { label: t.nav.home, path: "/", icon: Home },
+    { label: t.nav.finance, path: "/piaozi", icon: ChartColumnBig },
+    { label: t.nav.dining, path: "/chihe", icon: Soup },
+    { label: t.nav.work, path: "/baoguo", icon: BriefcaseBusiness },
+    { label: t.nav.housing, path: "/fangzi", icon: House },
   ];
 
-  useEffect(() => {
-    if (!mobileOpen) return;
-    function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMobileOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [mobileOpen]);
-
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [location]);
-
   return (
-    <nav className="app-nav sticky top-0 z-50 backdrop-blur-xl">
-      <div className="container">
-        <div className="flex h-16 items-center justify-between gap-3">
-          <Link href="/">
-            <div className="flex items-center gap-3 cursor-pointer">
-              <div className="brand-mark flex h-10 w-10 items-center justify-center rounded-2xl text-[11px] font-semibold tracking-[0.18em]">
-                BA
-              </div>
-              <div className="flex min-w-0 max-w-[11.5rem] flex-col gap-0.5 sm:max-w-none">
-                <div className="text-[15px] font-semibold leading-[1.1] tracking-[0.01em] text-foreground">
-                  {t.nav.brand}
-                </div>
-                <div className="text-[10px] leading-[1.2] tracking-[0.08em] text-muted-foreground/70">
-                  {lang === "zh" ? "湾区情报与生存" : "Bay Area survival guide"}
-                </div>
-              </div>
-            </div>
-          </Link>
-
-          <div className="nav-surface hidden md:flex items-center gap-2 rounded-full p-1.5">
-            {navItems.map((item) => {
-              const isActive = location === item.path;
-              return (
-                <Link key={item.path} href={item.path}>
-                  <div
-                    className={`rounded-full px-4 py-2 text-sm font-medium transition-all duration-150 ${
-                      isActive
-                        ? "bg-primary/14 text-primary shadow-[inset_0_0_0_1px_rgba(140,206,222,0.24)]"
-                        : "text-muted-foreground hover:bg-white/6 hover:text-foreground"
-                    }`}
-                  >
-                    {item.label}
+    <>
+      <nav className="app-nav sticky top-0 z-50 backdrop-blur-xl">
+        <div className="container">
+          <div className="flex h-16 items-center justify-between gap-3">
+            <Link href="/">
+              <div className="flex cursor-pointer items-center gap-3">
+                <div className="flex min-w-0 max-w-[11.5rem] flex-col gap-0.5 sm:max-w-none">
+                  <div className="text-[15px] font-semibold leading-[1.1] tracking-[0.01em] text-foreground">
+                    {t.nav.brand}
                   </div>
-                </Link>
-              );
-            })}
-          </div>
-
-          <div className="hidden md:flex items-center gap-2">
-            <button
-              type="button"
-              onClick={toggleLang}
-              className="nav-surface rounded-full px-2.5 py-1 text-xs font-mono text-muted-foreground transition-colors hover:text-foreground"
-            >
-              {lang === "zh" ? "EN" : "中"}
-            </button>
-            <UserMenu />
-          </div>
-
-          <div className="md:hidden" ref={menuRef}>
-            <button
-              type="button"
-              onClick={() => setMobileOpen((prev) => !prev)}
-              className="nav-surface rounded-full p-2 text-muted-foreground transition-colors hover:text-foreground"
-              aria-label={mobileOpen ? t.nav.closeMenu : t.nav.openMenu}
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                {mobileOpen ? (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                ) : (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                )}
-              </svg>
-            </button>
-
-            <div
-              className={`absolute left-0 right-0 top-16 z-50 overflow-hidden border-b border-border/40 bg-background/95 backdrop-blur-xl transition-all duration-200 ease-out ${
-                mobileOpen
-                  ? "max-h-[520px] opacity-100 pointer-events-auto"
-                  : "max-h-0 opacity-0 pointer-events-none"
-              }`}
-              aria-hidden={!mobileOpen}
-            >
-              <div className="container flex flex-col gap-2 py-3">
-                {navItems.map((item) => {
-                  const isActive = location === item.path;
-                  return (
-                    <Link key={item.path} href={item.path}>
-                      <div
-                        className={`nav-surface rounded-2xl px-3 py-3 text-sm font-medium transition-colors ${
-                          isActive
-                            ? "bg-primary/14 text-primary shadow-[inset_0_0_0_1px_rgba(140,206,222,0.24)]"
-                            : "text-muted-foreground hover:bg-white/6 hover:text-foreground"
-                        }`}
-                      >
-                        {item.label}
-                      </div>
-                    </Link>
-                  );
-                })}
-                <div className="mt-1 flex items-center justify-between border-t border-border/30 px-1 pt-3">
-                  <UserMenu />
-                  <button
-                    type="button"
-                    onClick={toggleLang}
-                    className="nav-surface rounded-full px-2.5 py-1 text-xs font-mono text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {lang === "zh" ? "EN" : "中"}
-                  </button>
+                  <div className="text-[10px] leading-[1.2] tracking-[0.08em] text-muted-foreground/70">
+                    {lang === "zh" ? "湾区情报与生存" : "Bay Area survival guide"}
+                  </div>
                 </div>
+              </div>
+            </Link>
+
+            <div className="nav-surface hidden items-center gap-2 rounded-full p-1.5 md:flex">
+              {navItems.map((item) => {
+                const isActive = location === item.path;
+                return (
+                  <Link key={item.path} href={item.path}>
+                    <div
+                      className={`rounded-full px-4 py-2 text-sm font-medium transition-all duration-150 ${
+                        isActive
+                          ? "bg-primary/14 text-primary shadow-[inset_0_0_0_1px_rgba(140,206,222,0.24)]"
+                          : "text-muted-foreground hover:bg-white/6 hover:text-foreground"
+                      }`}
+                    >
+                      {item.label}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+
+            <div className="hidden items-center gap-2 md:flex">
+              <UserMenu />
+            </div>
+
+            <div className="flex items-center gap-2 md:hidden">
+              <div className="nav-surface rounded-full p-1">
+                <UserMenu />
               </div>
             </div>
           </div>
         </div>
+      </nav>
+
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border/40 bg-background/92 backdrop-blur-xl md:hidden">
+        <div className="mx-auto grid max-w-6xl grid-cols-5 px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-2">
+          {navItems.map((item) => {
+            const isActive = location === item.path;
+            const Icon = item.icon;
+            return (
+              <Link key={item.path} href={item.path}>
+                <div
+                  className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[11px] font-medium transition-all duration-150 ${
+                    isActive
+                      ? "bg-primary/14 text-primary shadow-[inset_0_0_0_1px_rgba(140,206,222,0.24)]"
+                      : "text-muted-foreground hover:bg-white/6 hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
       </div>
-    </nav>
+    </>
   );
 }

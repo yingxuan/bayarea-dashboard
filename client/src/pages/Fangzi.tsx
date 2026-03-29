@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, ExternalLink, PlayCircle } from "lucide-react";
-import { Link } from "wouter";
+import { ExternalLink, PlayCircle } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useT } from "@/lib/translations";
@@ -263,7 +262,7 @@ const ZIP_MARKETS: ZipMarket[] = [
 ];
 
 const DEFAULT_OPEN_HOUSES_BY_ZIP = Object.fromEntries(
-  ZIP_MARKETS.map((market) => [market.zip, []]),
+  ZIP_MARKETS.map((market) => [market.zip, market.openHouses]),
 ) as Record<string, ZipMarket["openHouses"]>;
 
 const DEFAULT_RATE_BY_TYPE_AND_TERM: Record<"fixed" | "arm", Record<number, number>> = {
@@ -278,20 +277,6 @@ const DEFAULT_RATE_BY_TYPE_AND_TERM: Record<"fixed" | "arm", Record<number, numb
     10: 5.71,
   },
 };
-
-function BackToHomeLink() {
-  const { lang } = useLanguage();
-  const t = useT(lang);
-
-  return (
-    <Link href="/">
-      <span className="inline-flex cursor-pointer items-center gap-2 rounded-sm border border-border/45 bg-card/55 px-3 py-2 text-sm font-medium text-foreground/82 transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-card/80 hover:text-primary">
-        <ArrowLeft className="h-4 w-4" />
-        <span>{t.common.backHome}</span>
-      </span>
-    </Link>
-  );
-}
 
 function MortgageCalculator() {
   const [homePrice, setHomePrice] = useState(2_500_000);
@@ -520,7 +505,8 @@ export default function Fangzi() {
         setOpenHousesByZip((current) => {
           const next = { ...current };
           for (const market of ZIP_MARKETS) {
-            next[market.zip] = Array.isArray(result.byZip?.[market.zip]) ? result.byZip[market.zip] : [];
+            const liveItems = Array.isArray(result.byZip?.[market.zip]) ? result.byZip[market.zip] : [];
+            next[market.zip] = liveItems.length > 0 ? liveItems : current[market.zip];
           }
           return next;
         });
@@ -543,11 +529,7 @@ export default function Fangzi() {
         <div className="route-shell mx-auto w-full max-w-6xl px-4 py-4 md:px-6 md:py-6">
           <section className="hero-panel rounded-[1.4rem] p-4 md:p-6">
             <div className="flex flex-col gap-4">
-              <BackToHomeLink />
               <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-                <h1 className="text-2xl font-semibold leading-tight text-foreground md:text-[34px] md:leading-[1.08]">
-                  {t.fangzi.title}
-                </h1>
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="hero-pulse-card rounded-sm px-4 py-3">
                     <div className="text-[11px] uppercase tracking-[0.16em] text-emerald-300/75">ZIP</div>
@@ -566,9 +548,9 @@ export default function Fangzi() {
             </div>
           </section>
 
-          <section className="section-shell rounded-sm p-5">
+          <section className="section-shell min-w-0 rounded-sm p-4 sm:p-5">
             <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-              <div className="rounded-sm border border-border/25 bg-background/35 p-4">
+              <div className="min-w-0 rounded-sm border border-border/25 bg-background/35 p-4">
                 <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
                   本周湾区房市走向
                 </div>
@@ -583,9 +565,9 @@ export default function Fangzi() {
                 </div>
               </div>
 
-              <div className="rounded-sm border border-border/25 bg-background/35 p-4">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
+              <div className="min-w-0 rounded-sm border border-border/25 bg-background/35 p-4">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
                     <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
                       YouTube Search
                     </div>
@@ -641,11 +623,11 @@ export default function Fangzi() {
 
           <section className="grid gap-4">
             {ZIP_MARKETS.map((market) => (
-              <div key={market.zip} className="section-shell rounded-sm p-5">
+              <div key={market.zip} className="section-shell min-w-0 rounded-sm p-4 sm:p-5">
                 <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
-                  <div className="rounded-sm border border-border/25 bg-background/35 p-4">
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <div>
+                  <div className="min-w-0 rounded-sm border border-border/25 bg-background/35 p-4">
+                    <div className="mb-3 flex items-start justify-between gap-2">
+                      <div className="min-w-0">
                         <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
                           ZIP {market.zip}
                         </div>
@@ -662,7 +644,10 @@ export default function Fangzi() {
                       </a>
                     </div>
 
-                    <div className="text-2xl font-semibold text-foreground">{market.medianSalePrice}</div>
+                    <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                      Median sale price
+                    </div>
+                    <div className="mt-1 text-2xl font-semibold text-foreground">{market.medianSalePrice}</div>
                     <div className="mt-2 inline-flex rounded-full border border-white/10 bg-white/6 px-3 py-1 text-xs text-amber-200">
                       {market.heat}
                     </div>
@@ -688,8 +673,8 @@ export default function Fangzi() {
                     </div>
                   </div>
 
-                  <div className="rounded-sm border border-border/25 bg-background/35 p-4">
-                    <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0 rounded-sm border border-border/25 bg-background/35 p-4">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                       <h2 className="text-lg font-semibold text-foreground">本周 Open House</h2>
                       <a
                         href={market.openHouseUrl}
@@ -708,7 +693,7 @@ export default function Fangzi() {
                           {openHousesByZip[market.zip].map((home) => (
                             <CarouselItem
                               key={`${market.zip}-${home.address}`}
-                              className="min-w-0 shrink-0 pl-3 md:basis-1/2"
+                              className="min-w-0 shrink-0 basis-[86%] pl-3 sm:basis-[68%] md:basis-1/2"
                             >
                               <a
                                 href={home.url}
@@ -725,10 +710,10 @@ export default function Fangzi() {
                                     loading="lazy"
                                   />
                                 </div>
-                                <div className="p-4">
-                                  <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 p-4">
+                                  <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
                                     <div className="min-w-0">
-                                      <div className="truncate text-sm font-semibold text-foreground">
+                                      <div className="break-words text-sm font-semibold text-foreground">
                                         {home.streetAddress || home.address.split(",")[0]}
                                       </div>
                                     </div>

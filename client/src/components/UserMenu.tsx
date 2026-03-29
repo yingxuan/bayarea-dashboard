@@ -14,13 +14,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, LogOut, Loader2 } from "lucide-react";
+import { Check, Languages, LogOut, Loader2, User } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useT } from "@/lib/translations";
 
 export default function UserMenu() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
-  const { lang } = useLanguage();
+  const { lang, toggleLang } = useLanguage();
   const t = useT(lang);
 
   if (isLoading) {
@@ -34,7 +34,7 @@ export default function UserMenu() {
   if (!isAuthenticated) {
     return (
       <Link href="/login">
-        <Button variant="outline" size="sm" className="text-xs h-8">
+        <Button variant="outline" size="sm" className="h-8 text-xs">
           {t.user.signIn}
         </Button>
       </Link>
@@ -42,14 +42,14 @@ export default function UserMenu() {
   }
 
   const displayText = user?.displayName || user?.email?.split("@")[0] || t.user.fallbackName;
+  const avatarLabel = displayText.trim().charAt(0).toUpperCase() || "U";
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 px-2 gap-1.5">
-          <User className="w-4 h-4" />
-          <span className="text-xs font-mono max-w-[80px] truncate">
-            {displayText}
+        <Button variant="ghost" size="sm" className="h-9 w-9 rounded-full p-0">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/8 text-xs font-semibold text-foreground">
+            {avatarLabel}
           </span>
         </Button>
       </DropdownMenuTrigger>
@@ -65,6 +65,13 @@ export default function UserMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={toggleLang} className="cursor-pointer">
+          <Languages className="mr-2 h-4 w-4" />
+          <span>{lang === "zh" ? "English" : "中文"}</span>
+          <span className="ml-auto inline-flex items-center text-muted-foreground">
+            <Check className="h-3.5 w-3.5" />
+          </span>
+        </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => logout()}
           className="text-destructive focus:text-destructive cursor-pointer"

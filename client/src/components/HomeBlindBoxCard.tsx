@@ -37,12 +37,12 @@ export default function HomeBlindBoxCard({ places }: HomeBlindBoxCardProps) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="eyebrow mb-2">Blind Box</div>
-          <h3 className="text-base font-semibold text-foreground">今晚别纠结吃什么</h3>
+          <h3 className="entry-card-title">今晚别纠结吃什么</h3>
         </div>
         <button
           type="button"
           onClick={() => setSelectedIndex((current) => pickRandomIndex(places.length, current))}
-          className="inline-flex h-10 items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 text-xs font-medium text-foreground/78 transition-colors hover:border-white/24 hover:text-foreground"
+          className="inline-flex h-10 items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 text-[13px] font-medium text-foreground/78 transition-colors hover:border-white/24 hover:text-foreground"
         >
           <Shuffle className="h-3.5 w-3.5" />
           换一家
@@ -56,11 +56,11 @@ export default function HomeBlindBoxCard({ places }: HomeBlindBoxCardProps) {
           rel="noopener noreferrer"
           className="mt-4 block rounded-[1rem] border border-white/10 bg-background/35 p-4 transition-all hover:border-primary/35 hover:bg-background/55"
         >
-          <div className="mb-2 inline-flex rounded-full border border-white/10 bg-white/6 px-2 py-1 text-[10px] text-muted-foreground/80">
+          <div className="entry-card-label mb-2 inline-flex rounded-full border border-white/10 bg-white/6 px-2 py-1 text-muted-foreground/80">
             {selectedPlace.category}
           </div>
-          <div className="text-base font-semibold text-foreground">{selectedPlace.name}</div>
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] text-muted-foreground">
+          <div className="entry-card-title">{selectedPlace.name}</div>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
               {selectedPlace.rating > 0 ? selectedPlace.rating.toFixed(1) : "-"}

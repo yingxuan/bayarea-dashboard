@@ -342,7 +342,7 @@ async function fetchHnDiscussions(fetchedAt: string): Promise<OfferItem[]> {
   return items;
 }
 
-async function fetchOffersData(
+export async function fetchOffersData(
   nocache = false,
 ): Promise<{ items: OfferItem[]; sourceMode: "live" | "cache" | "seed" | "unavailable" }> {
   const cacheKey = "community-offers";

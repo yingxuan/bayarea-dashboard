@@ -15,6 +15,7 @@ import {
 
 const LEEKS_CACHE_TTL = 20 * 60 * 1000;
 const ONEPOINT3ACRES_FORUM_URL = "https://www.1point3acres.com/bbs/forum-291-1.html";
+const JINA_PROXY_URL = `https://r.jina.ai/http://${ONEPOINT3ACRES_FORUM_URL}`;
 
 interface CommunityItem {
   source: "1point3acres";
@@ -22,6 +23,13 @@ interface CommunityItem {
   title: string;
   url: string;
   publishedAt?: string;
+}
+
+interface FetchLeekResult {
+  items: CommunityItem[];
+  sourceMode: "live" | "fallback" | "cache" | "unavailable";
+  sourceName: "1point3acres-html" | "1point3acres-jina" | "cache" | "unavailable";
+  fallbackUsed: boolean;
 }
 
 function normalize1p3aUrl(url: string): string {
@@ -40,7 +48,7 @@ function normalize1p3aUrl(url: string): string {
 
 function isValidThreadUrl(url: string): boolean {
   const normalized = normalize1p3aUrl(url).toLowerCase();
-  if (normalized.includes("forumdisplay") || /forum-\d+-1(\.html)?$/.test(normalized)) {
+  if (normalized.includes("forumdisplay") || /forum-\d+-\d+(\.html)?$/.test(normalized)) {
     return false;
   }
 
@@ -49,6 +57,75 @@ function isValidThreadUrl(url: string): boolean {
     (normalized.includes("viewthread") && normalized.includes("tid=")) ||
     normalized.includes("instant.1point3acres.com/thread/")
   );
+}
+
+function buildAbsolute1p3aUrl(href: string): string {
+  if (href.startsWith("http")) return href;
+  if (href.startsWith("/")) return `https://www.1point3acres.com${href}`;
+  return `https://www.1point3acres.com/bbs/${href}`;
+}
+
+function collectHtmlItems($: cheerio.CheerioAPI, fetchedAt: string): CommunityItem[] {
+  const seenUrls = new Set<string>();
+  const items: CommunityItem[] = [];
+  const rowSelectors = [
+    "tbody[id^='normalthread_']",
+    "tbody[id^='stickthread_']",
+    "div#threadlist table tbody[id]",
+  ];
+
+  for (const selector of rowSelectors) {
+    $(selector).each((_, row) => {
+      if (items.length >= 12) return false;
+
+      const link = $(row).find("a.xst, a.s.xst, a[href*='thread-'], a[href*='viewthread']").first();
+      if (!link.length) return;
+
+      const title = link.text().trim();
+      const href = link.attr("href") || "";
+      if (!title || title.length < 4 || !href) return;
+
+      const url = normalize1p3aUrl(buildAbsolute1p3aUrl(href));
+      if (!isValidThreadUrl(url) || seenUrls.has(url)) return;
+
+      seenUrls.add(url);
+      items.push({
+        source: "1point3acres",
+        sourceLabel: "一亩三分地",
+        title,
+        url,
+        publishedAt: fetchedAt,
+      });
+    });
+
+    if (items.length > 0) {
+      return items;
+    }
+  }
+
+  $("a.xst, a[href*='thread-'], a[href*='viewthread'], a[href*='instant.1point3acres.com/thread/']").each(
+    (_, element) => {
+      if (items.length >= 12) return false;
+
+      const title = $(element).text().trim();
+      const href = $(element).attr("href") || "";
+      if (!title || title.length < 4 || !href) return;
+
+      const url = normalize1p3aUrl(buildAbsolute1p3aUrl(href));
+      if (!isValidThreadUrl(url) || seenUrls.has(url)) return;
+
+      seenUrls.add(url);
+      items.push({
+        source: "1point3acres",
+        sourceLabel: "一亩三分地",
+        title,
+        url,
+        publishedAt: fetchedAt,
+      });
+    },
+  );
+
+  return items;
 }
 
 async function scrapeForumTopPosts(): Promise<CommunityItem[]> {
@@ -70,68 +147,98 @@ async function scrapeForumTopPosts(): Promise<CommunityItem[]> {
   const buf = await response.arrayBuffer();
   const html = iconv.decode(Buffer.from(buf), "gbk");
   const $ = cheerio.load(html);
+  return collectHtmlItems($, fetchedAt);
+}
+
+async function scrapeForumTopPostsViaJina(): Promise<CommunityItem[]> {
+  const response = await fetch(JINA_PROXY_URL, {
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      Accept: "text/plain,text/markdown;q=0.9,*/*;q=0.8",
+    },
+    signal: AbortSignal.timeout(15000),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Jina proxy returned ${response.status}`);
+  }
+
+  const fetchedAt = new Date().toISOString();
+  const body = await response.text();
   const seenUrls = new Set<string>();
   const items: CommunityItem[] = [];
+  const matches = body.matchAll(/\[(.+?)\]\((https?:\/\/[^\s)]+1point3acres[^\s)]*)\)/g);
 
-  $("a.xi2, a.xst, a[href*='/bbs/thread-'], a[href*='viewthread'], a[href*='instant.1point3acres.com/thread/']").each(
-    (_, element) => {
-      if (items.length >= 12) return false;
+  for (const match of matches) {
+    if (items.length >= 12) break;
+    const title = match[1]?.trim();
+    const rawUrl = match[2]?.trim();
+    if (!title || title.length < 4 || !rawUrl) continue;
 
-      const title = $(element).text().trim();
-      const href = $(element).attr("href") || "";
-      if (!title || title.length < 4 || !href) return;
+    const url = normalize1p3aUrl(rawUrl);
+    if (!isValidThreadUrl(url) || seenUrls.has(url)) continue;
 
-      const absoluteUrl = href.startsWith("http")
-        ? href
-        : href.startsWith("/")
-          ? `https://www.1point3acres.com${href}`
-          : `https://www.1point3acres.com/bbs/${href}`;
-
-      const url = normalize1p3aUrl(absoluteUrl);
-      if (!isValidThreadUrl(url) || seenUrls.has(url)) return;
-
-      seenUrls.add(url);
-      items.push({
-        source: "1point3acres",
-        sourceLabel: "一亩三分地",
-        title,
-        url,
-        publishedAt: fetchedAt,
-      });
-    },
-  );
+    seenUrls.add(url);
+    items.push({
+      source: "1point3acres",
+      sourceLabel: "一亩三分地",
+      title,
+      url,
+      publishedAt: fetchedAt,
+    });
+  }
 
   return items;
 }
 
-async function fetchLeekData(
-  nocache = false,
-): Promise<{ items: CommunityItem[]; sourceMode: "live" | "cache" | "unavailable" }> {
+async function fetchLeekData(nocache = false): Promise<FetchLeekResult> {
   const cacheKey = "community-leeks";
 
   if (!nocache) {
     const cached = getCachedData(cacheKey, LEEKS_CACHE_TTL, false);
-    if (cached && cached.data?.items?.length >= 3) {
-      return { items: cached.data.items, sourceMode: "cache" };
+    if (cached && cached.data?.items?.length >= 1) {
+      return {
+        items: cached.data.items,
+        sourceMode: "cache",
+        sourceName: "cache",
+        fallbackUsed: Boolean(cached.data?.fallbackUsed),
+      };
     }
   }
 
   try {
     const items = await scrapeForumTopPosts();
-    if (items.length >= 3) {
-      setCache(cacheKey, { items, sourceMode: "live" });
-      return { items, sourceMode: "live" };
+    if (items.length >= 1) {
+      setCache(cacheKey, { items, sourceMode: "live", sourceName: "1point3acres-html", fallbackUsed: false });
+      return { items, sourceMode: "live", sourceName: "1point3acres-html", fallbackUsed: false };
     }
+    console.warn("[Leeks] HTML scrape returned 0 items");
   } catch (error) {
     console.warn("[Leeks] HTML scrape failed:", error instanceof Error ? error.message : error);
   }
 
-  const stale = getStaleCache(cacheKey);
-  if (stale && stale.data?.items?.length >= 3) {
-    return { items: stale.data.items, sourceMode: "cache" };
+  try {
+    const items = await scrapeForumTopPostsViaJina();
+    if (items.length >= 1) {
+      setCache(cacheKey, { items, sourceMode: "fallback", sourceName: "1point3acres-jina", fallbackUsed: true });
+      return { items, sourceMode: "fallback", sourceName: "1point3acres-jina", fallbackUsed: true };
+    }
+    console.warn("[Leeks] Jina fallback returned 0 items");
+  } catch (error) {
+    console.warn("[Leeks] Jina fallback failed:", error instanceof Error ? error.message : error);
   }
 
-  return { items: [], sourceMode: "unavailable" };
+  const stale = getStaleCache(cacheKey);
+  if (stale && stale.data?.items?.length >= 1) {
+    return {
+      items: stale.data.items,
+      sourceMode: "cache",
+      sourceName: "cache",
+      fallbackUsed: Boolean(stale.data?.fallbackUsed),
+    };
+  }
+
+  return { items: [], sourceMode: "unavailable", sourceName: "unavailable", fallbackUsed: false };
 }
 
 export async function handleLeeks(req: VercelRequest, res: VercelResponse) {
@@ -141,7 +248,7 @@ export async function handleLeeks(req: VercelRequest, res: VercelResponse) {
   try {
     const nocache = isCacheBypass(req);
     const fetchedAt = new Date().toISOString();
-    const { items, sourceMode } = await fetchLeekData(nocache);
+    const { items, sourceMode, sourceName, fallbackUsed } = await fetchLeekData(nocache);
 
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.status(200).json({
@@ -151,6 +258,8 @@ export async function handleLeeks(req: VercelRequest, res: VercelResponse) {
       fetchedAt,
       ttlSeconds: ttlMsToSeconds(LEEKS_CACHE_TTL),
       sourceMode,
+      sourceName,
+      fallbackUsed,
       source: { name: "1point3acres", url: ONEPOINT3ACRES_FORUM_URL },
     });
   } catch (error) {
@@ -162,6 +271,8 @@ export async function handleLeeks(req: VercelRequest, res: VercelResponse) {
       fetchedAt: new Date().toISOString(),
       ttlSeconds: 0,
       sourceMode: "unavailable",
+      sourceName: "unavailable",
+      fallbackUsed: false,
       source: { name: "1point3acres", url: ONEPOINT3ACRES_FORUM_URL },
     });
   }

@@ -56,6 +56,36 @@ const statusLabelMap: Record<BehaviorRadarEntry["status"], string> = {
   caution: "谨慎",
 };
 
+function getFortuneLevel(data: FortuneData | null): {
+  label: "大吉" | "吉" | "平" | "凶" | "大凶";
+  tone: string;
+} | null {
+  if (!data) return null;
+
+  const radarEntries = Object.values(data.behaviorRadar || {});
+  let score = 0;
+
+  for (const entry of radarEntries) {
+    if (entry.status === "safe" || entry.status === "actionable") score += 1;
+    if (entry.status === "risk" || entry.status === "caution") score -= 1;
+  }
+
+  if (data.importance === "high") {
+    score += score > 0 ? 1 : score < 0 ? -1 : 0;
+  }
+
+  if (score >= 3) return { label: "大吉", tone: "text-emerald-300" };
+  if (score >= 1) return { label: "吉", tone: "text-lime-300" };
+  if (score <= -3) return { label: "大凶", tone: "text-rose-300" };
+  if (score <= -1) return { label: "凶", tone: "text-amber-300" };
+  return { label: "平", tone: "text-muted-foreground" };
+}
+
+function buildSummaryText(data: FortuneData | null): string {
+  if (!data) return getDailyQuote();
+  return `【${getFortuneLevel(data)?.label || "平"}】宜${data.do}，忌${data.dont}`;
+}
+
 export default function FortuneWidget() {
   const [birthdate, setBirthdate] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
@@ -72,6 +102,7 @@ export default function FortuneWidget() {
     if (!birthdate) return;
 
     const abortController = new AbortController();
+
     async function loadFortune() {
       setLoading(true);
       setError(null);
@@ -102,7 +133,6 @@ export default function FortuneWidget() {
     }
 
     loadFortune();
-
     return () => abortController.abort();
   }, [birthdate, retryKey]);
 
@@ -114,16 +144,20 @@ export default function FortuneWidget() {
     setRetryKey((prev) => prev + 1);
   };
 
-  const showSummary = useMemo(() => !!data && !loading && !error, [data, loading, error]);
-  const fortuneValid =
-    showSummary &&
-    !!data?.headline &&
-    !!data?.verdict &&
-    !!data?.do &&
-    !!data?.dont &&
-    !!data?.timeHint &&
-    !!data?.importance &&
-    !!data?.behaviorRadar;
+  const fortuneValid = useMemo(
+    () =>
+      !!data &&
+      !loading &&
+      !error &&
+      !!data.headline &&
+      !!data.verdict &&
+      !!data.do &&
+      !!data.dont &&
+      !!data.timeHint &&
+      !!data.importance &&
+      !!data.behaviorRadar,
+    [data, loading, error],
+  );
 
   const statusMessage = error
     ? "读取失败"
@@ -142,12 +176,12 @@ export default function FortuneWidget() {
         ? "text-cyan-300"
         : "text-muted-foreground";
 
-  const headlineContent = loading ? (
-    <Skeleton className="h-4 w-52" />
+  const summaryContent = loading ? (
+    <Skeleton className="h-4 w-64" />
   ) : fortuneValid && data ? (
-    data.headline
+    buildSummaryText(data)
   ) : !birthdate ? (
-    getDailyQuote()
+    "设置生日后可生成今日运势。"
   ) : (
     "今天先保守一点。"
   );
@@ -165,7 +199,7 @@ export default function FortuneWidget() {
               运势
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm text-foreground/88">{headlineContent}</div>
+              <div className="truncate text-sm text-foreground/88">{summaryContent}</div>
             </div>
             <div className={`hidden text-[11px] uppercase tracking-[0.16em] md:block ${statusTone}`}>
               {statusMessage}
@@ -199,21 +233,11 @@ export default function FortuneWidget() {
                 {fortuneValid && data ? (
                   <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
                     <div className="rounded-[1rem] border border-white/10 bg-white/5 p-4">
-                      <div className="text-sm leading-6 text-foreground/92">{data.verdict}</div>
-                      <div className="mt-3 grid gap-3 md:grid-cols-2">
-                        <div className="rounded-[0.9rem] border border-emerald-500/18 bg-emerald-500/8 p-3">
-                          <div className="mb-1 text-[11px] uppercase tracking-[0.16em] text-emerald-300/80">
-                            宜做
-                          </div>
-                          <div className="text-sm leading-6 text-foreground/92">{data.do}</div>
-                        </div>
-                        <div className="rounded-[0.9rem] border border-rose-500/18 bg-rose-500/8 p-3">
-                          <div className="mb-1 text-[11px] uppercase tracking-[0.16em] text-rose-300/80">
-                            慎做
-                          </div>
-                          <div className="text-sm leading-6 text-foreground/92">{data.dont}</div>
-                        </div>
+                      <div className="mb-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                        今日判断
                       </div>
+                      <div className="text-base font-semibold text-foreground/92">{data.headline}</div>
+                      <div className="mt-2 text-sm leading-6 text-foreground/92">{data.verdict}</div>
                     </div>
 
                     <div className="space-y-3">
@@ -232,7 +256,7 @@ export default function FortuneWidget() {
                           return (
                             <div
                               key={entry.key}
-                              className="border-b border-white/8 py-2 last:border-b-0 last:pb-0 first:pt-0"
+                              className="border-b border-white/8 py-2 first:pt-0 last:border-b-0 last:pb-0"
                             >
                               <div className="mb-1 flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                                 <span>{entry.label}</span>

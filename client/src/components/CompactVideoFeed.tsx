@@ -35,6 +35,7 @@ interface CompactVideoFeedProps {
   moreLabel?: string;
   hideHeader?: boolean;
   carouselItemClassName?: string;
+  embedded?: boolean;
 }
 
 interface VideoCard {
@@ -56,6 +57,7 @@ export default function CompactVideoFeed({
   moreLabel = "更多",
   hideHeader = false,
   carouselItemClassName = "min-w-0 shrink-0 pl-3 md:basis-1/2",
+  embedded = false,
 }: CompactVideoFeedProps) {
   const [items, setItems] = useState<VideoCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,10 +122,13 @@ export default function CompactVideoFeed({
 
   const resolvedTitle = title || (kind === "stock" ? "最新美股视频" : "找工视频");
   const resolvedSubtitle = subtitle || "";
+  const wrapperClassName = embedded
+    ? "min-w-0 rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-3"
+    : "editorial-card min-w-0 overflow-hidden rounded-[1.15rem] p-4";
 
   if (loading) {
     return (
-      <div className="editorial-card min-w-0 rounded-[1.15rem] p-4">
+      <div className={wrapperClassName}>
         {!hideHeader ? (
           <div className="mb-3 text-sm font-semibold text-foreground/92">{resolvedTitle}</div>
         ) : null}
@@ -137,9 +142,11 @@ export default function CompactVideoFeed({
   }
 
   return (
-    <div className="editorial-card min-w-0 overflow-hidden rounded-[1.15rem] p-4">
+    <div className={wrapperClassName}>
       {!hideHeader ? (
-        <div className="mb-4 flex items-center justify-between gap-3 border-b border-border/20 pb-3">
+        <div
+          className={`mb-4 flex items-center justify-between gap-3 ${embedded ? "" : "border-b border-border/20 pb-3"}`}
+        >
           <div className="min-w-0">
             <div className="text-sm font-semibold text-foreground/92">{resolvedTitle}</div>
             {resolvedSubtitle ? (

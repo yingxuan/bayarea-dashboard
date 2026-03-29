@@ -15,6 +15,7 @@ import portfolioHandler from '../api/portfolio/[...slug].js';
 import fanwanHandler from '../api/youtube/fanwan.js';
 import musthaveHandler from '../api/spend/musthave.js';
 import authHandler from '../api/auth/[...slug].js';
+import marketAllHandler from '../api/market-all.js';
 import { cache } from '../lib/api-utils.js';
 import { clearDedupMap } from '../lib/spend/placesClient.ts';
 
@@ -375,6 +376,34 @@ export async function jobsCommunityRoute(req: Request, res: Response) {
     await communityHandler(vercelReq, vercelRes);
   } catch (error) {
     console.error('[local-api-adapter] Jobs Community route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+export async function startupNewsRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    withHandler(vercelReq, 'startup-news');
+    await marketAllHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Startup News route error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+export async function jobMarketTrendRoute(req: Request, res: Response) {
+  try {
+    const { vercelReq, vercelRes } = expressToVercel(req, res);
+    withHandler(vercelReq, 'job-market-trend');
+    await marketAllHandler(vercelReq, vercelRes);
+  } catch (error) {
+    console.error('[local-api-adapter] Job Market Trend route error:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

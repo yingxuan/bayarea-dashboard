@@ -283,6 +283,13 @@
   .page-shell {
     position: relative;
     isolation: isolate;
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 768px) {
+    .page-shell {
+      padding-bottom: 0;
+    }
   }
 
   .page-shell::before {
@@ -439,6 +446,40 @@
     opacity: 0.55;
   }
 
+  .home-section-title {
+    font-size: clamp(1.1rem, 1.1rem + 0.35vw, 1.3rem);
+    line-height: 1.2;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+
+  .home-subsection-title {
+    font-size: 0.95rem;
+    line-height: 1.35;
+    font-weight: 600;
+    color: oklch(0.95 0.01 95 / 0.88);
+  }
+
+  .entry-card-label {
+    font-size: 11px;
+    line-height: 1.1;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .entry-card-title {
+    font-size: 0.95rem;
+    line-height: 1.35;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+
+  .entry-card-description {
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: oklch(0.72 0.018 95 / 0.65);
+  }
+
   .signal-chip {
     display: inline-flex;
     align-items: center;
@@ -495,6 +536,10 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+  }
+
+  .route-shell > .hero-panel:first-child {
+    display: none;
   }
 
   .route-header {

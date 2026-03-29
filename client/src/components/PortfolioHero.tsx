@@ -82,7 +82,7 @@ export default function PortfolioHero({
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, "0");
     const minutes = now.getMinutes().toString().padStart(2, "0");
-    return `更新 ${hours}:${minutes} · live`;
+    return `${hours}:${minutes} live`;
   }, []);
 
   const { topPositive, topNegative } = useMemo(() => {
@@ -147,37 +147,35 @@ export default function PortfolioHero({
     }
   };
 
-  const renderMoverColumn = (
-    title: string,
+  const renderMoverRow = (
+    label: string,
     movers: Array<{ ticker: string; dailyChangePercent: number }>,
     isPositive: boolean,
   ) => (
-    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-3">
-      <div className="mb-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground/75">
-        {title}
+    <div className="rounded-[0.95rem] border border-white/8 bg-white/[0.03] px-3 py-2.5">
+      <div className="mb-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground/68">
+        {label}
       </div>
-      <div className="space-y-1.5">
-        {movers.length > 0 ? (
-          movers.map((mover) => (
-            <div key={mover.ticker} className="grid grid-cols-[48px_1fr] items-baseline gap-2">
-              <span className="w-12 text-[13px] font-medium text-foreground">{mover.ticker}</span>
-              <div className="flex items-baseline justify-end gap-0 text-[13px] font-medium tabular-nums">
-                {isPositive ? (
-                  <TrendingUp className="mr-0.5 h-3 w-3 shrink-0 text-emerald-400/80" />
-                ) : (
-                  <TrendingDown className="mr-0.5 h-3 w-3 shrink-0 text-rose-400/80" />
-                )}
-                <span className={isPositive ? "text-emerald-400/85" : "text-rose-400/85"}>
-                  {mover.dailyChangePercent >= 0 ? "+" : ""}
-                  {mover.dailyChangePercent.toFixed(1)}%
-                </span>
-              </div>
+      {movers.length > 0 ? (
+        <div className="space-y-1.5">
+          {movers.map((mover) => (
+            <div key={mover.ticker} className="flex items-center justify-between gap-3 text-sm">
+              <span className="font-medium text-foreground/86">{mover.ticker}</span>
+              <span
+                className={`inline-flex items-center gap-1 tabular-nums ${
+                  isPositive ? "text-emerald-300/90" : "text-rose-300/90"
+                }`}
+              >
+                {isPositive ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                {mover.dailyChangePercent >= 0 ? "+" : ""}
+                {mover.dailyChangePercent.toFixed(1)}%
+              </span>
             </div>
-          ))
-        ) : (
-          <div className="text-xs text-muted-foreground/55">暂无</div>
-        )}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-xs text-muted-foreground/55">暂无</div>
+      )}
     </div>
   );
 
@@ -209,16 +207,16 @@ export default function PortfolioHero({
   return (
     <>
       <div className="hero-panel rounded-[1.2rem] p-3 md:p-4">
-        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[1.45fr_0.9fr]">
+        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[1.65fr_0.75fr]">
           <div className="min-w-0">
             <div className="mb-1 text-[30px] font-semibold leading-none tracking-[-0.03em] text-foreground md:text-[38px]">
               ${portfolioMetrics.portfolioValue.toLocaleString()}
             </div>
 
-            <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="text-xs text-muted-foreground">今日</span>
+            <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
+              <span className="text-muted-foreground/68">今日</span>
               <span
-                className={`text-[15px] font-medium tabular-nums ${
+                className={`font-medium tabular-nums ${
                   portfolioMetrics.dailyChangePercent >= 0 ? "text-emerald-400" : "text-rose-400"
                 }`}
               >
@@ -226,7 +224,7 @@ export default function PortfolioHero({
                 {portfolioMetrics.dailyChangePercent.toFixed(2)}%
               </span>
               <span
-                className={`text-xs tabular-nums opacity-70 ${
+                className={`text-xs tabular-nums opacity-72 ${
                   portfolioMetrics.dailyChangePercent >= 0 ? "text-emerald-400" : "text-rose-400"
                 }`}
               >
@@ -235,43 +233,46 @@ export default function PortfolioHero({
                   maximumFractionDigits: 0,
                 })}
               </span>
-              <span className="text-xs text-muted-foreground/60">年内</span>
+              <span className="text-muted-foreground/52">YTD</span>
               {portfolioMetrics.ytdChangeAmount !== null && portfolioMetrics.ytdPercent !== null ? (
                 <span
                   className={`text-xs tabular-nums ${
-                    portfolioMetrics.ytdPercent >= 0 ? "text-emerald-400/90" : "text-rose-400/90"
+                    portfolioMetrics.ytdPercent >= 0 ? "text-emerald-300/88" : "text-rose-300/88"
                   }`}
                 >
                   {portfolioMetrics.ytdPercent >= 0 ? "+" : ""}
                   {portfolioMetrics.ytdPercent.toFixed(2)}%
                 </span>
               ) : (
-                <span className="text-xs text-muted-foreground/45">未配置</span>
+                <span className="text-xs text-muted-foreground/42">未配置</span>
               )}
             </div>
+
             {hasRenderableSeries ? (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div className="rounded-[1rem] border border-white/8 bg-white/[0.03] p-3">
                 <PortfolioSparkline
                   data={valueSeries}
                   currentValue={portfolioMetrics.portfolioValue}
                   dailyChangePercent={portfolioMetrics.dailyChangePercent}
                   width={320}
-                  height={132}
+                  height={124}
                 />
               </div>
             ) : (
-              <div className="flex h-[132px] items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-xs text-muted-foreground/70">
-                暂无可绘制的日内仓位曲线
+              <div className="flex h-[124px] items-center justify-center rounded-[1rem] border border-white/8 bg-white/[0.03] text-xs text-muted-foreground/68">
+                暂无可绘制的日内曲线
               </div>
             )}
           </div>
 
-          <div className="min-w-0 space-y-3">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-1">
-              {renderMoverColumn("Top Winners", topPositive, true)}
-              {renderMoverColumn("Top Losers", topNegative, false)}
+          <div className="min-w-0">
+            <div className="mb-2 text-right text-[10px] uppercase tracking-[0.16em] text-muted-foreground/58">
+              {updateInfo}
             </div>
-            <div className="px-1 text-right text-[11px] text-muted-foreground/60">{updateInfo}</div>
+            <div className="grid grid-cols-2 gap-2 xl:grid-cols-1">
+              {renderMoverRow("Winners", topPositive, true)}
+              {renderMoverRow("Losers", topNegative, false)}
+            </div>
           </div>
         </div>
       </div>

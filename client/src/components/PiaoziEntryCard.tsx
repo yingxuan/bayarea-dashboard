@@ -6,13 +6,13 @@ export default function PiaoziEntryCard() {
     <Link href="/piaozi">
       <div className="entry-card group cursor-pointer">
         <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-[0.16em] text-cyan-300/70">
+          <div className="entry-card-label text-cyan-300/70">
             Dive deeper
           </div>
-          <div className="mt-1 text-sm font-medium text-foreground">
+          <div className="entry-card-title mt-1">
             去看完整财务驾驶舱
           </div>
-          <div className="mt-1 text-xs text-muted-foreground/65">
+          <div className="entry-card-description mt-1">
             持仓分析、更多指数、市场情绪、频道追踪
           </div>
         </div>

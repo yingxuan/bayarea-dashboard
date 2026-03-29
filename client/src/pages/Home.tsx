@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { fadeInUp, staggerContainer } from "@/lib/motion";
 import Navigation from "@/components/Navigation";
@@ -7,17 +7,15 @@ import MarketHighlights from "@/components/MarketHighlights";
 import ReturnHintToast, { ReturnToDashboardToast } from "@/components/ReturnHintToast";
 import LayoffsWidget from "@/components/LayoffsWidget";
 import OfferCommunityWidget from "@/components/OfferCommunityWidget";
+import StartupNewsList from "@/components/StartupNewsList";
 import CompactVideoFeed from "@/components/CompactVideoFeed";
 import { useAuthAwareHoldings } from "@/hooks/useAuthAwareHoldings";
 import { QuoteData } from "@/hooks/usePortfolioSummary";
 import { useExternalLink } from "@/hooks/useExternalLink";
 import { config } from "@/config";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useT } from "@/lib/translations";
-import { generateJobMarketJudgment } from "@/lib/judgment";
 
 const FortuneWidget = lazy(() => import("@/components/FortuneWidget"));
-const TodaySpendCarousels = lazy(() => import("@/components/TodaySpendCarousels"));
 
 interface MarketNewsItem {
   title?: string;
@@ -29,7 +27,12 @@ interface MarketNewsItem {
 }
 
 interface HomeJobItem {
+  title: string;
   category?: "layoff" | "hiring" | "discussion";
+}
+
+interface HomeOfferItem {
+  title: string;
 }
 
 function HomeModuleFallback() {
@@ -38,7 +41,6 @@ function HomeModuleFallback() {
 
 export default function Home() {
   const { lang } = useLanguage();
-  const t = useT(lang);
   const {
     showHint,
     dismissHint,
@@ -54,7 +56,7 @@ export default function Home() {
   const [marketNews, setMarketNews] = useState<MarketNewsItem[]>([]);
   const [layoffCount, setLayoffCount] = useState(0);
   const [offerCount, setOfferCount] = useState(0);
-  const [newPlacesCount, setNewPlacesCount] = useState(0);
+  const [activeWorkTab, setActiveWorkTab] = useState<"layoff" | "offer">("layoff");
 
   useEffect(() => {
     if (!holdingsLoaded || holdings.length === 0) {
@@ -102,11 +104,10 @@ export default function Home() {
   useEffect(() => {
     async function loadHomeFeeds() {
       try {
-        const [marketResp, jobsResp, offersResp, newPlacesResp] = await Promise.allSettled([
+        const [marketResp, jobsResp, offersResp] = await Promise.allSettled([
           fetch(`${config.apiBaseUrl}/api/market-news`, { signal: AbortSignal.timeout(10000) }),
           fetch(`${config.apiBaseUrl}/api/community/jobs`, { signal: AbortSignal.timeout(10000) }),
           fetch(`${config.apiBaseUrl}/api/community/offers`, { signal: AbortSignal.timeout(10000) }),
-          fetch(`${config.apiBaseUrl}/api/spend/new-places`, { signal: AbortSignal.timeout(10000) }),
         ]);
 
         if (marketResp.status === "fulfilled" && marketResp.value.ok) {
@@ -118,32 +119,24 @@ export default function Home() {
 
         if (jobsResp.status === "fulfilled" && jobsResp.value.ok) {
           const result = await jobsResp.value.json();
-          setLayoffCount(
-            (result.items || []).filter((item: HomeJobItem) => item.category === "layoff").length,
-          );
+          const items = result.items || [];
+          setLayoffCount(items.filter((item: HomeJobItem) => item.category === "layoff").length);
         } else {
           setLayoffCount(0);
         }
 
         if (offersResp.status === "fulfilled" && offersResp.value.ok) {
           const result = await offersResp.value.json();
-          setOfferCount((result.items || []).length);
+          const items: HomeOfferItem[] = result.items || [];
+          setOfferCount(items.length);
         } else {
           setOfferCount(0);
-        }
-
-        if (newPlacesResp.status === "fulfilled" && newPlacesResp.value.ok) {
-          const result = await newPlacesResp.value.json();
-          setNewPlacesCount((result.places || []).length);
-        } else {
-          setNewPlacesCount(0);
         }
       } catch (error) {
         console.error("[Home] Failed to fetch homepage feeds:", error);
         setMarketNews([]);
         setLayoffCount(0);
         setOfferCount(0);
-        setNewPlacesCount(0);
       }
     }
 
@@ -151,53 +144,6 @@ export default function Home() {
     const interval = setInterval(loadHomeFeeds, 30 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
-
-  const marketLine = useMemo(() => {
-    if (!holdingsLoaded || holdings.length === 0) {
-      return lang === "en" ? "Stocks first: check the tape before adding risk" : "股市先看大盘和仓位";
-    }
-
-    const changes = holdings
-      .map((holding) => quotesData[holding.ticker.toUpperCase()]?.changePercent)
-      .filter((value): value is number => typeof value === "number");
-    const avgChange =
-      changes.length > 0 ? changes.reduce((sum, value) => sum + value, 0) / changes.length : 0;
-
-    if (avgChange >= 1) {
-      return lang === "en" ? "Stocks look constructive today" : "股市偏强，今天有进攻空间";
-    }
-
-    if (avgChange <= -1) {
-      return lang === "en" ? "Stocks are weak today, stay defensive" : "股市偏弱，今天先防守";
-    }
-
-    return lang === "en" ? "Stocks are choppy, observe first" : "股市震荡，先观察";
-  }, [holdings, holdingsLoaded, lang, quotesData]);
-
-  const workLine = useMemo(() => {
-    const judgment = generateJobMarketJudgment({
-      layoffCount,
-      hiringCount: offerCount,
-      techStockTrend: "flat",
-      spyChangePercent: 0,
-    });
-
-    if (layoffCount > offerCount) {
-      return lang === "en"
-        ? `Tech hiring is cold: ${layoffCount} layoff items outweigh offers`
-        : `码农行业偏冷，裁员 ${layoffCount} 条比 offer/面经 ${offerCount} 条更强`;
-    }
-
-    if (offerCount > layoffCount) {
-      return lang === "en"
-        ? `Tech hiring is ${judgment.temperatureLabel.toLowerCase()}: offers are beating layoffs`
-        : `码农行业 ${judgment.temperatureLabel}，offer/面经 ${offerCount} 条比裁员 ${layoffCount} 条更有看头`;
-    }
-
-    return lang === "en"
-      ? `Tech hiring is ${judgment.temperatureLabel.toLowerCase()} with both layoffs and offers updating`
-      : `码农行业 ${judgment.temperatureLabel}，裁员和 offer/面经都在更新`;
-  }, [lang, layoffCount, offerCount]);
 
   return (
     <div className="page-shell min-h-screen bg-background grid-bg">
@@ -222,91 +168,83 @@ export default function Home() {
             </Suspense>
           </motion.div>
 
-          <motion.section
-            className="section-shell section-shell-market rounded-[1.25rem] p-3 md:p-4"
-            variants={fadeInUp}
-          >
-            <h2 className="mb-4 text-xl font-semibold text-foreground">{t.home.sectionMarket}</h2>
+          <motion.div className="grid gap-4" variants={fadeInUp}>
+            <PortfolioHero
+              quotesData={quotesData}
+              holdings={holdings}
+              holdingsLoaded={holdingsLoaded}
+              ytdBaseline={ytdBaseline}
+              onYtdBaselineChange={updateYtdBaseline}
+            />
+            <MarketHighlights
+              marketNews={marketNews}
+              maxItems={3}
+              title={lang === "en" ? "Top Finance Headlines" : "新浪财经头条"}
+            />
+            <CompactVideoFeed
+              kind="stock"
+              maxItems={6}
+              layout="carousel"
+              embedded
+              title={lang === "en" ? "US Stock Creators" : "美股博主"}
+              carouselItemClassName="min-w-0 shrink-0 basis-[82%] pl-3 sm:basis-[58%] md:basis-1/2"
+            />
+          </motion.div>
 
-            <div className="grid gap-4 xl:grid-cols-[1.45fr_0.85fr]">
-              <div className="grid gap-4">
-                <div className="grid grid-cols-1 gap-4">
-                  <PortfolioHero
-                    quotesData={quotesData}
-                    holdings={holdings}
-                    holdingsLoaded={holdingsLoaded}
-                    ytdBaseline={ytdBaseline}
-                    onYtdBaselineChange={updateYtdBaseline}
-                  />
-                </div>
-                <MarketHighlights
-                  marketNews={marketNews}
-                  maxItems={4}
-                  title={lang === "en" ? "Market News" : "财经快讯"}
-                />
-              </div>
-              <div className="min-w-0 self-stretch">
-                <CompactVideoFeed
-                  kind="stock"
-                  maxItems={2}
-                  title={lang === "en" ? "Market Videos" : "财经视频"}
-                  subtitle=""
-                  moreHref="/piaozi"
-                />
+          <div className="section-divider" />
+
+          <motion.section className="grid gap-4" variants={fadeInUp}>
+            <div className="rounded-[1rem] border border-white/10 bg-white/[0.04] p-1">
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveWorkTab("layoff")}
+                  className={`rounded-[0.8rem] px-3 py-2 text-sm transition ${
+                    activeWorkTab === "layoff"
+                      ? "bg-white/10 text-foreground"
+                      : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                  }`}
+                >
+                  {lang === "en" ? `Layoffs ${layoffCount}` : `裁员 ${layoffCount}`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveWorkTab("offer")}
+                  className={`rounded-[0.8rem] px-3 py-2 text-sm transition ${
+                    activeWorkTab === "offer"
+                      ? "bg-white/10 text-foreground"
+                      : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                  }`}
+                >
+                  {lang === "en" ? `Offers ${offerCount}` : `Offer ${offerCount}`}
+                </button>
               </div>
             </div>
+
+            {activeWorkTab === "layoff" ? (
+              <LayoffsWidget embedded />
+            ) : (
+              <OfferCommunityWidget maxItems={4} embedded />
+            )}
+
+            <CompactVideoFeed
+              kind="career"
+              maxItems={6}
+              layout="carousel"
+              embedded
+              title={lang === "en" ? "Industry / Job Videos" : "行业 / 找工视频"}
+              carouselItemClassName="min-w-0 shrink-0 basis-[82%] pl-3 sm:basis-[58%] md:basis-1/2"
+            />
           </motion.section>
 
           <div className="section-divider" />
 
-          <motion.section
-            className="section-shell section-shell-work rounded-[1.25rem] p-3 md:p-4"
-            variants={fadeInUp}
-          >
-            <h2 className="mb-4 text-xl font-semibold text-foreground">{t.home.sectionWork}</h2>
-
-            <div className="grid gap-4">
-              <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
-                <div className="min-w-0">
-                  <h3 className="mb-3 text-sm font-semibold text-foreground/88">
-                    {lang === "en" ? "Layoff News" : "裁员新闻"}
-                  </h3>
-                  <LayoffsWidget />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="mb-3 text-sm font-semibold text-foreground/88">
-                    {lang === "en" ? "Offers / Interview Notes" : "Offer / 面经"}
-                  </h3>
-                  <OfferCommunityWidget maxItems={6} />
-                </div>
-              </div>
-              <div className="min-w-0">
-                <h3 className="mb-3 text-sm font-semibold text-foreground/88">
-                  {lang === "en" ? "Career Videos" : "找工视频"}
-                </h3>
-                <CompactVideoFeed
-                  kind="career"
-                  maxItems={8}
-                  layout="carousel"
-                  hideHeader
-                  carouselItemClassName="min-w-0 shrink-0 basis-[82%] pl-3 sm:basis-[60%] md:basis-1/2 xl:basis-1/3 2xl:basis-1/4"
-                />
-              </div>
-            </div>
-          </motion.section>
-
-          <div className="section-divider" />
-
-          <motion.section
-            className="section-shell section-shell-food rounded-[1.25rem] p-3 md:p-4"
-            variants={fadeInUp}
-          >
-            <div className="w-full min-w-0">
-              <Suspense fallback={<HomeModuleFallback />}>
-                <TodaySpendCarousels />
-              </Suspense>
-            </div>
-          </motion.section>
+          <motion.div variants={fadeInUp}>
+            <StartupNewsList
+              maxItems={4}
+              title={lang === "en" ? "Bay Area Startup News" : "湾区 Startup 新闻"}
+            />
+          </motion.div>
         </motion.div>
       </main>
     </div>

@@ -6,11 +6,11 @@ export default function BaoguoEntryCard() {
     <Link href="/baoguo">
       <div className="entry-card group cursor-pointer">
         <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-[0.16em] text-sky-300/75">
+          <div className="entry-card-label text-sky-300/75">
             Work signals
           </div>
-          <div className="mt-1 text-sm font-medium text-foreground">去看完整包裹页</div>
-          <div className="mt-1 text-xs text-muted-foreground/65">
+          <div className="entry-card-title mt-1">去看完整包裹页</div>
+          <div className="entry-card-description mt-1">
             裁员帖、找工讨论、社区风向和最近值得点开的工作内容
           </div>
         </div>

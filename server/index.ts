@@ -29,6 +29,8 @@ import {
   jobsCommunityRoute,
   offersCommunityRoute,
   marketNewsRoute,
+  startupNewsRoute,
+  jobMarketTrendRoute,
   portfolioValueSeriesRoute,
   portfolioHoldingsRoute,
   portfolioSettingsRoute,
@@ -106,6 +108,10 @@ async function startServer() {
   app.options('/api/community/offers', (_req, res) => res.sendStatus(200));
   app.get('/api/market-news', marketNewsRoute);
   app.options('/api/market-news', (_req, res) => res.sendStatus(200));
+  app.get('/api/startup-news', startupNewsRoute);
+  app.options('/api/startup-news', (_req, res) => res.sendStatus(200));
+  app.get('/api/job-market-trend', jobMarketTrendRoute);
+  app.options('/api/job-market-trend', (_req, res) => res.sendStatus(200));
   app.get('/api/portfolio/value-series', portfolioValueSeriesRoute);
   app.options('/api/portfolio/value-series', (_req, res) => res.sendStatus(200));
   app.get('/api/fortune', fortuneRoute);

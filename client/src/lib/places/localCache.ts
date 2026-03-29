@@ -12,6 +12,7 @@ import type { SeedCategory } from '../../../../shared/types/seeds';
 const DB_NAME = 'places-cache';
 const DEFAULT_TTL_DAYS = 14;
 const COOLDOWN_KEY = 'places_quota_cooldown_until';
+const CACHE_SCHEMA_VERSION = 2;
 
 export interface CachedPlace {
   placeId: string;
@@ -68,7 +69,9 @@ export async function getPool(
   try {
     const key = getPoolKey(city, poolType);
     const cached = await get<CachedPool>(key);
-    return cached || null;
+    if (!cached) return null;
+    if ((cached.version || 0) < CACHE_SCHEMA_VERSION) return null;
+    return cached;
   } catch (error) {
     console.error('[LocalCache] Error getting pool:', error);
     return null;
@@ -233,7 +236,7 @@ export function createPool(
   requestMeta?: CachedPool['requestMeta']
 ): CachedPool {
   return {
-    version: 1,
+    version: CACHE_SCHEMA_VERSION,
     updatedAt: Date.now(),
     ttlDays: DEFAULT_TTL_DAYS,
     sourceMode,

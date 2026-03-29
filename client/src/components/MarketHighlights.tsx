@@ -36,27 +36,29 @@ export default function MarketHighlights({
   );
 
   return (
-    <div className="editorial-list rounded-[1rem] px-3 py-3">
-      <div className="mb-3 text-sm font-semibold text-foreground/92">{title}</div>
+    <div className="rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-3">
+      <div className="mb-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground/72">
+        {title}
+      </div>
       {allItems.length > 0 ? (
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <div className="divide-y divide-border/20">
           {allItems.slice(0, maxItems).map((item) => (
-          <a
-            key={item.id}
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={handleExternalLinkClick}
-            className="group rounded-[0.9rem] border border-border/25 bg-background/35 px-3 py-3 transition-colors hover:bg-white/6"
-          >
-            <div className="mb-2 flex items-center justify-between gap-3 text-[11px] font-mono text-muted-foreground/65">
-              <span>{item.source}</span>
-              <span>{item.publishedAt ? <TimeAgo isoString={item.publishedAt} /> : ""}</span>
-            </div>
-            <div className="line-clamp-2 text-[13px] leading-5 text-foreground/88 transition-colors group-hover:text-primary">
-              {item.title}
-            </div>
-          </a>
+            <a
+              key={item.id}
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleExternalLinkClick}
+              className="group block py-3 first:pt-1 last:pb-1"
+            >
+              <div className="mb-1 flex items-center justify-between gap-3 text-[10px] font-mono text-muted-foreground/58">
+                <span>{item.source}</span>
+                <span>{item.publishedAt ? <TimeAgo isoString={item.publishedAt} /> : ""}</span>
+              </div>
+              <div className="line-clamp-2 text-[14px] leading-6 text-foreground/88 transition-colors group-hover:text-primary">
+                {item.title}
+              </div>
+            </a>
           ))}
         </div>
       ) : (

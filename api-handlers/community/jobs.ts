@@ -108,7 +108,7 @@ async function fetchGoogleNewsItems(
   }
 }
 
-async function fetchJobsData(nocache: boolean = false): Promise<{ items: JobItem[]; sourceMode: 'live' | 'cache' | 'unavailable' }> {
+export async function fetchJobsData(nocache: boolean = false): Promise<{ items: JobItem[]; sourceMode: 'live' | 'cache' | 'unavailable' }> {
   const cacheKey = 'community-jobs-v2';
 
   if (!nocache) {

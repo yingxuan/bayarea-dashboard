@@ -16,6 +16,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { UserLocationProvider } from "./contexts/UserLocationContext";
 
 const Home = lazy(() => import("./pages/Home"));
 const Baoguo = lazy(() => import("./pages/Baoguo"));
@@ -64,10 +65,12 @@ function App() {
       <ThemeProvider defaultTheme="dark">
         <LanguageProvider>
           <AuthProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Router />
-            </TooltipProvider>
+            <UserLocationProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Router />
+              </TooltipProvider>
+            </UserLocationProvider>
           </AuthProvider>
         </LanguageProvider>
       </ThemeProvider>
