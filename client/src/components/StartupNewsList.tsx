@@ -45,6 +45,10 @@ export default function StartupNewsList({
     return () => clearInterval(interval);
   }, [maxItems]);
 
+  if (!loading && items.length === 0) {
+    return null;
+  }
+
   return (
     <section className="rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-3">
       <div className="mb-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground/72">
@@ -57,7 +61,7 @@ export default function StartupNewsList({
             <div key={i} className="h-8 animate-pulse rounded-sm bg-muted/40" />
           ))}
         </div>
-      ) : items.length > 0 ? (
+      ) : (
         <div className="divide-y divide-border/20">
           {items.map((item, idx) => (
             <a
@@ -78,8 +82,6 @@ export default function StartupNewsList({
             </a>
           ))}
         </div>
-      ) : (
-        <div className="py-3 text-sm text-muted-foreground">暂时没有抓到可用的创业新闻。</div>
       )}
     </section>
   );

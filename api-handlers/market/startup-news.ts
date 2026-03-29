@@ -15,8 +15,26 @@ const FETCH_TIMEOUT = 8000;
 
 const STARTUP_RSS_QUERIES = [
   "https://news.google.com/rss/search?q=(bay+area+startup+funding+OR+silicon+valley+startup+funding+OR+san+francisco+startup+funding)+when:7d&hl=en-US&gl=US&ceid=US:en",
-  "https://news.google.com/rss/search?q=(yc+startup+funding+OR+venture+capital+bay+area+startup)+when:7d&hl=en-US&gl=US&ceid=US:en",
-  "https://news.google.com/rss/search?q=(bay+area+startup+layoffs+OR+startup+acquisition+san+francisco)+when:7d&hl=en-US&gl=US&ceid=US:en",
+  "https://news.google.com/rss/search?q=(startup+hiring+bay+area+OR+startup+layoffs+bay+area)+when:7d&hl=en-US&gl=US&ceid=US:en",
+  "https://news.google.com/rss/search?q=(y+combinator+startup+OR+series+a+startup+bay+area+OR+venture+capital+startup+san+francisco)+when:7d&hl=en-US&gl=US&ceid=US:en",
+];
+
+const STARTUP_FALLBACK_SEED: StartupNewsItem[] = [
+  {
+    title: "Crunchbase tracks startup funding and Bay Area venture activity",
+    url: "https://news.crunchbase.com/",
+    source: "Crunchbase News",
+  },
+  {
+    title: "TechCrunch Startups coverage",
+    url: "https://techcrunch.com/category/startups/",
+    source: "TechCrunch",
+  },
+  {
+    title: "Silicon Valley Business Journal startup coverage",
+    url: "https://www.bizjournals.com/sanjose/",
+    source: "SVBJ",
+  },
 ];
 
 interface StartupNewsItem {
@@ -26,16 +44,24 @@ interface StartupNewsItem {
   publishedAt?: string;
 }
 
-function shouldKeepStartupTitle(title: string): boolean {
-  return /(startup|funding|raises|raised|venture|vc|seed|series a|series b|acquires|acquisition|yc|y combinator|layoff)/i.test(
+function shouldKeepStartupTitle(title: string) {
+  return /(startup|funding|raises|raised|venture|vc|seed|series a|series b|acquires|acquisition|yc|y combinator|layoff|hiring)/i.test(
     title,
   );
 }
 
+function normalizeStartupSource(raw: string) {
+  if (/crunchbase/i.test(raw)) return "Crunchbase";
+  if (/techcrunch/i.test(raw)) return "TechCrunch";
+  if (/business journal/i.test(raw)) return "SVBJ";
+  if (/google/i.test(raw)) return "Google News";
+  return raw || "Startup Feed";
+}
+
 export async function fetchStartupNewsData(
   nocache = false,
-): Promise<{ items: StartupNewsItem[]; sourceMode: "live" | "cache" | "unavailable" }> {
-  const cacheKey = "startup-news-v1";
+): Promise<{ items: StartupNewsItem[]; sourceMode: "live" | "cache" | "seed" | "unavailable" }> {
+  const cacheKey = "startup-news-v2";
 
   if (!nocache) {
     const cached = getCachedData(cacheKey, STARTUP_NEWS_CACHE_TTL, false);
@@ -69,7 +95,9 @@ export async function fetchStartupNewsData(
       for (const item of feedItems) {
         const title = String(item?.title || "").trim();
         const url = String(item?.link || "").trim();
-        const source = String(item?.source?.["#text"] || item?.source || "Google News").trim();
+        const source = normalizeStartupSource(
+          String(item?.source?.["#text"] || item?.source || "Google News").trim(),
+        );
 
         if (!title || !url || seenUrls.has(url) || !shouldKeepStartupTitle(title)) {
           continue;
@@ -108,6 +136,10 @@ export async function fetchStartupNewsData(
     return { items: stale.data.items, sourceMode: "cache" };
   }
 
+  if (STARTUP_FALLBACK_SEED.length > 0) {
+    return { items: STARTUP_FALLBACK_SEED, sourceMode: "seed" };
+  }
+
   return { items: [], sourceMode: "unavailable" };
 }
 
@@ -128,7 +160,7 @@ export async function handleStartupNews(req: VercelRequest, res: VercelResponse)
       fetchedAt,
       ttlSeconds: ttlMsToSeconds(STARTUP_NEWS_CACHE_TTL),
       sourceMode,
-      source: { name: "Google News RSS", url: STARTUP_RSS_QUERIES[0] },
+      source: { name: "Google News RSS + fallback startup publishers", url: STARTUP_RSS_QUERIES[0] },
     });
   } catch (error) {
     console.error("[API /api/startup-news] Error:", error);
@@ -139,7 +171,7 @@ export async function handleStartupNews(req: VercelRequest, res: VercelResponse)
       fetchedAt: new Date().toISOString(),
       ttlSeconds: 0,
       sourceMode: "unavailable",
-      source: { name: "Google News RSS", url: STARTUP_RSS_QUERIES[0] },
+      source: { name: "Google News RSS + fallback startup publishers", url: STARTUP_RSS_QUERIES[0] },
     });
   }
 }

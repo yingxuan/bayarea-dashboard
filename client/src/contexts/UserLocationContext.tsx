@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 
 type UserCoordinates = {
   lat: number;
@@ -20,6 +20,7 @@ interface UserLocationContextValue {
   mode: PersonalizationMode;
   coordinates: UserCoordinates | null;
   isBayArea: boolean;
+  permissionState: PermissionState | "unsupported" | "unknown";
   requestLocation: () => void;
 }
 
@@ -44,13 +45,65 @@ function isWithinBayArea({ lat, lng }: UserCoordinates) {
 export function UserLocationProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<UserLocationStatus>("idle");
   const [coordinates, setCoordinates] = useState<UserCoordinates | null>(null);
+  const [permissionState, setPermissionState] = useState<PermissionState | "unsupported" | "unknown">(
+    "unknown",
+  );
   const pendingRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("geolocation" in navigator)) {
+      setPermissionState("unsupported");
+      return;
+    }
+
+    if (!("permissions" in navigator) || typeof navigator.permissions.query !== "function") {
+      setPermissionState("unknown");
+      return;
+    }
+
+    let active = true;
+    let permissionStatus: PermissionStatus | null = null;
+
+    void navigator.permissions
+      .query({ name: "geolocation" as PermissionName })
+      .then((result) => {
+        if (!active) return;
+        permissionStatus = result;
+        setPermissionState(result.state);
+
+        result.onchange = () => {
+          if (!active) return;
+          setPermissionState(result.state);
+          if (result.state === "denied") {
+            setCoordinates(null);
+            setStatus("denied");
+          }
+        };
+      })
+      .catch(() => {
+        if (!active) return;
+        setPermissionState("unknown");
+      });
+
+    return () => {
+      active = false;
+      if (permissionStatus) {
+        permissionStatus.onchange = null;
+      }
+    };
+  }, []);
 
   const requestLocation = () => {
     if (pendingRef.current) return;
 
     if (typeof window === "undefined" || !("geolocation" in navigator)) {
+      setPermissionState("unsupported");
       setStatus("unavailable");
+      return;
+    }
+
+    if (permissionState === "denied") {
+      setStatus("denied");
       return;
     }
 
@@ -66,11 +119,14 @@ export function UserLocationProvider({ children }: { children: React.ReactNode }
         };
 
         setCoordinates(nextCoordinates);
+        setPermissionState("granted");
         setStatus(isWithinBayArea(nextCoordinates) ? "granted" : "outside_bay_area");
       },
       (error) => {
         pendingRef.current = false;
         if (error.code === error.PERMISSION_DENIED) {
+          setPermissionState("denied");
+          setCoordinates(null);
           setStatus("denied");
           return;
         }
@@ -89,6 +145,7 @@ export function UserLocationProvider({ children }: { children: React.ReactNode }
     mode: status === "granted" && coordinates ? "personalized" : "general",
     coordinates,
     isBayArea: status === "granted",
+    permissionState,
     requestLocation,
   };
 

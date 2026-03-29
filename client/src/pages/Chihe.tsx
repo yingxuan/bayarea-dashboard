@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { CupSoda, Dices, MapPin, MoonStar, Sparkles, UtensilsCrossed } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import PlaceCard from "@/components/chihe/PlaceCard";
@@ -120,6 +121,31 @@ function personalizePlaces(
     .sort((a, b) => (a.distance_miles ?? Infinity) - (b.distance_miles ?? Infinity));
 }
 
+function deriveFallbackNewPlaces(placesByCategory: Record<string, SpendPlace[]>) {
+  const seen = new Set<string>();
+  const merged = ["奶茶", "中餐", "夜宵"].flatMap((category) => placesByCategory[category] || []);
+
+  return merged
+    .filter((place) => {
+      if (seen.has(place.id)) return false;
+      seen.add(place.id);
+      return true;
+    })
+    .sort((a, b) => {
+      const ratingDelta = (b.rating ?? 0) - (a.rating ?? 0);
+      if (Math.abs(ratingDelta) > 0.2) return ratingDelta;
+      return (a.user_ratings_total ?? 0) - (b.user_ratings_total ?? 0);
+    })
+    .slice(0, 12)
+    .map((place) => ({
+      ...place,
+      category: "新店打卡",
+      badges: place.badges?.length
+        ? place.badges
+        : ["最近值得试", place.user_ratings_total <= 120 ? "评论还不多" : "新发现"],
+    }));
+}
+
 function GuessCard({
   category,
   places,
@@ -190,17 +216,22 @@ function GuessCard({
 function LocationActionButton({
   lang,
   onClick,
+  disabled = false,
+  label,
 }: {
   lang: "zh" | "en";
   onClick: () => void;
+  disabled?: boolean;
+  label?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/12 px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/18"
+      disabled={disabled}
+      className="inline-flex shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/12 px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/18 disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {lang === "en" ? "Share location" : "共享位置"}
+      {label ?? (lang === "en" ? "Share location" : "共享位置")}
     </button>
   );
 }
@@ -209,11 +240,13 @@ function PersonalizationBanner({
   lang,
   isAuthenticated,
   status,
+  permissionState,
   onRequestLocation,
 }: {
   lang: "zh" | "en";
   isAuthenticated: boolean;
   status: "idle" | "requesting" | "granted" | "denied" | "unavailable" | "outside_bay_area";
+  permissionState: PermissionState | "unsupported" | "unknown";
   onRequestLocation: () => void;
 }) {
   if (!isAuthenticated) {
@@ -241,10 +274,18 @@ function PersonalizationBanner({
 
   if (status === "requesting") {
     return (
-      <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground/78">
-        {lang === "en"
-          ? "Checking your location for nearby recommendations..."
-          : "正在读取你的位置，用来筛选附近的店。"}
+      <div className="flex flex-col gap-3 rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground/78 sm:flex-row sm:items-center sm:justify-between">
+        <span>
+          {lang === "en"
+            ? "Checking your location for nearby recommendations..."
+            : "正在读取你的位置，用来筛选附近的店。"}
+        </span>
+        <LocationActionButton
+          lang={lang}
+          onClick={onRequestLocation}
+          disabled
+          label={lang === "en" ? "Checking..." : "定位中..."}
+        />
       </div>
     );
   }
@@ -262,10 +303,38 @@ function PersonalizationBanner({
           ? "Location is unavailable, so this page is showing general Bay Area picks."
           : "当前位置不可用，因此这里继续显示通用湾区结果。";
 
+  const helperText =
+    status === "denied" || permissionState === "denied"
+      ? lang === "en"
+        ? "If tapping does nothing, enable Location for this site in your browser settings and try again."
+        : "如果点按钮没有弹窗，请到浏览器站点设置里打开定位权限后再试。"
+      : status === "idle"
+        ? lang === "en"
+          ? "Tap once to use your current location and filter to nearby spots."
+          : "点一次就会用你当前位置，把结果筛到附近。"
+        : status === "unavailable" || permissionState === "unsupported"
+          ? lang === "en"
+            ? "Your browser may not support location here. Try Safari or Chrome over HTTPS."
+            : "当前浏览器可能不支持定位。请用 Safari 或 Chrome，并确认是 HTTPS 页面。"
+          : null;
+
   return (
     <div className="flex flex-col gap-3 rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground/78 sm:flex-row sm:items-center sm:justify-between">
-      <span>{bannerText}</span>
-      <LocationActionButton lang={lang} onClick={onRequestLocation} />
+      <div className="min-w-0">
+        <div>{bannerText}</div>
+        {helperText ? <div className="mt-1 text-xs text-foreground/55">{helperText}</div> : null}
+      </div>
+      <LocationActionButton
+        lang={lang}
+        onClick={onRequestLocation}
+        label={
+          status === "denied" || permissionState === "denied"
+            ? lang === "en"
+              ? "Retry after enabling"
+              : "开权限后重试"
+            : undefined
+        }
+      />
     </div>
   );
 }
@@ -274,8 +343,13 @@ export default function Chihe() {
   const { lang } = useLanguage();
   const { isAuthenticated } = useAuth();
   const { placesByCategory, loading } = usePlacesCache(["奶茶", "中餐", "夜宵", "新店打卡"]);
-  const { status: locationStatus, mode: personalizationMode, coordinates, requestLocation } =
-    useUserLocation();
+  const {
+    status: locationStatus,
+    mode: personalizationMode,
+    coordinates,
+    permissionState,
+    requestLocation,
+  } = useUserLocation();
   const effectivePersonalizationMode =
     isAuthenticated && personalizationMode === "personalized" ? "personalized" : "general";
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
@@ -284,12 +358,6 @@ export default function Chihe() {
     items: SpendPlace[];
     message?: string;
   }>({ status: "idle", items: [] });
-
-  useEffect(() => {
-    if (isAuthenticated && locationStatus === "idle") {
-      requestLocation();
-    }
-  }, [isAuthenticated, locationStatus, requestLocation]);
 
   useEffect(() => {
     let cancelled = false;
@@ -336,8 +404,8 @@ export default function Chihe() {
           message:
             mapped.length === 0
               ? lang === "en"
-                ? "No new spots right now."
-                : "暂时没有新店，稍后再看。"
+                ? "No fresh snapshot right now. Showing recent worthwhile spots instead."
+                : "当前没有新店快照，先显示最近值得试的店。"
               : undefined,
         });
       } catch {
@@ -345,7 +413,10 @@ export default function Chihe() {
         setNewPlacesState({
           status: "error",
           items: [],
-          message: lang === "en" ? "New spots are temporarily unavailable." : "新店数据暂时不可用。",
+          message:
+            lang === "en"
+              ? "New spots are temporarily unavailable. Showing recent worthwhile spots instead."
+              : "新店数据暂时不可用，先显示最近值得试的店。",
         });
       }
     })();
@@ -355,7 +426,28 @@ export default function Chihe() {
     };
   }, [lang]);
 
-  const fallbackNewPlaces = placesByCategory["新店打卡"] || [];
+  const handleRequestLocation = () => {
+    if (!isAuthenticated) {
+      toast.info(lang === "en" ? "Sign in first to personalize nearby results." : "先登录，再用位置筛选附近的店。");
+      return;
+    }
+
+    if (permissionState === "denied") {
+      toast.error(
+        lang === "en"
+          ? "Location is blocked for this site. Enable it in your browser settings, then try again."
+          : "这个站点的定位权限已经被浏览器拦住了。请先去浏览器设置里打开，再回来重试。",
+      );
+      return;
+    }
+
+    requestLocation();
+  };
+
+  const backupNewPlaces = useMemo(() => deriveFallbackNewPlaces(placesByCategory), [placesByCategory]);
+  const fallbackNewPlaces = placesByCategory["新店打卡"]?.length
+    ? placesByCategory["新店打卡"]
+    : backupNewPlaces;
 
   const categorySections = useMemo(
     () =>
@@ -395,7 +487,8 @@ export default function Chihe() {
             lang={lang}
             isAuthenticated={isAuthenticated}
             status={locationStatus}
-            onRequestLocation={requestLocation}
+            permissionState={permissionState}
+            onRequestLocation={handleRequestLocation}
           />
 
           {categorySections.map(({ category, isNewCategory, rawPlaces, places, visible, expanded }) => (
@@ -446,21 +539,34 @@ export default function Chihe() {
                   ))}
                 </div>
               ) : visible.length > 0 ? (
-                <Carousel opts={{ align: "start", dragFree: true }} className="w-full min-w-0">
-                  <CarouselContent className="-ml-3 min-w-0">
+                expanded ? (
+                  <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     {visible.map((place) => (
-                      <CarouselItem
-                        key={place.id}
-                        className="min-w-0 shrink-0 basis-[74%] pl-3 sm:basis-[44%] lg:basis-[30%] xl:basis-[24%]"
-                      >
+                      <div key={place.id} className="min-w-0">
                         <PlaceCard place={place} size="small" />
-                      </CarouselItem>
+                      </div>
                     ))}
-                    <CarouselItem className="min-w-0 shrink-0 basis-[74%] pl-3 sm:basis-[44%] lg:basis-[30%] xl:basis-[24%]">
+                    <div className="min-w-0">
                       <GuessCard category={category} places={places} lang={lang} />
-                    </CarouselItem>
-                  </CarouselContent>
-                </Carousel>
+                    </div>
+                  </div>
+                ) : (
+                  <Carousel opts={{ align: "start", dragFree: true }} className="w-full min-w-0">
+                    <CarouselContent className="-ml-3 min-w-0">
+                      {visible.map((place) => (
+                        <CarouselItem
+                          key={place.id}
+                          className="min-w-0 shrink-0 basis-[74%] pl-3 sm:basis-[44%] lg:basis-[30%] xl:basis-[24%]"
+                        >
+                          <PlaceCard place={place} size="small" />
+                        </CarouselItem>
+                      ))}
+                      <CarouselItem className="min-w-0 shrink-0 basis-[74%] pl-3 sm:basis-[44%] lg:basis-[30%] xl:basis-[24%]">
+                        <GuessCard category={category} places={places} lang={lang} />
+                      </CarouselItem>
+                    </CarouselContent>
+                  </Carousel>
+                )
               ) : (
                 <div className="rounded-[1.05rem] border border-dashed border-white/14 bg-white/[0.04] px-5 py-8 text-sm text-muted-foreground">
                   {effectivePersonalizationMode === "personalized"

@@ -21,13 +21,13 @@ interface TrendPoint {
   startup: number;
 }
 
-function getLaDateKey(dateLike: string | number | Date): string {
+function getLaDateKey(dateLike: string | number | Date) {
   return new Date(dateLike).toLocaleDateString("en-CA", {
     timeZone: "America/Los_Angeles",
   });
 }
 
-function buildEmptySeries(days: number): TrendPoint[] {
+function buildEmptySeries(days: number) {
   const points: TrendPoint[] = [];
   const now = new Date();
 
@@ -45,16 +45,27 @@ function buildEmptySeries(days: number): TrendPoint[] {
   return points;
 }
 
+function incrementPoint(
+  byDate: Map<string, TrendPoint>,
+  fallbackDateKey: string,
+  rawDate: string | undefined,
+  key: "layoff" | "offer" | "startup",
+) {
+  const dateKey = rawDate ? getLaDateKey(rawDate) : fallbackDateKey;
+  const point = byDate.get(dateKey);
+  if (point) point[key] += 1;
+}
+
 export async function fetchJobMarketTrendData(
   nocache = false,
   days = 7,
-): Promise<{ items: TrendPoint[]; sourceMode: "live" | "cache" | "unavailable" }> {
-  const cacheKey = `job-market-trend:${days}`;
+): Promise<{ items: TrendPoint[]; sourceMode: "live" | "cache" | "seed" | "unavailable" }> {
+  const cacheKey = `job-market-trend:${days}:v2`;
 
   if (!nocache) {
     const cached = getCachedData(cacheKey, JOB_MARKET_TREND_CACHE_TTL, false);
     if (cached && cached.data?.items?.length > 0) {
-      return { items: cached.data.items, sourceMode: "cache" };
+      return { items: cached.data.items, sourceMode: cached.data.sourceMode || "cache" };
     }
   }
 
@@ -66,32 +77,27 @@ export async function fetchJobMarketTrendData(
 
   const series = buildEmptySeries(days);
   const byDate = new Map(series.map((point) => [point.date, point]));
+  const latestDateKey = series[series.length - 1]?.date || getLaDateKey(new Date());
 
   for (const item of jobsResult.items) {
-    if (item.category !== "layoff" || !item.publishedAt) continue;
-    const key = getLaDateKey(item.publishedAt);
-    const point = byDate.get(key);
-    if (point) point.layoff += 1;
+    if (item.category !== "layoff") continue;
+    incrementPoint(byDate, latestDateKey, item.publishedAt, "layoff");
   }
 
   for (const item of offersResult.items) {
-    if (!item.publishedAt) continue;
-    const key = getLaDateKey(item.publishedAt);
-    const point = byDate.get(key);
-    if (point) point.offer += 1;
+    incrementPoint(byDate, latestDateKey, item.publishedAt, "offer");
   }
 
   for (const item of startupResult.items) {
-    if (!item.publishedAt) continue;
-    const key = getLaDateKey(item.publishedAt);
-    const point = byDate.get(key);
-    if (point) point.startup += 1;
+    incrementPoint(byDate, latestDateKey, item.publishedAt, "startup");
   }
 
   const hasSignal = series.some((item) => item.layoff || item.offer || item.startup);
   if (hasSignal) {
-    setCache(cacheKey, { items: series, sourceMode: "live" });
-    return { items: series, sourceMode: "live" };
+    const derivedMode =
+      offersResult.sourceMode === "seed" || startupResult.sourceMode === "seed" ? "seed" : "live";
+    setCache(cacheKey, { items: series, sourceMode: derivedMode });
+    return { items: series, sourceMode: derivedMode };
   }
 
   const stale = getStaleCache(cacheKey);

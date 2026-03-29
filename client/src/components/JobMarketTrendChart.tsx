@@ -21,9 +21,11 @@ interface TrendResponse {
 
 function DeltaChip({ label, value }: { label: string; value: number }) {
   const tone =
-    value > 0 ? "text-emerald-300 border-emerald-400/20 bg-emerald-500/10" : value < 0
-      ? "text-rose-300 border-rose-400/20 bg-rose-500/10"
-      : "text-muted-foreground border-white/10 bg-white/[0.04]";
+    value > 0
+      ? "text-emerald-300 border-emerald-400/20 bg-emerald-500/10"
+      : value < 0
+        ? "text-rose-300 border-rose-400/20 bg-rose-500/10"
+        : "text-muted-foreground border-white/10 bg-white/[0.04]";
 
   const prefix = value > 0 ? "+" : "";
 
@@ -77,6 +79,8 @@ export default function JobMarketTrendChart() {
     [items],
   );
 
+  const hasSignal = chartData.some((item) => item.layoff || item.offer || item.startup);
+
   return (
     <section className="section-shell min-w-0 rounded-sm p-4 sm:p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -86,8 +90,8 @@ export default function JobMarketTrendChart() {
           </h2>
           <div className="mt-1 text-sm text-muted-foreground">
             {lang === "en"
-              ? "7-day signal from layoffs, offer flow, and startup news"
-              : "最近 7 天：裁员、offer 流动、湾区 startup 信号"}
+              ? "7-day signal from layoffs, offer flow, and startup coverage"
+              : "最近 7 天：裁员、offer 流动、startup 新闻热度"}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -100,6 +104,12 @@ export default function JobMarketTrendChart() {
       <div className="h-[240px] w-full min-w-0 rounded-[1rem] border border-white/10 bg-white/[0.03] p-3">
         {loading ? (
           <div className="h-full animate-pulse rounded-sm bg-muted/30" />
+        ) : !hasSignal ? (
+          <div className="flex h-full items-center justify-center rounded-sm text-sm text-muted-foreground">
+            {lang === "en"
+              ? "No usable signal yet. The feed will appear once recent layoffs, offers, or startup items land."
+              : "当前还没有可用走势信号。等最近的裁员、offer 或 startup 新闻进来后这里会自动出现。"}
+          </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>

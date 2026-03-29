@@ -113,26 +113,100 @@ function normalizeScheduleTime(time: string) {
   return time.trim().replace(/\s+/g, "").toUpperCase();
 }
 
+function parseTimeParts(value: string) {
+  const match = /(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/i.exec(value.trim());
+  if (!match) return null;
+
+  let hours = Number(match[1]) % 12;
+  const minutes = Number(match[2] || 0);
+  if (match[3].toUpperCase() === "PM") hours += 12;
+  return { hours, minutes };
+}
+
+function buildScheduleDate(base: Date, time: string) {
+  const parts = parseTimeParts(time);
+  if (!parts) return null;
+  return new Date(base.getFullYear(), base.getMonth(), base.getDate(), parts.hours, parts.minutes, 0, 0);
+}
+
+function getUpcomingWeekday(base: Date, weekdayToken: string) {
+  const weekdayMap: Record<string, number> = {
+    sun: 0,
+    sunday: 0,
+    mon: 1,
+    monday: 1,
+    tue: 2,
+    tues: 2,
+    tuesday: 2,
+    wed: 3,
+    wednesday: 3,
+    thu: 4,
+    thur: 4,
+    thurs: 4,
+    thursday: 4,
+    fri: 5,
+    friday: 5,
+    sat: 6,
+    saturday: 6,
+  };
+  const target = weekdayMap[weekdayToken.toLowerCase()];
+  if (target === undefined) return null;
+
+  const next = new Date(base);
+  const delta = (target - base.getDay() + 7) % 7;
+  next.setDate(base.getDate() + delta);
+  return next;
+}
+
 function extractSchedule(text: string) {
-  const datedMatch = /Open houses\s+([A-Za-z]+,\s+[A-Za-z]{3}\s+\d{1,2})\s+(\d{1,2}:\d{2}(?:am|pm)\s*-\s*\d{1,2}:\d{2}(?:am|pm))/i.exec(
-    text,
-  );
+  const now = new Date();
+
+  const datedMatch =
+    /Open houses?\s+([A-Za-z]+),\s+([A-Za-z]{3})\s+(\d{1,2})\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i.exec(
+      text,
+    ) ||
+    /OPEN\s+([A-Za-z]+),\s+([A-Za-z]{3})\s+(\d{1,2})\s+(\d{1,2}(?::\d{2})?\s*(?:AM|PM))\s*(?:-|TO)\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i.exec(
+      text,
+    );
+
   if (datedMatch) {
-    return `${datedMatch[1]} · ${normalizeScheduleTime(datedMatch[2])}`;
+    const [, weekday, monthToken, dayRaw, startRaw, endRaw] = datedMatch;
+    const monthIndex = new Date(`${monthToken} 1, ${now.getFullYear()}`).getMonth();
+    const base = new Date(now.getFullYear(), monthIndex, Number(dayRaw));
+    const endAt = buildScheduleDate(base, endRaw);
+    if (endAt && endAt.getTime() < now.getTime()) return null;
+
+    return `${weekday}, ${monthToken} ${dayRaw} · ${normalizeScheduleTime(startRaw)}-${normalizeScheduleTime(endRaw)}`;
   }
 
   const compactMatch =
-    /OPEN\s+([A-Za-z]{3,9})[A-Z,\s\d]{0,16}(\d{1,2}(?::\d{2})?\s*(?:AM|PM))\s*(?:-|TO)\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i.exec(
+    /OPEN\s+([A-Za-z]{3,9})(?:,\s*([A-Za-z]{3})\s+(\d{1,2}))?[A-Z,\s\d]{0,8}(\d{1,2}(?::\d{2})?\s*(?:AM|PM))\s*(?:-|TO)\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i.exec(
       text,
     ) ||
-    /Open\s+([A-Za-z]{3,9})[A-Z,\s\d]{0,16}(\d{1,2}(?::\d{2})?\s*(?:AM|PM))\s*(?:-|to)\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i.exec(
+    /Open\s+([A-Za-z]{3,9})(?:,\s*([A-Za-z]{3})\s+(\d{1,2}))?[A-Z,\s\d]{0,8}(\d{1,2}(?::\d{2})?\s*(?:AM|PM))\s*(?:-|to)\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i.exec(
       text,
     );
+
   if (compactMatch) {
-    return `${normalizeScheduleDay(compactMatch[1])} ${normalizeScheduleTime(compactMatch[2])}-${normalizeScheduleTime(compactMatch[3])}`;
+    const [, weekdayToken, monthToken, dayRaw, startRaw, endRaw] = compactMatch;
+    let base: Date | null = null;
+
+    if (monthToken && dayRaw) {
+      const monthIndex = new Date(`${monthToken} 1, ${now.getFullYear()}`).getMonth();
+      base = new Date(now.getFullYear(), monthIndex, Number(dayRaw));
+    } else {
+      base = getUpcomingWeekday(now, weekdayToken);
+    }
+
+    if (!base) return null;
+
+    const endAt = buildScheduleDate(base, endRaw);
+    if (endAt && endAt.getTime() < now.getTime()) return null;
+
+    return `${normalizeScheduleDay(weekdayToken)} ${normalizeScheduleTime(startRaw)}-${normalizeScheduleTime(endRaw)}`;
   }
 
-  return "";
+  return null;
 }
 
 function extractSchool(text: string, kind: "middle" | "high") {
@@ -149,9 +223,14 @@ function parseListingPage(url: string, html: string): OpenHouseListing | null {
   const lowerText = text.toLowerCase();
 
   if (
-    /\b(sold|off market|pending|contingent)\b/i.test(text) ||
+    /\b(sold|closed sale|off market|pending|pending sale|sale pending|contingent|under contract|accepting backup offers)\b/i.test(
+      text,
+    ) ||
     lowerText.includes("this home last sold") ||
-    lowerText.includes("recently sold")
+    lowerText.includes("recently sold") ||
+    lowerText.includes("no longer for sale") ||
+    lowerText.includes("is not for sale") ||
+    lowerText.includes("currently off market")
   ) {
     return null;
   }
@@ -191,7 +270,7 @@ async function fetchZipOpenHouses(zip: string, limit = 2) {
   }
 
   const searchHtml = await fetchHtml(`https://www.redfin.com/zipcode/${zip}/open-houses`);
-  const listingUrls = extractUniqueListingUrls(searchHtml, limit * 4);
+  const listingUrls = extractUniqueListingUrls(searchHtml, limit * 6);
 
   const listings = (
     await Promise.all(
@@ -237,3 +316,5 @@ export async function handleHousingOpenHouses(req: VercelRequest, res: VercelRes
     return res.status(500).json({ error: "fetch failed", message: error?.message });
   }
 }
+
+export default handleHousingOpenHouses;
