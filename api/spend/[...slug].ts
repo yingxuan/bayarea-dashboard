@@ -5,6 +5,7 @@ import { handleEnrichPlace } from '../../lib/spend/enrich-place.js';
 import { handleEnrichHours } from '../../lib/spend/enrich-hours.js';
 import { handlePlacePhoto } from '../../lib/spend/place-photo.js';
 import { refreshNewPlacesSnapshot } from '../../lib/spend/new-places-job.js';
+import { handleRecommendedDishes } from '../../lib/spend/recommended-dishes.js';
 
 function normalizePath(req: VercelRequest): string {
   const url = new URL(req.url || '/', 'http://localhost');
@@ -34,6 +35,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return handleNewPlaces(req, res);
     case '/enrich-place':
       return handleEnrichPlace(req, res);
+    case '/recommended-dishes':
+      return handleRecommendedDishes(req, res);
     case '/enrich-hours':
       return handleEnrichHours(req, res);
     case '/place-photo':

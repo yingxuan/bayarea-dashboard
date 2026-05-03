@@ -322,6 +322,19 @@
     box-shadow: 0 10px 24px oklch(0.05 0.01 248 / 0.12);
   }
 
+  .mobile-tab-bar {
+    bottom: 0;
+    transform: translateZ(0);
+    will-change: transform;
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  .mobile-tab-bar-inner {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+
   .nav-surface {
     border: 1px solid oklch(0.4 0.02 248 / 0.34);
     background: oklch(0.24 0.018 248 / 0.58);

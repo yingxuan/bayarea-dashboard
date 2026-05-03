@@ -6,7 +6,7 @@ import PortfolioHero from "@/components/PortfolioHero";
 import MarketHighlights from "@/components/MarketHighlights";
 import ReturnHintToast, { ReturnToDashboardToast } from "@/components/ReturnHintToast";
 import LayoffsWidget from "@/components/LayoffsWidget";
-import OfferCommunityWidget from "@/components/OfferCommunityWidget";
+import OfferCommunityWidget, { HOME_PACKAGE_PREVIEW_COUNT } from "@/components/OfferCommunityWidget";
 import StartupNewsList from "@/components/StartupNewsList";
 import CompactVideoFeed from "@/components/CompactVideoFeed";
 import { useAuthAwareHoldings } from "@/hooks/useAuthAwareHoldings";
@@ -24,15 +24,6 @@ interface MarketNewsItem {
   url?: string;
   id?: string;
   publishedAt?: string;
-}
-
-interface HomeJobItem {
-  title: string;
-  category?: "layoff" | "hiring" | "discussion";
-}
-
-interface HomeOfferItem {
-  title: string;
 }
 
 function HomeModuleFallback() {
@@ -54,8 +45,6 @@ export default function Home() {
 
   const [quotesData, setQuotesData] = useState<Record<string, QuoteData>>({});
   const [marketNews, setMarketNews] = useState<MarketNewsItem[]>([]);
-  const [layoffCount, setLayoffCount] = useState(0);
-  const [offerCount, setOfferCount] = useState(0);
   const [activeWorkTab, setActiveWorkTab] = useState<"layoff" | "offer">("layoff");
 
   useEffect(() => {
@@ -104,10 +93,8 @@ export default function Home() {
   useEffect(() => {
     async function loadHomeFeeds() {
       try {
-        const [marketResp, jobsResp, offersResp] = await Promise.allSettled([
+        const [marketResp] = await Promise.allSettled([
           fetch(`${config.apiBaseUrl}/api/market-news`, { signal: AbortSignal.timeout(10000) }),
-          fetch(`${config.apiBaseUrl}/api/community/jobs`, { signal: AbortSignal.timeout(10000) }),
-          fetch(`${config.apiBaseUrl}/api/community/offers`, { signal: AbortSignal.timeout(10000) }),
         ]);
 
         if (marketResp.status === "fulfilled" && marketResp.value.ok) {
@@ -116,27 +103,9 @@ export default function Home() {
         } else {
           setMarketNews([]);
         }
-
-        if (jobsResp.status === "fulfilled" && jobsResp.value.ok) {
-          const result = await jobsResp.value.json();
-          const items = result.items || [];
-          setLayoffCount(items.filter((item: HomeJobItem) => item.category === "layoff").length);
-        } else {
-          setLayoffCount(0);
-        }
-
-        if (offersResp.status === "fulfilled" && offersResp.value.ok) {
-          const result = await offersResp.value.json();
-          const items: HomeOfferItem[] = result.items || [];
-          setOfferCount(items.length);
-        } else {
-          setOfferCount(0);
-        }
       } catch (error) {
         console.error("[Home] Failed to fetch homepage feeds:", error);
         setMarketNews([]);
-        setLayoffCount(0);
-        setOfferCount(0);
       }
     }
 
@@ -205,7 +174,7 @@ export default function Home() {
                       : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                   }`}
                 >
-                  {lang === "en" ? `Layoffs ${layoffCount}` : `裁员 ${layoffCount}`}
+                  {lang === "en" ? "Layoffs" : "裁员"}
                 </button>
                 <button
                   type="button"
@@ -216,7 +185,7 @@ export default function Home() {
                       : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                   }`}
                 >
-                  {lang === "en" ? `Offers ${offerCount}` : `Offer ${offerCount}`}
+                  {lang === "en" ? "Packages" : "包裹"}
                 </button>
               </div>
             </div>
@@ -224,7 +193,7 @@ export default function Home() {
             {activeWorkTab === "layoff" ? (
               <LayoffsWidget embedded />
             ) : (
-              <OfferCommunityWidget maxItems={4} embedded />
+              <OfferCommunityWidget maxItems={HOME_PACKAGE_PREVIEW_COUNT} embedded />
             )}
 
             <CompactVideoFeed

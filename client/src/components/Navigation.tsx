@@ -67,8 +67,8 @@ export default function Navigation() {
         </div>
       </nav>
 
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border/40 bg-background/92 backdrop-blur-xl md:hidden">
-        <div className="mx-auto grid max-w-6xl grid-cols-5 px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-2">
+      <div className="mobile-tab-bar fixed inset-x-0 bottom-0 z-50 border-t border-border/40 bg-background/92 backdrop-blur-xl md:hidden">
+        <div className="mobile-tab-bar-inner mx-auto grid max-w-6xl grid-cols-5 px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-2">
           {navItems.map((item) => {
             const isActive = location === item.path;
             const Icon = item.icon;

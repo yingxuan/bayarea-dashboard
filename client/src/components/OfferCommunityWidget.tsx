@@ -16,6 +16,8 @@ interface OfferCommunityWidgetProps {
   embedded?: boolean;
 }
 
+export const HOME_PACKAGE_PREVIEW_COUNT = 4;
+
 const categoryLabel: Record<OfferItem["category"], string> = {
   offer: "Offer",
   interview: "面经",

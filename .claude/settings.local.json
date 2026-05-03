@@ -49,7 +49,11 @@
       "WebFetch(domain:developer.eventbrite.com)",
       "WebFetch(domain:www.eventbrite.com)",
       "WebFetch(domain:developer.ticketmaster.com)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "WebFetch(domain:bayarea-dashboard.vercel.app)",
+      "Bash(npx vercel:*)",
+      "Bash(git push:*)",
+      "Bash(sqlite3:*)"
     ]
   }
 }

@@ -1,9 +1,6 @@
-/**
- * User Menu Component
- * Shows login button when not authenticated, user dropdown when authenticated
- */
-
 import { Link } from "wouter";
+import { Check, Languages, LogOut, Loader2, PencilIcon } from "lucide-react";
+import HoldingsEditor from "@/components/HoldingsEditor";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +11,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Check, Languages, LogOut, Loader2, User } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useT } from "@/lib/translations";
 
@@ -26,7 +22,7 @@ export default function UserMenu() {
   if (isLoading) {
     return (
       <div className="flex items-center">
-        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -53,15 +49,11 @@ export default function UserMenu() {
           </span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent align="end" className="w-52">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            {user?.displayName && (
-              <p className="text-sm font-medium">{user.displayName}</p>
-            )}
-            <p className="text-xs text-muted-foreground truncate">
-              {user?.email}
-            </p>
+            {user?.displayName ? <p className="text-sm font-medium">{user.displayName}</p> : null}
+            <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -72,9 +64,17 @@ export default function UserMenu() {
             <Check className="h-3.5 w-3.5" />
           </span>
         </DropdownMenuItem>
+        <HoldingsEditor
+          trigger={
+            <DropdownMenuItem onSelect={(event) => event.preventDefault()} className="cursor-pointer">
+              <PencilIcon className="mr-2 h-4 w-4" />
+              <span>{lang === "en" ? "Edit Holdings" : "编辑仓位"}</span>
+            </DropdownMenuItem>
+          }
+        />
         <DropdownMenuItem
           onClick={() => logout()}
-          className="text-destructive focus:text-destructive cursor-pointer"
+          className="cursor-pointer text-destructive focus:text-destructive"
         >
           <LogOut className="mr-2 h-4 w-4" />
           {t.user.signOut}

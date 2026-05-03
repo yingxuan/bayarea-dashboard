@@ -539,34 +539,25 @@ export default function Chihe() {
                   ))}
                 </div>
               ) : visible.length > 0 ? (
-                expanded ? (
-                  <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <Carousel
+                  key={`${category}-${expanded ? "expanded" : "collapsed"}-${visible.length}`}
+                  opts={{ align: "start", dragFree: true }}
+                  className="w-full min-w-0"
+                >
+                  <CarouselContent className="-ml-3 min-w-0">
                     {visible.map((place) => (
-                      <div key={place.id} className="min-w-0">
+                      <CarouselItem
+                        key={place.id}
+                        className="min-w-0 shrink-0 basis-[74%] pl-3 sm:basis-[44%] lg:basis-[30%] xl:basis-[24%]"
+                      >
                         <PlaceCard place={place} size="small" />
-                      </div>
-                    ))}
-                    <div className="min-w-0">
-                      <GuessCard category={category} places={places} lang={lang} />
-                    </div>
-                  </div>
-                ) : (
-                  <Carousel opts={{ align: "start", dragFree: true }} className="w-full min-w-0">
-                    <CarouselContent className="-ml-3 min-w-0">
-                      {visible.map((place) => (
-                        <CarouselItem
-                          key={place.id}
-                          className="min-w-0 shrink-0 basis-[74%] pl-3 sm:basis-[44%] lg:basis-[30%] xl:basis-[24%]"
-                        >
-                          <PlaceCard place={place} size="small" />
-                        </CarouselItem>
-                      ))}
-                      <CarouselItem className="min-w-0 shrink-0 basis-[74%] pl-3 sm:basis-[44%] lg:basis-[30%] xl:basis-[24%]">
-                        <GuessCard category={category} places={places} lang={lang} />
                       </CarouselItem>
-                    </CarouselContent>
-                  </Carousel>
-                )
+                    ))}
+                    <CarouselItem className="min-w-0 shrink-0 basis-[74%] pl-3 sm:basis-[44%] lg:basis-[30%] xl:basis-[24%]">
+                      <GuessCard category={category} places={places} lang={lang} />
+                    </CarouselItem>
+                  </CarouselContent>
+                </Carousel>
               ) : (
                 <div className="rounded-[1.05rem] border border-dashed border-white/14 bg-white/[0.04] px-5 py-8 text-sm text-muted-foreground">
                   {effectivePersonalizationMode === "personalized"

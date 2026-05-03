@@ -4,6 +4,7 @@ import { ensurePlacePhoto } from "../lib/spend/ensurePlacePhoto.js";
 import { handleEnrichPlace } from "../lib/spend/enrich-place.js";
 import { refreshNewPlacesSnapshot } from "../lib/spend/new-places-job.js";
 import { handleNewPlaces } from "../lib/spend/new-places-runtime.js";
+import { handleRecommendedDishes } from "../lib/spend/recommended-dishes.js";
 import { kv } from "@vercel/kv";
 import { PHOTO_VERSION } from "../lib/spend/photo-cache.js";
 import { createServer } from "http";
@@ -142,6 +143,8 @@ async function startServer() {
   app.post("/api/spend/enrich-place", handleEnrichPlace);
   app.get("/api/spend/enrich-place", handleEnrichPlace);
   app.options("/api/spend/enrich-place", (_req, res) => res.sendStatus(200));
+  app.get("/api/spend/recommended-dishes", handleRecommendedDishes);
+  app.options("/api/spend/recommended-dishes", (_req, res) => res.sendStatus(200));
 
   app.get("/api/spend/place-photo", async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
