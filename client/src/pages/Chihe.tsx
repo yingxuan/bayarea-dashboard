@@ -9,6 +9,7 @@ import { config } from "@/config";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserLocation } from "@/contexts/UserLocationContext";
+import { useDailyBriefState } from "@/hooks/useDailyBriefState";
 
 interface SpendPlace {
   id: string;
@@ -342,6 +343,7 @@ function PersonalizationBanner({
 export default function Chihe() {
   const { lang } = useLanguage();
   const { isAuthenticated } = useAuth();
+  const { markSectionVisited } = useDailyBriefState();
   const { placesByCategory, loading } = usePlacesCache(["奶茶", "中餐", "夜宵", "新店打卡"]);
   const {
     status: locationStatus,
@@ -358,6 +360,10 @@ export default function Chihe() {
     items: SpendPlace[];
     message?: string;
   }>({ status: "idle", items: [] });
+
+  useEffect(() => {
+    markSectionVisited("food");
+  }, [markSectionVisited]);
 
   useEffect(() => {
     let cancelled = false;

@@ -38,6 +38,8 @@ export interface CurateDebug {
   >;
 }
 
+type InclusionTier = 1 | 2 | 3;
+
 const GLOBAL_HARD_TYPES = new Set([
   "bowling_alley",
   "bar",
@@ -229,7 +231,7 @@ export function curatePlaces(
   const excludedSamples: CurateDebug["excludedSamples"] = [];
   const includedBreakdown: CurateDebug["includedBreakdown"] = {};
 
-  const addIfPass = (place: PlaceCandidate, tier: number, reason?: string) => {
+  const addIfPass = (place: PlaceCandidate, tier: InclusionTier, reason?: string) => {
     const dir = scorePlace(place, regionProfile, options.category);
     const curated: CuratedPlace = {
       ...place,

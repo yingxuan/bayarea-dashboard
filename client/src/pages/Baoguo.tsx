@@ -6,6 +6,7 @@ import CompactVideoFeed from "@/components/CompactVideoFeed";
 import StartupNewsList from "@/components/StartupNewsList";
 import JobMarketTrendChart from "@/components/JobMarketTrendChart";
 import { useExternalLink } from "@/hooks/useExternalLink";
+import { useDailyBriefState } from "@/hooks/useDailyBriefState";
 import { config } from "@/config";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -24,9 +25,14 @@ interface JobsResponse {
 export default function Baoguo() {
   const { lang } = useLanguage();
   const { handleExternalLinkClick } = useExternalLink();
+  const { markSectionVisited } = useDailyBriefState();
 
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    markSectionVisited("work");
+  }, [markSectionVisited]);
 
   useEffect(() => {
     async function loadJobs() {

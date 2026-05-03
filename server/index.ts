@@ -42,6 +42,9 @@ import {
   authRoute,
 } from "./local-api-adapter.js";
 
+const asExpressHandler = (handler: (req: any, res: any) => unknown): express.RequestHandler =>
+  handler as unknown as express.RequestHandler;
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -95,7 +98,7 @@ async function startServer() {
   app.options('/api/quotes', (_req, res) => res.sendStatus(200));
   app.get('/api/spend/today', spendTodayRoute);
   app.options('/api/spend/today', (_req, res) => res.sendStatus(200));
-  app.get('/api/spend/new-places', handleNewPlaces);
+  app.get('/api/spend/new-places', asExpressHandler(handleNewPlaces));
   app.options('/api/spend/new-places', (_req, res) => res.sendStatus(200));
   app.get('/api/spend/musthave', musthaveRoute);
   app.options('/api/spend/musthave', (_req, res) => res.sendStatus(200));
@@ -140,10 +143,10 @@ async function startServer() {
   app.options('/api/portfolio/settings', (_req, res) => res.sendStatus(200));
 
 
-  app.post("/api/spend/enrich-place", handleEnrichPlace);
-  app.get("/api/spend/enrich-place", handleEnrichPlace);
+  app.post("/api/spend/enrich-place", asExpressHandler(handleEnrichPlace));
+  app.get("/api/spend/enrich-place", asExpressHandler(handleEnrichPlace));
   app.options("/api/spend/enrich-place", (_req, res) => res.sendStatus(200));
-  app.get("/api/spend/recommended-dishes", handleRecommendedDishes);
+  app.get("/api/spend/recommended-dishes", asExpressHandler(handleRecommendedDishes));
   app.options("/api/spend/recommended-dishes", (_req, res) => res.sendStatus(200));
 
   app.get("/api/spend/place-photo", async (req, res) => {

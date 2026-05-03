@@ -8,7 +8,7 @@ let cachedIndex: PhotoIndex | null = null;
 let indexStatus: IndexStatus = 'missing';
 
 function loadPhotoIndex(): PhotoIndex {
-  if (cachedIndex) {
+  if (cachedIndex !== null) {
     return cachedIndex;
   }
 
@@ -17,20 +17,23 @@ function loadPhotoIndex(): PhotoIndex {
 
     if (!existsSync(indexPath)) {
       indexStatus = 'missing';
-      cachedIndex = {};
-      return cachedIndex;
+      const emptyIndex: PhotoIndex = {};
+      cachedIndex = emptyIndex;
+      return emptyIndex;
     }
 
     const raw = readFileSync(indexPath, 'utf-8');
     const parsed = JSON.parse(raw);
-    cachedIndex = parsed && typeof parsed === 'object' ? parsed : {};
+    const loadedIndex: PhotoIndex = parsed && typeof parsed === 'object' ? parsed : {};
+    cachedIndex = loadedIndex;
     indexStatus = 'loaded';
-    return cachedIndex;
+    return loadedIndex;
   } catch (error) {
     console.error('[photo-index] Failed to load place photo index', error);
     indexStatus = 'error';
-    cachedIndex = {};
-    return cachedIndex;
+    const emptyIndex: PhotoIndex = {};
+    cachedIndex = emptyIndex;
+    return emptyIndex;
   }
 }
 

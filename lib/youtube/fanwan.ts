@@ -90,7 +90,10 @@ export function interleaveVideos(items: FanwanVideo[], limit: number): FanwanVid
     groups.get(v.channelId)!.push(v);
   });
   for (const arr of groups.values()) {
-    arr.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+    arr.sort(
+      (a: FanwanVideo, b: FanwanVideo) =>
+        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+    );
   }
   const out: FanwanVideo[] = [];
   let last: string | null = null;

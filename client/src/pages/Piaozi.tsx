@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import Navigation from "@/components/Navigation";
 import StockCommunityWidget from "@/components/StockCommunityWidget";
 import {
@@ -6,9 +7,15 @@ import {
   StockYouTubersFull,
 } from "@/components/piaozi";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useDailyBriefState } from "@/hooks/useDailyBriefState";
 
 export default function Piaozi() {
   useLanguage();
+  const { markSectionVisited } = useDailyBriefState();
+
+  useEffect(() => {
+    markSectionVisited("finance");
+  }, [markSectionVisited]);
 
   return (
     <div className="page-shell min-h-screen bg-background grid-bg">

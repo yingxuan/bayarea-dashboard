@@ -3,18 +3,25 @@ import { Link, useLocation } from "wouter";
 import UserMenu from "./UserMenu";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useT } from "@/lib/translations";
+import { BriefSectionKey, useDailyBriefState } from "@/hooks/useDailyBriefState";
 
 export default function Navigation() {
   const [location] = useLocation();
   const { lang } = useLanguage();
   const t = useT(lang);
+  const { sectionNeedsReview } = useDailyBriefState();
 
-  const navItems = [
-    { label: t.nav.home, path: "/", icon: Home },
-    { label: t.nav.finance, path: "/piaozi", icon: ChartColumnBig },
-    { label: t.nav.dining, path: "/chihe", icon: Soup },
-    { label: t.nav.work, path: "/baoguo", icon: BriefcaseBusiness },
-    { label: t.nav.housing, path: "/fangzi", icon: House },
+  const navItems: Array<{
+    label: string;
+    path: string;
+    icon: typeof Home;
+    section: BriefSectionKey;
+  }> = [
+    { label: t.nav.home, path: "/", icon: Home, section: "home" },
+    { label: t.nav.finance, path: "/piaozi", icon: ChartColumnBig, section: "finance" },
+    { label: t.nav.dining, path: "/chihe", icon: Soup, section: "food" },
+    { label: t.nav.work, path: "/baoguo", icon: BriefcaseBusiness, section: "work" },
+    { label: t.nav.housing, path: "/fangzi", icon: House, section: "housing" },
   ];
 
   return (
@@ -38,16 +45,20 @@ export default function Navigation() {
             <div className="nav-surface hidden items-center gap-2 rounded-full p-1.5 md:flex">
               {navItems.map((item) => {
                 const isActive = location === item.path;
+                const needsReview = !isActive && sectionNeedsReview(item.section);
                 return (
                   <Link key={item.path} href={item.path}>
                     <div
-                      className={`rounded-full px-4 py-2 text-sm font-medium transition-all duration-150 ${
+                      className={`relative rounded-full px-4 py-2 text-sm font-medium transition-all duration-150 ${
                         isActive
                           ? "bg-primary/14 text-primary shadow-[inset_0_0_0_1px_rgba(140,206,222,0.24)]"
                           : "text-muted-foreground hover:bg-white/6 hover:text-foreground"
                       }`}
                     >
                       {item.label}
+                      {needsReview ? (
+                        <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_10px_rgba(140,206,222,0.75)]" />
+                      ) : null}
                     </div>
                   </Link>
                 );
@@ -71,17 +82,21 @@ export default function Navigation() {
         <div className="mobile-tab-bar-inner mx-auto grid max-w-6xl grid-cols-5 px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-2">
           {navItems.map((item) => {
             const isActive = location === item.path;
+            const needsReview = !isActive && sectionNeedsReview(item.section);
             const Icon = item.icon;
             return (
               <Link key={item.path} href={item.path}>
                 <div
-                  className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[11px] font-medium transition-all duration-150 ${
+                  className={`relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[11px] font-medium transition-all duration-150 ${
                     isActive
                       ? "bg-primary/14 text-primary shadow-[inset_0_0_0_1px_rgba(140,206,222,0.24)]"
                       : "text-muted-foreground hover:bg-white/6 hover:text-foreground"
                   }`}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
+                  {needsReview ? (
+                    <span className="absolute right-3 top-2 h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_10px_rgba(140,206,222,0.75)]" />
+                  ) : null}
                   <span className="truncate">{item.label}</span>
                 </div>
               </Link>

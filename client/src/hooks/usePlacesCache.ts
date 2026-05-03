@@ -272,6 +272,11 @@ function buildMilkTeaMeta(place: CachedPlace, isSouthBay: boolean): MilkTeaMeta 
   const nameLower = place.name.toLowerCase();
   const addressLower = place.address?.toLowerCase() || '';
   const combined = `${nameLower} ${addressLower}`;
+  const types = [
+    ...((place as any).types || []),
+    ...((place as any).categories || []),
+  ].map((type: string) => String(type).toLowerCase());
+  const typeMatches = types.some((type) => MILK_TEA_POS_TYPES.includes(type));
   const brandSB = SOUTH_BAY_MILK_TEA_WHITELIST.some((brand) => combined.includes(brand));
   const brandGeneral = CN_MILK_TEA_BRANDS.some((brand) => combined.includes(brand));
   const positiveMatch =
@@ -298,12 +303,6 @@ function buildMilkTeaMeta(place: CachedPlace, isSouthBay: boolean): MilkTeaMeta 
   if (brandSB || brandGeneral) badges.push('品牌店');
   if (reviewCount > 500) badges.push('老牌');
   if (hasChineseSignal) badges.push('华人常去');
-
-  const types = [
-    ...((place as any).types || []),
-    ...((place as any).categories || []),
-  ].map((type: string) => String(type).toLowerCase());
-  const typeMatches = types.some((type) => MILK_TEA_POS_TYPES.includes(type));
 
   return {
     brandSB,
@@ -963,16 +962,6 @@ export function usePlacesCache(
             }
           }
 
-          if (category === '奶茶' && canonicalMilkTeaPlaces.length > 0) {
-            finalItems = Array.from(
-              new Map(canonicalMilkTeaPlaces.map((p) => [p.id, p])).values()
-            );
-          }
-          if (category === '夜宵' && canonicalLateNightPlaces.length > 0) {
-            finalItems = Array.from(
-              new Map(canonicalLateNightPlaces.map((p) => [p.id, p])).values()
-            );
-          }
           newPlacesByCategory[category] = finalItems.map((p) => ({
             id: p.id,
             name: p.name,

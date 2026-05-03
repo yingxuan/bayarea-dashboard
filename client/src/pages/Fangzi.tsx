@@ -4,6 +4,7 @@ import Navigation from "@/components/Navigation";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useT } from "@/lib/translations";
 import { useExternalLink } from "@/hooks/useExternalLink";
+import { useDailyBriefState } from "@/hooks/useDailyBriefState";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { config } from "@/config";
 
@@ -448,9 +449,14 @@ export default function Fangzi() {
   const { lang } = useLanguage();
   const t = useT(lang);
   const { handleExternalLinkClick } = useExternalLink();
+  const { markSectionVisited } = useDailyBriefState();
   const [housingVideos, setHousingVideos] = useState<HousingVideo[]>(FALLBACK_HOUSING_VIDEOS);
   const [openHousesByZip, setOpenHousesByZip] =
     useState<Record<string, ZipMarket["openHouses"]>>(DEFAULT_OPEN_HOUSES_BY_ZIP);
+
+  useEffect(() => {
+    markSectionVisited("housing");
+  }, [markSectionVisited]);
 
   useEffect(() => {
     let cancelled = false;

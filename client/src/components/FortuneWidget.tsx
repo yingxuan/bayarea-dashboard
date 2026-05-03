@@ -102,13 +102,14 @@ export default function FortuneWidget() {
     if (!birthdate) return;
 
     const abortController = new AbortController();
+    const selectedBirthdate = birthdate;
 
     async function loadFortune() {
       setLoading(true);
       setError(null);
 
       const url = new URL(`${config.apiBaseUrl}/api/fortune`, window.location.origin);
-      url.searchParams.set("birthdate", birthdate);
+      url.searchParams.set("birthdate", selectedBirthdate);
 
       try {
         const response = await fetch(url.toString(), {
