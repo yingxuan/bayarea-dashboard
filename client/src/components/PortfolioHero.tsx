@@ -1,11 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PencilIcon, TrendingDown, TrendingUp } from "lucide-react";
-import { Holding } from "@/hooks/useHoldings";
-import { QuoteData, usePortfolioSummary } from "@/hooks/usePortfolioSummary";
 import { Button } from "@/components/ui/button";
 import HoldingsEditor from "@/components/HoldingsEditor";
-import PortfolioSparkline from "@/components/PortfolioSparkline";
-import { config } from "@/config";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -15,6 +11,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { config } from "@/config";
+import { Holding } from "@/hooks/useHoldings";
+import { QuoteData, usePortfolioSummary } from "@/hooks/usePortfolioSummary";
 
 interface PortfolioHeroProps {
   quotesData: Record<string, QuoteData>;
@@ -22,6 +21,17 @@ interface PortfolioHeroProps {
   holdingsLoaded: boolean;
   ytdBaseline: number | null;
   onYtdBaselineChange: (value: number | null) => void;
+}
+
+interface MarketDataItem {
+  value: number | string;
+  change_percent?: number;
+  status?: "ok" | "stale" | "unavailable";
+}
+
+function formatMarketValue(value: number | string) {
+  if (typeof value !== "number") return value;
+  return value >= 1000 ? value.toLocaleString() : value.toFixed(2);
 }
 
 export default function PortfolioHero({
@@ -34,7 +44,12 @@ export default function PortfolioHero({
   const [ytdDialogOpen, setYtdDialogOpen] = useState(false);
   const [ytdInputValue, setYtdInputValue] = useState(ytdBaseline?.toString() || "");
   const [ytdInputError, setYtdInputError] = useState<string | null>(null);
-  const [valueSeries, setValueSeries] = useState<any>(null);
+  const [marketData, setMarketData] = useState<{
+    spy?: MarketDataItem;
+    qqq?: MarketDataItem;
+    btc?: MarketDataItem;
+    gold?: MarketDataItem;
+  } | null>(null);
 
   const portfolioMetrics = usePortfolioSummary(holdings, quotesData, ytdBaseline);
 
@@ -46,37 +61,27 @@ export default function PortfolioHero({
   }, [ytdBaseline, ytdDialogOpen]);
 
   useEffect(() => {
-    if (!holdingsLoaded || holdings.length === 0) {
-      setValueSeries(null);
-      return;
-    }
-
-    const fetchValueSeries = async () => {
+    const fetchMarketData = async () => {
       try {
-        const holdingsParam = encodeURIComponent(
-          JSON.stringify(holdings.map((h) => ({ ticker: h.ticker, shares: Number(h.shares) }))),
-        );
-        const apiUrl = `${config.apiBaseUrl}/api/portfolio/value-series?range=1d&interval=5m&holdings=${holdingsParam}`;
-
-        const response = await fetch(apiUrl, {
+        const response = await fetch(`${config.apiBaseUrl}/api/market`, {
           signal: AbortSignal.timeout(10000),
         });
 
         if (!response.ok) {
-          throw new Error(`Value series API error: ${response.status}`);
+          throw new Error(`Market API error: ${response.status}`);
         }
 
         const result = await response.json();
-        setValueSeries(result);
+        setMarketData(result.data || null);
       } catch (error) {
-        console.error("[PortfolioHero] Failed to fetch value series:", error);
+        console.error("[PortfolioHero] Failed to fetch market data:", error);
       }
     };
 
-    fetchValueSeries();
-    const interval = setInterval(fetchValueSeries, 5 * 60 * 1000);
+    fetchMarketData();
+    const interval = setInterval(fetchMarketData, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [holdings, holdingsLoaded]);
+  }, []);
 
   const updateInfo = useMemo(() => {
     const now = new Date();
@@ -94,13 +99,13 @@ export default function PortfolioHero({
       const quote = quotesData[tickerUpper];
       const shares = Number(holding.shares);
 
-      if (quote && quote.status === "ok" && quote.price > 0 && !isNaN(shares) && shares > 0) {
+      if (quote && quote.status === "ok" && quote.price > 0 && !Number.isNaN(shares) && shares > 0) {
         const price = Number(quote.price);
         const prevClose = quote.prevClose !== undefined ? Number(quote.prevClose) : undefined;
 
-        if (!isNaN(price) && price > 0) {
+        if (!Number.isNaN(price) && price > 0) {
           let dailyChangePercent = 0;
-          if (prevClose !== undefined && !isNaN(prevClose) && prevClose > 0) {
+          if (prevClose !== undefined && !Number.isNaN(prevClose) && prevClose > 0) {
             dailyChangePercent = ((price - prevClose) / prevClose) * 100;
           } else if (quote.changePercent !== undefined) {
             dailyChangePercent = Number(quote.changePercent);
@@ -124,30 +129,34 @@ export default function PortfolioHero({
     };
   }, [holdings, quotesData]);
 
-  const hasRenderableSeries = useMemo(() => {
-    const items = valueSeries?.items;
-    if (!Array.isArray(items) || items.length < 2) return false;
-    return items.every(
-      (p: any) =>
-        p &&
-        typeof p.v === "number" &&
-        Number.isFinite(p.v) &&
-        typeof p.t === "string" &&
-        p.t.length > 0,
-    );
-  }, [valueSeries]);
+  const marketCards = useMemo(() => {
+    if (!marketData) return [];
+
+    return [
+      { code: "SPY", item: marketData.spy },
+      { code: "QQQ", item: marketData.qqq },
+      { code: "BTC", item: marketData.btc },
+      { code: "GLD", item: marketData.gold },
+    ]
+      .filter((entry) => entry.item)
+      .map(({ code, item }) => ({
+        code,
+        value: item?.value ?? "Unavailable",
+        changePercent: item?.change_percent !== undefined ? Number(item.change_percent) : undefined,
+      }));
+  }, [marketData]);
 
   const handleYtdSave = () => {
     const parsed = parseFloat(ytdInputValue);
-    if (!isNaN(parsed) && parsed > 0) {
+    if (!Number.isNaN(parsed) && parsed > 0) {
       onYtdBaselineChange(parsed);
       setYtdDialogOpen(false);
     } else {
-      setYtdInputError("请输入大于 0 的有效数字");
+      setYtdInputError("Please enter a valid number greater than 0");
     }
   };
 
-  const renderMoverRow = (
+  const renderMoverBlock = (
     label: string,
     movers: Array<{ ticker: string; dailyChangePercent: number }>,
     isPositive: boolean,
@@ -174,10 +183,35 @@ export default function PortfolioHero({
           ))}
         </div>
       ) : (
-        <div className="text-xs text-muted-foreground/55">暂无</div>
+        <div className="text-xs text-muted-foreground/55">No names yet</div>
       )}
     </div>
   );
+
+  const renderMarketBlock = (entry: { code: string; value: number | string; changePercent?: number }) => {
+    const positive = (entry.changePercent ?? 0) >= 0;
+
+    return (
+      <div
+        key={entry.code}
+        className="rounded-[0.95rem] border border-white/8 bg-white/[0.03] px-3 py-2.5"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-medium text-foreground/86">{entry.code}</span>
+          <span
+            className={`text-xs font-mono tabular-nums ${
+              positive ? "text-emerald-300/90" : "text-rose-300/90"
+            }`}
+          >
+            {entry.changePercent !== undefined ? `${positive ? "+" : ""}${entry.changePercent.toFixed(2)}%` : "--"}
+          </span>
+        </div>
+        <div className="mt-1.5 text-base font-semibold font-mono tabular-nums text-foreground/88">
+          {formatMarketValue(entry.value)}
+        </div>
+      </div>
+    );
+  };
 
   if (!holdingsLoaded) {
     return (
@@ -192,11 +226,11 @@ export default function PortfolioHero({
   if (holdings.length === 0) {
     return (
       <div className="flex h-full min-h-[180px] flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/6 p-6 text-center">
-        <div className="mb-3 text-sm text-muted-foreground">还没有持仓记录</div>
+        <div className="mb-3 text-sm text-muted-foreground">No holdings yet</div>
         <HoldingsEditor
           trigger={
             <Button variant="outline" size="sm" className="h-9 rounded-full px-4 text-xs font-medium">
-              <PencilIcon className="mr-1 h-3 w-3" /> 添加持仓
+              <PencilIcon className="mr-1 h-3 w-3" /> Add holdings
             </Button>
           }
         />
@@ -207,14 +241,14 @@ export default function PortfolioHero({
   return (
     <>
       <div className="hero-panel rounded-[1.2rem] p-3 md:p-4">
-        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[1.65fr_0.75fr]">
+        <div className="grid grid-cols-1 items-start gap-3 xl:grid-cols-[1.55fr_0.72fr_1fr]">
           <div className="min-w-0">
             <div className="mb-1 text-[30px] font-semibold leading-none tracking-[-0.03em] text-foreground md:text-[38px]">
               ${portfolioMetrics.portfolioValue.toLocaleString()}
             </div>
 
-            <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
-              <span className="text-muted-foreground/68">今日</span>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
+              <span className="text-muted-foreground/68">Today</span>
               <span
                 className={`font-medium tabular-nums ${
                   portfolioMetrics.dailyChangePercent >= 0 ? "text-emerald-400" : "text-rose-400"
@@ -233,45 +267,58 @@ export default function PortfolioHero({
                   maximumFractionDigits: 0,
                 })}
               </span>
-              <span className="text-muted-foreground/52">YTD</span>
-              {portfolioMetrics.ytdChangeAmount !== null && portfolioMetrics.ytdPercent !== null ? (
-                <span
-                  className={`text-xs tabular-nums ${
-                    portfolioMetrics.ytdPercent >= 0 ? "text-emerald-300/88" : "text-rose-300/88"
-                  }`}
-                >
-                  {portfolioMetrics.ytdPercent >= 0 ? "+" : ""}
-                  {portfolioMetrics.ytdPercent.toFixed(2)}%
-                </span>
-              ) : (
-                <span className="text-xs text-muted-foreground/42">未配置</span>
-              )}
+              <button
+                type="button"
+                onClick={() => setYtdDialogOpen(true)}
+                className="inline-flex items-center gap-1 text-xs transition-colors hover:text-foreground"
+              >
+                <span className="text-muted-foreground/52">YTD</span>
+                <PencilIcon className="h-3 w-3 text-muted-foreground/55" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setYtdDialogOpen(true)}
+                className={`text-xs tabular-nums transition-colors hover:text-foreground ${
+                  portfolioMetrics.ytdPercent !== null
+                    ? portfolioMetrics.ytdPercent >= 0
+                      ? "text-emerald-300/88"
+                      : "text-rose-300/88"
+                    : "text-muted-foreground/42"
+                }`}
+              >
+                {portfolioMetrics.ytdChangeAmount !== null && portfolioMetrics.ytdPercent !== null ? (
+                  <>
+                    {portfolioMetrics.ytdPercent >= 0 ? "+" : ""}
+                    {portfolioMetrics.ytdPercent.toFixed(2)}%
+                  </>
+                ) : (
+                  "Set base"
+                )}
+              </button>
             </div>
-
-            {hasRenderableSeries ? (
-              <div className="rounded-[1rem] border border-white/8 bg-white/[0.03] p-3">
-                <PortfolioSparkline
-                  data={valueSeries}
-                  currentValue={portfolioMetrics.portfolioValue}
-                  dailyChangePercent={portfolioMetrics.dailyChangePercent}
-                  width={320}
-                  height={124}
-                />
-              </div>
-            ) : (
-              <div className="flex h-[124px] items-center justify-center rounded-[1rem] border border-white/8 bg-white/[0.03] text-xs text-muted-foreground/68">
-                暂无可绘制的日内曲线
-              </div>
-            )}
           </div>
 
           <div className="min-w-0">
-            <div className="mb-2 text-right text-[10px] uppercase tracking-[0.16em] text-muted-foreground/58">
-              {updateInfo}
+            <div className="mb-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground/58">
+              movers
             </div>
-            <div className="grid grid-cols-2 gap-2 xl:grid-cols-1">
-              {renderMoverRow("Winners", topPositive, true)}
-              {renderMoverRow("Losers", topNegative, false)}
+            <div className="space-y-2">
+              {renderMoverBlock("Winners", topPositive, true)}
+              {renderMoverBlock("Losers", topNegative, false)}
+            </div>
+          </div>
+
+          <div className="min-w-0">
+            <div className="mb-2 flex items-center justify-between gap-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground/58">
+              <span>benchmarks</span>
+              <span>{updateInfo}</span>
+            </div>
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 xl:grid xl:grid-cols-4 xl:overflow-visible xl:px-0 xl:pb-0">
+              {marketCards.map((entry) => (
+                <div key={entry.code} className="min-w-[108px] shrink-0 xl:min-w-0">
+                  {renderMarketBlock(entry)}
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -280,8 +327,8 @@ export default function PortfolioHero({
       <Dialog open={ytdDialogOpen} onOpenChange={(open) => setYtdDialogOpen(open)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>设置年初基准</DialogTitle>
-            <DialogDescription>输入你希望用来计算 YTD 的起始市值（美元）。</DialogDescription>
+            <DialogTitle>Set YTD baseline</DialogTitle>
+            <DialogDescription>Enter the starting portfolio value used for YTD calculation.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <Input
@@ -290,13 +337,13 @@ export default function PortfolioHero({
               value={ytdInputValue}
               onChange={(e) => setYtdInputValue(e.target.value)}
             />
-            {ytdInputError && <p className="text-xs text-destructive">{ytdInputError}</p>}
+            {ytdInputError ? <p className="text-xs text-destructive">{ytdInputError}</p> : null}
           </div>
           <DialogFooter className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setYtdDialogOpen(false)}>
-              取消
+              Cancel
             </Button>
-            <Button onClick={handleYtdSave}>保存</Button>
+            <Button onClick={handleYtdSave}>Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
