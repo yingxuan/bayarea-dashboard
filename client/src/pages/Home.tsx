@@ -52,6 +52,7 @@ const BRIEF_ZIP_MARKETS = [
   { zip: "95129", region: "West San Jose", medianSalePrice: "$2.42M", yoy: "+6.3%" },
   { zip: "94539", region: "Fremont Mission", medianSalePrice: "$1.85M", yoy: "-8.6%" },
 ];
+const HOUSING_BRIEF_MARKET = BRIEF_ZIP_MARKETS[0];
 
 function HomeModuleFallback() {
   return <div className="min-h-16 rounded-sm bg-muted/20" />;
@@ -99,7 +100,6 @@ export default function Home() {
   const [quotesData, setQuotesData] = useState<Record<string, QuoteData>>({});
   const [marketNews, setMarketNews] = useState<MarketNewsItem[]>([]);
   const [workItems, setWorkItems] = useState<JobItem[]>([]);
-  const [openHouseCounts, setOpenHouseCounts] = useState<Record<string, number>>({});
   const [activeWorkTab, setActiveWorkTab] = useState<"layoff" | "offer">("layoff");
   const { placesByCategory, loading: placesLoading } = usePlacesCache([
     "\u65b0\u5e97\u6253\u5361",
@@ -139,12 +139,6 @@ export default function Home() {
     }
     return undefined;
   }, [placesByCategory]);
-  const totalOpenHouses = Object.values(openHouseCounts).reduce((sum, count) => sum + count, 0);
-  const topHousingMarket = useMemo(() => {
-    return [...BRIEF_ZIP_MARKETS].sort(
-      (a, b) => (openHouseCounts[b.zip] || 0) - (openHouseCounts[a.zip] || 0),
-    )[0];
-  }, [openHouseCounts]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -199,13 +193,9 @@ export default function Home() {
   useEffect(() => {
     async function loadHomeFeeds() {
       try {
-        const [marketResp, jobsResp, housingResp] = await Promise.allSettled([
+        const [marketResp, jobsResp] = await Promise.allSettled([
           fetch(`${config.apiBaseUrl}/api/market-news`, { signal: AbortSignal.timeout(10000) }),
           fetch(`${config.apiBaseUrl}/api/community/jobs`, { signal: AbortSignal.timeout(10000) }),
-          fetch(
-            `${config.apiBaseUrl}/api/housing-open-houses?zips=${BRIEF_ZIP_MARKETS.map((market) => market.zip).join(",")}`,
-            { signal: AbortSignal.timeout(15000) },
-          ),
         ]);
 
         if (marketResp.status === "fulfilled" && marketResp.value.ok) {
@@ -221,23 +211,10 @@ export default function Home() {
         } else {
           setWorkItems([]);
         }
-
-        if (housingResp.status === "fulfilled" && housingResp.value.ok) {
-          const result = await housingResp.value.json();
-          const nextCounts: Record<string, number> = {};
-          for (const market of BRIEF_ZIP_MARKETS) {
-            const items = result?.byZip?.[market.zip];
-            nextCounts[market.zip] = Array.isArray(items) ? items.length : 0;
-          }
-          setOpenHouseCounts(nextCounts);
-        } else {
-          setOpenHouseCounts({});
-        }
       } catch (error) {
         console.error("[Home] Failed to fetch homepage feeds:", error);
         setMarketNews([]);
         setWorkItems([]);
-        setOpenHouseCounts({});
       }
     }
 
@@ -392,18 +369,12 @@ export default function Home() {
                   >
                     <House className="mb-3 h-5 w-5 text-primary" />
                     <div className="text-sm font-semibold text-foreground">
-                      {topHousingMarket
-                        ? `${topHousingMarket.region} ${topHousingMarket.medianSalePrice}`
-                        : lang === "en"
-                          ? "Watch housing"
-                          : "\u770b\u623f\u4ef7"}
+                      {`${HOUSING_BRIEF_MARKET.region} ${HOUSING_BRIEF_MARKET.medianSalePrice}`}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">
-                      {topHousingMarket
-                        ? `${topHousingMarket.yoy} YoY · ${totalOpenHouses} ${lang === "en" ? "open houses" : "\u5957 open house"}`
-                        : lang === "en"
-                          ? "ZIP pulse ready"
-                          : "ZIP \u52a8\u6001"}
+                      {lang === "en"
+                        ? `${HOUSING_BRIEF_MARKET.yoy} YoY · Open live provider links`
+                        : `${HOUSING_BRIEF_MARKET.yoy} YoY · \u6253\u5f00 live provider links`}
                     </div>
                   </div>
                 </Link>

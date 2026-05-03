@@ -43,6 +43,11 @@ type HousingVideo = {
   image: string;
 };
 
+type HousingProviderLink = {
+  label: string;
+  url: string;
+};
+
 const FALLBACK_HOUSING_VIDEOS: HousingVideo[] = [
   {
     videoId: "fallback-housing-1",
@@ -262,10 +267,6 @@ const ZIP_MARKETS: ZipMarket[] = [
   },
 ];
 
-const DEFAULT_OPEN_HOUSES_BY_ZIP = Object.fromEntries(
-  ZIP_MARKETS.map((market) => [market.zip, market.openHouses]),
-) as Record<string, ZipMarket["openHouses"]>;
-
 const DEFAULT_RATE_BY_TYPE_AND_TERM: Record<"fixed" | "arm", Record<number, number>> = {
   fixed: {
     15: 5.62,
@@ -278,6 +279,26 @@ const DEFAULT_RATE_BY_TYPE_AND_TERM: Record<"fixed" | "arm", Record<number, numb
     10: 5.71,
   },
 };
+
+function getProviderLinks(market: ZipMarket): HousingProviderLink[] {
+  const coldwellByZip: Record<string, string> = {
+    "95014": "https://www.coldwellbankerhomes.com/ca/cupertino/95014/open-houses/",
+    "94043": "https://www.coldwellbankerhomes.com/ca/mountain-view/94043/open-houses/",
+    "94087": "https://www.coldwellbankerhomes.com/ca/sunnyvale/94087/open-houses/",
+    "95129": "https://www.coldwellbankerhomes.com/ca/san-jose/95129/open-houses/",
+    "94539": "https://www.coldwellbankerhomes.com/ca/fremont/94539/open-houses/",
+  };
+
+  return [
+    { label: "Redfin", url: market.openHouseUrl },
+    { label: "Realtor", url: `https://www.realtor.com/realestateandhomes-search/${market.zip}/open-house` },
+    { label: "Homes.com", url: `https://www.homes.com/for-sale/${market.zip}/open-house/` },
+    ...(coldwellByZip[market.zip]
+      ? [{ label: "Coldwell Banker", url: coldwellByZip[market.zip] }]
+      : []),
+    { label: "MLS Listings", url: `https://www.mlslistings.com/Search/ByZipCode/${market.zip}` },
+  ];
+}
 
 function MortgageCalculator() {
   const [homePrice, setHomePrice] = useState(2_500_000);
@@ -451,8 +472,6 @@ export default function Fangzi() {
   const { handleExternalLinkClick } = useExternalLink();
   const { markSectionVisited } = useDailyBriefState();
   const [housingVideos, setHousingVideos] = useState<HousingVideo[]>(FALLBACK_HOUSING_VIDEOS);
-  const [openHousesByZip, setOpenHousesByZip] =
-    useState<Record<string, ZipMarket["openHouses"]>>(DEFAULT_OPEN_HOUSES_BY_ZIP);
 
   useEffect(() => {
     markSectionVisited("housing");
@@ -489,39 +508,6 @@ export default function Fangzi() {
     };
 
     loadHousingVideo();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadOpenHouses = async () => {
-      try {
-        const response = await fetch(
-          `${config.apiBaseUrl}/api/housing-open-houses?zips=${ZIP_MARKETS.map((market) => market.zip).join(",")}`,
-          { signal: AbortSignal.timeout(15000) },
-        );
-        if (!response.ok) return;
-
-        const result = await response.json();
-        if (cancelled || !result?.byZip) return;
-
-        setOpenHousesByZip((current) => {
-          const next = { ...current };
-          for (const market of ZIP_MARKETS) {
-            const liveItems = Array.isArray(result.byZip?.[market.zip]) ? result.byZip[market.zip] : [];
-            next[market.zip] = liveItems.length > 0 ? liveItems : current[market.zip];
-          }
-          return next;
-        });
-      } catch {
-        // keep empty state when fetch fails
-      }
-    };
-
-    loadOpenHouses();
     return () => {
       cancelled = true;
     };
@@ -680,84 +666,34 @@ export default function Fangzi() {
                   </div>
 
                   <div className="min-w-0 rounded-sm border border-border/25 bg-background/35 p-4">
-                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                      <h2 className="text-lg font-semibold text-foreground">本周 Open House</h2>
-                      <a
-                        href={market.openHouseUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={handleExternalLinkClick}
-                        className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
-                      >
-                        看更多
-                      </a>
+                    <div className="mb-4">
+                      <h2 className="text-lg font-semibold text-foreground">
+                        {lang === "en" ? "Live Open House Search" : "Live Open House Search"}
+                      </h2>
                     </div>
 
-                    {(openHousesByZip[market.zip] || []).length > 0 ? (
-                      <Carousel opts={{ align: "start", loop: false, dragFree: true }} className="w-full">
-                        <CarouselContent className="-ml-3">
-                          {openHousesByZip[market.zip].map((home) => (
-                            <CarouselItem
-                              key={`${market.zip}-${home.address}`}
-                              className="min-w-0 shrink-0 basis-[86%] pl-3 sm:basis-[68%] md:basis-1/2"
-                            >
-                              <a
-                                href={home.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={handleExternalLinkClick}
-                                className="group block overflow-hidden rounded-sm border border-border/25 bg-card/45 transition-all hover:border-primary/35 hover:bg-card/65"
-                              >
-                                <div className="aspect-[4/3] overflow-hidden bg-muted">
-                                  <img
-                                    src={home.image}
-                                    alt={home.address}
-                                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                                    loading="lazy"
-                                  />
-                                </div>
-                                <div className="min-w-0 p-4">
-                                  <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
-                                    <div className="min-w-0">
-                                      <div className="break-words text-sm font-semibold text-foreground">
-                                        {home.streetAddress || home.address.split(",")[0]}
-                                      </div>
-                                    </div>
-                                    <div className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-[11px] font-semibold text-amber-100">
-                                      {home.price}
-                                    </div>
-                                  </div>
-                                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-foreground/84">
-                                    <span className="rounded-full border border-border/30 bg-background/40 px-2.5 py-1">
-                                      {home.beds}
-                                    </span>
-                                    <span className="rounded-full border border-border/30 bg-background/40 px-2.5 py-1">
-                                      {home.baths}
-                                    </span>
-                                    <span className="rounded-full border border-border/30 bg-background/40 px-2.5 py-1">
-                                      {home.size}
-                                    </span>
-                                  </div>
-                                  <div className="mt-3 text-xs text-muted-foreground">{home.schedule}</div>
-                                  <div className="mt-3 space-y-1.5 text-xs text-foreground/80">
-                                    <div>
-                                      <span className="text-muted-foreground">Middle:</span> {home.middleSchool}
-                                    </div>
-                                    <div>
-                                      <span className="text-muted-foreground">High:</span> {home.highSchool}
-                                    </div>
-                                  </div>
-                                </div>
-                              </a>
-                            </CarouselItem>
-                          ))}
-                        </CarouselContent>
-                      </Carousel>
-                    ) : (
-                      <div className="flex min-h-[220px] items-center justify-center rounded-sm border border-dashed border-border/25 bg-background/20 px-4 text-sm text-muted-foreground">
-                        暂无可用的 open house，稍后再试或直接去 Redfin 查看最新列表。
+                    <div className="rounded-sm border border-dashed border-border/25 bg-background/20 p-4">
+                      <p className="text-sm leading-6 text-muted-foreground">
+                        {lang === "en"
+                          ? "Current open-house inventory opens on external sites. In-app listing cards were removed because the source was not reliable enough."
+                          : "\u5f53\u524d open house \u9700\u8981\u6253\u5f00\u5916\u90e8\u7ad9\u70b9\u67e5\u770b\u6700\u65b0\u5217\u8868\u3002\u7ad9\u5185 listing cards \u5df2\u79fb\u9664\uff0c\u56e0\u4e3a\u4e0a\u6e38\u6e90\u7684\u53ef\u9760\u6027\u4e0d\u591f\u3002"}
+                      </p>
+                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                        {getProviderLinks(market).map((provider) => (
+                          <a
+                            key={`${market.zip}-${provider.label}`}
+                            href={provider.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={handleExternalLinkClick}
+                            className="flex items-center justify-between rounded-sm border border-white/10 bg-white/5 px-3 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:bg-white/8"
+                          >
+                            <span>{provider.label}</span>
+                            <ExternalLink className="h-4 w-4 text-primary" />
+                          </a>
+                        ))}
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>
