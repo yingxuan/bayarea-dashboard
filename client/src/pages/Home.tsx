@@ -15,6 +15,7 @@ import { useAuthAwareHoldings } from "@/hooks/useAuthAwareHoldings";
 import { QuoteData, usePortfolioSummary } from "@/hooks/usePortfolioSummary";
 import { useExternalLink } from "@/hooks/useExternalLink";
 import { BriefItem, useDailyBriefState } from "@/hooks/useDailyBriefState";
+import { usePlacesCache } from "@/hooks/usePlacesCache";
 import { config } from "@/config";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -28,6 +29,29 @@ interface MarketNewsItem {
   id?: string;
   publishedAt?: string;
 }
+
+interface JobItem {
+  title: string;
+  url: string;
+  source: string;
+  publishedAt?: string;
+  category?: "layoff" | "hiring" | "discussion";
+}
+
+interface BriefPlace {
+  name: string;
+  rating?: number;
+  city?: string;
+  category?: string;
+}
+
+const BRIEF_ZIP_MARKETS = [
+  { zip: "95014", region: "Cupertino", medianSalePrice: "$3.23M", yoy: "+28.1%" },
+  { zip: "94043", region: "Palo Alto / 94043", medianSalePrice: "$2.48M", yoy: "+4.9%" },
+  { zip: "94087", region: "Sunnyvale", medianSalePrice: "$2.71M", yoy: "+3.9%" },
+  { zip: "95129", region: "West San Jose", medianSalePrice: "$2.42M", yoy: "+6.3%" },
+  { zip: "94539", region: "Fremont Mission", medianSalePrice: "$1.85M", yoy: "-8.6%" },
+];
 
 function HomeModuleFallback() {
   return <div className="min-h-16 rounded-sm bg-muted/20" />;
@@ -45,6 +69,11 @@ function formatCompactCurrency(value: number) {
 function formatSignedPercent(value: number) {
   const sign = value > 0 ? "+" : "";
   return `${sign}${value.toFixed(2)}%`;
+}
+
+function truncateText(value: string, maxLength: number) {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength - 1).trim()}…`;
 }
 
 export default function Home() {
@@ -65,12 +94,19 @@ export default function Home() {
     markItemsSeen,
     markSectionVisited,
     getUnreadCount,
-    sectionNeedsReview,
   } = useDailyBriefState();
 
   const [quotesData, setQuotesData] = useState<Record<string, QuoteData>>({});
   const [marketNews, setMarketNews] = useState<MarketNewsItem[]>([]);
+  const [workItems, setWorkItems] = useState<JobItem[]>([]);
+  const [openHouseCounts, setOpenHouseCounts] = useState<Record<string, number>>({});
   const [activeWorkTab, setActiveWorkTab] = useState<"layoff" | "offer">("layoff");
+  const { placesByCategory, loading: placesLoading } = usePlacesCache([
+    "\u65b0\u5e97\u6253\u5361",
+    "\u4e2d\u9910",
+    "\u5976\u8336",
+    "\u591c\u5bb5",
+  ]);
   const [briefWasFirstToday] = useState(() => isFirstBriefToday);
   const portfolioMetrics = usePortfolioSummary(holdings, quotesData, ytdBaseline);
 
@@ -88,6 +124,27 @@ export default function Home() {
   const financeUnreadCount = getUnreadCount("finance", marketBriefItems);
   const hasPortfolioValue = holdingsLoaded && holdings.length > 0 && portfolioMetrics.portfolioValue > 0;
   const dailyChangeIsPositive = portfolioMetrics.dailyChangeAmount >= 0;
+  const topWorkItem = useMemo(
+    () =>
+      workItems.find((item) => item.category === "layoff") ||
+      workItems.find((item) => item.category === "hiring") ||
+      workItems[0],
+    [workItems],
+  );
+  const topFoodPlace = useMemo<BriefPlace | undefined>(() => {
+    const categories = ["\u65b0\u5e97\u6253\u5361", "\u4e2d\u9910", "\u5976\u8336", "\u591c\u5bb5"];
+    for (const category of categories) {
+      const place = placesByCategory[category]?.[0];
+      if (place) return { ...place, category };
+    }
+    return undefined;
+  }, [placesByCategory]);
+  const totalOpenHouses = Object.values(openHouseCounts).reduce((sum, count) => sum + count, 0);
+  const topHousingMarket = useMemo(() => {
+    return [...BRIEF_ZIP_MARKETS].sort(
+      (a, b) => (openHouseCounts[b.zip] || 0) - (openHouseCounts[a.zip] || 0),
+    )[0];
+  }, [openHouseCounts]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -142,8 +199,13 @@ export default function Home() {
   useEffect(() => {
     async function loadHomeFeeds() {
       try {
-        const [marketResp] = await Promise.allSettled([
+        const [marketResp, jobsResp, housingResp] = await Promise.allSettled([
           fetch(`${config.apiBaseUrl}/api/market-news`, { signal: AbortSignal.timeout(10000) }),
+          fetch(`${config.apiBaseUrl}/api/community/jobs`, { signal: AbortSignal.timeout(10000) }),
+          fetch(
+            `${config.apiBaseUrl}/api/housing-open-houses?zips=${BRIEF_ZIP_MARKETS.map((market) => market.zip).join(",")}`,
+            { signal: AbortSignal.timeout(15000) },
+          ),
         ]);
 
         if (marketResp.status === "fulfilled" && marketResp.value.ok) {
@@ -152,9 +214,30 @@ export default function Home() {
         } else {
           setMarketNews([]);
         }
+
+        if (jobsResp.status === "fulfilled" && jobsResp.value.ok) {
+          const result = await jobsResp.value.json();
+          setWorkItems(Array.isArray(result.items) ? result.items.slice(0, 8) : []);
+        } else {
+          setWorkItems([]);
+        }
+
+        if (housingResp.status === "fulfilled" && housingResp.value.ok) {
+          const result = await housingResp.value.json();
+          const nextCounts: Record<string, number> = {};
+          for (const market of BRIEF_ZIP_MARKETS) {
+            const items = result?.byZip?.[market.zip];
+            nextCounts[market.zip] = Array.isArray(items) ? items.length : 0;
+          }
+          setOpenHouseCounts(nextCounts);
+        } else {
+          setOpenHouseCounts({});
+        }
       } catch (error) {
         console.error("[Home] Failed to fetch homepage feeds:", error);
         setMarketNews([]);
+        setWorkItems([]);
+        setOpenHouseCounts({});
       }
     }
 
@@ -259,16 +342,18 @@ export default function Home() {
                     {lang === "en" ? "Work" : "\u5de5\u4f5c"}
                   </div>
                   <div className="mt-1 text-lg font-semibold tracking-[-0.02em] text-foreground">
-                    {sectionNeedsReview("work")
-                      ? lang === "en"
-                        ? "Review job pulse"
-                        : "\u770b\u5de5\u4f5c\u98ce\u5411"
+                    {topWorkItem
+                      ? truncateText(topWorkItem.title, lang === "en" ? 44 : 24)
                       : lang === "en"
-                        ? "Work checked"
-                        : "\u5de5\u4f5c\u5df2\u770b"}
+                        ? "Loading job pulse"
+                        : "\u52a0\u8f7d\u5de5\u4f5c\u98ce\u5411"}
                   </div>
                   <div className="mt-1 text-sm text-muted-foreground">
-                    {lang === "en" ? "Layoffs, offers, startups" : "\u88c1\u5458\u3001\u5305\u88f9\u3001Startup"}
+                    {topWorkItem
+                      ? `${topWorkItem.source}${topWorkItem.category ? ` · ${topWorkItem.category}` : ""}`
+                      : lang === "en"
+                        ? "Layoffs, hiring, discussions"
+                        : "\u88c1\u5458\u3001\u62db\u8058\u3001\u8ba8\u8bba"}
                   </div>
                 </div>
               </Link>
@@ -281,16 +366,22 @@ export default function Home() {
                   >
                     <Soup className="mb-3 h-5 w-5 text-primary" />
                     <div className="text-sm font-semibold text-foreground">
-                      {lang === "en" ? "Pick dinner" : "\u51b3\u5b9a\u5403\u4ec0\u4e48"}
+                      {topFoodPlace
+                        ? truncateText(topFoodPlace.name, lang === "en" ? 28 : 12)
+                        : lang === "en"
+                          ? "Loading picks"
+                          : "\u52a0\u8f7d\u9910\u5385"}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">
-                      {sectionNeedsReview("food")
-                        ? lang === "en"
-                          ? "Fresh places"
-                          : "\u65b0\u5e97\u5f85\u770b"
-                        : lang === "en"
-                          ? "Food checked"
-                          : "\u5403\u996d\u5df2\u770b"}
+                      {topFoodPlace
+                        ? `${topFoodPlace.category || ""}${topFoodPlace.rating ? ` · ${topFoodPlace.rating.toFixed(1)}` : ""}${topFoodPlace.city ? ` · ${topFoodPlace.city}` : ""}`
+                        : placesLoading
+                          ? lang === "en"
+                            ? "Reading local cache"
+                            : "\u8bfb\u53d6\u672c\u5730\u7f13\u5b58"
+                          : lang === "en"
+                            ? "Open food tab"
+                            : "\u6253\u5f00\u5403\u996d"}
                     </div>
                   </div>
                 </Link>
@@ -301,16 +392,18 @@ export default function Home() {
                   >
                     <House className="mb-3 h-5 w-5 text-primary" />
                     <div className="text-sm font-semibold text-foreground">
-                      {lang === "en" ? "Watch housing" : "\u770b\u623f\u4ef7"}
+                      {topHousingMarket
+                        ? `${topHousingMarket.region} ${topHousingMarket.medianSalePrice}`
+                        : lang === "en"
+                          ? "Watch housing"
+                          : "\u770b\u623f\u4ef7"}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">
-                      {sectionNeedsReview("housing")
-                        ? lang === "en"
-                          ? "ZIP pulse ready"
-                          : "ZIP \u52a8\u6001"
+                      {topHousingMarket
+                        ? `${topHousingMarket.yoy} YoY · ${totalOpenHouses} ${lang === "en" ? "open houses" : "\u5957 open house"}`
                         : lang === "en"
-                          ? "Housing checked"
-                          : "\u623f\u5b50\u5df2\u770b"}
+                          ? "ZIP pulse ready"
+                          : "ZIP \u52a8\u6001"}
                     </div>
                   </div>
                 </Link>
