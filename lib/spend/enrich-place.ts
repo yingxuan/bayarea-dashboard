@@ -122,6 +122,7 @@ async function fetchPlaceDetails(placeId: string): Promise<{
   city: string;
   rating: number;
   userRatingCount: number;
+  popularDishes?: string[];
   photo?: {
     photoName?: string;
     photoReference?: string;
@@ -135,7 +136,7 @@ async function fetchPlaceDetails(placeId: string): Promise<{
   }
   const url = `${PLACES_API_BASE}/places/${placeId}`;
   // v1 field mask should not prefix with "places." and must include photos.name explicitly
-  const fieldMask = 'id,displayName,rating,userRatingCount,formattedAddress,photos.name,googleMapsUri,reviews.publishTime';
+  const fieldMask = 'id,displayName,rating,userRatingCount,formattedAddress,photos.name,googleMapsUri,reviews';
 
   const response = await fetch(url, {
     method: 'GET',
@@ -155,6 +156,78 @@ async function fetchPlaceDetails(placeId: string): Promise<{
   }
 
   const data = await response.json();
+
+  const STOP_PHRASES = new Set([
+    "food",
+    "restaurant",
+    "place",
+    "service",
+    "staff",
+    "menu",
+    "meal",
+    "dinner",
+    "lunch",
+    "breakfast",
+    "drinks",
+    "dessert",
+    "appetizer",
+    "everything",
+    "nothing",
+    "ambience",
+  ]);
+
+  function normalizeDishLabel(value: string) {
+    return value
+      .replace(/^[^A-Za-z\u4e00-\u9fff]+/, "")
+      .replace(/[^A-Za-z\u4e00-\u9fff0-9&/+\-\s]+$/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function extractPopularDishes(reviews: any[]): string[] {
+    const counts = new Map<string, number>();
+
+    const patterns = [
+      /(?:recommend|recommended|must try|get the|order(?:ed)?|try(?: the)?|love(?:d)?|liked|favorite(?: dish)?(?: is)?|best(?: seller)?(?: is)?|go for)\s+([A-Za-z\u4e00-\u9fff][A-Za-z0-9\u4e00-\u9fff&/+\-\s]{2,40})/gi,
+      /(?:点|推荐|必点|招牌|最好吃的是|一定要试试)\s*[:：]?\s*([\u4e00-\u9fffA-Za-z][A-Za-z0-9\u4e00-\u9fff&/+\-\s]{1,24})/g,
+    ];
+
+    for (const review of reviews || []) {
+      const text =
+        review?.text?.text ||
+        review?.originalText?.text ||
+        "";
+
+      if (!text) continue;
+
+      for (const pattern of patterns) {
+        pattern.lastIndex = 0;
+        let match: RegExpExecArray | null;
+        while ((match = pattern.exec(text)) !== null) {
+          const raw = normalizeDishLabel(match[1] || "");
+          if (!raw) continue;
+
+          const candidates = raw
+            .split(/,|\/| and | or |、|，/i)
+            .map((item) => normalizeDishLabel(item))
+            .filter(Boolean)
+            .slice(0, 3);
+
+          for (const candidate of candidates) {
+            const lowered = candidate.toLowerCase();
+            if (candidate.length < 3 || candidate.length > 28) continue;
+            if (STOP_PHRASES.has(lowered)) continue;
+            counts.set(candidate, (counts.get(candidate) || 0) + 1);
+          }
+        }
+      }
+    }
+
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].length - b[0].length)
+      .slice(0, 3)
+      .map(([dish]) => dish);
+  }
 
   // Extract photo (STEP 3: Ensure unique photoName per item)
   let photo: { photoName?: string; photoReference?: string; photoUrl?: string } | undefined;
@@ -206,6 +279,7 @@ async function fetchPlaceDetails(placeId: string): Promise<{
     city,
     rating: data.rating || 0,
     userRatingCount: data.userRatingCount || 0,
+    popularDishes: extractPopularDishes(data.reviews || []),
     photo,
     googleMapsUri: data.googleMapsUri,
     earliestReviewDate,

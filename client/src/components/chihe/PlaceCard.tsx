@@ -15,6 +15,7 @@ interface SpendPlace {
   city: string;
   badges?: string[];
   address?: string;
+  popularDishes?: string[];
 }
 
 interface PlaceCardProps {
@@ -87,25 +88,27 @@ export default function PlaceCard({
   }, [place.id, staticPhoto]);
 
   const imageUrl = staticPhoto || fetchedPhoto || getFallbackImageUrl(place);
+  const compactBadges = (place.badges || []).slice(0, 2);
+  const shortAddress = place.address?.split(",")[0]?.trim() || place.city;
 
   const sizeClasses = {
     small: {
-      image: "h-32",
+      image: "h-28",
       title: "text-[14px]",
       padding: "p-3",
-      action: "px-2.5 py-1.5 text-[11px]",
+      action: "px-2.5 py-1 text-[11px]",
     },
     medium: {
-      image: "h-40",
+      image: "h-36",
       title: "text-[15px]",
       padding: "p-4",
-      action: "px-3 py-2 text-xs",
+      action: "px-3 py-1.5 text-xs",
     },
     large: {
-      image: "h-56",
+      image: "h-48",
       title: "text-[18px]",
       padding: "p-4",
-      action: "px-3 py-2 text-xs",
+      action: "px-3 py-1.5 text-xs",
     },
   } as const;
 
@@ -145,11 +148,33 @@ export default function PlaceCard({
         <div className="truncate text-[11px] uppercase tracking-[0.14em] text-muted-foreground/75">
           {place.city}
         </div>
-        <h3 className={`mt-2 line-clamp-2 min-w-0 font-semibold leading-5 text-foreground ${classes.title}`}>
+        <h3 className={`mt-1.5 line-clamp-2 min-w-0 font-semibold leading-5 text-foreground ${classes.title}`}>
           {place.name}
         </h3>
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-[12px] text-muted-foreground">
+        <div className="mt-2 line-clamp-1 text-[12px] text-muted-foreground/78">{shortAddress}</div>
+
+        {compactBadges.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {compactBadges.map((badge) => (
+              <span
+                key={`${place.id}-${badge}`}
+                className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] text-foreground/76"
+              >
+                {badge}
+              </span>
+            ))}
+          </div>
+        ) : null}
+
+        {place.popularDishes?.length ? (
+          <div className="mt-2 text-[12px] leading-5 text-foreground/78">
+            <span className="text-muted-foreground/70">推荐点单：</span>
+            {place.popularDishes.slice(0, 3).join(" · ")}
+          </div>
+        ) : null}
+
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
             <span className="tabular-nums">{place.rating > 0 ? place.rating.toFixed(1) : "-"}</span>
@@ -164,7 +189,7 @@ export default function PlaceCard({
           ) : null}
         </div>
 
-        <div className="mt-3 pt-1">
+        <div className="mt-3">
           <span
             className={`inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 font-medium text-foreground/82 transition-colors group-hover:border-primary/30 group-hover:text-primary ${classes.action}`}
           >
