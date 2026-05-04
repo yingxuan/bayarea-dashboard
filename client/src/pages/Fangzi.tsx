@@ -51,8 +51,8 @@ type HousingProviderLink = {
 const FALLBACK_HOUSING_VIDEOS: HousingVideo[] = [
   {
     videoId: "fallback-housing-1",
-  title: "本周湾区华人房市视频",
-  subtitle: "直接看中文房产频道在聊什么",
+  title: "æœ¬å‘¨æ¹¾åŒºåŽäººæˆ¿å¸‚è§†é¢‘",
+  subtitle: "ç›´æŽ¥çœ‹ä¸­æ–‡æˆ¿äº§é¢‘é“åœ¨èŠä»€ä¹ˆ",
   url: "https://www.youtube.com/@cindywangrealtor/videos",
   image:
     "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1200&h=900&fit=crop",
@@ -68,8 +68,8 @@ const ZIP_MARKETS: ZipMarket[] = [
     daysOnMarket: "18 days",
     offersAvg: "4 offers",
     saleToList: "104.2%",
-    heat: "高总价盘韧性最强",
-    summary: "95014 的供给仍少，学区和地段让高总价房源保持竞争力。",
+    heat: "é«˜æ€»ä»·ç›˜éŸ§æ€§æœ€å¼º",
+    summary: "95014 çš„ä¾›ç»™ä»å°‘ï¼Œå­¦åŒºå’Œåœ°æ®µè®©é«˜æ€»ä»·æˆ¿æºä¿æŒç«žäº‰åŠ›ã€‚",
     marketUrl: "https://www.redfin.com/zipcode/95014/housing-market",
     openHouseUrl: "https://www.redfin.com/zipcode/95014/open-houses",
     openHouses: [
@@ -109,8 +109,8 @@ const ZIP_MARKETS: ZipMarket[] = [
     daysOnMarket: "16 days",
     offersAvg: "5 offers",
     saleToList: "102.1%",
-    heat: "半岛核心区还是稳",
-    summary: "94043 这类半岛核心带仍然稳定，库存有限，买家不会轻易等太久。",
+    heat: "åŠå²›æ ¸å¿ƒåŒºè¿˜æ˜¯ç¨³",
+    summary: "94043 è¿™ç±»åŠå²›æ ¸å¿ƒå¸¦ä»ç„¶ç¨³å®šï¼Œåº“å­˜æœ‰é™ï¼Œä¹°å®¶ä¸ä¼šè½»æ˜“ç­‰å¤ªä¹…ã€‚",
     marketUrl: "https://www.redfin.com/zipcode/94043/housing-market",
     openHouseUrl: "https://www.redfin.com/zipcode/94043/open-houses",
     openHouses: [
@@ -150,8 +150,8 @@ const ZIP_MARKETS: ZipMarket[] = [
     daysOnMarket: "11 days",
     offersAvg: "7 offers",
     saleToList: "103.4%",
-    heat: "学校盘仍然偏热",
-    summary: "94087 还是典型的学区刚需盘，成交节奏快，议价空间不大。",
+    heat: "å­¦æ ¡ç›˜ä»ç„¶åçƒ­",
+    summary: "94087 è¿˜æ˜¯å…¸åž‹çš„å­¦åŒºåˆšéœ€ç›˜ï¼Œæˆäº¤èŠ‚å¥å¿«ï¼Œè®®ä»·ç©ºé—´ä¸å¤§ã€‚",
     marketUrl: "https://www.redfin.com/zipcode/94087/housing-market",
     openHouseUrl: "https://www.redfin.com/zipcode/94087/open-houses",
     openHouses: [
@@ -191,8 +191,8 @@ const ZIP_MARKETS: ZipMarket[] = [
     daysOnMarket: "15 days",
     offersAvg: "6 offers",
     saleToList: "103.0%",
-    heat: "学区+通勤兼顾",
-    summary: "95129 通常是性价比和学区的平衡点，出好房时抢的人不会少。",
+    heat: "å­¦åŒº+é€šå‹¤å…¼é¡¾",
+    summary: "95129 é€šå¸¸æ˜¯æ€§ä»·æ¯”å’Œå­¦åŒºçš„å¹³è¡¡ç‚¹ï¼Œå‡ºå¥½æˆ¿æ—¶æŠ¢çš„äººä¸ä¼šå°‘ã€‚",
     marketUrl: "https://www.redfin.com/zipcode/95129/housing-market",
     openHouseUrl: "https://www.redfin.com/zipcode/95129/open-houses",
     openHouses: [
@@ -232,8 +232,8 @@ const ZIP_MARKETS: ZipMarket[] = [
     daysOnMarket: "22 days",
     offersAvg: "8 offers",
     saleToList: "101.4%",
-    heat: "价格回调，但抢房还在",
-    summary: "94539 的价格回撤比半岛明显，但好学区盘一出来还是会有多人出价。",
+    heat: "ä»·æ ¼å›žè°ƒï¼Œä½†æŠ¢æˆ¿è¿˜åœ¨",
+    summary: "94539 çš„ä»·æ ¼å›žæ’¤æ¯”åŠå²›æ˜Žæ˜¾ï¼Œä½†å¥½å­¦åŒºç›˜ä¸€å‡ºæ¥è¿˜æ˜¯ä¼šæœ‰å¤šäººå‡ºä»·ã€‚",
     marketUrl: "https://www.redfin.com/zipcode/94539/housing-market",
     openHouseUrl: "https://www.redfin.com/zipcode/94539/open-houses",
     openHouses: [
@@ -300,6 +300,14 @@ function getProviderLinks(market: ZipMarket): HousingProviderLink[] {
   ];
 }
 
+function getWeeklyDigestCopy(market: ZipMarket) {
+  return `${market.medianSalePrice} · ${market.yoy} YoY · ${market.daysOnMarket} on market · ${market.offersAvg}`;
+}
+
+function getWeeklyDigestLead(market: ZipMarket) {
+  return `${market.region} 这周还是 ${market.heat}。${market.summary}`;
+}
+
 function MortgageCalculator() {
   const [homePrice, setHomePrice] = useState(2_500_000);
   const [downPayment, setDownPayment] = useState(750_000);
@@ -353,13 +361,13 @@ function MortgageCalculator() {
   return (
     <section className="section-shell rounded-sm p-5">
       <div className="mb-4">
-        <h2 className="text-xl font-semibold text-foreground">房贷计算器</h2>
+        <h2 className="text-xl font-semibold text-foreground">æˆ¿è´·è®¡ç®—å™¨</h2>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="grid gap-3">
           <label className="grid gap-2 text-sm text-foreground/84">
-            房价
+            æˆ¿ä»·
             <input
               type="number"
               value={homePrice}
@@ -368,7 +376,7 @@ function MortgageCalculator() {
             />
           </label>
           <label className="grid gap-2 text-sm text-foreground/84">
-            首付
+            é¦–ä»˜
             <input
               type="number"
               value={downPayment}
@@ -377,7 +385,7 @@ function MortgageCalculator() {
             />
           </label>
           <label className="grid gap-2 text-sm text-foreground/84">
-            贷款类型
+            è´·æ¬¾ç±»åž‹
             <select
               value={loanType}
               onChange={(e) => setLoanType(e.target.value as "fixed" | "arm")}
@@ -388,7 +396,7 @@ function MortgageCalculator() {
             </select>
           </label>
           <label className="grid gap-2 text-sm text-foreground/84">
-            年限
+            å¹´é™
             <select
               value={years}
               onChange={(e) => setYears(Number(e.target.value) as 5 | 7 | 10 | 15 | 20 | 30)}
@@ -396,9 +404,9 @@ function MortgageCalculator() {
             >
               {loanType === "fixed" ? (
                 <>
-                  <option value={15}>15 年</option>
-                  <option value={20}>20 年</option>
-                  <option value={30}>30 年</option>
+                  <option value={15}>15 å¹´</option>
+                  <option value={20}>20 å¹´</option>
+                  <option value={30}>30 å¹´</option>
                 </>
               ) : (
                 <>
@@ -410,7 +418,7 @@ function MortgageCalculator() {
             </select>
           </label>
           <label className="grid gap-2 text-sm text-foreground/84">
-            利率 %
+            åˆ©çŽ‡ %
             <input
               type="number"
               step="0.01"
@@ -424,40 +432,40 @@ function MortgageCalculator() {
             onClick={calculate}
             className="mt-2 inline-flex h-10 items-center justify-center rounded-full border border-white/12 bg-white/6 px-4 text-sm font-medium text-foreground/85 transition-colors hover:border-white/24 hover:text-foreground"
           >
-            计算
+            è®¡ç®—
           </button>
         </div>
 
         <div className="rounded-sm border border-border/25 bg-background/35 p-4">
           {result ? (
             <>
-              <div className="text-sm text-muted-foreground">贷款额</div>
+              <div className="text-sm text-muted-foreground">è´·æ¬¾é¢</div>
               <div className="mt-1 text-2xl font-semibold text-foreground">
                 ${result.principal.toLocaleString()}
               </div>
 
               <div className="mt-5 grid gap-3 text-sm text-foreground/88">
                 <div className="flex items-center justify-between gap-3">
-                  <span>月供本金+利息</span>
+                  <span>æœˆä¾›æœ¬é‡‘+åˆ©æ¯</span>
                   <span>${Math.round(result.monthlyPrincipalInterest).toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span>房产税预估</span>
+                  <span>æˆ¿äº§ç¨Žé¢„ä¼°</span>
                   <span>${Math.round(result.propertyTax).toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span>保险预估</span>
+                  <span>ä¿é™©é¢„ä¼°</span>
                   <span>${Math.round(result.insurance).toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3 border-t border-border/25 pt-3 text-base font-semibold text-foreground">
-                  <span>合计月支出</span>
+                  <span>åˆè®¡æœˆæ”¯å‡º</span>
                   <span>${Math.round(result.total).toLocaleString()}</span>
                 </div>
               </div>
             </>
           ) : (
             <div className="flex h-full min-h-[220px] items-center justify-center text-sm text-muted-foreground">
-              输入参数后点击“计算”
+              è¾“å…¥å‚æ•°åŽç‚¹å‡»â€œè®¡ç®—â€
             </div>
           )}
         </div>
@@ -496,7 +504,7 @@ export default function Fangzi() {
             videoId: item.videoId || `housing-video-${index}`,
             title: item.title || FALLBACK_HOUSING_VIDEOS[0].title,
             subtitle: item.channelTitle
-              ? `${item.channelTitle} · ${new Date(item.publishedAt).toLocaleDateString("en-US")}`
+              ? `${item.channelTitle} Â· ${new Date(item.publishedAt).toLocaleDateString("en-US")}`
               : FALLBACK_HOUSING_VIDEOS[0].subtitle,
             url: item.url || FALLBACK_HOUSING_VIDEOS[0].url,
             image: item.thumbnail || FALLBACK_HOUSING_VIDEOS[0].image,
@@ -528,11 +536,11 @@ export default function Fangzi() {
                     <div className="mt-2 text-lg font-semibold text-foreground">{ZIP_MARKETS.length}</div>
                   </div>
                   <div className="hero-pulse-card rounded-sm px-4 py-3">
-                    <div className="text-[11px] uppercase tracking-[0.16em] text-sky-300/75">利率</div>
+                    <div className="text-[11px] uppercase tracking-[0.16em] text-sky-300/75">åˆ©çŽ‡</div>
                     <div className="mt-2 text-lg font-semibold text-foreground">6.11%</div>
                   </div>
                   <div className="hero-pulse-card rounded-sm px-4 py-3">
-                    <div className="text-[11px] uppercase tracking-[0.16em] text-amber-300/75">最热</div>
+                    <div className="text-[11px] uppercase tracking-[0.16em] text-amber-300/75">æœ€çƒ­</div>
                     <div className="mt-2 text-lg font-semibold text-foreground">95014</div>
                   </div>
                 </div>
@@ -543,68 +551,75 @@ export default function Fangzi() {
           <section className="section-shell min-w-0 rounded-sm p-4 sm:p-5">
             <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
               <div className="min-w-0 rounded-sm border border-border/25 bg-background/35 p-4">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                  本周湾区房市走向
-                </div>
-                <h2 className="mt-2 text-2xl font-semibold text-foreground">学区 ZIP 继续强，利率仍压缩预算</h2>
-                <p className="mt-4 text-sm leading-6 text-foreground/84">
-                  这一周更像是高质量房源依旧抢、普通房源开始分化。对湾区买家来说，最大变量仍然不是房子数量，而是月供压力。
-                </p>
-                <div className="mt-5 rounded-sm border border-white/10 bg-white/5 p-4">
-                  <div className="text-sm text-muted-foreground">30 年固定平均利率</div>
-                  <div className="mt-1 text-2xl font-semibold text-foreground">6.11%</div>
-                  <div className="mt-2 text-xs text-muted-foreground">Freddie Mac, 2026-03-12</div>
-                </div>
-              </div>
-
-              <div className="min-w-0 rounded-sm border border-border/25 bg-background/35 p-4">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                      YouTube Search
+                      Weekly digest
                     </div>
-                    <div className="mt-1 text-lg font-semibold text-foreground">湾区最新地产</div>
+                    <div className="mt-1 text-lg font-semibold text-foreground">本周湾区房市滚动摘要</div>
                   </div>
                   <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/20 px-3 py-1 text-xs text-foreground/84">
-                    <PlayCircle className="h-4 w-4" />
-                    最新视频
+                    Scroll the week
                   </div>
                 </div>
 
                 <Carousel opts={{ align: "start", loop: false, dragFree: true }} className="w-full">
                   <CarouselContent className="-ml-3">
-                    {housingVideos.map((video) => (
+                    {ZIP_MARKETS.map((market) => (
                       <CarouselItem
-                        key={video.videoId || video.url}
+                        key={market.zip}
                         className="min-w-0 shrink-0 basis-[84%] pl-3 sm:basis-[62%] md:basis-1/2"
                       >
-                        <a
-                          href={video.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={handleExternalLinkClick}
-                          className="group block overflow-hidden rounded-sm border border-border/25 bg-card/45 transition-all hover:border-primary/35 hover:bg-card/65"
-                        >
-                          <div className="relative aspect-video overflow-hidden bg-muted">
-                            <img
-                              src={video.image}
-                              alt={video.title}
-                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                              loading="lazy"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-                            <div className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[11px] text-white/88 sm:left-4 sm:top-4 sm:px-3 sm:text-xs">
-                              <PlayCircle className="h-4 w-4" />
-                              YouTube
+                        <div className="group flex h-full flex-col overflow-hidden rounded-sm border border-border/25 bg-card/45 transition-all hover:border-primary/35 hover:bg-card/65">
+                          <div className="border-b border-border/20 px-4 py-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                                  ZIP {market.zip}
+                                </div>
+                                <div className="mt-1 text-lg font-semibold text-foreground">{market.region}</div>
+                              </div>
+                              <div className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-xs text-amber-200">
+                                {market.heat}
+                              </div>
                             </div>
                           </div>
-                          <div className="p-3 sm:p-4">
-                            <div className="line-clamp-2 text-base font-semibold text-foreground sm:text-lg">
-                              {video.title}
+                          <div className="flex min-h-0 flex-1 flex-col p-4">
+                            <div className="text-3xl font-semibold text-foreground">{market.medianSalePrice}</div>
+                            <div className="mt-2 text-sm text-foreground/82">{getWeeklyDigestCopy(market)}</div>
+                            <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">
+                              {getWeeklyDigestLead(market)}
+                            </p>
+                            <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-foreground/86">
+                              <div className="rounded-sm border border-white/8 bg-white/4 px-3 py-2">
+                                <div className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">YoY</div>
+                                <div className="mt-1 font-medium text-foreground">{market.yoy}</div>
+                              </div>
+                              <div className="rounded-sm border border-white/8 bg-white/4 px-3 py-2">
+                                <div className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">DOM</div>
+                                <div className="mt-1 font-medium text-foreground">{market.daysOnMarket}</div>
+                              </div>
+                              <div className="rounded-sm border border-white/8 bg-white/4 px-3 py-2">
+                                <div className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">Offers</div>
+                                <div className="mt-1 font-medium text-foreground">{market.offersAvg}</div>
+                              </div>
+                              <div className="rounded-sm border border-white/8 bg-white/4 px-3 py-2">
+                                <div className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">Sale/List</div>
+                                <div className="mt-1 font-medium text-foreground">{market.saleToList}</div>
+                              </div>
                             </div>
-                            <div className="mt-1.5 text-xs text-muted-foreground sm:mt-2 sm:text-sm">{video.subtitle}</div>
+                            <a
+                              href={market.marketUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={handleExternalLinkClick}
+                              className="mt-4 inline-flex items-center justify-between rounded-full border border-white/10 bg-white/6 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:bg-white/10"
+                            >
+                              <span>Open market</span>
+                              <ExternalLink className="h-4 w-4 text-primary" />
+                            </a>
                           </div>
-                        </a>
+                        </div>
                       </CarouselItem>
                     ))}
                   </CarouselContent>

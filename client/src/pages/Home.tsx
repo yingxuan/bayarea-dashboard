@@ -373,8 +373,8 @@ export default function Home() {
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">
                       {lang === "en"
-                        ? `${HOUSING_BRIEF_MARKET.yoy} YoY · Open live provider links`
-                        : `${HOUSING_BRIEF_MARKET.yoy} YoY · \u6253\u5f00 live provider links`}
+                        ? `${HOUSING_BRIEF_MARKET.yoy} YoY · Weekly digest`
+                        : `${HOUSING_BRIEF_MARKET.yoy} YoY · \u5468\u62a5摘要`}
                     </div>
                   </div>
                 </Link>
